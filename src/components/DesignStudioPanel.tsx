@@ -5,33 +5,28 @@ import { Zap, Sparkles } from "lucide-react";
 
 interface DesignStudioPanelProps {
   onViewImage?: (src: string) => void;
+  onGenerate?: () => void;
+  hasResult?: boolean;
+  onStartNew?: () => void;
 }
 
-export default function DesignStudioPanel({ onViewImage }: DesignStudioPanelProps) {
+export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, onStartNew }: DesignStudioPanelProps) {
   const { state, dispatch } = useDesign();
-  const { designParams, speed, expandedSections } = state;
+  const { designParams, speed, expandedSections, appStatus } = state;
+
+  const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
 
   return (
     <div className="space-y-3">
       {/* Guide Box */}
       <div className="rounded-xl border border-border bg-card p-3">
         <div className="grid grid-cols-4 gap-2 text-center text-[10px] text-muted-foreground">
-          <div className="space-y-1">
-            <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-banana-500/20 text-banana-500 text-xs font-bold">1</div>
-            <span>Character</span>
-          </div>
-          <div className="space-y-1">
-            <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-banana-500/20 text-banana-500 text-xs font-bold">2</div>
-            <span>Scene</span>
-          </div>
-          <div className="space-y-1">
-            <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-banana-500/20 text-banana-500 text-xs font-bold">3</div>
-            <span>Style</span>
-          </div>
-          <div className="space-y-1">
-            <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-banana-500/20 text-banana-500 text-xs font-bold">4</div>
-            <span>Generate</span>
-          </div>
+          {["Character", "Scene", "Style", "Generate"].map((label, i) => (
+            <div key={label} className="space-y-1">
+              <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-banana-500/20 text-banana-500 text-xs font-bold">{i + 1}</div>
+              <span>{label}</span>
+            </div>
+          ))}
         </div>
         <p className="mt-2 text-center text-[10px] text-muted-foreground">⌘+V to paste images</p>
       </div>
@@ -49,7 +44,7 @@ export default function DesignStudioPanel({ onViewImage }: DesignStudioPanelProp
         onViewImage={onViewImage}
       />
 
-      {/* Scene (collapsible) */}
+      {/* Scene */}
       <DesignSection
         title="Scene / Action"
         subtitle="The SET. Defines the environment and pose."
@@ -58,13 +53,12 @@ export default function DesignStudioPanel({ onViewImage }: DesignStudioPanelProp
         placeholder="Describe the scene... e.g., Standing on a rooftop at sunset"
         image={designParams.sceneImage}
         onImageChange={(img) => dispatch({ type: "SET_SCENE_IMAGE", image: img })}
-        collapsible
-        expanded={expandedSections.scene}
+        collapsible expanded={expandedSections.scene}
         onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "scene" })}
         onViewImage={onViewImage}
       />
 
-      {/* Style (collapsible) */}
+      {/* Style */}
       <DesignSection
         title="Artistic Style"
         subtitle="The LENS. Defines the visual art direction."
@@ -73,13 +67,12 @@ export default function DesignStudioPanel({ onViewImage }: DesignStudioPanelProp
         placeholder="Describe the style... e.g., Synthwave 80s neon aesthetic"
         image={designParams.styleImage}
         onImageChange={(img) => dispatch({ type: "SET_STYLE_IMAGE", image: img })}
-        collapsible
-        expanded={expandedSections.style}
+        collapsible expanded={expandedSections.style}
         onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })}
         onViewImage={onViewImage}
       />
 
-      {/* Typography (collapsible) */}
+      {/* Typography */}
       <DesignSection
         title="Typography"
         subtitle="Text to include in the design."
@@ -88,8 +81,7 @@ export default function DesignStudioPanel({ onViewImage }: DesignStudioPanelProp
         placeholder="Text to render on the design..."
         image={designParams.textImage}
         onImageChange={(img) => dispatch({ type: "SET_TEXT_IMAGE", image: img })}
-        collapsible
-        expanded={expandedSections.text}
+        collapsible expanded={expandedSections.text}
         onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "text" })}
         onViewImage={onViewImage}
       />
@@ -102,8 +94,7 @@ export default function DesignStudioPanel({ onViewImage }: DesignStudioPanelProp
           className={`flex-1 gap-1.5 ${speed === "fast" ? "bg-banana-500 text-primary-foreground hover:bg-banana-600" : ""}`}
           onClick={() => dispatch({ type: "SET_SPEED", speed: "fast" })}
         >
-          <Zap className="h-3.5 w-3.5" />
-          Fast
+          <Zap className="h-3.5 w-3.5" /> Fast
         </Button>
         <Button
           size="sm"
@@ -111,20 +102,27 @@ export default function DesignStudioPanel({ onViewImage }: DesignStudioPanelProp
           className={`flex-1 gap-1.5 ${speed === "quality" ? "bg-banana-500 text-primary-foreground hover:bg-banana-600" : ""}`}
           onClick={() => dispatch({ type: "SET_SPEED", speed: "quality" })}
         >
-          <Sparkles className="h-3.5 w-3.5" />
-          Pro
+          <Sparkles className="h-3.5 w-3.5" /> Pro
         </Button>
       </div>
 
       {/* Generate Button */}
       <Button
         className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 dark:bg-banana-500 dark:text-foreground dark:hover:bg-banana-600 font-semibold text-base"
-        disabled={!designParams.character.trim() || state.appStatus !== "IDLE"}
+        disabled={!designParams.character.trim() || isProcessing || hasResult}
+        onClick={onGenerate}
       >
-        {state.appStatus !== "IDLE" && state.appStatus !== "COMPLETE" && state.appStatus !== "ERROR"
-          ? "Processing..."
-          : "Generate Merchandise"}
+        {isProcessing ? "Processing..." : "Generate Merchandise"}
       </Button>
+
+      {hasResult && (
+        <button
+          onClick={onStartNew}
+          className="w-full text-center text-sm text-banana-500 hover:text-banana-600"
+        >
+          Start New Design
+        </button>
+      )}
     </div>
   );
 }

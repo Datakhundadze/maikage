@@ -1,0 +1,172 @@
+import { supabase } from "@/integrations/supabase/client";
+import type { DesignParams } from "@/hooks/useDesign";
+
+interface GenerateDesignParams {
+  designParams: DesignParams;
+  product: string;
+  color: string;
+  speed: "fast" | "quality";
+}
+
+export interface GenerationResult {
+  designImage: string;       // base64 design on white bg
+  transparentImage: string;  // base64 transparent PNG
+  mockupImage: string;       // base64 composited mockup
+  prompt: string;
+}
+
+async function callGemini(action: string, params: Record<string, any>): Promise<{ image: string; text: string }> {
+  const { data, error } = await supabase.functions.invoke("gemini-proxy", {
+    body: { action, params },
+  });
+
+  if (error) throw new Error(error.message || "AI request failed");
+  if (!data?.image) throw new Error("No image returned from AI");
+  return { image: data.image, text: data.text || "" };
+}
+
+// Stage 2: Difference matting — convert white-bg + black-bg images to transparent PNG
+function differenceMatting(whiteCanvas: HTMLCanvasElement, blackCanvas: HTMLCanvasElement): HTMLCanvasElement {
+  const w = whiteCanvas.width;
+  const h = whiteCanvas.height;
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = w;
+  outCanvas.height = h;
+
+  const wCtx = whiteCanvas.getContext("2d")!;
+  const bCtx = blackCanvas.getContext("2d")!;
+  const oCtx = outCanvas.getContext("2d")!;
+
+  const wData = wCtx.getImageData(0, 0, w, h);
+  const bData = bCtx.getImageData(0, 0, w, h);
+  const oData = oCtx.createImageData(w, h);
+
+  const wPx = wData.data;
+  const bPx = bData.data;
+  const oPx = oData.data;
+
+  for (let i = 0; i < wPx.length; i += 4) {
+    const wR = wPx[i], wG = wPx[i + 1], wB = wPx[i + 2];
+    const bR = bPx[i], bG = bPx[i + 1], bB = bPx[i + 2];
+
+    const dist = Math.sqrt(
+      (wR - bR) ** 2 + (wG - bG) ** 2 + (wB - bB) ** 2
+    );
+    const alpha = 1 - dist / 441.67; // sqrt(255^2 * 3)
+
+    if (alpha < 0.01) {
+      oPx[i] = oPx[i + 1] = oPx[i + 2] = oPx[i + 3] = 0;
+    } else {
+      oPx[i] = Math.min(255, Math.round(bR / alpha));
+      oPx[i + 1] = Math.min(255, Math.round(bG / alpha));
+      oPx[i + 2] = Math.min(255, Math.round(bB / alpha));
+      oPx[i + 3] = Math.round(alpha * 255);
+    }
+  }
+
+  oCtx.putImageData(oData, 0, 0);
+  return outCanvas;
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+function imageToCanvas(img: HTMLImageElement): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  return canvas;
+}
+
+// Stage 3: Composite design onto product photo
+function compositeMockup(
+  productImg: HTMLImageElement,
+  designImg: HTMLImageElement,
+  coords: { x: number; y: number; scale: number }
+): string {
+  const canvas = document.createElement("canvas");
+  canvas.width = productImg.naturalWidth;
+  canvas.height = productImg.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+
+  // Draw product
+  ctx.drawImage(productImg, 0, 0);
+
+  // Calculate design placement
+  const designWidth = canvas.width * coords.scale;
+  const designHeight = (designImg.naturalHeight / designImg.naturalWidth) * designWidth;
+  const designX = canvas.width * coords.x - designWidth / 2;
+  const designY = canvas.height * coords.y - designHeight / 2;
+
+  // Draw design
+  ctx.globalAlpha = 1.0;
+  ctx.drawImage(designImg, designX, designY, designWidth, designHeight);
+
+  return canvas.toDataURL("image/png");
+}
+
+export async function runGenerationPipeline(
+  params: GenerateDesignParams,
+  placementCoords: { x: number; y: number; scale: number },
+  productImageUrl: string | null,
+  onStatusChange: (status: string) => void
+): Promise<GenerationResult> {
+  // Stage 1: Generate design on white background
+  onStatusChange("GENERATING_DESIGN");
+  const designResult = await callGemini("generate-design", {
+    ...params.designParams,
+    product: params.product,
+    color: params.color,
+    speed: params.speed,
+  });
+
+  const designImage = designResult.image;
+
+  // Stage 2: Background removal via difference matting
+  onStatusChange("PROCESSING_TRANSPARENCY");
+
+  // Convert white bg to black bg
+  const blackBgResult = await callGemini("convert-bg-black", { image: designImage });
+
+  // Load both images and apply difference matting
+  const whiteImg = await loadImage(designImage);
+  const blackImg = await loadImage(blackBgResult.image);
+  const whiteCanvas = imageToCanvas(whiteImg);
+  const blackCanvas = imageToCanvas(blackImg);
+  const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
+  const transparentImage = transparentCanvas.toDataURL("image/png");
+
+  // Stage 3: Mockup compositing
+  onStatusChange("GENERATING_MOCKUP");
+
+  let mockupImage: string;
+  if (productImageUrl) {
+    const productImg = await loadImage(productImageUrl);
+    const transparentImg = await loadImage(transparentImage);
+    mockupImage = compositeMockup(productImg, transparentImg, placementCoords);
+  } else {
+    // No product image yet — use transparent design as mockup placeholder
+    mockupImage = transparentImage;
+  }
+
+  return {
+    designImage,
+    transparentImage,
+    mockupImage,
+    prompt: designResult.text,
+  };
+}
+
+export async function upscaleImage(imageBase64: string): Promise<string> {
+  const result = await callGemini("upscale", { image: imageBase64 });
+  return result.image;
+}
