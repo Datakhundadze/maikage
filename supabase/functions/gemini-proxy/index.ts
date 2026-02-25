@@ -160,6 +160,16 @@ OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background.
     const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     const textContent = data.choices?.[0]?.message?.content;
 
+    console.log("AI response - action:", action, "hasImage:", !!imageData, "textLength:", textContent?.length || 0);
+
+    if (!imageData) {
+      console.error("No image in AI response. Full response:", JSON.stringify(data).slice(0, 500));
+      return new Response(JSON.stringify({ error: "AI did not return an image. Please try again.", text: textContent }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ image: imageData, text: textContent }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
