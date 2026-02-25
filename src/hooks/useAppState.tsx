@@ -1,0 +1,45 @@
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import type { Lang } from "@/lib/i18n";
+
+interface AppStateContextType {
+  lang: Lang;
+  toggleLang: () => void;
+  theme: "light" | "dark";
+  toggleTheme: () => void;
+}
+
+const AppStateContext = createContext<AppStateContextType | null>(null);
+
+export function AppStateProvider({ children }: { children: ReactNode }) {
+  const [lang, setLang] = useState<Lang>(() => {
+    return (localStorage.getItem("maika-lang") as Lang) || "en";
+  });
+
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    return (localStorage.getItem("maika-theme") as "light" | "dark") || "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("maika-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("maika-lang", lang);
+  }, [lang]);
+
+  const toggleLang = useCallback(() => setLang((l) => (l === "en" ? "ge" : "en")), []);
+  const toggleTheme = useCallback(() => setTheme((t) => (t === "light" ? "dark" : "light")), []);
+
+  return (
+    <AppStateContext.Provider value={{ lang, toggleLang, theme, toggleTheme }}>
+      {children}
+    </AppStateContext.Provider>
+  );
+}
+
+export function useAppState() {
+  const ctx = useContext(AppStateContext);
+  if (!ctx) throw new Error("useAppState must be used within AppStateProvider");
+  return ctx;
+}

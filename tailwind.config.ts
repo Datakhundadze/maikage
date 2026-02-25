@@ -14,6 +14,18 @@ export default {
     },
     extend: {
       colors: {
+        banana: {
+          50: "hsl(var(--banana-50))",
+          100: "hsl(var(--banana-100))",
+          200: "hsl(var(--banana-200))",
+          300: "hsl(var(--banana-300))",
+          400: "hsl(var(--banana-400))",
+          500: "hsl(var(--banana-500))",
+          600: "hsl(var(--banana-600))",
+          700: "hsl(var(--banana-700))",
+          800: "hsl(var(--banana-800))",
+          900: "hsl(var(--banana-900))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -65,25 +77,19 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "spin-slow": "spin 3s linear infinite",
+        "pulse-fast": "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
     },
   },
