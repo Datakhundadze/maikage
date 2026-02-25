@@ -13,7 +13,8 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -56,12 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [deriveUserInfo]);
 
-  const signInWithGoogle = useCallback(async () => {
+  const signInWithEmail = useCallback(async (email: string, password: string) => {
     setState((s) => ({ ...s, error: null }));
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.origin },
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setState((s) => ({ ...s, error: error.message }));
+  }, []);
+
+  const signUpWithEmail = useCallback(async (email: string, password: string) => {
+    setState((s) => ({ ...s, error: null }));
+    const { error } = await supabase.auth.signUp({ email, password });
     if (error) setState((s) => ({ ...s, error: error.message }));
   }, []);
 
@@ -77,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, signInWithGoogle, signInAsGuest, signOut }}>
+    <AuthContext.Provider value={{ ...state, signInWithEmail, signUpWithEmail, signInAsGuest, signOut }}>
       {children}
     </AuthContext.Provider>
   );
