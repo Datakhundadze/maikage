@@ -15,14 +15,30 @@ export interface GenerationResult {
   prompt: string;
 }
 
-async function callGemini(action: string, params: Record<string, any>): Promise<{ image: string; text: string }> {
-  const { data, error } = await supabase.functions.invoke("gemini-proxy", {
-    body: { action, params },
-  });
+async function callGemini(action: string, params: Record<string, any>, retries = 2): Promise<{ image: string; text: string }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const { data, error } = await supabase.functions.invoke("gemini-proxy", {
+      body: { action, params },
+    });
 
-  if (error) throw new Error(error.message || "AI request failed");
-  if (!data?.image) throw new Error("No image returned from AI");
-  return { image: data.image, text: data.text || "" };
+    if (error) {
+      console.error(`AI call failed (${action}, attempt ${attempt + 1}):`, error);
+      if (attempt === retries) throw new Error(error.message || "AI request failed");
+      continue;
+    }
+    if (data?.error) {
+      console.error(`AI returned error (${action}, attempt ${attempt + 1}):`, data.error);
+      if (attempt === retries) throw new Error(data.error);
+      continue;
+    }
+    if (!data?.image) {
+      console.error(`No image (${action}, attempt ${attempt + 1})`);
+      if (attempt === retries) throw new Error("AI did not return an image. Please try again.");
+      continue;
+    }
+    return { image: data.image, text: data.text || "" };
+  }
+  throw new Error("AI request failed after retries");
 }
 
 // Stage 2: Difference matting — convert white-bg + black-bg images to transparent PNG
