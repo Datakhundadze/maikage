@@ -1,40 +1,47 @@
 import AppLayout from "@/components/AppLayout";
-import { useAppState } from "@/hooks/useAppState";
-import { t } from "@/lib/i18n";
+import ProductConfigPanel from "@/components/ProductConfigPanel";
+import ProductPreview from "@/components/ProductPreview";
+import { useProductConfig } from "@/hooks/useProductConfig";
 
 function SidebarContent() {
+  const { config, locked, setProduct, setSubProduct, setColor, setView } = useProductConfig();
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-sidebar-border bg-card p-4">
-        <h2 className="text-lg font-semibold text-card-foreground">Product Configuration</h2>
-        <p className="text-sm text-muted-foreground mt-1">Coming in Phase 2</p>
-      </div>
-      <div className="rounded-xl border border-sidebar-border bg-card p-4">
-        <h2 className="text-lg font-semibold text-card-foreground">Design Studio</h2>
-        <p className="text-sm text-muted-foreground mt-1">Coming in Phase 3</p>
-      </div>
-    </div>
+    <ProductConfigPanel
+      config={config}
+      locked={locked}
+      onProductChange={setProduct}
+      onSubProductChange={setSubProduct}
+      onColorChange={setColor}
+      onViewChange={setView}
+    />
   );
 }
 
-function MainContent() {
-  return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="text-center max-w-md">
-        <div className="mb-6 flex justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary text-4xl font-black text-primary-foreground">
-            M
-          </div>
-        </div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">maika.ge Studio</h1>
-        <p className="text-muted-foreground">
-          Select a product and describe your design to get started.
-        </p>
-      </div>
-    </div>
-  );
-}
-
+// We need to lift state so sidebar and main share the same config
 export default function StudioPage() {
-  return <AppLayout sidebar={<SidebarContent />} main={<MainContent />} />;
+  const productConfig = useProductConfig();
+
+  return (
+    <AppLayout
+      sidebar={
+        <ProductConfigPanel
+          config={productConfig.config}
+          locked={productConfig.locked}
+          onProductChange={productConfig.setProduct}
+          onSubProductChange={productConfig.setSubProduct}
+          onColorChange={productConfig.setColor}
+          onViewChange={productConfig.setView}
+        />
+      }
+      main={
+        <ProductPreview
+          productName={productConfig.config.product}
+          colorName={productConfig.config.color}
+          view={productConfig.config.view}
+          placementCoords={productConfig.config.placementCoords}
+        />
+      }
+    />
+  );
 }

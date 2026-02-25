@@ -1,0 +1,73 @@
+import { useState, useCallback } from "react";
+import type { ProductType, ProductColor, ProductView, PlacementCoords } from "@/lib/catalog";
+import { catalog } from "@/lib/catalog";
+
+export interface ProductConfig {
+  product: ProductType;
+  subProduct: string;
+  color: ProductColor;
+  view: ProductView;
+  placementCoords: PlacementCoords;
+}
+
+export function useProductConfig() {
+  const [config, setConfig] = useState<ProductConfig>({
+    product: "Hoodie",
+    subProduct: catalog.getDefaultSubProduct("Hoodie"),
+    color: "Black",
+    view: "front",
+    placementCoords: { x: 0.5, y: 0.28, scale: 0.38 },
+  });
+
+  const [locked, setLocked] = useState(false);
+
+  const setProduct = useCallback((product: ProductType) => {
+    const subProduct = catalog.getDefaultSubProduct(product);
+    const colors = catalog.getAvailableColors(product, subProduct);
+    const color = colors.includes(config.color) ? config.color : colors[0] || "Black";
+    const entry = catalog.findProduct(product, subProduct, color, config.view);
+    setConfig({
+      product,
+      subProduct,
+      color,
+      view: config.view,
+      placementCoords: entry?.placementZone || { x: 0.5, y: 0.28, scale: 0.38 },
+    });
+  }, [config.color, config.view]);
+
+  const setSubProduct = useCallback((subProduct: string) => {
+    const colors = catalog.getAvailableColors(config.product, subProduct);
+    const color = colors.includes(config.color) ? config.color : colors[0] || "Black";
+    const entry = catalog.findProduct(config.product, subProduct, color, config.view);
+    setConfig((prev) => ({
+      ...prev,
+      subProduct,
+      color,
+      placementCoords: entry?.placementZone || prev.placementCoords,
+    }));
+  }, [config.product, config.color, config.view]);
+
+  const setColor = useCallback((color: ProductColor) => {
+    const entry = catalog.findProduct(config.product, config.subProduct, color, config.view);
+    setConfig((prev) => ({
+      ...prev,
+      color,
+      placementCoords: entry?.placementZone || prev.placementCoords,
+    }));
+  }, [config.product, config.subProduct, config.view]);
+
+  const setView = useCallback((view: ProductView) => {
+    const entry = catalog.findProduct(config.product, config.subProduct, config.color, view);
+    setConfig((prev) => ({
+      ...prev,
+      view,
+      placementCoords: entry?.placementZone || prev.placementCoords,
+    }));
+  }, [config.product, config.subProduct, config.color]);
+
+  const setPlacementCoords = useCallback((coords: PlacementCoords) => {
+    setConfig((prev) => ({ ...prev, placementCoords: coords }));
+  }, []);
+
+  return { config, locked, setLocked, setProduct, setSubProduct, setColor, setView, setPlacementCoords };
+}
