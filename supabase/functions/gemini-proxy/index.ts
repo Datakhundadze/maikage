@@ -110,6 +110,25 @@ OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background.
         ]
       }];
 
+    } else if (action === "randomize-prompt") {
+      model = "google/gemini-3-flash-preview";
+      const { product } = params;
+
+      messages = [{
+        role: "user",
+        content: `You are a creative director for a streetwear merch brand. Generate a random, creative, unique design concept for a ${product || "hoodie"}.
+
+Return ONLY a JSON object with these fields (no markdown, no explanation):
+{
+  "character": "A vivid character description (1-2 sentences)",
+  "scene": "A scene/action/pose description (1 sentence)",
+  "style": "An artistic style direction (1 sentence)",
+  "text": "Optional catchy text/slogan to include (or empty string)"
+}
+
+Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista, underwater DJ, retro-futuristic gardener, etc. Make each concept unique and memorable.`
+      }];
+
     } else {
       return new Response(JSON.stringify({ error: "Unknown action" }), {
         status: 400,

@@ -13,13 +13,86 @@ const translations = {
       google: "Sign in with Google",
       guest: "Continue as Guest",
       error: "Authentication failed. Please try again.",
+      email: "Email",
+      password: "Password",
+      signIn: "Sign In",
+      signUp: "Sign Up",
+      or: "or",
+    },
+    nav: {
+      studio: "Studio",
+      myDesigns: "My Designs",
+      community: "Community",
+      logout: "Logout",
     },
     theme: {
       light: "☀️",
       dark: "🌙",
     },
-    nav: {
-      logout: "Logout",
+    studio: {
+      guide: {
+        character: "Character",
+        scene: "Scene",
+        style: "Style",
+        generate: "Generate",
+        paste: "⌘+V to paste images",
+      },
+      character: {
+        title: "Characters",
+        subtitle: "The Subject/Actor. Defines WHO is in the shot.",
+        placeholder: "Describe your character... e.g., A cyberpunk samurai with neon armor",
+      },
+      scene: {
+        title: "Scene / Action",
+        subtitle: "The SET. Defines the environment and pose.",
+        placeholder: "Describe the scene... e.g., Standing on a rooftop at sunset",
+      },
+      style: {
+        title: "Artistic Style",
+        subtitle: "The LENS. Defines the visual art direction.",
+        placeholder: "Describe the style... e.g., Synthwave 80s neon aesthetic",
+      },
+      typography: {
+        title: "Typography",
+        subtitle: "Text to include in the design.",
+        placeholder: "Text to render on the design...",
+      },
+      speed: {
+        fast: "Fast",
+        pro: "Pro",
+      },
+      generate: "Generate Merchandise",
+      regenerate: "Regenerate",
+      processing: "Processing...",
+      startNew: "Start New Design",
+      randomize: "Magic Randomizer ✨",
+      randomizing: "Randomizing...",
+    },
+    result: {
+      preview: "Preview",
+      printFile: "Print File (PNG)",
+      save: "Save to Cloud",
+      saving: "Saving...",
+      downloadAll: "Download All",
+      view: "View",
+      copy: "Copy",
+      download: "Download",
+      downloadPng: "Download PNG",
+      upscale: "Upscale 4K",
+      upscaling: "Upscaling...",
+    },
+    myDesigns: {
+      title: "My Designs",
+      count: (n: number) => `${n} design${n !== 1 ? "s" : ""} saved`,
+      empty: "No designs yet",
+      emptyHint: "Generate your first design in the Studio!",
+      deleteConfirm: "Delete this design?",
+    },
+    community: {
+      title: "Community",
+      subtitle: "Discover designs published by the community.",
+      empty: "No published designs yet",
+      emptyHint: "Be the first to publish!",
     },
   },
   ge: {
@@ -34,23 +107,98 @@ const translations = {
       google: "შესვლა Google-ით",
       guest: "გაგრძელება სტუმრად",
       error: "ავტორიზაცია ვერ მოხერხდა. სცადეთ ხელახლა.",
+      email: "ელფოსტა",
+      password: "პაროლი",
+      signIn: "შესვლა",
+      signUp: "რეგისტრაცია",
+      or: "ან",
+    },
+    nav: {
+      studio: "სტუდია",
+      myDesigns: "ჩემი დიზაინები",
+      community: "საზოგადოება",
+      logout: "გამოსვლა",
     },
     theme: {
       light: "☀️",
       dark: "🌙",
     },
-    nav: {
-      logout: "გამოსვლა",
+    studio: {
+      guide: {
+        character: "პერსონაჟი",
+        scene: "სცენა",
+        style: "სტილი",
+        generate: "გენერაცია",
+        paste: "⌘+V სურათის ჩასაკრავად",
+      },
+      character: {
+        title: "პერსონაჟები",
+        subtitle: "სუბიექტი/აქტორი. განსაზღვრავს ვინ არის კადრში.",
+        placeholder: "აღწერეთ პერსონაჟი... მაგ., კიბერპანკ სამურაი ნეონის ჯავშნით",
+      },
+      scene: {
+        title: "სცენა / მოქმედება",
+        subtitle: "გარემო. განსაზღვრავს პოზას და ადგილს.",
+        placeholder: "აღწერეთ სცენა... მაგ., სახურავზე მზის ჩასვლისას",
+      },
+      style: {
+        title: "მხატვრული სტილი",
+        subtitle: "ვიზუალური მიმართულება.",
+        placeholder: "აღწერეთ სტილი... მაგ., სინთვეივ 80-იანი ნეონი",
+      },
+      typography: {
+        title: "ტიპოგრაფია",
+        subtitle: "ტექსტი დიზაინში ჩასართავად.",
+        placeholder: "ტექსტი დიზაინზე...",
+      },
+      speed: {
+        fast: "სწრაფი",
+        pro: "პრო",
+      },
+      generate: "მერჩის გენერაცია",
+      regenerate: "ხელახლა გენერაცია",
+      processing: "მუშავდება...",
+      startNew: "ახალი დიზაინი",
+      randomize: "მაგიური რანდომაიზერი ✨",
+      randomizing: "რანდომიზაცია...",
+    },
+    result: {
+      preview: "გადახედვა",
+      printFile: "ბეჭდვის ფაილი (PNG)",
+      save: "შენახვა Cloud-ზე",
+      saving: "ინახება...",
+      downloadAll: "ყველას ჩამოტვირთვა",
+      view: "ნახვა",
+      copy: "კოპირება",
+      download: "ჩამოტვირთვა",
+      downloadPng: "PNG ჩამოტვირთვა",
+      upscale: "4K გადიდება",
+      upscaling: "იზრდება...",
+    },
+    myDesigns: {
+      title: "ჩემი დიზაინები",
+      count: (n: number) => `${n} დიზაინი შენახულია`,
+      empty: "დიზაინები ჯერ არ არის",
+      emptyHint: "შექმენით პირველი დიზაინი სტუდიაში!",
+      deleteConfirm: "წაშალოთ ეს დიზაინი?",
+    },
+    community: {
+      title: "საზოგადოება",
+      subtitle: "აღმოაჩინეთ საზოგადოების მიერ გამოქვეყნებული დიზაინები.",
+      empty: "გამოქვეყნებული დიზაინები ჯერ არ არის",
+      emptyHint: "იყავი პირველი!",
     },
   },
 } as const;
 
-export function t(lang: Lang, key: string): string {
+// Type-safe translation getter supporting nested keys and function values
+export function t(lang: Lang, key: string, ...args: any[]): string {
   const keys = key.split(".");
   let result: any = translations[lang];
   for (const k of keys) {
     result = result?.[k];
   }
+  if (typeof result === "function") return result(...args);
   return (result as string) ?? key;
 }
 

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppState } from "@/hooks/useAppState";
+import { t } from "@/lib/i18n";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ interface CommunityDesign {
 
 export default function CommunityPage() {
   const { user } = useAuth();
+  const { lang } = useAppState();
   const { toggleLike, getPublicUrl } = useDesignStorage();
   const [designs, setDesigns] = useState<CommunityDesign[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
@@ -47,7 +50,6 @@ export default function CommunityPage() {
 
   useEffect(() => { fetchDesigns(); fetchLikes(); }, [fetchDesigns, fetchLikes]);
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel("community-designs")
@@ -78,10 +80,8 @@ export default function CommunityPage() {
       <AppLayout
         sidebar={
           <div className="space-y-4">
-            <h2 className="text-lg font-bold">Community</h2>
-            <p className="text-sm text-muted-foreground">
-              Discover designs published by the community.
-            </p>
+            <h2 className="text-lg font-bold">{t(lang, "community.title")}</h2>
+            <p className="text-sm text-muted-foreground">{t(lang, "community.subtitle")}</p>
           </div>
         }
         main={
@@ -92,8 +92,8 @@ export default function CommunityPage() {
               </div>
             ) : designs.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                <p className="text-lg">No published designs yet</p>
-                <p className="text-sm">Be the first to publish!</p>
+                <p className="text-lg">{t(lang, "community.empty")}</p>
+                <p className="text-sm">{t(lang, "community.emptyHint")}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

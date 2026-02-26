@@ -6,21 +6,20 @@ import { LogOut, Paintbrush, FolderOpen, Globe } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function AppHeader() {
-  const { user, displayName, isAnonymous, signOut } = useAuth();
+  const { user, isAnonymous, signOut } = useAuth();
   const { lang, toggleLang, theme, toggleTheme } = useAppState();
   const navigate = useNavigate();
   const location = useLocation();
 
   const navItems = [
-    { path: "/", label: "Studio", icon: Paintbrush },
-    { path: "/my-designs", label: "My Designs", icon: FolderOpen },
-    { path: "/community", label: "Community", icon: Globe },
+    { path: "/", label: t(lang, "nav.studio"), icon: Paintbrush },
+    { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
+    { path: "/community", label: t(lang, "nav.community"), icon: Globe },
   ];
 
   return (
     <header className="flex flex-col gap-3 p-4 border-b border-sidebar-border">
       <div className="flex items-center justify-between">
-        {/* Left: Logo + User */}
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background text-lg font-black dark:bg-primary dark:text-primary-foreground">
             M
@@ -29,16 +28,11 @@ export default function AppHeader() {
             <h1 className="text-xl font-bold leading-tight">{t(lang, "header.title")}</h1>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>{user?.email || t(lang, "header.guestMode")}</span>
-              <span
-                className={`inline-block h-1.5 w-1.5 rounded-full ${
-                  isAnonymous ? "bg-primary" : "bg-green-500"
-                }`}
-              />
+              <span className={`inline-block h-1.5 w-1.5 rounded-full ${isAnonymous ? "bg-primary" : "bg-green-500"}`} />
             </div>
           </div>
         </div>
 
-        {/* Right: Controls */}
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
             {lang.toUpperCase()}
@@ -52,7 +46,6 @@ export default function AppHeader() {
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex gap-1">
         {navItems.map(({ path, label, icon: Icon }) => {
           const active = location.pathname === path;
