@@ -92,6 +92,35 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|Oversized T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
   "T-Shirt|Women's T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
   "T-Shirt|Women's T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
+  "Hoodie|Washed Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|Washed Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  "Hoodie|Washed Zipped Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|Washed Zipped Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+};
+
+// CSS filter values to colorize a white product mockup to the target color
+// Format: { hueRotate (deg), saturate (%), brightness (%) }
+export const COLOR_FILTERS: Record<ProductColor, { hueRotate: number; saturate: number; brightness: number } | null> = {
+  "White": null, // no filter needed
+  "Black": { hueRotate: 0, saturate: 0, brightness: 20 },
+  "Charcoal": { hueRotate: 0, saturate: 10, brightness: 35 },
+  "Navy": { hueRotate: 230, saturate: 300, brightness: 30 },
+  "Olive": { hueRotate: 60, saturate: 200, brightness: 50 },
+  "Cream": { hueRotate: 40, saturate: 30, brightness: 95 },
+  "Red": { hueRotate: 0, saturate: 500, brightness: 55 },
+  "Royal Blue": { hueRotate: 220, saturate: 400, brightness: 50 },
+  "Yellow": { hueRotate: 45, saturate: 500, brightness: 85 },
+  "Orange": { hueRotate: 25, saturate: 500, brightness: 65 },
+  "Hot Pink": { hueRotate: 320, saturate: 400, brightness: 65 },
+  "Maroon": { hueRotate: 350, saturate: 400, brightness: 30 },
+  "Purple": { hueRotate: 280, saturate: 400, brightness: 40 },
+  "Lavender": { hueRotate: 260, saturate: 80, brightness: 90 },
+  "Grey": { hueRotate: 0, saturate: 0, brightness: 60 },
+  "Kelly Green": { hueRotate: 100, saturate: 400, brightness: 50 },
+  "Indigo": { hueRotate: 260, saturate: 500, brightness: 30 },
+  "Cyan": { hueRotate: 180, saturate: 400, brightness: 65 },
+  "Midnight Blue": { hueRotate: 230, saturate: 400, brightness: 20 },
+  "Heather Grey": { hueRotate: 0, saturate: 5, brightness: 70 },
 };
 
 // Generate catalog entries for all products with common colors

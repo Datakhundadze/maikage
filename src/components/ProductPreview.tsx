@@ -1,6 +1,7 @@
 import type { PlacementCoords } from "@/lib/catalog";
-import { catalog, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { catalog, COLOR_FILTERS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import DraggablePlacement from "@/components/DraggablePlacement";
+import { useMemo } from "react";
 
 interface ProductPreviewProps {
   productName: string;
@@ -24,24 +25,34 @@ const PRODUCT_EMOJI: Record<string, string> = {
 export default function ProductPreview({
   productName, colorName, view, placementCoords, onCoordsChange, designImage, disabled,
 }: ProductPreviewProps) {
-  // Look up the catalog entry for a real mockup image
   const subProduct = catalog.getDefaultSubProduct(productName as ProductType);
-  const entry = catalog.findProduct(
+
+  // Always try to resolve the White base image for color filtering
+  const whiteEntry = catalog.findProduct(
     productName as ProductType,
     subProduct,
-    colorName as ProductColor,
+    "White" as ProductColor,
     view as ProductView,
   );
-  const mockupUrl = entry?.imageUrl ?? null;
+  const baseImageUrl = whiteEntry?.imageUrl ?? null;
+
+  // Compute CSS filter string based on selected color
+  const colorFilter = useMemo(() => {
+    const color = colorName as ProductColor;
+    const filter = COLOR_FILTERS[color];
+    if (!filter) return "none"; // White or unknown — no filter
+    return `hue-rotate(${filter.hueRotate}deg) saturate(${filter.saturate}%) brightness(${filter.brightness}%)`;
+  }, [colorName]);
 
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="relative w-full max-w-lg aspect-square rounded-2xl bg-card border border-border flex items-center justify-center overflow-hidden select-none">
-        {mockupUrl ? (
+        {baseImageUrl ? (
           <img
-            src={mockupUrl}
+            src={baseImageUrl}
             alt={`${productName} ${colorName} ${view}`}
-            className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none"
+            className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none transition-[filter] duration-300"
+            style={{ filter: colorFilter }}
           />
         ) : (
           <div className="text-center pointer-events-none">
