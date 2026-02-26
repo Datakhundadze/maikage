@@ -16,7 +16,7 @@ export function useProductConfig() {
     subProduct: catalog.getDefaultSubProduct("Hoodie"),
     color: "Black",
     view: "front",
-    placementCoords: { x: 0.5, y: 0.28, scale: 0.38 },
+    placementCoords: { x: 0.5, y: 0.42, scale: 0.38 },
   });
 
   const [locked, setLocked] = useState(false);
