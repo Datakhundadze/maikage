@@ -9,6 +9,7 @@ import Lightbox from "@/components/Lightbox";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { DesignProvider, useDesign } from "@/hooks/useDesign";
 import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
+import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,15 +27,21 @@ function StudioContent() {
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
       productConfig.setLocked(true);
 
+      // Resolve the product mockup image URL for compositing
+      const { config } = productConfig;
+      const subProduct = catalog.getDefaultSubProduct(config.product);
+      const entry = catalog.findProduct(config.product, subProduct, config.color, config.view);
+      const productImageUrl = entry?.imageUrl ?? null;
+
       const genResult = await runGenerationPipeline(
         {
           designParams: state.designParams,
-          product: productConfig.config.product,
-          color: productConfig.config.color,
+          product: config.product,
+          color: config.color,
           speed: state.speed,
         },
-        productConfig.config.placementCoords,
-        null,
+        config.placementCoords,
+        productImageUrl,
         (status) => dispatch({ type: "SET_STATUS", status: status as any }),
       );
 
