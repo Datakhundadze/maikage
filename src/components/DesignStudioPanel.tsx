@@ -1,16 +1,17 @@
 import { useDesign } from "@/hooks/useDesign";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
-import { Zap, Sparkles } from "lucide-react";
+import { Zap, Sparkles, RefreshCw } from "lucide-react";
 
 interface DesignStudioPanelProps {
   onViewImage?: (src: string) => void;
   onGenerate?: () => void;
   hasResult?: boolean;
   onStartNew?: () => void;
+  onApply?: () => void;
 }
 
-export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, onStartNew }: DesignStudioPanelProps) {
+export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, onStartNew, onApply }: DesignStudioPanelProps) {
   const { state, dispatch } = useDesign();
   const { designParams, speed, expandedSections, appStatus } = state;
 
@@ -23,7 +24,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         <div className="grid grid-cols-4 gap-2 text-center text-[10px] text-muted-foreground">
           {["Character", "Scene", "Style", "Generate"].map((label, i) => (
             <div key={label} className="space-y-1">
-              <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-banana-500/20 text-banana-500 text-xs font-bold">{i + 1}</div>
+              <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">{i + 1}</div>
               <span>{label}</span>
             </div>
           ))}
@@ -31,7 +32,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         <p className="mt-2 text-center text-[10px] text-muted-foreground">⌘+V to paste images</p>
       </div>
 
-      {/* Character (always visible) */}
+      {/* Character */}
       <DesignSection
         title="Characters"
         subtitle="The Subject/Actor. Defines WHO is in the shot."
@@ -91,7 +92,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         <Button
           size="sm"
           variant={speed === "fast" ? "default" : "outline"}
-          className={`flex-1 gap-1.5 ${speed === "fast" ? "bg-banana-500 text-primary-foreground hover:bg-banana-600" : ""}`}
+          className={`flex-1 gap-1.5 ${speed === "fast" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
           onClick={() => dispatch({ type: "SET_SPEED", speed: "fast" })}
         >
           <Zap className="h-3.5 w-3.5" /> Fast
@@ -99,29 +100,40 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         <Button
           size="sm"
           variant={speed === "quality" ? "default" : "outline"}
-          className={`flex-1 gap-1.5 ${speed === "quality" ? "bg-banana-500 text-primary-foreground hover:bg-banana-600" : ""}`}
+          className={`flex-1 gap-1.5 ${speed === "quality" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
           onClick={() => dispatch({ type: "SET_SPEED", speed: "quality" })}
         >
           <Sparkles className="h-3.5 w-3.5" /> Pro
         </Button>
       </div>
 
-      {/* Generate Button */}
-      <Button
-        className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 dark:bg-banana-500 dark:text-foreground dark:hover:bg-banana-600 font-semibold text-base"
-        disabled={!designParams.character.trim() || isProcessing || hasResult}
-        onClick={onGenerate}
-      >
-        {isProcessing ? "Processing..." : "Generate Merchandise"}
-      </Button>
-
-      {hasResult && (
-        <button
-          onClick={onStartNew}
-          className="w-full text-center text-sm text-banana-500 hover:text-banana-600"
+      {/* Action Buttons */}
+      {hasResult ? (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 h-12 gap-1.5 bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 font-semibold"
+              disabled={isProcessing}
+              onClick={onGenerate}
+            >
+              <RefreshCw className="h-4 w-4" /> Regenerate
+            </Button>
+          </div>
+          <button
+            onClick={onStartNew}
+            className="w-full text-center text-sm text-primary hover:text-primary/80"
+          >
+            Start New Design
+          </button>
+        </div>
+      ) : (
+        <Button
+          className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 font-semibold text-base"
+          disabled={!designParams.character.trim() || isProcessing}
+          onClick={onGenerate}
         >
-          Start New Design
-        </button>
+          {isProcessing ? "Processing..." : "Generate Merchandise"}
+        </Button>
       )}
     </div>
   );

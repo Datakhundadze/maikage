@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import AppLayout from "@/components/AppLayout";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview from "@/components/ProductPreview";
@@ -8,7 +8,7 @@ import ResultView from "@/components/ResultView";
 import Lightbox from "@/components/Lightbox";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { DesignProvider, useDesign } from "@/hooks/useDesign";
-import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
+import { runGenerationPipeline, compositeMockup, loadImage, type GenerationResult } from "@/lib/generation";
 import { useToast } from "@/hooks/use-toast";
 
 function StudioContent() {
@@ -31,12 +31,14 @@ function StudioContent() {
           speed: state.speed,
         },
         productConfig.config.placementCoords,
-        null, // no real product image yet
+        null,
         (status) => dispatch({ type: "SET_STATUS", status: status as any }),
       );
 
       setResult(genResult);
       dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+      // Unlock config so user can switch products post-generation
+      productConfig.setLocked(false);
     } catch (err: any) {
       console.error("Generation failed:", err);
       dispatch({ type: "SET_STATUS", status: "ERROR" });
@@ -49,6 +51,22 @@ function StudioContent() {
       });
     }
   }, [state.designParams, state.speed, productConfig, dispatch, toast]);
+
+  // Re-composite when placement coords change post-generation (no AI call)
+  const handleApply = useCallback(async () => {
+    if (!result) return;
+    try {
+      dispatch({ type: "SET_STATUS", status: "GENERATING_MOCKUP" });
+      const designImg = await loadImage(result.transparentImage);
+      // No product image yet, just use transparent as mockup
+      const mockupImage = result.transparentImage;
+      setResult((prev) => prev ? { ...prev, mockupImage } : prev);
+      dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+    } catch (err: any) {
+      toast({ title: "Apply failed", description: err.message, variant: "destructive" });
+      dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+    }
+  }, [result, productConfig.config.placementCoords, dispatch, toast]);
 
   const handleStartNew = useCallback(() => {
     setResult(null);
@@ -63,13 +81,20 @@ function StudioContent() {
       <GenerationLoader status={state.appStatus} />
     </div>
   ) : result ? (
-    <ResultView result={result} onViewImage={setLightboxSrc} />
+    <ResultView
+      result={result}
+      onViewImage={setLightboxSrc}
+      productName={productConfig.config.product}
+      colorName={productConfig.config.color}
+    />
   ) : (
     <ProductPreview
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
       view={productConfig.config.view}
       placementCoords={productConfig.config.placementCoords}
+      onCoordsChange={productConfig.setPlacementCoords}
+      designImage={null}
     />
   );
 
@@ -92,6 +117,7 @@ function StudioContent() {
                 onGenerate={handleGenerate}
                 hasResult={!!result}
                 onStartNew={handleStartNew}
+                onApply={handleApply}
               />
             </div>
           </div>
