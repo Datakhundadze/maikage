@@ -84,8 +84,17 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
 const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.28, scale: 0.38 };
 const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.25, scale: 0.42 };
 
+// Known real image mappings: type|subType|color|view -> URL
+const KNOWN_IMAGES: Record<string, string> = {
+  "T-Shirt|Washed T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|Washed T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|Oversized T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|Oversized T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|Women's T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|Women's T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
+};
+
 // Generate catalog entries for all products with common colors
-// (In production, this would be loaded from a JSON with actual image URLs)
 function generateCatalog(): CatalogEntry[] {
   const entries: CatalogEntry[] = [];
   const commonColors: ProductColor[] = ["Black", "White", "Navy", "Charcoal", "Grey"];
@@ -97,6 +106,7 @@ function generateCatalog(): CatalogEntry[] {
     for (const sub of subs) {
       for (const color of commonColors) {
         for (const view of ["front", "back"] as ProductView[]) {
+          const key = `${product.type}|${sub}|${color}|${view}`;
           entries.push({
             type: product.type,
             subType: sub,
@@ -104,7 +114,7 @@ function generateCatalog(): CatalogEntry[] {
             view,
             filename: `${product.type.toLowerCase().replace(/\s/g, "-")}-${sub.toLowerCase().replace(/\s/g, "-")}-${color.toLowerCase().replace(/\s/g, "-")}-${view}.png`,
             placementZone: view === "front" ? DEFAULT_FRONT : DEFAULT_BACK,
-            imageUrl: null, // placeholder
+            imageUrl: KNOWN_IMAGES[key] ?? null,
           });
         }
       }
