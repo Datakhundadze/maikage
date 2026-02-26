@@ -1,16 +1,15 @@
 // Product catalog types and data
 
-export type ProductType = 
+export type ProductType =
   | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case";
 
 export type ProductSubType = string;
 
 export type ProductColor =
-  | "Charcoal" | "Navy" | "Olive" | "Cream"
-  | "Red" | "Royal Blue" | "Yellow" | "Orange"
-  | "Hot Pink" | "Maroon" | "Purple" | "Lavender"
-  | "Grey" | "Kelly Green" | "Indigo" | "Cyan"
-  | "Midnight Blue" | "Heather Grey" | "White" | "Black";
+  | "White" | "Black" | "Beige" | "Light Gray" | "Red" | "Electric Blue"
+  | "Dark Navy" | "Yellow" | "Orange" | "Light Blue" | "Standard Blue"
+  | "Burgundy" | "Gray" | "Lime" | "Purple" | "Light Gray Melange"
+  | "Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green";
 
 export type ProductView = "front" | "back";
 
@@ -27,7 +26,7 @@ export interface CatalogEntry {
   view: ProductView;
   filename: string;
   placementZone: PlacementCoords;
-  imageUrl: string | null; // null = placeholder
+  imageUrl: string | null;
 }
 
 export interface ProductInfo {
@@ -38,46 +37,75 @@ export interface ProductInfo {
 
 // Product metadata
 export const PRODUCTS: ProductInfo[] = [
-  { type: "Hoodie", icon: "🧥", description: "Classic pullover" },
   { type: "T-Shirt", icon: "👕", description: "Everyday essential" },
+  { type: "Hoodie", icon: "🧥", description: "Classic pullover" },
   { type: "Tote Bag", icon: "👜", description: "Carry your style" },
   { type: "Cap", icon: "🧢", description: "Top it off" },
   { type: "Apron", icon: "👨‍🍳", description: "Creative canvas" },
   { type: "Phone Case", icon: "📱", description: "Protect in style" },
 ];
 
-// Sub-product definitions
+// Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
-  "Hoodie": ["Washed Hoodie", "Washed Zipped Hoodie"],
-  "T-Shirt": ["Washed T-Shirt", "Oversized T-Shirt", "Women's T-Shirt"],
+  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo"],
+  "Hoodie": ["GILDAN Hoodie", "JEL Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
   "Phone Case": [],
 };
 
-// All 20 colors with their display hex values
+// Per-brand color availability
+export const BRAND_COLORS: Record<string, ProductColor[]> = {
+  // T-Shirt brands
+  "GILDAN": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "GILDAN HUMMER": ["White", "Black", "Electric Blue", "Light Gray Melange"],
+  "TH": ["White", "Black"],
+  "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Gray", "Pink", "Electric Blue", "Khaki"],
+  "GIORDANO": ["White", "Black"],
+  "Khundadze": ["White", "Black"],
+  "NIKE": ["Dark Navy", "White", "Cream"],
+  "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+
+  // Hoodie brands
+  "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "JEL Hoodie": ["Black", "Gray", "Khaki"],
+  "JEL Standard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
+  "JEL Zipper": ["Black", "Dark Navy", "Gray"],
+  "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
+  "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
+
+  // Standalone products (no sub-brands)
+  "Cap": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Apron": ["Black"],
+  "Phone Case": [],
+  "Tote Bag": ["Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
+};
+
+// All colors with display hex values
 export const COLORS: { name: ProductColor; hex: string }[] = [
-  { name: "Charcoal", hex: "#36454F" },
-  { name: "Navy", hex: "#000080" },
-  { name: "Olive", hex: "#808000" },
-  { name: "Cream", hex: "#FFFDD0" },
-  { name: "Red", hex: "#FF0000" },
-  { name: "Royal Blue", hex: "#4169E1" },
-  { name: "Yellow", hex: "#FFD700" },
-  { name: "Orange", hex: "#FF8C00" },
-  { name: "Hot Pink", hex: "#FF69B4" },
-  { name: "Maroon", hex: "#800000" },
-  { name: "Purple", hex: "#800080" },
-  { name: "Lavender", hex: "#E6E6FA" },
-  { name: "Grey", hex: "#808080" },
-  { name: "Kelly Green", hex: "#4CBB17" },
-  { name: "Indigo", hex: "#4B0082" },
-  { name: "Cyan", hex: "#00CED1" },
-  { name: "Midnight Blue", hex: "#191970" },
-  { name: "Heather Grey", hex: "#B6B6B4" },
   { name: "White", hex: "#FFFFFF" },
   { name: "Black", hex: "#000000" },
+  { name: "Beige", hex: "#F5F0DC" },
+  { name: "Light Gray", hex: "#C8C8C8" },
+  { name: "Light Gray Melange", hex: "#B8B8B8" },
+  { name: "Gray", hex: "#808080" },
+  { name: "Cream", hex: "#FFFDD0" },
+  { name: "Red", hex: "#E21818" },
+  { name: "Burgundy", hex: "#800020" },
+  { name: "Pink", hex: "#FF69B4" },
+  { name: "Orange", hex: "#FF8C00" },
+  { name: "Yellow", hex: "#FFD700" },
+  { name: "Lime", hex: "#32CD32" },
+  { name: "Green", hex: "#228B22" },
+  { name: "Turquoise", hex: "#40E0D0" },
+  { name: "Light Blue", hex: "#87CEEB" },
+  { name: "Standard Blue", hex: "#4169E1" },
+  { name: "Electric Blue", hex: "#0066FF" },
+  { name: "Dark Navy", hex: "#0A1128" },
+  { name: "Purple", hex: "#800080" },
+  { name: "Khaki", hex: "#C3B091" },
+  { name: "Brown", hex: "#654321" },
 ];
 
 // Default placement zones
@@ -86,54 +114,92 @@ const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {
-  "T-Shirt|Washed T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|Washed T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|Oversized T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|Oversized T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|Women's T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|Women's T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
-  "Hoodie|Washed Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
-  "Hoodie|Washed Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
-  "Hoodie|Washed Zipped Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
-  "Hoodie|Washed Zipped Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  // T-Shirt (use same base for all T-Shirt brands)
+  "T-Shirt|GILDAN|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|GILDAN|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|GILDAN HUMMER|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|GILDAN HUMMER|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|TH|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|TH|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|JEL T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|JEL T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|GIORDANO|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|GIORDANO|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|Khundadze|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|Khundadze|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|NIKE|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|NIKE|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|Polo|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|Polo|White|back": "/products/tshirt/gildan-white-back.png",
+
+  // Hoodie (use same base for all hoodie brands)
+  "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  "Hoodie|JEL Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|JEL Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  "Hoodie|JEL Standard Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|JEL Standard Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  "Hoodie|JEL Zipper|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|JEL Zipper|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  "Hoodie|JEL Standard Zipper|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|JEL Standard Zipper|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  "Hoodie|GILDAN Bomber|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
+  "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
 };
 
 // CSS filter values to colorize a white product mockup to the target color
-// Format: { hueRotate (deg), saturate (%), brightness (%) }
 export const COLOR_FILTERS: Record<ProductColor, { hueRotate: number; saturate: number; brightness: number } | null> = {
-  "White": null, // no filter needed
+  "White": null,
   "Black": { hueRotate: 0, saturate: 0, brightness: 20 },
-  "Charcoal": { hueRotate: 0, saturate: 10, brightness: 35 },
-  "Navy": { hueRotate: 230, saturate: 300, brightness: 30 },
-  "Olive": { hueRotate: 60, saturate: 200, brightness: 50 },
+  "Beige": { hueRotate: 35, saturate: 40, brightness: 92 },
+  "Light Gray": { hueRotate: 0, saturate: 0, brightness: 78 },
+  "Light Gray Melange": { hueRotate: 0, saturate: 5, brightness: 72 },
+  "Gray": { hueRotate: 0, saturate: 0, brightness: 55 },
   "Cream": { hueRotate: 40, saturate: 30, brightness: 95 },
-  "Red": { hueRotate: 0, saturate: 500, brightness: 55 },
-  "Royal Blue": { hueRotate: 220, saturate: 400, brightness: 50 },
-  "Yellow": { hueRotate: 45, saturate: 500, brightness: 85 },
+  "Red": { hueRotate: 0, saturate: 500, brightness: 50 },
+  "Burgundy": { hueRotate: 350, saturate: 400, brightness: 30 },
+  "Pink": { hueRotate: 320, saturate: 300, brightness: 70 },
   "Orange": { hueRotate: 25, saturate: 500, brightness: 65 },
-  "Hot Pink": { hueRotate: 320, saturate: 400, brightness: 65 },
-  "Maroon": { hueRotate: 350, saturate: 400, brightness: 30 },
+  "Yellow": { hueRotate: 45, saturate: 500, brightness: 85 },
+  "Lime": { hueRotate: 100, saturate: 400, brightness: 55 },
+  "Green": { hueRotate: 110, saturate: 400, brightness: 40 },
+  "Turquoise": { hueRotate: 170, saturate: 350, brightness: 65 },
+  "Light Blue": { hueRotate: 195, saturate: 250, brightness: 75 },
+  "Standard Blue": { hueRotate: 220, saturate: 400, brightness: 45 },
+  "Electric Blue": { hueRotate: 215, saturate: 500, brightness: 45 },
+  "Dark Navy": { hueRotate: 230, saturate: 400, brightness: 18 },
   "Purple": { hueRotate: 280, saturate: 400, brightness: 40 },
-  "Lavender": { hueRotate: 260, saturate: 80, brightness: 90 },
-  "Grey": { hueRotate: 0, saturate: 0, brightness: 60 },
-  "Kelly Green": { hueRotate: 100, saturate: 400, brightness: 50 },
-  "Indigo": { hueRotate: 260, saturate: 500, brightness: 30 },
-  "Cyan": { hueRotate: 180, saturate: 400, brightness: 65 },
-  "Midnight Blue": { hueRotate: 230, saturate: 400, brightness: 20 },
-  "Heather Grey": { hueRotate: 0, saturate: 5, brightness: 70 },
+  "Khaki": { hueRotate: 35, saturate: 60, brightness: 72 },
+  "Brown": { hueRotate: 25, saturate: 300, brightness: 30 },
 };
 
-// Generate catalog entries for all products with common colors
+// Generate catalog entries
 function generateCatalog(): CatalogEntry[] {
   const entries: CatalogEntry[] = [];
-  const commonColors: ProductColor[] = ["Black", "White", "Navy", "Charcoal", "Grey"];
 
   for (const product of PRODUCTS) {
     const subTypes = SUB_PRODUCTS[product.type];
     const subs = subTypes.length > 0 ? subTypes : [product.type];
 
     for (const sub of subs) {
-      for (const color of commonColors) {
+      const brandColors = BRAND_COLORS[sub] || [];
+      if (brandColors.length === 0 && product.type === "Phone Case") {
+        // Phone case has no color variants, add one default entry
+        for (const view of ["front", "back"] as ProductView[]) {
+          entries.push({
+            type: product.type,
+            subType: sub,
+            color: "Black" as ProductColor,
+            view,
+            filename: `phone-case-${view}.png`,
+            placementZone: view === "front" ? DEFAULT_FRONT : DEFAULT_BACK,
+            imageUrl: null,
+          });
+        }
+        continue;
+      }
+
+      for (const color of brandColors) {
         for (const view of ["front", "back"] as ProductView[]) {
           const key = `${product.type}|${sub}|${color}|${view}`;
           entries.push({
@@ -170,12 +236,10 @@ class CatalogService {
       this.lookupMap.set(key, entry);
     }
 
-    // Cache sub-products
     for (const [type, subs] of Object.entries(SUB_PRODUCTS)) {
       this.subProductCache.set(type as ProductType, subs);
     }
 
-    // Cache available colors per product+subType
     for (const entry of this.entries) {
       const key = `${entry.type}|${entry.subType}`;
       if (!this.colorCache.has(key)) {

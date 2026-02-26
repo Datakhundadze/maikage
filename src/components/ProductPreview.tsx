@@ -5,6 +5,7 @@ import { useMemo } from "react";
 
 interface ProductPreviewProps {
   productName: string;
+  subProduct?: string;
   colorName: string;
   view: string;
   placementCoords: PlacementCoords;
@@ -23,14 +24,14 @@ const PRODUCT_EMOJI: Record<string, string> = {
 };
 
 export default function ProductPreview({
-  productName, colorName, view, placementCoords, onCoordsChange, designImage, disabled,
+  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled,
 }: ProductPreviewProps) {
-  const subProduct = catalog.getDefaultSubProduct(productName as ProductType);
+  const resolvedSub = subProduct || catalog.getDefaultSubProduct(productName as ProductType);
 
   // Always try to resolve the White base image for color filtering
   const whiteEntry = catalog.findProduct(
     productName as ProductType,
-    subProduct,
+    resolvedSub,
     "White" as ProductColor,
     view as ProductView,
   );
@@ -40,7 +41,7 @@ export default function ProductPreview({
   const colorFilter = useMemo(() => {
     const color = colorName as ProductColor;
     const filter = COLOR_FILTERS[color];
-    if (!filter) return "none"; // White or unknown — no filter
+    if (!filter) return "none";
     return `hue-rotate(${filter.hueRotate}deg) saturate(${filter.saturate}%) brightness(${filter.brightness}%)`;
   }, [colorName]);
 

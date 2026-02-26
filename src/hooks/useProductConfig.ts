@@ -12,9 +12,9 @@ export interface ProductConfig {
 
 export function useProductConfig() {
   const [config, setConfig] = useState<ProductConfig>({
-    product: "Hoodie",
-    subProduct: catalog.getDefaultSubProduct("Hoodie"),
-    color: "Black",
+    product: "T-Shirt",
+    subProduct: catalog.getDefaultSubProduct("T-Shirt"),
+    color: "White",
     view: "front",
     placementCoords: { x: 0.5, y: 0.42, scale: 0.38 },
   });
