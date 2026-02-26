@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      design_likes: {
+        Row: {
+          created_at: string
+          design_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          design_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          design_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "design_likes_design_id_fkey"
+            columns: ["design_id"]
+            isOneToOne: false
+            referencedRelation: "designs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      designs: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_published: boolean
+          likes_count: number
+          mockup_image_path: string | null
+          placement_scale: number
+          placement_x: number
+          placement_y: number
+          product: string
+          prompt: string | null
+          title: string
+          transparent_image_path: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          likes_count?: number
+          mockup_image_path?: string | null
+          placement_scale?: number
+          placement_x?: number
+          placement_y?: number
+          product: string
+          prompt?: string | null
+          title?: string
+          transparent_image_path?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          likes_count?: number
+          mockup_image_path?: string | null
+          placement_scale?: number
+          placement_x?: number
+          placement_y?: number
+          product?: string
+          prompt?: string | null
+          title?: string
+          transparent_image_path?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

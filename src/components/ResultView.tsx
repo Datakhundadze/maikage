@@ -1,6 +1,6 @@
 import type { GenerationResult } from "@/lib/generation";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Copy, Package } from "lucide-react";
+import { Download, Eye, Copy, Package, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResultViewProps {
@@ -8,9 +8,11 @@ interface ResultViewProps {
   onViewImage: (src: string) => void;
   productName?: string;
   colorName?: string;
+  onSave?: () => void;
+  saving?: boolean;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "" }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving }: ResultViewProps) {
   const { toast } = useToast();
   const prefix = `${productName.toLowerCase().replace(/\s/g, "-")}${colorName ? `-${colorName.toLowerCase().replace(/\s/g, "-")}` : ""}`;
 
@@ -39,8 +41,13 @@ export default function ResultView({ result, onViewImage, productName = "design"
 
   return (
     <div className="flex flex-col items-center gap-6 p-6 w-full max-w-2xl mx-auto">
-      {/* Download All */}
-      <div className="w-full flex justify-end">
+      {/* Top actions */}
+      <div className="w-full flex justify-end gap-2">
+        {onSave && (
+          <Button size="sm" variant="default" className="gap-1.5" onClick={onSave} disabled={saving}>
+            <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save to Cloud"}
+          </Button>
+        )}
         <Button size="sm" variant="outline" className="gap-1.5" onClick={downloadAll}>
           <Package className="h-4 w-4" /> Download All
         </Button>

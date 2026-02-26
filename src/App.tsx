@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppStateProvider } from "@/hooks/useAppState";
 import LoginPage from "./pages/LoginPage";
 import StudioPage from "./pages/StudioPage";
+import MyDesignsPage from "./pages/MyDesignsPage";
+import CommunityPage from "./pages/CommunityPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<StudioPage />} />
+      <Route path="/my-designs" element={<MyDesignsPage />} />
+      <Route path="/community" element={<CommunityPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
