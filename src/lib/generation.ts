@@ -84,7 +84,7 @@ function differenceMatting(whiteCanvas: HTMLCanvasElement, blackCanvas: HTMLCanv
   return outCanvas;
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
+export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -103,8 +103,8 @@ function imageToCanvas(img: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
-// Stage 3: Composite design onto product photo
-function compositeMockup(
+// Stage 3: Composite design onto product photo (exported for re-compositing)
+export function compositeMockup(
   productImg: HTMLImageElement,
   designImg: HTMLImageElement,
   coords: { x: number; y: number; scale: number }

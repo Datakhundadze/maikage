@@ -1,13 +1,19 @@
 import type { GenerationResult } from "@/lib/generation";
 import { Button } from "@/components/ui/button";
-import { Download, Eye } from "lucide-react";
+import { Download, Eye, Copy, Package } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface ResultViewProps {
   result: GenerationResult;
   onViewImage: (src: string) => void;
+  productName?: string;
+  colorName?: string;
 }
 
-export default function ResultView({ result, onViewImage }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "" }: ResultViewProps) {
+  const { toast } = useToast();
+  const prefix = `${productName.toLowerCase().replace(/\s/g, "-")}${colorName ? `-${colorName.toLowerCase().replace(/\s/g, "-")}` : ""}`;
+
   const downloadImage = (dataUrl: string, filename: string) => {
     const a = document.createElement("a");
     a.href = dataUrl;
@@ -15,36 +21,51 @@ export default function ResultView({ result, onViewImage }: ResultViewProps) {
     a.click();
   };
 
+  const downloadAll = () => {
+    downloadImage(result.mockupImage, `${prefix}-mockup.png`);
+    setTimeout(() => downloadImage(result.transparentImage, `${prefix}-print.png`), 300);
+  };
+
+  const copyToClipboard = async (dataUrl: string) => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      toast({ title: "Copied to clipboard" });
+    } catch {
+      toast({ title: "Copy failed", description: "Your browser may not support this.", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="flex flex-col items-center gap-6 p-6 w-full max-w-2xl mx-auto">
+      {/* Download All */}
+      <div className="w-full flex justify-end">
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={downloadAll}>
+          <Package className="h-4 w-4" /> Download All
+        </Button>
+      </div>
+
       {/* Mockup Card */}
       <div className="w-full rounded-2xl border border-border bg-card overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="text-sm font-semibold text-card-foreground">Preview</h3>
         </div>
         <div className="relative group">
-          {/* Blurred background */}
           <div className="absolute inset-0 overflow-hidden">
-            <img
-              src={result.mockupImage}
-              alt=""
-              className="w-full h-full object-cover blur-[50px] opacity-40 scale-110"
-            />
+            <img src={result.mockupImage} alt="" className="w-full h-full object-cover blur-[50px] opacity-40 scale-110" />
           </div>
-          {/* Actual mockup */}
           <div className="relative p-4 flex justify-center">
-            <img
-              src={result.mockupImage}
-              alt="Mockup preview"
-              className="max-h-[500px] object-contain rounded-lg"
-            />
+            <img src={result.mockupImage} alt="Mockup preview" className="max-h-[500px] object-contain rounded-lg" />
           </div>
-          {/* Hover overlay */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
             <Button size="sm" variant="secondary" onClick={() => onViewImage(result.mockupImage)}>
               <Eye className="h-4 w-4 mr-1" /> View
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => downloadImage(result.mockupImage, "mockup.png")}>
+            <Button size="sm" variant="secondary" onClick={() => copyToClipboard(result.mockupImage)}>
+              <Copy className="h-4 w-4 mr-1" /> Copy
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => downloadImage(result.mockupImage, `${prefix}-mockup.png`)}>
               <Download className="h-4 w-4 mr-1" /> Download
             </Button>
           </div>
@@ -54,7 +75,6 @@ export default function ResultView({ result, onViewImage }: ResultViewProps) {
       {/* Print File Card */}
       <div className="w-full max-w-xl rounded-2xl border border-border bg-card overflow-hidden">
         <div className="relative group">
-          {/* Checkered bg */}
           <div
             className="p-6 flex justify-center"
             style={{
@@ -68,18 +88,13 @@ export default function ResultView({ result, onViewImage }: ResultViewProps) {
               backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
             }}
           >
-            <img
-              src={result.transparentImage}
-              alt="Print file"
-              className="max-h-[300px] object-contain"
-            />
+            <img src={result.transparentImage} alt="Print file" className="max-h-[300px] object-contain" />
           </div>
-          {/* Hover overlay */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
             <Button size="sm" variant="secondary" onClick={() => onViewImage(result.transparentImage)}>
               <Eye className="h-4 w-4 mr-1" /> View
             </Button>
-            <Button size="sm" variant="secondary" onClick={() => downloadImage(result.transparentImage, "print-file.png")}>
+            <Button size="sm" variant="secondary" onClick={() => downloadImage(result.transparentImage, `${prefix}-print.png`)}>
               <Download className="h-4 w-4 mr-1" /> Download PNG
             </Button>
           </div>
