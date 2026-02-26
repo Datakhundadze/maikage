@@ -1,4 +1,4 @@
-import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 
@@ -46,10 +46,10 @@ export default function ProductConfigPanel({
         </div>
       </div>
 
-      {/* Sub-Product Pills */}
+      {/* Brand Pills */}
       {subProducts.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-card-foreground mb-2">Variant</h3>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">Brand</h3>
           <div className="flex flex-wrap gap-2">
             {subProducts.map((sub) => (
               <Button
@@ -66,35 +66,35 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* Color Grid */}
-      <div>
-        <h3 className="text-sm font-semibold text-card-foreground mb-2">Color</h3>
-        <div className="grid grid-cols-5 gap-2">
-          {COLORS.map((c) => {
-            const available = availableColors.includes(c.name);
-            const selected = config.color === c.name;
-            return (
-              <button
-                key={c.name}
-                disabled={!available}
-                onClick={() => onColorChange(c.name)}
-                className={`group flex flex-col items-center gap-1 ${!available ? "opacity-30" : ""}`}
-                title={c.name}
-              >
-                <div
-                  className={`h-8 w-8 rounded-full border-2 transition-all ${
-                    selected
-                      ? "border-banana-500 scale-110 ring-2 ring-banana-500/30"
-                      : "border-border group-hover:border-banana-500/50"
-                  } ${c.name === "White" ? "border-muted-foreground/30" : ""}`}
-                  style={{ backgroundColor: c.hex }}
-                />
-                <span className="text-[10px] text-muted-foreground leading-tight">{c.name}</span>
-              </button>
-            );
-          })}
+      {/* Color Grid — only show colors available for the selected brand */}
+      {availableColors.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">Color</h3>
+          <div className="grid grid-cols-5 gap-2">
+            {COLORS.filter((c) => availableColors.includes(c.name)).map((c) => {
+              const selected = config.color === c.name;
+              return (
+                <button
+                  key={c.name}
+                  onClick={() => onColorChange(c.name)}
+                  className="group flex flex-col items-center gap-1"
+                  title={c.name}
+                >
+                  <div
+                    className={`h-8 w-8 rounded-full border-2 transition-all ${
+                      selected
+                        ? "border-banana-500 scale-110 ring-2 ring-banana-500/30"
+                        : "border-border group-hover:border-banana-500/50"
+                    } ${c.name === "White" || c.name === "Cream" ? "border-muted-foreground/30" : ""}`}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                  <span className="text-[10px] text-muted-foreground leading-tight">{c.name}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* View Toggle */}
       <div>

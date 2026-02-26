@@ -29,8 +29,7 @@ function StudioContent() {
 
       // Resolve the White base mockup image for compositing
       const { config } = productConfig;
-      const subProduct = catalog.getDefaultSubProduct(config.product);
-      const entry = catalog.findProduct(config.product, subProduct, "White" as any, config.view);
+      const entry = catalog.findProduct(config.product, config.subProduct, "White" as any, config.view);
       const productImageUrl = entry?.imageUrl ?? null;
 
       const genResult = await runGenerationPipeline(
@@ -104,6 +103,7 @@ function StudioContent() {
   ) : (
     <ProductPreview
       productName={productConfig.config.product}
+      subProduct={productConfig.config.subProduct}
       colorName={productConfig.config.color}
       view={productConfig.config.view}
       placementCoords={productConfig.config.placementCoords}
