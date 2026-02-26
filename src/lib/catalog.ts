@@ -1,8 +1,7 @@
 // Product catalog types and data
 
 export type ProductType = 
-  | "Hoodie" | "T-Shirt" | "Long Sleeve" | "Polo Shirt" 
-  | "Tote Bag" | "Cap" | "Raincoat" | "Apron" | "Vest";
+  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case";
 
 export type ProductSubType = string;
 
@@ -41,26 +40,20 @@ export interface ProductInfo {
 export const PRODUCTS: ProductInfo[] = [
   { type: "Hoodie", icon: "🧥", description: "Classic pullover" },
   { type: "T-Shirt", icon: "👕", description: "Everyday essential" },
-  { type: "Long Sleeve", icon: "🧤", description: "Extended comfort" },
-  { type: "Polo Shirt", icon: "👔", description: "Smart casual" },
   { type: "Tote Bag", icon: "👜", description: "Carry your style" },
   { type: "Cap", icon: "🧢", description: "Top it off" },
-  { type: "Raincoat", icon: "🌧️", description: "Weather ready" },
   { type: "Apron", icon: "👨‍🍳", description: "Creative canvas" },
-  { type: "Vest", icon: "🦺", description: "Layer up" },
+  { type: "Phone Case", icon: "📱", description: "Protect in style" },
 ];
 
 // Sub-product definitions
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "Hoodie": ["Washed Hoodie", "Washed Zipped Hoodie"],
   "T-Shirt": ["Washed T-Shirt", "Oversized T-Shirt", "Women's T-Shirt"],
-  "Long Sleeve": ["Long Sleeve Shirt"],
-  "Polo Shirt": ["Polo Shirt"],
   "Tote Bag": [],
   "Cap": [],
-  "Raincoat": [],
   "Apron": [],
-  "Vest": [],
+  "Phone Case": [],
 };
 
 // All 20 colors with their display hex values
