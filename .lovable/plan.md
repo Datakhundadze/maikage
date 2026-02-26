@@ -1,91 +1,68 @@
 
+# Phase 5: Interactive Placement, Customize/Apply Flow, and Downloads
 
-# maika.ge Studio — Implementation Plan
+## What Gets Built
 
-## Phase 1: Foundation & Auth
-Set up the core app shell with the banana-themed design system, dark/light mode support, and authentication.
+Phase 5 upgrades the studio from a one-shot generation into an interactive design tool where users can reposition and resize their design on the product, re-apply changes, and download high-quality results.
 
-**What we'll build:**
-- Custom banana color palette and zinc-based gray theme integrated into Tailwind
-- Dark mode (default) and light mode with theme toggle
-- Login screen with Google OAuth and Guest (anonymous) sign-in
-- Basic user profiles table (display name, avatar) with auto-creation on signup
-- App layout: sidebar (450px on desktop) + main content area, responsive stacking on mobile
-- Header/navbar with logo, user info, language toggle, theme toggle, and logout
+---
 
-## Phase 2: Product Configuration
-Build the product selector with all its options, using placeholder images until real product photos are provided.
+## Features
 
-**What we'll build:**
-- Product type grid (9 products: Hoodie, T-Shirt, Long Sleeve, etc.) with icons and descriptions
-- Sub-product pill selector (e.g., Washed Hoodie, Oversized T-Shirt)
-- Color swatch grid (20 colors, 4-column layout) with availability filtering
-- Front/Back view toggle
-- Product catalog service with O(1) lookups — catalog data stored as JSON, product images as placeholders for now
-- Product photo display in main area with placement zone overlay (green dashed box)
-- Controls locking behavior when a result exists
+### 1. Draggable/Resizable Placement Zone
+- Replace the static dashed-border overlay in `ProductPreview` with an interactive drag-and-resize component
+- Users can click and drag to reposition the design zone on the product
+- Corner handles allow resizing (maintaining aspect ratio)
+- Live coordinate readout updates as the user moves the zone
+- Placement changes update `useProductConfig` state via `setPlacementCoords`
 
-## Phase 3: Design Studio & Input Controls
-Build the creative input interface where users describe their design.
+### 2. Post-Generation "Customize and Apply" Flow
+- After generation completes, the transparent design appears inside the placement zone on the product preview
+- Users can drag/resize the design on the product before finalizing
+- An "Apply" button re-composites the mockup at the new coordinates (client-side canvas, no AI call needed)
+- A "Regenerate" button lets users tweak prompts and re-run the pipeline
 
-**What we'll build:**
-- Workflow guide box (4-step visual guide)
-- Character section (always visible): multi-image upload, text description, paste support (⌘+V), preset thumbnails (Robot, Cat, Skull)
-- Scene section (collapsible): single image + text, presets (Neon City, Nebula, Forest)
-- Style section (collapsible): single image + text, presets (Synthwave, Japanese Ink, Pop Art)
-- Typography section (collapsible): single image + text input
-- Speed selector toggle (Fast vs Pro)
-- Image thumbnail grid with view/delete on hover
-- Lightbox for full-size image viewing
+### 3. Enhanced Result View and Downloads
+- Show both the mockup and the print-ready PNG side by side (on wider screens)
+- Add a "Download All" button that bundles mockup + transparent PNG
+- Add filename customization: `{product}-{color}-{characterName}.png`
+- Add a "Copy to Clipboard" button for the mockup image
 
-## Phase 4: AI Generation Pipeline
-Wire up the core generation flow using Lovable AI gateway for Gemini model access.
+### 4. Product Switching After Generation
+- Unlock the product config panel after generation so users can switch products/colors
+- Re-composite the transparent design onto the new product automatically (no re-generation needed)
+- The placement zone adapts to the new product's default coordinates
 
-**What we'll build:**
-- Edge function proxy for Gemini API calls (using Lovable AI gateway with `gemini-2.5-flash-image` for Fast and `gemini-3-pro-image-preview` for Pro)
-- Stage 1 — Design generation: structured prompt assembly from design params, multipart image+text request
-- Stage 2 — Background removal: white-to-black conversion via Gemini, then client-side difference matting algorithm on canvas
-- Stage 3 — Mockup compositing: client-side canvas layering of transparent design onto product photo at placement coordinates
-- 3-step loading states with animated loader, status titles, and log lines
-- Mobile full-screen overlay with blur backdrop during generation
-- Generate button with proper disabled/loading states
+---
 
-## Phase 5: Results, Placement & Downloads
-Display results and allow users to customize design placement on products.
+## Technical Details
 
-**What we'll build:**
-- Mockup card with blurred background effect, hover overlay with View and Download buttons
-- Print file card with checkered transparency pattern, Download PNG button
-- Interactive placement zone: drag to reposition, corner handle to resize, coordinate readout, reset button
-- Touch-friendly drag/resize with 60fps performance (useRef-based, no React re-renders during drag)
-- Customize/Apply/Cancel flow with controls unlocking
-- Download functionality for both mockup and print file PNGs
+### New Component: `DraggablePlacement.tsx`
+- A wrapper component using pointer events (`onPointerDown`, `onPointerMove`, `onPointerUp`) for drag behavior
+- Calculates normalized coordinates (0-1 range) relative to the parent container
+- Four corner resize handles that scale proportionally
+- Props: `coords`, `onCoordsChange`, `children` (optional design image overlay), `disabled`
 
-## Phase 6: Storage, Gallery & Publishing
-Persist designs and enable browsing/sharing.
+### Changes to `ProductPreview.tsx`
+- Import and use `DraggablePlacement` instead of the static div
+- Accept optional `designImage` prop to show the transparent design inside the zone
+- Wire `onCoordsChange` to `productConfig.setPlacementCoords`
 
-**What we'll build:**
-- Supabase Storage bucket (`designs`) with organized path structure
-- Image processing pipeline: thumbnail (200×200), display (1200px), and full-size versions
-- Auto-save designs after generation with all metadata
-- Database tables: `designs` (private, RLS per user) and `public_designs` (public read, owner write)
-- Private gallery tab ("My Designs") — horizontal scrollable strip of thumbnails
-- Community gallery tab — public designs with username labels
-- Click thumbnail to restore full design state
-- Delete with confirmation (private only)
-- Publish/Unpublish toggle on result cards
-- Realtime subscriptions for both galleries
+### Changes to `StudioPage.tsx`
+- After generation, pass `result.transparentImage` to `ProductPreview`
+- Add "Apply" button that calls `compositeMockup` from `generation.ts` with current coords
+- Unlock product config after generation so users can switch products
+- On product/color change post-generation, auto-recomposite
 
-## Phase 7: Advanced Features & Polish
-Layer on remaining features for a complete experience.
+### Changes to `ResultView.tsx`
+- Add "Copy to Clipboard" using `navigator.clipboard.write` with blob
+- Improve download filenames to include product and color info
+- Add "Download All" that triggers both downloads sequentially
 
-**What we'll build:**
-- Upscale 4K flow: Gemini upscale + re-apply transparency
-- Magic Randomizer: AI-generated cohesive prompts with Georgian and international "vibes", parallel reference image generation
-- Random asset generation per section (dice button)
-- Bilingual i18n (English + Georgian) with all translation keys
-- Analytics events tracking (login, generate, download, publish, etc.)
-- Toast notification system (error in red, info in yellow, auto-dismiss)
-- Progressive image loading (thumbnail → display → full)
-- Performance optimizations: `startTransition()`, image pre-decoding, in-memory caching
+### Changes to `DesignStudioPanel.tsx`
+- After generation, replace "Generate Merchandise" with "Regenerate" and "Apply Changes" buttons
+- "Apply Changes" re-composites without calling AI
+- "Start New" resets everything as before
 
+### Extraction from `generation.ts`
+- Export the `compositeMockup` and `loadImage` functions so they can be called independently for re-compositing
