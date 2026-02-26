@@ -43,6 +43,7 @@ CRITICAL RULES:
 2. Design must be a printable silhouette/illustration suitable for garment printing
 3. High contrast, bold lines, vibrant colors
 4. No frame, no border, no mockup — just the raw design on white
+5. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. This is mandatory and non-negotiable. Use English or other non-Russian languages only.
 
 CHARACTER/SUBJECT: ${character || "No character specified"}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}

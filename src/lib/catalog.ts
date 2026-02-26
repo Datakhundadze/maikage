@@ -81,8 +81,8 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
 ];
 
 // Default placement zones
-const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.28, scale: 0.38 };
-const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.25, scale: 0.42 };
+const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.38 };
+const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {
