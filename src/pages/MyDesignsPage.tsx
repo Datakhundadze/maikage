@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppState } from "@/hooks/useAppState";
+import { t } from "@/lib/i18n";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,7 @@ interface Design {
 
 export default function MyDesignsPage() {
   const { user } = useAuth();
+  const { lang } = useAppState();
   const { deleteDesign, togglePublish, getPublicUrl } = useDesignStorage();
   const [designs, setDesigns] = useState<Design[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +44,7 @@ export default function MyDesignsPage() {
   useEffect(() => { fetchDesigns(); }, [fetchDesigns]);
 
   const handleDelete = async (d: Design) => {
-    if (!confirm("Delete this design?")) return;
+    if (!confirm(t(lang, "myDesigns.deleteConfirm"))) return;
     const ok = await deleteDesign(d.id, d.transparent_image_path, d.mockup_image_path);
     if (ok) setDesigns((prev) => prev.filter((x) => x.id !== d.id));
   };
@@ -56,9 +59,9 @@ export default function MyDesignsPage() {
       <AppLayout
         sidebar={
           <div className="space-y-4">
-            <h2 className="text-lg font-bold">My Designs</h2>
+            <h2 className="text-lg font-bold">{t(lang, "myDesigns.title")}</h2>
             <p className="text-sm text-muted-foreground">
-              {designs.length} design{designs.length !== 1 ? "s" : ""} saved
+              {t(lang, "myDesigns.count", designs.length)}
             </p>
           </div>
         }
@@ -70,8 +73,8 @@ export default function MyDesignsPage() {
               </div>
             ) : designs.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-                <p className="text-lg">No designs yet</p>
-                <p className="text-sm">Generate your first design in the Studio!</p>
+                <p className="text-lg">{t(lang, "myDesigns.empty")}</p>
+                <p className="text-sm">{t(lang, "myDesigns.emptyHint")}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

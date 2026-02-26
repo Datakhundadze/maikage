@@ -92,6 +92,7 @@ function StudioContent() {
       colorName={productConfig.config.color}
       onSave={handleSave}
       saving={saving}
+      onResultUpdate={setResult}
     />
   ) : (
     <ProductPreview
@@ -123,6 +124,7 @@ function StudioContent() {
                 onGenerate={handleGenerate}
                 hasResult={!!result}
                 onStartNew={handleStartNew}
+                product={productConfig.config.product}
               />
             </div>
           </div>
