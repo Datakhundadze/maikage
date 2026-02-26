@@ -27,10 +27,10 @@ function StudioContent() {
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
       productConfig.setLocked(true);
 
-      // Resolve the product mockup image URL for compositing
+      // Resolve the White base mockup image for compositing
       const { config } = productConfig;
       const subProduct = catalog.getDefaultSubProduct(config.product);
-      const entry = catalog.findProduct(config.product, subProduct, config.color, config.view);
+      const entry = catalog.findProduct(config.product, subProduct, "White" as any, config.view);
       const productImageUrl = entry?.imageUrl ?? null;
 
       const genResult = await runGenerationPipeline(
