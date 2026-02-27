@@ -9,7 +9,7 @@ export type ProductColor =
   | "White" | "Black" | "Beige" | "Light Gray" | "Red" | "Electric Blue"
   | "Dark Navy" | "Yellow" | "Orange" | "Light Blue" | "Standard Blue"
   | "Burgundy" | "Gray" | "Lime" | "Purple" | "Light Gray Melange"
-  | "Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green";
+  | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green";
 
 export type ProductView = "front" | "back";
 
@@ -61,7 +61,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "GILDAN": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
   "GILDAN HUMMER": ["White", "Black", "Electric Blue", "Light Gray Melange"],
   "TH": ["White", "Black"],
-  "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Gray", "Pink", "Electric Blue", "Khaki"],
+  "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki"],
   "GIORDANO": ["White", "Black"],
   "Khundadze": ["White", "Black"],
   "NIKE": ["Dark Navy", "White", "Cream"],
@@ -91,6 +91,7 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "Light Gray Melange", hex: "#B8B8B8" },
   { name: "Gray", hex: "#808080" },
   { name: "Cream", hex: "#FFFDD0" },
+  { name: "Light Cream", hex: "#FFF8E7" },
   { name: "Red", hex: "#E21818" },
   { name: "Burgundy", hex: "#800020" },
   { name: "Pink", hex: "#FF69B4" },
@@ -114,37 +115,43 @@ const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {
-  // T-Shirt (use same base for all T-Shirt brands)
+  // T-Shirt brands
   "T-Shirt|GILDAN|White|front": "/products/tshirt/gildan-white-front.png",
   "T-Shirt|GILDAN|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|GILDAN HUMMER|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|GILDAN HUMMER|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|TH|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|TH|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|JEL T-Shirt|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|JEL T-Shirt|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|GIORDANO|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|GIORDANO|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|Khundadze|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|Khundadze|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|NIKE|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|NIKE|White|back": "/products/tshirt/gildan-white-back.png",
-  "T-Shirt|Polo|White|front": "/products/tshirt/gildan-white-front.png",
-  "T-Shirt|Polo|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|GILDAN HUMMER|White|front": "/products/tshirt/gildan-hummer-white-front.png",
+  "T-Shirt|GILDAN HUMMER|White|back": "/products/tshirt/gildan-hummer-white-back.png",
+  "T-Shirt|TH|White|front": "/products/tshirt/th-white-front.png",
+  "T-Shirt|TH|White|back": "/products/tshirt/th-white-back.png",
+  "T-Shirt|JEL T-Shirt|White|front": "/products/tshirt/jel-tshirt-white-front.png",
+  "T-Shirt|JEL T-Shirt|White|back": "/products/tshirt/jel-tshirt-white-back.png",
+  "T-Shirt|GIORDANO|White|front": "/products/tshirt/giordano-white-front.png",
+  "T-Shirt|GIORDANO|White|back": "/products/tshirt/giordano-white-back.png",
+  "T-Shirt|Khundadze|White|front": "/products/tshirt/khundadze-white-front.png",
+  "T-Shirt|Khundadze|White|back": "/products/tshirt/khundadze-white-back.png",
+  "T-Shirt|NIKE|White|front": "/products/tshirt/nike-white-front.png",
+  "T-Shirt|NIKE|White|back": "/products/tshirt/nike-white-back.png",
+  "T-Shirt|Polo|White|front": "/products/tshirt/polo-white-front.png",
+  "T-Shirt|Polo|White|back": "/products/tshirt/polo-white-back.png",
 
-  // Hoodie (use same base for all hoodie brands)
+  // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
   "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
-  "Hoodie|JEL Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
-  "Hoodie|JEL Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
-  "Hoodie|JEL Standard Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
-  "Hoodie|JEL Standard Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
-  "Hoodie|JEL Zipper|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
-  "Hoodie|JEL Zipper|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
-  "Hoodie|JEL Standard Zipper|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
-  "Hoodie|JEL Standard Zipper|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
-  "Hoodie|GILDAN Bomber|White|front": "/products/hoodie/gildan-hoodie-white-front.png",
-  "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
+  "Hoodie|JEL Hoodie|White|front": "/products/hoodie/jel-hoodie-white-front.png",
+  "Hoodie|JEL Hoodie|White|back": "/products/hoodie/jel-hoodie-white-back.png",
+  "Hoodie|JEL Standard Hoodie|White|front": "/products/hoodie/jel-standard-hoodie-white-front.png",
+  "Hoodie|JEL Standard Hoodie|White|back": "/products/hoodie/jel-standard-hoodie-white-back.png",
+  "Hoodie|JEL Zipper|White|front": "/products/hoodie/jel-zipper-white-front.png",
+  "Hoodie|JEL Zipper|White|back": "/products/hoodie/jel-zipper-white-back.png",
+  "Hoodie|JEL Standard Zipper|White|front": "/products/hoodie/jel-standard-zipper-white-front.png",
+  "Hoodie|JEL Standard Zipper|White|back": "/products/hoodie/jel-standard-zipper-white-back.png",
+  "Hoodie|GILDAN Bomber|White|front": "/products/hoodie/gildan-bomber-white-front.png",
+  "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-bomber-white-back.png",
+
+  // Standalone products
+  "Cap|Cap|White|front": "/products/cap/cap-white-front.png",
+  "Apron|Apron|White|front": "/products/apron/apron-white-front.png",
+  "Tote Bag|Tote Bag|White|front": "/products/totebag/totebag-white-front.png",
+  "Tote Bag|Tote Bag|White|back": "/products/totebag/totebag-white-back.png",
 };
 
 // CSS filter values to colorize a white product mockup to the target color
@@ -156,6 +163,7 @@ export const COLOR_FILTERS: Record<ProductColor, { hueRotate: number; saturate: 
   "Light Gray Melange": { hueRotate: 0, saturate: 5, brightness: 72 },
   "Gray": { hueRotate: 0, saturate: 0, brightness: 55 },
   "Cream": { hueRotate: 40, saturate: 30, brightness: 95 },
+  "Light Cream": { hueRotate: 38, saturate: 25, brightness: 96 },
   "Red": { hueRotate: 0, saturate: 500, brightness: 50 },
   "Burgundy": { hueRotate: 350, saturate: 400, brightness: 30 },
   "Pink": { hueRotate: 320, saturate: 300, brightness: 70 },
