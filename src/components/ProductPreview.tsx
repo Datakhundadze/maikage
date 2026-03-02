@@ -14,13 +14,48 @@ interface ProductPreviewProps {
   disabled?: boolean;
 }
 
-const PRODUCT_EMOJI: Record<string, string> = {
-  "Hoodie": "🧥",
-  "T-Shirt": "👕",
-  "Tote Bag": "👜",
-  "Cap": "🧢",
-  "Apron": "👨‍🍳",
-  "Phone Case": "📱",
+// SVG placeholder outlines for products without mockup images
+const PRODUCT_OUTLINES: Record<string, JSX.Element> = {
+  "T-Shirt": (
+    <svg viewBox="0 0 200 240" fill="none" stroke="currentColor" strokeWidth="2" className="w-3/4 h-3/4 text-muted-foreground/40">
+      <path d="M60 30 L30 60 L50 80 L50 210 L150 210 L150 80 L170 60 L140 30 L120 45 Q100 55 80 45 Z" />
+    </svg>
+  ),
+  "Hoodie": (
+    <svg viewBox="0 0 200 240" fill="none" stroke="currentColor" strokeWidth="2" className="w-3/4 h-3/4 text-muted-foreground/40">
+      <path d="M60 35 L25 70 L45 90 L45 215 L155 215 L155 90 L175 70 L140 35 L125 50 Q100 65 75 50 Z" />
+      <path d="M75 35 Q100 15 125 35" />
+      <ellipse cx="100" cy="35" rx="15" ry="10" />
+    </svg>
+  ),
+  "Tote Bag": (
+    <svg viewBox="0 0 200 240" fill="none" stroke="currentColor" strokeWidth="2" className="w-3/4 h-3/4 text-muted-foreground/40">
+      <rect x="40" y="70" width="120" height="150" rx="4" />
+      <path d="M70 70 Q70 30 100 30 Q130 30 130 70" />
+    </svg>
+  ),
+  "Cap": (
+    <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="2" className="w-3/4 h-3/4 text-muted-foreground/40">
+      <path d="M30 120 Q30 60 100 50 Q170 60 170 120" />
+      <path d="M30 120 L20 130 L180 130 L170 120" />
+      <ellipse cx="100" cy="120" rx="70" ry="15" />
+    </svg>
+  ),
+  "Apron": (
+    <svg viewBox="0 0 200 260" fill="none" stroke="currentColor" strokeWidth="2" className="w-3/4 h-3/4 text-muted-foreground/40">
+      <path d="M70 30 L60 50 L50 50 L50 240 L150 240 L150 50 L140 50 L130 30 Q100 20 70 30 Z" />
+      <rect x="75" y="130" width="50" height="40" rx="3" />
+      <path d="M50 70 L20 60" />
+      <path d="M150 70 L180 60" />
+    </svg>
+  ),
+  "Phone Case": (
+    <svg viewBox="0 0 140 240" fill="none" stroke="currentColor" strokeWidth="2" className="w-1/2 h-3/4 text-muted-foreground/40">
+      <rect x="20" y="20" width="100" height="200" rx="16" />
+      <rect x="30" y="35" width="80" height="150" rx="4" />
+      <circle cx="70" cy="205" r="6" />
+    </svg>
+  ),
 };
 
 export default function ProductPreview({
@@ -45,9 +80,17 @@ export default function ProductPreview({
     return `hue-rotate(${filter.hueRotate}deg) saturate(${filter.saturate}%) brightness(${filter.brightness}%)`;
   }, [colorName]);
 
+  // Use light background for dark colors so the product remains visible
+  const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy"].includes(colorName);
+  const bgStyle = isDarkColor ? { backgroundColor: "#e0e0e0" } : undefined;
+  const bgClass = isDarkColor ? "" : "bg-card";
+
   return (
     <div className="flex h-full items-center justify-center p-8">
-      <div className="relative w-full max-w-lg aspect-square rounded-2xl bg-card border border-border flex items-center justify-center overflow-hidden select-none">
+      <div
+        className={`relative w-full max-w-lg aspect-square rounded-2xl ${bgClass} border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300`}
+        style={bgStyle}
+      >
         {baseImageUrl ? (
           <img
             src={baseImageUrl}
@@ -56,11 +99,8 @@ export default function ProductPreview({
             style={{ filter: colorFilter }}
           />
         ) : (
-          <div className="text-center pointer-events-none">
-            <div className="text-6xl mb-4">{PRODUCT_EMOJI[productName] ?? "👕"}</div>
-            <p className="text-sm text-muted-foreground">
-              {productName} · {colorName} · {view}
-            </p>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            {PRODUCT_OUTLINES[productName] ?? PRODUCT_OUTLINES["T-Shirt"]}
           </div>
         )}
 
