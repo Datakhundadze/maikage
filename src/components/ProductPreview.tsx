@@ -74,10 +74,7 @@ export default function ProductPreview({
 
   // Compute CSS filter string based on selected color
   const colorFilter = useMemo(() => {
-    const color = colorName as ProductColor;
-    const filter = COLOR_FILTERS[color];
-    if (!filter) return "none";
-    return `hue-rotate(${filter.hueRotate}deg) saturate(${filter.saturate}%) brightness(${filter.brightness}%)`;
+    return COLOR_FILTERS[colorName as ProductColor] ?? "none";
   }, [colorName]);
 
   // Use light background for dark colors so the product remains visible
