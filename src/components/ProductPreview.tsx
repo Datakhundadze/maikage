@@ -1,7 +1,7 @@
 import type { PlacementCoords } from "@/lib/catalog";
-import { catalog, COLOR_FILTERS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import DraggablePlacement from "@/components/DraggablePlacement";
-import { useMemo } from "react";
+
 
 interface ProductPreviewProps {
   productName: string;
@@ -72,12 +72,7 @@ export default function ProductPreview({
   );
   const baseImageUrl = whiteEntry?.imageUrl ?? null;
 
-  // Compute CSS filter string based on selected color
-  const colorFilter = useMemo(() => {
-    return COLOR_FILTERS[colorName as ProductColor] ?? "none";
-  }, [colorName]);
-
-  console.log("[ProductPreview]", { colorName, colorFilter, baseImageUrl });
+  console.log("[ProductPreview]", { colorName, colorHex: COLORS.find(c => c.name === colorName)?.hex, baseImageUrl });
 
   // Use light background for dark colors so the product remains visible
   const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy"].includes(colorName);
@@ -91,12 +86,21 @@ export default function ProductPreview({
         style={bgStyle}
       >
         {baseImageUrl ? (
-          <img
-            src={baseImageUrl}
-            alt={`${productName} ${colorName} ${view}`}
-            className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none transition-[filter] duration-300"
-            style={{ filter: colorFilter }}
-          />
+          <>
+            <img
+              src={baseImageUrl}
+              alt={`${productName} ${colorName} ${view}`}
+              className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none"
+            />
+            {/* Color overlay using multiply blend mode to tint the white mockup */}
+            <div
+              className="absolute inset-0 pointer-events-none transition-colors duration-300"
+              style={{
+                backgroundColor: COLORS.find(c => c.name === colorName)?.hex ?? "transparent",
+                mixBlendMode: "multiply",
+              }}
+            />
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             {PRODUCT_OUTLINES[productName] ?? PRODUCT_OUTLINES["T-Shirt"]}
