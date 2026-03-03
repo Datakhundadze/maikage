@@ -13,7 +13,7 @@ type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" |
 export default function DraggablePlacement({ coords, onCoordsChange, children, disabled }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
-  const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0 });
+  const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0 });
 
   const toNorm = useCallback((clientX: number, clientY: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -30,7 +30,7 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setDragMode(mode);
-    startRef.current = { mx: e.clientX, my: e.clientY, cx: coords.x, cy: coords.y, cs: coords.scale };
+    startRef.current = { mx: e.clientX, my: e.clientY, cx: coords.x, cy: coords.y, cs: coords.scale, csY: coords.scaleY ?? coords.scale };
   }, [disabled, coords]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
@@ -46,12 +46,16 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
         y: Math.max(0.05, Math.min(0.95, startRef.current.cy + dy)),
       });
     } else {
-      // Resize: use the larger of dx/dy change as scale delta
+      // Resize: apply dx to scaleX, dy to scaleY
       const isLeft = dragMode.includes("l");
       const isTop = dragMode.includes("t");
-      const scaleDelta = ((isLeft ? -dx : dx) + (isTop ? -dy : dy)) / 2;
-      const newScale = Math.max(0.1, Math.min(0.8, startRef.current.cs + scaleDelta));
-      onCoordsChange({ ...coords, scale: newScale });
+      const sdx = isLeft ? -dx : dx;
+      const sdy = isTop ? -dy : dy;
+      const newScaleX = Math.max(0.1, Math.min(0.8, startRef.current.cs + sdx));
+      const currentScaleY = coords.scaleY ?? coords.scale;
+      const startScaleY = startRef.current.csY ?? startRef.current.cs;
+      const newScaleY = Math.max(0.1, Math.min(0.8, startScaleY + sdy));
+      onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
     }
   }, [dragMode, coords, onCoordsChange]);
 
@@ -59,10 +63,12 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
     setDragMode(null);
   }, []);
 
-  const halfScale = coords.scale / 2;
-  const left = `${(coords.x - halfScale) * 100}%`;
-  const top = `${(coords.y - halfScale) * 100}%`;
-  const size = `${coords.scale * 100}%`;
+  const scaleX = coords.scale;
+  const scaleY = coords.scaleY ?? coords.scale;
+  const left = `${(coords.x - scaleX / 2) * 100}%`;
+  const top = `${(coords.y - scaleY / 2) * 100}%`;
+  const width = `${scaleX * 100}%`;
+  const height = `${scaleY * 100}%`;
 
   const handleClass = "absolute w-3 h-3 rounded-full bg-primary border-2 border-primary-foreground z-10";
 
@@ -77,7 +83,7 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
         className={`absolute border-2 border-dashed rounded-md transition-colors ${
           disabled ? "border-muted-foreground/30 pointer-events-none" : "border-primary/60 cursor-move"
         } ${dragMode === "move" ? "border-primary" : ""}`}
-        style={{ left, top, width: size, height: size }}
+        style={{ left, top, width, height }}
         onPointerDown={(e) => handlePointerDown(e, "move")}
       >
         {/* Design image overlay */}
