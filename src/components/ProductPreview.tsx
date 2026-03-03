@@ -135,8 +135,8 @@ export default function ProductPreview({
 
   // Load the base image off-screen
   useEffect(() => {
+    setImgLoaded(false);
     if (!baseImageUrl) {
-      setImgLoaded(false);
       return;
     }
 
