@@ -77,6 +77,8 @@ export default function ProductPreview({
     return COLOR_FILTERS[colorName as ProductColor] ?? "none";
   }, [colorName]);
 
+  console.log("[ProductPreview]", { colorName, colorFilter, baseImageUrl });
+
   // Use light background for dark colors so the product remains visible
   const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy"].includes(colorName);
   const bgStyle = isDarkColor ? { backgroundColor: "#e0e0e0" } : undefined;
