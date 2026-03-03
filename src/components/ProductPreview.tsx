@@ -1,7 +1,7 @@
+import { useRef, useEffect, useState } from "react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import DraggablePlacement from "@/components/DraggablePlacement";
-
 
 interface ProductPreviewProps {
   productName: string;
@@ -58,12 +58,72 @@ const PRODUCT_OUTLINES: Record<string, JSX.Element> = {
   ),
 };
 
+/** Parse a hex color string to {r,g,b} */
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const h = hex.replace("#", "");
+  return {
+    r: parseInt(h.substring(0, 2), 16),
+    g: parseInt(h.substring(2, 4), 16),
+    b: parseInt(h.substring(4, 6), 16),
+  };
+}
+
+/** Canvas-based colorization: tint light/white pixels to the target color, keep dark pixels dark */
+function colorizeImage(
+  img: HTMLImageElement,
+  canvas: HTMLCanvasElement,
+  targetHex: string,
+) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return;
+
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  const target = hexToRgb(targetHex);
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+
+    // Skip fully transparent pixels
+    if (a === 0) continue;
+
+    // Compute luminance (0-255) — how light/dark the pixel is
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+    // Use luminance as a mixing factor: bright pixels get the target color,
+    // dark pixels stay dark, preserving shadows and outlines.
+    // Normalize luminance to 0..1
+    const t = lum / 255;
+
+    // Multiply blend: target color * luminance factor
+    data[i] = Math.round(target.r * t);
+    data[i + 1] = Math.round(target.g * t);
+    data[i + 2] = Math.round(target.b * t);
+    // Keep alpha unchanged
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
 export default function ProductPreview({
   productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled,
 }: ProductPreviewProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
   const resolvedSub = subProduct || catalog.getDefaultSubProduct(productName as ProductType);
 
-  // Always try to resolve the White base image for color filtering
+  // Always resolve the White base image for colorization
   const whiteEntry = catalog.findProduct(
     productName as ProductType,
     resolvedSub,
@@ -71,8 +131,32 @@ export default function ProductPreview({
     view as ProductView,
   );
   const baseImageUrl = whiteEntry?.imageUrl ?? null;
+  const colorHex = COLORS.find(c => c.name === colorName)?.hex ?? "#FFFFFF";
 
-  console.log("[ProductPreview]", { colorName, colorHex: COLORS.find(c => c.name === colorName)?.hex, baseImageUrl });
+  // Load the base image off-screen
+  useEffect(() => {
+    if (!baseImageUrl) {
+      setImgLoaded(false);
+      return;
+    }
+
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      imgRef.current = img;
+      setImgLoaded(true);
+    };
+    img.onerror = () => {
+      setImgLoaded(false);
+    };
+    img.src = baseImageUrl;
+  }, [baseImageUrl]);
+
+  // Colorize on canvas whenever image is loaded or color changes
+  useEffect(() => {
+    if (!imgLoaded || !imgRef.current || !canvasRef.current) return;
+    colorizeImage(imgRef.current, canvasRef.current, colorHex);
+  }, [imgLoaded, colorHex]);
 
   // Use light background for dark colors so the product remains visible
   const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy"].includes(colorName);
@@ -86,21 +170,10 @@ export default function ProductPreview({
         style={bgStyle}
       >
         {baseImageUrl ? (
-          <>
-            <img
-              src={baseImageUrl}
-              alt={`${productName} ${colorName} ${view}`}
-              className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none"
-            />
-            {/* Color overlay using multiply blend mode to tint the white mockup */}
-            <div
-              className="absolute inset-0 pointer-events-none transition-colors duration-300"
-              style={{
-                backgroundColor: COLORS.find(c => c.name === colorName)?.hex ?? "transparent",
-                mixBlendMode: "multiply",
-              }}
-            />
-          </>
+          <canvas
+            ref={canvasRef}
+            className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none"
+          />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             {PRODUCT_OUTLINES[productName] ?? PRODUCT_OUTLINES["T-Shirt"]}
