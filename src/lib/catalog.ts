@@ -113,6 +113,10 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
 const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.38 };
 const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 
+// Hoodie-specific: design sits lower on the chest, below collar/zipper
+const HOODIE_FRONT: PlacementCoords = { x: 0.5, y: 0.52, scale: 0.52 };
+const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.52 };
+
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {
   // T-Shirt brands
@@ -216,7 +220,9 @@ function generateCatalog(): CatalogEntry[] {
             color,
             view,
             filename: `${product.type.toLowerCase().replace(/\s/g, "-")}-${sub.toLowerCase().replace(/\s/g, "-")}-${color.toLowerCase().replace(/\s/g, "-")}-${view}.png`,
-            placementZone: view === "front" ? DEFAULT_FRONT : DEFAULT_BACK,
+            placementZone: product.type === "Hoodie"
+              ? (view === "front" ? HOODIE_FRONT : HOODIE_BACK)
+              : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
             imageUrl: KNOWN_IMAGES[key] ?? null,
           });
         }
