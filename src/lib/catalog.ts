@@ -115,7 +115,7 @@ const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.38 };
 const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 
 // Hoodie-specific: design sits lower on the chest, below collar/zipper
-const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.58, scale: 0.28, scaleY: 0.28 };
+const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.51, scale: 0.28, scaleY: 0.28 };
 const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.52 };
 
 // Known real image mappings: type|subType|color|view -> URL
