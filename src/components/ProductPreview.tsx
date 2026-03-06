@@ -133,6 +133,8 @@ export default function ProductPreview({
   const baseImageUrl = whiteEntry?.imageUrl ?? null;
   const colorHex = COLORS.find(c => c.name === colorName)?.hex ?? "#FFFFFF";
 
+  console.log("[ProductPreview] lookup:", { productName, subProduct: resolvedSub, colorName, view, baseImageUrl, whiteEntryFound: !!whiteEntry });
+
   // Load the base image off-screen
   useEffect(() => {
     setImgLoaded(false);
