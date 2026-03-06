@@ -96,23 +96,25 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* View Toggle */}
-      <div>
-        <h3 className="text-sm font-semibold text-card-foreground mb-2">View</h3>
-        <div className="flex gap-2">
-          {(["front", "back"] as ProductView[]).map((v) => (
-            <Button
-              key={v}
-              size="sm"
-              variant={config.view === v ? "default" : "outline"}
-              className={config.view === v ? "bg-banana-500 text-primary-foreground hover:bg-banana-600" : ""}
-              onClick={() => onViewChange(v)}
-            >
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-            </Button>
-          ))}
+      {/* View Toggle — only for products with front+back */}
+      {!["Apron", "Phone Case", "Tote Bag", "Cap"].includes(config.product) && (
+        <div>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">View</h3>
+          <div className="flex gap-2">
+            {(["front", "back"] as ProductView[]).map((v) => (
+              <Button
+                key={v}
+                size="sm"
+                variant={config.view === v ? "default" : "outline"}
+                className={config.view === v ? "bg-banana-500 text-primary-foreground hover:bg-banana-600" : ""}
+                onClick={() => onViewChange(v)}
+              >
+                {v.charAt(0).toUpperCase() + v.slice(1)}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
