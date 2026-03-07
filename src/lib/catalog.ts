@@ -293,6 +293,21 @@ class CatalogService {
     return this.lookupMap.get(`${type}|${subType}|${color}|${view}`);
   }
 
+  /** Find a base image for colorization: try White first, then any color that has a real image */
+  findBaseImage(type: ProductType, subType: string, view: ProductView): CatalogEntry | undefined {
+    // 1. Try White
+    const white = this.lookupMap.get(`${type}|${subType}|White|${view}`);
+    if (white?.imageUrl) return white;
+
+    // 2. Try any color that has a real image for this product+brand+view
+    const colors = this.getAvailableColors(type, subType);
+    for (const c of colors) {
+      const entry = this.lookupMap.get(`${type}|${subType}|${c}|${view}`);
+      if (entry?.imageUrl) return entry;
+    }
+    return undefined;
+  }
+
   getSubProducts(type: ProductType): string[] {
     return this.subProductCache.get(type) || [];
   }

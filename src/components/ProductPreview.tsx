@@ -123,17 +123,16 @@ export default function ProductPreview({
 
   const resolvedSub = subProduct || catalog.getDefaultSubProduct(productName as ProductType);
 
-  // Always resolve the White base image for colorization
-  const whiteEntry = catalog.findProduct(
+  // Resolve base image: prefer White, fallback to any available image for colorization
+  const baseEntry = catalog.findBaseImage(
     productName as ProductType,
     resolvedSub,
-    "White" as ProductColor,
     view as ProductView,
   );
-  const baseImageUrl = whiteEntry?.imageUrl ?? null;
+  const baseImageUrl = baseEntry?.imageUrl ?? null;
   const colorHex = COLORS.find(c => c.name === colorName)?.hex ?? "#FFFFFF";
 
-  console.log("[ProductPreview] lookup:", { productName, subProduct: resolvedSub, colorName, view, baseImageUrl, whiteEntryFound: !!whiteEntry });
+  console.log("[ProductPreview] lookup:", { productName, subProduct: resolvedSub, colorName, view, baseImageUrl, baseColor: baseEntry?.color });
 
   // Load the base image off-screen
   useEffect(() => {
