@@ -80,9 +80,10 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
 
   // Standalone products (no sub-brands)
   "Cap": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "Apron": ["Black"],
+  "Apron": ["White", "Black"],
   "Phone Case": [],
-  "Tote Bag": ["Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
+  "Tote Bag": ["White", "Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
+  "Mug": ["White", "Black"],
 };
 
 // All colors with display hex values
