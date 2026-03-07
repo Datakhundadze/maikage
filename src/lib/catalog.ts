@@ -1,7 +1,7 @@
 // Product catalog types and data
 
 export type ProductType =
-  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case";
+  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case" | "Mug";
 
 export type ProductSubType = string;
 
