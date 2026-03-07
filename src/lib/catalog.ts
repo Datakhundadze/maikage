@@ -189,7 +189,8 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Cap|Cap|White|front": "/products/cap/CAP.png",
   "Apron|Apron|White|front": "/products/apron/APRON.png",
   "Tote Bag|Tote Bag|White|front": "/products/totebag/TOTE BAG.png",
-  "Phone Case|Phone Case|White|front": "/products/phonecase/PHONE CASE.png",
+  "Phone Case|Phone Case|White|front": "/products/phonecase/PHONE_CASE.png",
+  "Mug|Mug|White|front": "/products/mug/MUG.png",
 };
 
 // CSS filter strings to colorize a white product mockup to the target color
