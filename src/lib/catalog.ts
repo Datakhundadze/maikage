@@ -55,6 +55,7 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "Cap": [],
   "Apron": [],
   "Phone Case": [],
+  "Mug": [],
 };
 
 // Per-brand color availability
