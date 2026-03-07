@@ -1,7 +1,7 @@
 // Product catalog types and data
 
 export type ProductType =
-  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case";
+  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case" | "Mug";
 
 export type ProductSubType = string;
 
@@ -44,6 +44,7 @@ export const PRODUCTS: ProductInfo[] = [
   { type: "Cap", icon: "🧢", description: "Top it off" },
   { type: "Apron", icon: "👨‍🍳", description: "Creative canvas" },
   { type: "Phone Case", icon: "📱", description: "Protect in style" },
+  { type: "Mug", icon: "☕", description: "Morning favorite" },
 ];
 
 // Brand (sub-product) definitions per product type
@@ -54,6 +55,7 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "Cap": [],
   "Apron": [],
   "Phone Case": [],
+  "Mug": [],
 };
 
 // Per-brand color availability
@@ -78,9 +80,10 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
 
   // Standalone products (no sub-brands)
   "Cap": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "Apron": ["Black"],
+  "Apron": ["White", "Black"],
   "Phone Case": [],
-  "Tote Bag": ["Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
+  "Tote Bag": ["White", "Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
+  "Mug": ["White", "Black"],
 };
 
 // All colors with display hex values
@@ -186,7 +189,8 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Cap|Cap|White|front": "/products/cap/CAP.png",
   "Apron|Apron|White|front": "/products/apron/APRON.png",
   "Tote Bag|Tote Bag|White|front": "/products/totebag/TOTE BAG.png",
-  "Phone Case|Phone Case|White|front": "/products/phonecase/PHONE CASE.png",
+  "Phone Case|Phone Case|White|front": "/products/phonecase/PHONE_CASE.png",
+  "Mug|Mug|White|front": "/products/mug/MUG.png",
 };
 
 // CSS filter strings to colorize a white product mockup to the target color
