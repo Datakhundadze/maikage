@@ -44,6 +44,7 @@ export const PRODUCTS: ProductInfo[] = [
   { type: "Cap", icon: "🧢", description: "Top it off" },
   { type: "Apron", icon: "👨‍🍳", description: "Creative canvas" },
   { type: "Phone Case", icon: "📱", description: "Protect in style" },
+  { type: "Mug", icon: "☕", description: "Morning favorite" },
 ];
 
 // Brand (sub-product) definitions per product type
