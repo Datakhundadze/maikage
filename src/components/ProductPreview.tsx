@@ -123,23 +123,23 @@ export default function ProductPreview({
 
   const resolvedSub = subProduct || catalog.getDefaultSubProduct(productName as ProductType);
 
-  // Resolve base image: prefer White, fallback to any available image for colorization
-  const baseEntry = catalog.findBaseImage(
+  // Resolve image: exact color match (no tinting) or base image for colorization
+  const imageResult = catalog.findImageForColor(
     productName as ProductType,
     resolvedSub,
+    colorName as ProductColor,
     view as ProductView,
   );
-  const baseImageUrl = baseEntry?.imageUrl ?? null;
+  const baseImageUrl = imageResult?.entry.imageUrl ?? null;
+  const isExactImage = imageResult?.isExact ?? false;
   const colorHex = COLORS.find(c => c.name === colorName)?.hex ?? "#FFFFFF";
 
-  console.log("[ProductPreview] lookup:", { productName, subProduct: resolvedSub, colorName, view, baseImageUrl, baseColor: baseEntry?.color });
+  console.log("[ProductPreview] lookup:", { productName, subProduct: resolvedSub, colorName, view, baseImageUrl, isExactImage });
 
   // Load the base image off-screen
   useEffect(() => {
     setImgLoaded(false);
-    if (!baseImageUrl) {
-      return;
-    }
+    if (!baseImageUrl) return;
 
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -147,17 +147,26 @@ export default function ProductPreview({
       imgRef.current = img;
       setImgLoaded(true);
     };
-    img.onerror = () => {
-      setImgLoaded(false);
-    };
+    img.onerror = () => setImgLoaded(false);
     img.src = baseImageUrl;
   }, [baseImageUrl]);
 
-  // Colorize on canvas whenever image is loaded or color changes
+  // Render on canvas: exact images drawn directly, others colorized
   useEffect(() => {
     if (!imgLoaded || !imgRef.current || !canvasRef.current) return;
-    colorizeImage(imgRef.current, canvasRef.current, colorHex);
-  }, [imgLoaded, colorHex]);
+    if (isExactImage) {
+      // Draw the exact color image as-is, no tinting
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      canvas.width = imgRef.current.naturalWidth;
+      canvas.height = imgRef.current.naturalHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(imgRef.current, 0, 0);
+    } else {
+      colorizeImage(imgRef.current, canvasRef.current, colorHex);
+    }
+  }, [imgLoaded, colorHex, isExactImage]);
 
   // Use light background for dark colors so the product remains visible
   const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy"].includes(colorName);

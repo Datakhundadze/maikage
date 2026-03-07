@@ -301,19 +301,29 @@ class CatalogService {
     return this.lookupMap.get(`${type}|${subType}|${color}|${view}`);
   }
 
-  /** Find a base image for colorization: try White first, then any color that has a real image */
-  findBaseImage(type: ProductType, subType: string, view: ProductView): CatalogEntry | undefined {
-    // 1. Try White
-    const white = this.lookupMap.get(`${type}|${subType}|White|${view}`);
-    if (white?.imageUrl) return white;
+  /** Find the image to display: exact color match (no colorization) or base image for tinting */
+  findImageForColor(type: ProductType, subType: string, color: ProductColor, view: ProductView): { entry: CatalogEntry; isExact: boolean } | undefined {
+    // 1. Try exact color match — use as-is, no colorization needed
+    const exact = this.lookupMap.get(`${type}|${subType}|${color}|${view}`);
+    if (exact?.imageUrl) return { entry: exact, isExact: true };
 
-    // 2. Try any color that has a real image for this product+brand+view
+    // 2. Try White base for colorization
+    const white = this.lookupMap.get(`${type}|${subType}|White|${view}`);
+    if (white?.imageUrl) return { entry: white, isExact: false };
+
+    // 3. Fallback: any color with a real image
     const colors = this.getAvailableColors(type, subType);
     for (const c of colors) {
       const entry = this.lookupMap.get(`${type}|${subType}|${c}|${view}`);
-      if (entry?.imageUrl) return entry;
+      if (entry?.imageUrl) return { entry, isExact: false };
     }
     return undefined;
+  }
+
+  /** @deprecated Use findImageForColor instead */
+  findBaseImage(type: ProductType, subType: string, view: ProductView): CatalogEntry | undefined {
+    const result = this.findImageForColor(type, subType, "White" as ProductColor, view);
+    return result?.entry;
   }
 
   getSubProducts(type: ProductType): string[] {
