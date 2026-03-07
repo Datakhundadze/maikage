@@ -153,8 +153,6 @@ const KNOWN_IMAGES: Record<string, string> = {
   // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/GILDAN HOODIE FRONT.png",
   "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/GILDAN BACK.png",
-  "Hoodie|JEL Hoodie|White|front": "/products/hoodie/JEL HOODIE FRONT.png",
-  "Hoodie|JEL Hoodie|White|back": "/products/hoodie/JEL HOODIE BACK.png",
   "Hoodie|JEL Hoodie|Pink|front": "/products/hoodie/მობ. ვარდისფერი პუდი წინ.png",
   "Hoodie|JEL Hoodie|Pink|back": "/products/hoodie/მობ. ვარდისფერი პუდი უკან.png",
   "Hoodie|JEL Hoodie|Purple|front": "/products/hoodie/მობ. იასამნისფერი პუდი წინ.png",
