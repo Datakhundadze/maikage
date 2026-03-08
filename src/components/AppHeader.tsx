@@ -47,7 +47,7 @@ export default function AppHeader() {
           <Button variant="ghost" size="sm" onClick={toggleTheme} className="px-2">
             {theme === "dark" ? "☀️" : "🌙"}
           </Button>
-          <Button variant="ghost" size="icon" onClick={signOut} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={() => signOut(setMode)} className="h-8 w-8">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
