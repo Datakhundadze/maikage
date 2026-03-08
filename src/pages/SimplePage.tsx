@@ -1,23 +1,27 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
-import ProductPreview from "@/components/ProductPreview";
+import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Type, X, Sparkles, ChevronDown } from "lucide-react";
+import type { PlacementCoords } from "@/lib/catalog";
 
 const FONTS = [
-  { name: "Sans Serif", family: "sans-serif", label: "Aa" },
-  { name: "Serif", family: "Georgia, serif", label: "Aa" },
-  { name: "Monospace", family: "'Courier New', monospace", label: "Aa" },
-  { name: "Impact", family: "Impact, sans-serif", label: "Aa" },
-  { name: "Comic", family: "'Comic Sans MS', cursive", label: "Aa" },
-  { name: "Brush Script", family: "'Brush Script MT', cursive", label: "Aa" },
-  { name: "Palatino", family: "'Palatino Linotype', serif", label: "Aa" },
-  { name: "Trebuchet", family: "'Trebuchet MS', sans-serif", label: "Aa" },
-  { name: "Verdana", family: "Verdana, sans-serif", label: "Aa" },
-  { name: "Lucida", family: "'Lucida Console', monospace", label: "Aa" },
+  { name: "Sans Serif", family: "sans-serif" },
+  { name: "Serif", family: "Georgia, serif" },
+  { name: "Monospace", family: "'Courier New', monospace" },
+  { name: "Impact", family: "Impact, sans-serif" },
+  { name: "Comic Sans", family: "'Comic Sans MS', cursive" },
+  { name: "Brush Script", family: "'Brush Script MT', cursive" },
+  { name: "Palatino", family: "'Palatino Linotype', serif" },
+  { name: "Trebuchet", family: "'Trebuchet MS', sans-serif" },
+  { name: "Verdana", family: "Verdana, sans-serif" },
+  { name: "Lucida", family: "'Lucida Console', monospace" },
+  { name: "Noto Sans Georgian", family: "'Noto Sans Georgian', sans-serif" },
+  { name: "Noto Serif Georgian", family: "'Noto Serif Georgian', serif" },
+  { name: "BPG Arial", family: "'BPG Arial', sans-serif" },
 ];
 
 export default function SimplePage() {
@@ -28,6 +32,10 @@ export default function SimplePage() {
   const [selectedFont, setSelectedFont] = useState(FONTS[0]);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Separate placement coords for photo and text layers
+  const [photoCoords, setPhotoCoords] = useState<PlacementCoords>({ x: 0.5, y: 0.38, scale: 0.35, scaleY: 0.35 });
+  const [textCoords, setTextCoords] = useState<PlacementCoords>({ x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 });
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,90 +50,54 @@ export default function SimplePage() {
     setDesignText("");
   };
 
-  // Composite: render photo + text together onto a single canvas
-  const compositeImage = useMemo(() => {
-    const hasPhoto = !!designImage;
-    const hasText = designText.trim().length > 0;
-    if (!hasPhoto && !hasText) return null;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = 600;
-    canvas.height = 600;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-
-    ctx.clearRect(0, 0, 600, 600);
-
-    // If only text, render centered
-    if (!hasPhoto && hasText) {
+  // Generate text as a transparent canvas image
+  const [textImage, setTextImage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!designText.trim()) {
+      setTextImage(null);
+      return;
+    }
+    // Wait for fonts to be ready
+    document.fonts.ready.then(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 200;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, 800, 200);
       ctx.fillStyle = "#000000";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      const fontSize = Math.min(72, 600 / (designText.length * 0.55));
+      const fontSize = Math.min(120, 760 / (designText.length * 0.55));
       ctx.font = `bold ${fontSize}px ${selectedFont.family}`;
-      ctx.fillText(designText, 300, 300, 560);
-      return canvas.toDataURL("image/png");
+      ctx.fillText(designText, 400, 100, 760);
+      setTextImage(canvas.toDataURL("image/png"));
+    });
+  }, [designText, selectedFont]);
+
+  // Build layers array
+  const layers = useMemo<DesignLayer[]>(() => {
+    const result: DesignLayer[] = [];
+    if (designImage) {
+      result.push({
+        id: "photo",
+        image: designImage,
+        coords: photoCoords,
+        onCoordsChange: setPhotoCoords,
+        accentClass: "bg-blue-500",
+      });
     }
-
-    // If only photo, return it directly (no canvas needed)
-    if (hasPhoto && !hasText) return designImage;
-
-    // Both photo + text: we need to composite after the image loads
-    // Return a sentinel; actual compositing happens in an effect
-    return "__composite__";
-  }, [designImage, designText, selectedFont]);
-
-  // For photo+text compositing, use a separate state
-  const [compositeDataUrl, setCompositeDataUrl] = useState<string | null>(null);
-  const lastCompositeKey = useRef("");
-
-  // Effect-like via useMemo to avoid extra state
-  const currentDesignImage = useMemo(() => {
-    const hasPhoto = !!designImage;
-    const hasText = designText.trim().length > 0;
-
-    if (!hasPhoto && !hasText) return null;
-    if (!hasPhoto && hasText) return compositeImage;
-    if (hasPhoto && !hasText) return designImage;
-
-    // Both: composite via image load
-    const key = `${designImage}|${designText}|${selectedFont.family}`;
-    if (key !== lastCompositeKey.current) {
-      lastCompositeKey.current = key;
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 600;
-        canvas.height = 600;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.clearRect(0, 0, 600, 600);
-
-        // Draw photo in top ~70%
-        const photoH = 420;
-        const aspect = img.width / img.height;
-        let drawW = 600, drawH = photoH;
-        if (aspect > 600 / photoH) {
-          drawH = 600 / aspect;
-        } else {
-          drawW = photoH * aspect;
-        }
-        ctx.drawImage(img, (600 - drawW) / 2, (photoH - drawH) / 2, drawW, drawH);
-
-        // Draw text in bottom ~30%
-        ctx.fillStyle = "#000000";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const fontSize = Math.min(56, 580 / (designText.length * 0.55));
-        ctx.font = `bold ${fontSize}px ${selectedFont.family}`;
-        ctx.fillText(designText, 300, 510, 560);
-
-        setCompositeDataUrl(canvas.toDataURL("image/png"));
-      };
-      img.src = designImage!;
+    if (textImage) {
+      result.push({
+        id: "text",
+        image: textImage,
+        coords: textCoords,
+        onCoordsChange: setTextCoords,
+        accentClass: "bg-emerald-500",
+      });
     }
-    return compositeDataUrl;
-  }, [designImage, designText, selectedFont, compositeImage, compositeDataUrl]);
+    return result;
+  }, [designImage, textImage, photoCoords, textCoords]);
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -164,51 +136,41 @@ export default function SimplePage() {
             onViewChange={productConfig.setView}
           />
 
-          {/* Design input - Photo */}
-          <div className="border-t border-sidebar-border pt-4 space-y-4">
+          {/* Photo upload */}
+          <div className="border-t border-sidebar-border pt-4 space-y-3">
             <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <Upload className="h-3.5 w-3.5" />
               {lang === "en" ? "Photo" : "ფოტო"}
+              {designImage && <span className="ml-auto text-[10px] font-normal text-blue-500">● {lang === "en" ? "Blue handles" : "ლურჯი"}</span>}
             </h3>
-            <div className="space-y-3">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <Button
-                variant="outline"
-                className="w-full h-20 border-dashed"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="flex flex-col items-center gap-1">
-                  <Upload className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">
-                    {lang === "en" ? "Upload image" : "ატვირთეთ სურათი"}
-                  </span>
-                </div>
-              </Button>
-              {designImage && (
-                <div className="relative inline-block">
-                  <img src={designImage} alt="design" className="h-20 w-20 rounded-lg object-cover border border-border" />
-                  <button
-                    onClick={() => setDesignImage(null)}
-                    className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              )}
-            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            <Button variant="outline" className="w-full h-20 border-dashed" onClick={() => fileInputRef.current?.click()}>
+              <div className="flex flex-col items-center gap-1">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {lang === "en" ? "Upload image" : "ატვირთეთ სურათი"}
+                </span>
+              </div>
+            </Button>
+            {designImage && (
+              <div className="relative inline-block">
+                <img src={designImage} alt="design" className="h-20 w-20 rounded-lg object-cover border border-border" />
+                <button
+                  onClick={() => setDesignImage(null)}
+                  className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Design input - Text */}
-          <div className="border-t border-sidebar-border pt-4 space-y-4">
+          {/* Text input */}
+          <div className="border-t border-sidebar-border pt-4 space-y-3">
             <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <Type className="h-3.5 w-3.5" />
               {lang === "en" ? "Text" : "ტექსტი"}
+              {designText.trim() && <span className="ml-auto text-[10px] font-normal text-emerald-500">● {lang === "en" ? "Green handles" : "მწვანე"}</span>}
             </h3>
             <Input
               value={designText}
@@ -238,7 +200,7 @@ export default function SimplePage() {
                     >
                       <span style={{ fontFamily: font.family, fontSize: "15px" }}>{font.name}</span>
                       <span style={{ fontFamily: font.family }} className="text-muted-foreground text-xs">
-                        The quick brown fox
+                        AaBb აბ
                       </span>
                     </button>
                   ))}
@@ -264,7 +226,7 @@ export default function SimplePage() {
           view={productConfig.config.view}
           placementCoords={productConfig.config.placementCoords}
           onCoordsChange={productConfig.setPlacementCoords}
-          designImage={currentDesignImage}
+          layers={layers.length > 0 ? layers : undefined}
         />
       </main>
     </div>
