@@ -6,23 +6,18 @@ interface DraggablePlacementProps {
   onCoordsChange: (coords: PlacementCoords) => void;
   children?: ReactNode;
   disabled?: boolean;
+  /** Color for border/handles, defaults to primary */
+  accentClass?: string;
+  /** Hide coordinate readout */
+  hideReadout?: boolean;
 }
 
 type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | null;
 
-export default function DraggablePlacement({ coords, onCoordsChange, children, disabled }: DraggablePlacementProps) {
+export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, hideReadout }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
   const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0 });
-
-  const toNorm = useCallback((clientX: number, clientY: number) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return { nx: 0.5, ny: 0.5 };
-    return {
-      nx: Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)),
-      ny: Math.max(0, Math.min(1, (clientY - rect.top) / rect.height)),
-    };
-  }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent, mode: DragMode) => {
     if (disabled) return;
@@ -35,7 +30,10 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragMode || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
+    // Use the parent (the absolute inset-0 wrapper) for normalization
+    const parent = containerRef.current.parentElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
     const dx = (e.clientX - startRef.current.mx) / rect.width;
     const dy = (e.clientY - startRef.current.my) / rect.height;
 
@@ -46,15 +44,13 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
         y: Math.max(0.05, Math.min(0.95, startRef.current.cy + dy)),
       });
     } else {
-      // Resize: apply dx to scaleX, dy to scaleY
       const isLeft = dragMode.includes("l");
       const isTop = dragMode.includes("t");
       const sdx = isLeft ? -dx : dx;
       const sdy = isTop ? -dy : dy;
-      const newScaleX = Math.max(0.1, Math.min(0.8, startRef.current.cs + sdx));
-      const currentScaleY = coords.scaleY ?? coords.scale;
-      const startScaleY = startRef.current.csY ?? startRef.current.cs;
-      const newScaleY = Math.max(0.1, Math.min(0.8, startScaleY + sdy));
+      const newScaleX = Math.max(0.05, Math.min(0.9, startRef.current.cs + sdx));
+      const startScaleY = startRef.current.csY;
+      const newScaleY = Math.max(0.05, Math.min(0.9, startScaleY + sdy));
       onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
     }
   }, [dragMode, coords, onCoordsChange]);
@@ -70,45 +66,42 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
   const width = `${scaleX * 100}%`;
   const height = `${scaleY * 100}%`;
 
-  const handleClass = "absolute w-3 h-3 rounded-full bg-primary border-2 border-primary-foreground z-10";
+  const handleClass = `absolute w-3 h-3 rounded-full border-2 border-primary-foreground z-10 ${accentClass ? accentClass : "bg-primary"}`;
 
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0"
-      style={{ touchAction: "none" }}
+      className={`absolute border-2 border-dashed rounded-md transition-colors ${
+        disabled ? "border-muted-foreground/30 pointer-events-none" : "border-primary/60 cursor-move"
+      } ${dragMode === "move" ? "border-primary" : ""}`}
+      style={{ left, top, width, height, touchAction: "none" }}
+      onPointerDown={(e) => handlePointerDown(e, "move")}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
-      <div
-        className={`absolute border-2 border-dashed rounded-md transition-colors ${
-          disabled ? "border-muted-foreground/30 pointer-events-none" : "border-primary/60 cursor-move"
-        } ${dragMode === "move" ? "border-primary" : ""}`}
-        style={{ left, top, width, height }}
-        onPointerDown={(e) => handlePointerDown(e, "move")}
-      >
-        {/* Design image overlay */}
-        {children && (
-          <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-md pointer-events-none">
-            {children}
-          </div>
-        )}
-
-        {/* Coordinate readout */}
-        <div className="absolute -top-5 left-0 text-[10px] text-primary font-mono whitespace-nowrap">
-          {Math.round(coords.x * 100)}%, {Math.round(coords.y * 100)}% · {Math.round(coords.scale * 100)}%
+      {/* Design content */}
+      {children && (
+        <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-md pointer-events-none">
+          {children}
         </div>
+      )}
 
-        {/* Resize handles */}
-        {!disabled && (
-          <>
-            <div className={`${handleClass} -top-1.5 -left-1.5 cursor-nw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tl")} />
-            <div className={`${handleClass} -top-1.5 -right-1.5 cursor-ne-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tr")} />
-            <div className={`${handleClass} -bottom-1.5 -left-1.5 cursor-sw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-bl")} />
-            <div className={`${handleClass} -bottom-1.5 -right-1.5 cursor-se-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-br")} />
-          </>
-        )}
-      </div>
+      {/* Coordinate readout */}
+      {!hideReadout && (
+        <div className="absolute -top-5 left-0 text-[10px] text-primary font-mono whitespace-nowrap pointer-events-none">
+          {Math.round(coords.x * 100)}%, {Math.round(coords.y * 100)}%
+        </div>
+      )}
+
+      {/* Resize handles */}
+      {!disabled && (
+        <>
+          <div className={`${handleClass} -top-1.5 -left-1.5 cursor-nw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tl")} />
+          <div className={`${handleClass} -top-1.5 -right-1.5 cursor-ne-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tr")} />
+          <div className={`${handleClass} -bottom-1.5 -left-1.5 cursor-sw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-bl")} />
+          <div className={`${handleClass} -bottom-1.5 -right-1.5 cursor-se-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-br")} />
+        </>
+      )}
     </div>
   );
 }
