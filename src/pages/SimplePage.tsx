@@ -10,6 +10,7 @@ import type { PlacementCoords } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice, type BackType } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
+import OrderDialog from "@/components/OrderDialog";
 
 const FONTS = [
   { name: "Sans Serif", family: "sans-serif" },
@@ -298,7 +299,7 @@ export default function SimplePage() {
             </Button>
           )}
 
-          {/* Price Display */}
+          {/* Price Display & Order */}
           {(() => {
             const backType: BackType = backData.designImage
               ? "photo"
@@ -311,7 +312,18 @@ export default function SimplePage() {
               backType,
               false,
             );
-            return <PriceDisplay breakdown={breakdown} />;
+            return (
+              <>
+                <PriceDisplay breakdown={breakdown} />
+                <OrderDialog
+                  breakdown={breakdown}
+                  product={productConfig.config.product}
+                  subProduct={productConfig.config.subProduct}
+                  color={productConfig.config.color}
+                  isStudio={false}
+                />
+              </>
+            );
           })()}
         </div>
       </aside>

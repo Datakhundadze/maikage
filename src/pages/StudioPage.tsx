@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
+import OrderDialog from "@/components/OrderDialog";
 
 function StudioContent() {
   const productConfig = useProductConfig();
@@ -139,14 +140,26 @@ function StudioContent() {
               onViewChange={productConfig.setView}
             />
             <div className="border-t border-sidebar-border pt-4 space-y-4">
-              <PriceDisplay
-                breakdown={calculatePrice(
+              {(() => {
+                const bd = calculatePrice(
                   productConfig.config.product,
                   productConfig.config.subProduct,
                   "none",
                   true,
-                )}
-              />
+                );
+                return (
+                  <>
+                    <PriceDisplay breakdown={bd} />
+                    <OrderDialog
+                      breakdown={bd}
+                      product={productConfig.config.product}
+                      subProduct={productConfig.config.subProduct}
+                      color={productConfig.config.color}
+                      isStudio={true}
+                    />
+                  </>
+                );
+              })()}
               <DesignStudioPanel
                 onViewImage={setLightboxSrc}
                 onGenerate={handleGenerate}
