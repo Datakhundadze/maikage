@@ -13,6 +13,8 @@ import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { calculatePrice } from "@/lib/pricing";
+import PriceDisplay from "@/components/PriceDisplay";
 
 function StudioContent() {
   const productConfig = useProductConfig();
