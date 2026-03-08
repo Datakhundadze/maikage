@@ -12,6 +12,7 @@ import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
 import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 function StudioContent() {
   const productConfig = useProductConfig();
