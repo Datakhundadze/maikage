@@ -134,6 +134,7 @@ export type Database = {
           id: string
           is_studio: boolean
           last_name: string
+          phone: string
           product: string
           product_price: number
           status: string
@@ -153,6 +154,7 @@ export type Database = {
           id?: string
           is_studio?: boolean
           last_name: string
+          phone?: string
           product: string
           product_price?: number
           status?: string
@@ -172,6 +174,7 @@ export type Database = {
           id?: string
           is_studio?: boolean
           last_name?: string
+          phone?: string
           product?: string
           product_price?: number
           status?: string

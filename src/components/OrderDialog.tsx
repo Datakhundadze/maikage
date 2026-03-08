@@ -51,7 +51,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = breakdown.total + deliveryPrice;
 
-  const canSubmit = firstName.trim() && lastName.trim() && email.trim() &&
+  const canSubmit = firstName.trim() && lastName.trim() && email.trim() && phone.trim() &&
     (delivery === "pickup" || address.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
