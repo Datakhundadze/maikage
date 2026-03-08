@@ -160,7 +160,7 @@ const KNOWN_IMAGES: Record<string, string> = {
 
   // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/GILDAN%20HOODIE%20FRONT.png",
-  "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/GILDAN%20BACK.png",
+  // No GILDAN Hoodie back image exists in assets
   "Hoodie|JEL Hoodie|Pink|front": "/products/hoodie/%E1%83%9B%E1%83%9D%E1%83%91.%20%E1%83%95%E1%83%90%E1%83%A0%E1%83%93%E1%83%98%E1%83%A1%E1%83%A4%E1%83%94%E1%83%A0%E1%83%98%20%E1%83%9E%E1%83%A3%E1%83%93%E1%83%98%20%E1%83%AC%E1%83%98%E1%83%9C.png",
   "Hoodie|JEL Hoodie|Pink|back": "/products/hoodie/%E1%83%9B%E1%83%9D%E1%83%91.%20%E1%83%95%E1%83%90%E1%83%A0%E1%83%93%E1%83%98%E1%83%A1%E1%83%A4%E1%83%94%E1%83%A0%E1%83%98%20%E1%83%9E%E1%83%A3%E1%83%93%E1%83%98%20%E1%83%A3%E1%83%99%E1%83%90%E1%83%9C.png",
   "Hoodie|JEL Hoodie|Purple|front": "/products/hoodie/%E1%83%9B%E1%83%9D%E1%83%91.%20%E1%83%98%E1%83%90%E1%83%A1%E1%83%90%E1%83%9B%E1%83%9C%E1%83%98%E1%83%A1%E1%83%A4%E1%83%94%E1%83%A0%E1%83%98%20%E1%83%9E%E1%83%A3%E1%83%93%E1%83%98%20%E1%83%AC%E1%83%98%E1%83%9C.png",
