@@ -121,6 +121,10 @@ const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.51, scale: 0.28, scaleY: 0.28 };
 const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.52 };
 
+// Tote Bag-specific: move design zone down by 10%
+const TOTE_BAG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, y: DEFAULT_FRONT.y + 0.10 };
+const TOTE_BAG_BACK: PlacementCoords = { ...DEFAULT_BACK, y: DEFAULT_BACK.y + 0.10 };
+
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {
   // T-Shirt brands
@@ -257,7 +261,9 @@ function generateCatalog(): CatalogEntry[] {
             filename: `${product.type.toLowerCase().replace(/\s/g, "-")}-${sub.toLowerCase().replace(/\s/g, "-")}-${color.toLowerCase().replace(/\s/g, "-")}-${view}.png`,
             placementZone: product.type === "Hoodie"
               ? (view === "front" ? HOODIE_FRONT : HOODIE_BACK)
-              : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
+              : product.type === "Tote Bag"
+                ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
+                : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
             imageUrl: KNOWN_IMAGES[key] ?? null,
           });
         }
