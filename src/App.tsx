@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import StudioPage from "./pages/StudioPage";
 import MyDesignsPage from "./pages/MyDesignsPage";
 import CommunityPage from "./pages/CommunityPage";
+import AdminPage from "./pages/AdminPage";
 import LandingPage from "./pages/LandingPage";
 import SimplePage from "./pages/SimplePage";
 import NotFound from "./pages/NotFound";
