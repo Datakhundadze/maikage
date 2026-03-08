@@ -75,9 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) setState((s) => ({ ...s, error: error.message }));
   }, []);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (setMode?: (mode: string) => void) => {
     await supabase.auth.signOut();
     setState({ user: null, session: null, loading: false, error: null, isAnonymous: false, displayName: "", avatarUrl: null });
+    if (setMode) setMode("landing");
   }, []);
 
   return (
