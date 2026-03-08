@@ -1,0 +1,19 @@
+{
+  "rewrites": [
+    {
+      "source": "/products/:path*",
+      "destination": "/products/:path*"
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "^(?:(?!image/).)*$"
+        }
+      ],
+      "destination": "/index.html"
+    }
+  ]
+}
