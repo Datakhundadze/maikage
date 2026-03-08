@@ -34,6 +34,10 @@ export default function AppHeader() {
         </div>
 
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setMode("simple")} className="text-xs gap-1 px-2">
+            <Image className="h-3.5 w-3.5" />
+            Simple
+          </Button>
           <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
             {lang.toUpperCase()}
           </Button>
