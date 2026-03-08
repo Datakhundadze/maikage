@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import AppLayout from "@/components/AppLayout";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview from "@/components/ProductPreview";
@@ -12,6 +12,7 @@ import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
 import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 function StudioContent() {
   const productConfig = useProductConfig();
@@ -21,6 +22,15 @@ function StudioContent() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { saveDesign } = useDesignStorage();
+  const { trackEvent } = useAnalytics();
+
+  useEffect(() => {
+    trackEvent("page_visit", { page: "studio" });
+  }, [trackEvent]);
+
+  useEffect(() => {
+    trackEvent("product_selected", { product: productConfig.config.product });
+  }, [productConfig.config.product, trackEvent]);
 
   const handleGenerate = useCallback(async () => {
     try {
@@ -47,6 +57,7 @@ function StudioContent() {
       setResult(genResult);
       dispatch({ type: "SET_STATUS", status: "COMPLETE" });
       productConfig.setLocked(false);
+      trackEvent("design_generated", { product: productConfig.config.product });
     } catch (err: any) {
       console.error("Generation failed:", err);
       dispatch({ type: "SET_STATUS", status: "ERROR" });

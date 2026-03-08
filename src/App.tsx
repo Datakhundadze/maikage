@@ -9,6 +9,7 @@ import LoginPage from "./pages/LoginPage";
 import StudioPage from "./pages/StudioPage";
 import MyDesignsPage from "./pages/MyDesignsPage";
 import CommunityPage from "./pages/CommunityPage";
+import AdminPage from "./pages/AdminPage";
 import LandingPage from "./pages/LandingPage";
 import SimplePage from "./pages/SimplePage";
 import NotFound from "./pages/NotFound";
@@ -45,6 +46,7 @@ function AppRoutes() {
       <Route path="/" element={<StudioPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />
       <Route path="/community" element={<CommunityPage />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

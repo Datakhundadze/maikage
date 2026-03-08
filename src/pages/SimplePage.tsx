@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 const FONTS = [
   { name: "Sans Serif", family: "sans-serif" },
@@ -60,7 +61,12 @@ const DEFAULT_SIDE: SideData = {
 export default function SimplePage() {
   const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
   const productConfig = useProductConfig();
+  const { trackEvent } = useAnalytics();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    trackEvent("page_visit", { page: "simple" });
+  }, [trackEvent]);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
 
   // Per-side state
