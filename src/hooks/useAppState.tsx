@@ -23,9 +23,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("maika-theme") as "light" | "dark") || "dark";
   });
 
-  const [mode, setModeState] = useState<AppMode>(() => {
-    return (localStorage.getItem("maika-mode") as AppMode) || "landing";
-  });
+  // Always start on landing page regardless of previous session
+  const [mode, setModeState] = useState<AppMode>("landing");
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
