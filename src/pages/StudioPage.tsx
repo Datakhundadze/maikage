@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
+import OrderDialog from "@/components/OrderDialog";
 
 function StudioContent() {
   const productConfig = useProductConfig();
