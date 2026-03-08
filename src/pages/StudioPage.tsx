@@ -53,6 +53,7 @@ function StudioContent() {
       setResult(genResult);
       dispatch({ type: "SET_STATUS", status: "COMPLETE" });
       productConfig.setLocked(false);
+      trackEvent("design_generated", { product: productConfig.config.product });
     } catch (err: any) {
       console.error("Generation failed:", err);
       dispatch({ type: "SET_STATUS", status: "ERROR" });
