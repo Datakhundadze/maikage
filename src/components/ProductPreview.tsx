@@ -151,11 +151,12 @@ export default function ProductPreview({
     img.src = baseImageUrl;
   }, [baseImageUrl]);
 
-  // Render on canvas: exact images or black drawn directly, others colorized
-  const skipColorize = isExactImage || colorName === "Black";
+  // Render on canvas: exact images drawn directly, others colorized
+  // For "Black", use a very dark gray (#1a1a1a) to preserve detail
+  const effectiveColorHex = colorName === "Black" ? "#1a1a1a" : colorHex;
   useEffect(() => {
     if (!imgLoaded || !imgRef.current || !canvasRef.current) return;
-    if (skipColorize) {
+    if (isExactImage) {
       const canvas = canvasRef.current;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
@@ -164,9 +165,9 @@ export default function ProductPreview({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(imgRef.current, 0, 0);
     } else {
-      colorizeImage(imgRef.current, canvasRef.current, colorHex);
+      colorizeImage(imgRef.current, canvasRef.current, effectiveColorHex);
     }
-  }, [imgLoaded, colorHex, skipColorize]);
+  }, [imgLoaded, effectiveColorHex, isExactImage]);
 
   // Use light background for dark colors so the product remains visible
   const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy"].includes(colorName);
