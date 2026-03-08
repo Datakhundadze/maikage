@@ -16,7 +16,7 @@ interface AuthContextType extends AuthState {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signInAsGuest: () => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (setMode?: (mode: string) => void) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
