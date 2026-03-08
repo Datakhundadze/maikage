@@ -28,6 +28,10 @@ function StudioContent() {
     trackEvent("page_visit", { page: "studio" });
   }, [trackEvent]);
 
+  useEffect(() => {
+    trackEvent("product_selected", { product: productConfig.config.product });
+  }, [productConfig.config.product, trackEvent]);
+
   const handleGenerate = useCallback(async () => {
     try {
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
