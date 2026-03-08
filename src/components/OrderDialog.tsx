@@ -43,6 +43,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState("");
   const [comment, setComment] = useState("");
   const [delivery, setDelivery] = useState<DeliveryType>("pickup");
   const [address, setAddress] = useState("");
