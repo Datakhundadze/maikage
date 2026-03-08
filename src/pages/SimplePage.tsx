@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 const FONTS = [
   { name: "Sans Serif", family: "sans-serif" },
