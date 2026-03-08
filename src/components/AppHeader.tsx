@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 export default function AppHeader() {
   const { user, isAnonymous, signOut } = useAuth();
-  const { lang, toggleLang, theme, toggleTheme } = useAppState();
+  const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
   const navigate = useNavigate();
   const location = useLocation();
 
