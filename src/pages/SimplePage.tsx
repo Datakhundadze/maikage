@@ -61,7 +61,12 @@ const DEFAULT_SIDE: SideData = {
 export default function SimplePage() {
   const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
   const productConfig = useProductConfig();
+  const { trackEvent } = useAnalytics();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    trackEvent("page_visit", { page: "simple" });
+  }, [trackEvent]);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
 
   // Per-side state
