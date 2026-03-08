@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import AppLayout from "@/components/AppLayout";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview from "@/components/ProductPreview";
