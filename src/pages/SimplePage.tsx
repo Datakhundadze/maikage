@@ -297,6 +297,22 @@ export default function SimplePage() {
               {lang === "en" ? "Clear all" : "გასუფთავება"}
             </Button>
           )}
+
+          {/* Price Display */}
+          {(() => {
+            const backType: BackType = backData.designImage
+              ? "photo"
+              : backData.designText.trim()
+                ? "text"
+                : "none";
+            const breakdown = calculatePrice(
+              productConfig.config.product,
+              productConfig.config.subProduct,
+              backType,
+              false,
+            );
+            return <PriceDisplay breakdown={breakdown} />;
+          })()}
         </div>
       </aside>
 

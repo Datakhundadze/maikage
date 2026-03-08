@@ -138,7 +138,15 @@ function StudioContent() {
               onColorChange={productConfig.setColor}
               onViewChange={productConfig.setView}
             />
-            <div className="border-t border-sidebar-border pt-4">
+            <div className="border-t border-sidebar-border pt-4 space-y-4">
+              <PriceDisplay
+                breakdown={calculatePrice(
+                  productConfig.config.product,
+                  productConfig.config.subProduct,
+                  "none",
+                  true,
+                )}
+              />
               <DesignStudioPanel
                 onViewImage={setLightboxSrc}
                 onGenerate={handleGenerate}
