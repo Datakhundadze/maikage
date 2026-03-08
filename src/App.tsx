@@ -38,7 +38,7 @@ function AppRoutes() {
   }
 
   if (!user) {
-    return <LoginPage />;
+    return <LandingPage />;
   }
 
   return (
