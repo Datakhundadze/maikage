@@ -1,8 +1,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useAppState } from "@/hooks/useAppState";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { LogOut, Paintbrush, FolderOpen, Globe, Image } from "lucide-react";
+import { LogOut, Paintbrush, FolderOpen, Globe, Image, ShieldCheck } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 export default function AppHeader() {
