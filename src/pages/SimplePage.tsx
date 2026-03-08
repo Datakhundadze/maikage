@@ -10,6 +10,7 @@ import type { PlacementCoords } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice, type BackType } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
+import OrderDialog from "@/components/OrderDialog";
 
 const FONTS = [
   { name: "Sans Serif", family: "sans-serif" },
