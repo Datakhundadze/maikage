@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { calculatePrice, type BackType } from "@/lib/pricing";
+import PriceDisplay from "@/components/PriceDisplay";
 
 const FONTS = [
   { name: "Sans Serif", family: "sans-serif" },
@@ -295,6 +297,22 @@ export default function SimplePage() {
               {lang === "en" ? "Clear all" : "გასუფთავება"}
             </Button>
           )}
+
+          {/* Price Display */}
+          {(() => {
+            const backType: BackType = backData.designImage
+              ? "photo"
+              : backData.designText.trim()
+                ? "text"
+                : "none";
+            const breakdown = calculatePrice(
+              productConfig.config.product,
+              productConfig.config.subProduct,
+              backType,
+              false,
+            );
+            return <PriceDisplay breakdown={breakdown} />;
+          })()}
         </div>
       </aside>
 
