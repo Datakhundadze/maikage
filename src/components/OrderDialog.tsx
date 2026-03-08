@@ -128,6 +128,12 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
             <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={255} placeholder="email@example.com" />
           </div>
 
+          {/* Phone */}
+          <div className="space-y-1.5">
+            <Label htmlFor="phone">ტელეფონი *</Label>
+            <Input id="phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} required maxLength={20} placeholder="+995 5XX XXX XXX" />
+          </div>
+
           {/* Comment */}
           <div className="space-y-1.5">
             <Label htmlFor="comment">კომენტარი</Label>
