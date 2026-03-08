@@ -261,7 +261,9 @@ function generateCatalog(): CatalogEntry[] {
             filename: `${product.type.toLowerCase().replace(/\s/g, "-")}-${sub.toLowerCase().replace(/\s/g, "-")}-${color.toLowerCase().replace(/\s/g, "-")}-${view}.png`,
             placementZone: product.type === "Hoodie"
               ? (view === "front" ? HOODIE_FRONT : HOODIE_BACK)
-              : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
+              : product.type === "Tote Bag"
+                ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
+                : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
             imageUrl: KNOWN_IMAGES[key] ?? null,
           });
         }
