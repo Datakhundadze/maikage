@@ -22,6 +22,11 @@ function StudioContent() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
   const { saveDesign } = useDesignStorage();
+  const { trackEvent } = useAnalytics();
+
+  useEffect(() => {
+    trackEvent("page_visit", { page: "studio" });
+  }, [trackEvent]);
 
   const handleGenerate = useCallback(async () => {
     try {
