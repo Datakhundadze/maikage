@@ -66,6 +66,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         last_name: lastName.trim(),
         email: email.trim(),
         comment: comment.trim() || null,
+        phone: phone.trim(),
         delivery_type: delivery,
         delivery_address: delivery !== "pickup" ? address.trim() : null,
         delivery_price: deliveryPrice,
