@@ -121,6 +121,66 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          color: string | null
+          comment: string | null
+          created_at: string
+          delivery_address: string | null
+          delivery_price: number
+          delivery_type: string
+          email: string
+          first_name: string
+          id: string
+          is_studio: boolean
+          last_name: string
+          product: string
+          product_price: number
+          status: string
+          sub_product: string | null
+          total_price: number
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          comment?: string | null
+          created_at?: string
+          delivery_address?: string | null
+          delivery_price?: number
+          delivery_type?: string
+          email: string
+          first_name: string
+          id?: string
+          is_studio?: boolean
+          last_name: string
+          product: string
+          product_price?: number
+          status?: string
+          sub_product?: string | null
+          total_price?: number
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          comment?: string | null
+          created_at?: string
+          delivery_address?: string | null
+          delivery_price?: number
+          delivery_type?: string
+          email?: string
+          first_name?: string
+          id?: string
+          is_studio?: boolean
+          last_name?: string
+          product?: string
+          product_price?: number
+          status?: string
+          sub_product?: string | null
+          total_price?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
