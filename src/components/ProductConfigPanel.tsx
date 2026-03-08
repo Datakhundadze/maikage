@@ -96,8 +96,8 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* View Toggle — only for products with front+back */}
-      {!["Apron", "Phone Case", "Tote Bag", "Cap"].includes(config.product) && (
+      {/* View Toggle — all products */}
+      {(
         <div>
           <h3 className="text-sm font-semibold text-card-foreground mb-2">View</h3>
           <div className="flex gap-2">
