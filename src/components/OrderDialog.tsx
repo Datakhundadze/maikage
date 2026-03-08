@@ -43,6 +43,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState(user?.email || "");
+  const [phone, setPhone] = useState("");
   const [comment, setComment] = useState("");
   const [delivery, setDelivery] = useState<DeliveryType>("pickup");
   const [address, setAddress] = useState("");
@@ -50,7 +51,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = breakdown.total + deliveryPrice;
 
-  const canSubmit = firstName.trim() && lastName.trim() && email.trim() &&
+  const canSubmit = firstName.trim() && lastName.trim() && email.trim() && phone.trim() &&
     (delivery === "pickup" || address.trim());
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,6 +66,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         last_name: lastName.trim(),
         email: email.trim(),
         comment: comment.trim() || null,
+        phone: phone.trim(),
         delivery_type: delivery,
         delivery_address: delivery !== "pickup" ? address.trim() : null,
         delivery_price: deliveryPrice,
@@ -83,6 +85,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       // Reset form
       setFirstName("");
       setLastName("");
+      setPhone("");
       setComment("");
       setAddress("");
       setDelivery("pickup");
@@ -125,6 +128,12 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           <div className="space-y-1.5">
             <Label htmlFor="email">ელფოსტა *</Label>
             <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} required maxLength={255} placeholder="email@example.com" />
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-1.5">
+            <Label htmlFor="phone">ტელეფონი *</Label>
+            <Input id="phone" type="tel" value={phone} onChange={e => setPhone(e.target.value)} required maxLength={20} placeholder="+995 5XX XXX XXX" />
           </div>
 
           {/* Comment */}
