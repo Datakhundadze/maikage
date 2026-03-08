@@ -76,6 +76,7 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
     <div
       ref={containerRef}
       className="absolute inset-0"
+      style={{ touchAction: "none" }}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
