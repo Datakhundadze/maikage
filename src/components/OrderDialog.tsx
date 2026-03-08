@@ -85,6 +85,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       // Reset form
       setFirstName("");
       setLastName("");
+      setPhone("");
       setComment("");
       setAddress("");
       setDelivery("pickup");
