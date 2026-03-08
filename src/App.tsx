@@ -4,18 +4,30 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { AppStateProvider } from "@/hooks/useAppState";
+import { AppStateProvider, useAppState } from "@/hooks/useAppState";
 import LoginPage from "./pages/LoginPage";
 import StudioPage from "./pages/StudioPage";
 import MyDesignsPage from "./pages/MyDesignsPage";
 import CommunityPage from "./pages/CommunityPage";
+import LandingPage from "./pages/LandingPage";
+import SimplePage from "./pages/SimplePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 function AppRoutes() {
   const { user, loading } = useAuth();
+  const { mode } = useAppState();
 
+  if (mode === "landing") {
+    return <LandingPage />;
+  }
+
+  if (mode === "simple") {
+    return <SimplePage />;
+  }
+
+  // Studio mode — requires auth
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">

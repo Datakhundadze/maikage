@@ -1,11 +1,15 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { Lang } from "@/lib/i18n";
 
+export type AppMode = "landing" | "simple" | "studio";
+
 interface AppStateContextType {
   lang: Lang;
   toggleLang: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  mode: AppMode;
+  setMode: (mode: AppMode) => void;
 }
 
 const AppStateContext = createContext<AppStateContextType | null>(null);
@@ -19,6 +23,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("maika-theme") as "light" | "dark") || "dark";
   });
 
+  const [mode, setModeState] = useState<AppMode>(() => {
+    return (localStorage.getItem("maika-mode") as AppMode) || "landing";
+  });
+
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("maika-theme", theme);
@@ -28,11 +36,16 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("maika-lang", lang);
   }, [lang]);
 
+  useEffect(() => {
+    localStorage.setItem("maika-mode", mode);
+  }, [mode]);
+
   const toggleLang = useCallback(() => setLang((l) => (l === "en" ? "ge" : "en")), []);
   const toggleTheme = useCallback(() => setTheme((t) => (t === "light" ? "dark" : "light")), []);
+  const setMode = useCallback((m: AppMode) => setModeState(m), []);
 
   return (
-    <AppStateContext.Provider value={{ lang, toggleLang, theme, toggleTheme }}>
+    <AppStateContext.Provider value={{ lang, toggleLang, theme, toggleTheme, mode, setMode }}>
       {children}
     </AppStateContext.Provider>
   );
