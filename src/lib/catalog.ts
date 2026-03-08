@@ -265,7 +265,7 @@ function generateCatalog(): CatalogEntry[] {
               : product.type === "Tote Bag"
                 ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
                 : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
-            imageUrl: KNOWN_IMAGES[key] ? encodeURI(KNOWN_IMAGES[key]) : null,
+            imageUrl: KNOWN_IMAGES[key] || null,
           });
         }
       }
