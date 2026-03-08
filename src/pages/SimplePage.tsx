@@ -299,7 +299,7 @@ export default function SimplePage() {
             </Button>
           )}
 
-          {/* Price Display */}
+          {/* Price Display & Order */}
           {(() => {
             const backType: BackType = backData.designImage
               ? "photo"
@@ -312,7 +312,18 @@ export default function SimplePage() {
               backType,
               false,
             );
-            return <PriceDisplay breakdown={breakdown} />;
+            return (
+              <>
+                <PriceDisplay breakdown={breakdown} />
+                <OrderDialog
+                  breakdown={breakdown}
+                  product={productConfig.config.product}
+                  subProduct={productConfig.config.subProduct}
+                  color={productConfig.config.color}
+                  isStudio={false}
+                />
+              </>
+            );
           })()}
         </div>
       </aside>
