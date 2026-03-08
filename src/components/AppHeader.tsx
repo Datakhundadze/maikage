@@ -9,6 +9,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 export default function AppHeader() {
   const { user, isAnonymous, signOut } = useAuth();
   const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
+  const { isAdmin } = useAdminCheck();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -16,6 +17,7 @@ export default function AppHeader() {
     { path: "/", label: t(lang, "nav.studio"), icon: Paintbrush },
     { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
     { path: "/community", label: t(lang, "nav.community"), icon: Globe },
+    ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
 
   return (

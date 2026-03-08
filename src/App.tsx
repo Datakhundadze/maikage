@@ -46,6 +46,7 @@ function AppRoutes() {
       <Route path="/" element={<StudioPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />
       <Route path="/community" element={<CommunityPage />} />
+      <Route path="/admin" element={<AdminPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
