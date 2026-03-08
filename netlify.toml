@@ -1,0 +1,29 @@
+[[redirects]]
+  from = "/products/*"
+  to = "/products/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*.png"
+  to = "/:splat.png"
+  status = 200
+
+[[redirects]]
+  from = "/*.jpg"
+  to = "/:splat.jpg"
+  status = 200
+
+[[redirects]]
+  from = "/*.jpeg"
+  to = "/:splat.jpeg"
+  status = 200
+
+[[redirects]]
+  from = "/*.webp"
+  to = "/:splat.webp"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
