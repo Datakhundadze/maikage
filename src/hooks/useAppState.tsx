@@ -1,11 +1,15 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { Lang } from "@/lib/i18n";
 
+export type AppMode = "landing" | "simple" | "studio";
+
 interface AppStateContextType {
   lang: Lang;
   toggleLang: () => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  mode: AppMode;
+  setMode: (mode: AppMode) => void;
 }
 
 const AppStateContext = createContext<AppStateContextType | null>(null);
