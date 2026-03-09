@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo"],
-  "Hoodie": ["GILDAN Hoodie", "JEL Washed Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
+  "Hoodie": ["GILDAN Hoodie", "JEL Washed Washed Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
@@ -71,9 +71,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
 
   // Hoodie brands
-  "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-Washed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purpleht Gray"],
-  "JEL Standard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
+  "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "PurWashed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purpledard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
@@ -86,7 +84,7 @@ Washed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purpleht Gray"],
   "Mug": ["White", "Black"],
 };
 
-// All colors with display hex values
+// Allith display hex values
 export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "White", hex: "#FFFFFF" },
   { name: "Black", hex: "#000000" },
