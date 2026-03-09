@@ -189,8 +189,14 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Hoodie|JEL Standard Zipper|Light Gray Melange|back": "/products/hoodie/jel-standard-zipper-lightgray-back.png",
   "Hoodie|JEL Standard Zipper|Red|front": "/products/hoodie/jel-standard-zipper-red-front.png",
   "Hoodie|JEL Standard Zipper|Red|back": "/products/hoodie/jel-standard-zipper-red-back.png",
-  "Hoodie|GILDAN Bomber|White|front": "/products/hoodie/gildan-bomber-white-front.png",
-  "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-bomber-white-back.png",
+  "Hoodie|JEL Standard Hoodie|White|front": "/products/hoodie/jel-standard-hoodie-white-front.png.png",
+  "Hoodie|JEL Standard Hoodie|White|back": "/products/hoodie/jel-standard-hoodie-white-back.png.png",
+  "Hoodie|JEL Standard Hoodie|Black|front": "/products/hoodie/jel-standard-hoodie-black-front.png.png",
+  "Hoodie|JEL Standard Hoodie|Black|back": "/products/hoodie/jel-standard-hoodie-black-back.png.png",
+  "Hoodie|GILDAN Bomber|White|front": "/products/hoodie/gildan-bomber-white-front.png.png",
+  "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-bomber-white-back.png.png",
+  "Hoodie|GILDAN Bomber|Black|front": "/products/hoodie/gildan-bomber-black-front.png.png",
+  "Hoodie|GILDAN Bomber|Black|back": "/products/hoodie/gildan-bomber-black-back.png.png",
 
   // Standalone products
   "Cap|Cap|White|front": "/products/cap/CAP.png",
