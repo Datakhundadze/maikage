@@ -73,7 +73,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   // Hoodie brands
   "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
   "Premium Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple"],
-  "JEL Standard Hoodie": ["Black", "Light Gray", "Dark Navy", "Red", "Burgundy", "Electric Blue"],
+  "JEL Standard Hoodie": ["White", "Black", "Red", "Burgundy", "Electric Blue", "Dark Navy", "Light Gray"],
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
