@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo"],
-  "Hoodie": ["GILDAN Hoodie", "JEL Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
+  "Hoodie": ["GILDAN Hoodie", "JEL Washed Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
@@ -72,7 +72,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
 
   // Hoodie brands
   "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "JEL Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple", "Cream", "Dark Navy", "Light Gray"],
+Washed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purpleht Gray"],
   "JEL Standard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
