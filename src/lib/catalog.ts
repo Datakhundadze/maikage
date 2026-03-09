@@ -71,7 +71,9 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
 
   // Hoodie brands
-  "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "PurWashed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purpledard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
+  "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "JEL Washed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple"],
+  "JEL Standard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
@@ -81,7 +83,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Apron": ["White", "Black"],
   "Phone Case": [],
   "Tote Bag": ["White", "Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
-  "Mug": ["White", "Black"],
+  "Mug": ["White"],
 };
 
 // Allith display hex values
