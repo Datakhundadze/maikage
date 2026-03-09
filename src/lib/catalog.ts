@@ -121,9 +121,12 @@ const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.51, scale: 0.28, scaleY: 0.28 };
 const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.52 };
 
-// Tote Bag-specific: move design zone down by 10%
-const TOTE_BAG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, y: DEFAULT_FRONT.y + 0.10 };
-const TOTE_BAG_BACK: PlacementCoords = { ...DEFAULT_BACK, y: DEFAULT_BACK.y + 0.10 };
+// Tote Bag-specific: move design zone down by 18%
+const TOTE_BAG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, y: DEFAULT_FRONT.y + 0.18 };
+const TOTE_BAG_BACK: PlacementCoords = { ...DEFAULT_BACK, y: DEFAULT_BACK.y + 0.18 };
+
+// Mug-specific: shift design left by 8%
+const MUG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, x: DEFAULT_FRONT.x - 0.08 };
 
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {
@@ -263,7 +266,9 @@ function generateCatalog(): CatalogEntry[] {
               ? (view === "front" ? HOODIE_FRONT : HOODIE_BACK)
               : product.type === "Tote Bag"
                 ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
-                : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
+                : product.type === "Mug"
+                  ? MUG_FRONT
+                  : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
             imageUrl: KNOWN_IMAGES[key] || null,
           });
         }
