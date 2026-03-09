@@ -18,6 +18,7 @@ export interface PlacementCoords {
   y: number;
   scale: number;
   scaleY?: number;
+  rotation?: number;
 }
 
 export interface CatalogEntry {

@@ -1,5 +1,6 @@
 import { useRef, useCallback, useState, type ReactNode } from "react";
 import type { PlacementCoords } from "@/lib/catalog";
+import { RotateCw } from "lucide-react";
 
 interface DraggablePlacementProps {
   coords: PlacementCoords;
@@ -12,12 +13,21 @@ interface DraggablePlacementProps {
   hideReadout?: boolean;
 }
 
-type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | null;
+type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | "rotate" | null;
 
 export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, hideReadout }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
-  const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0 });
+  const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0, startAngle: 0, startRotation: 0 });
+
+  const getCenterPoint = useCallback(() => {
+    const parent = containerRef.current?.parentElement;
+    if (!parent) return { cx: 0, cy: 0 };
+    const rect = parent.getBoundingClientRect();
+    const cx = rect.left + coords.x * rect.width;
+    const cy = rect.top + coords.y * rect.height;
+    return { cx, cy };
+  }, [coords.x, coords.y]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent, mode: DragMode) => {
     if (disabled) return;
@@ -25,15 +35,45 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setDragMode(mode);
-    startRef.current = { mx: e.clientX, my: e.clientY, cx: coords.x, cy: coords.y, cs: coords.scale, csY: coords.scaleY ?? coords.scale };
-  }, [disabled, coords]);
+
+    if (mode === "rotate") {
+      const center = getCenterPoint();
+      const startAngle = Math.atan2(e.clientY - center.cy, e.clientX - center.cx);
+      startRef.current = {
+        mx: e.clientX, my: e.clientY,
+        cx: coords.x, cy: coords.y,
+        cs: coords.scale, csY: coords.scaleY ?? coords.scale,
+        startAngle,
+        startRotation: coords.rotation ?? 0,
+      };
+    } else {
+      startRef.current = {
+        mx: e.clientX, my: e.clientY,
+        cx: coords.x, cy: coords.y,
+        cs: coords.scale, csY: coords.scaleY ?? coords.scale,
+        startAngle: 0, startRotation: 0,
+      };
+    }
+  }, [disabled, coords, getCenterPoint]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragMode || !containerRef.current) return;
-    // Use the parent (the absolute inset-0 wrapper) for normalization
     const parent = containerRef.current.parentElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
+
+    if (dragMode === "rotate") {
+      const center = getCenterPoint();
+      const currentAngle = Math.atan2(e.clientY - center.cy, e.clientX - center.cx);
+      const deltaAngle = (currentAngle - startRef.current.startAngle) * (180 / Math.PI);
+      let newRotation = startRef.current.startRotation + deltaAngle;
+      // Normalize to -180..180
+      while (newRotation > 180) newRotation -= 360;
+      while (newRotation < -180) newRotation += 360;
+      onCoordsChange({ ...coords, rotation: Math.round(newRotation) });
+      return;
+    }
+
     const dx = (e.clientX - startRef.current.mx) / rect.width;
     const dy = (e.clientY - startRef.current.my) / rect.height;
 
@@ -53,7 +93,7 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
       const newScaleY = Math.max(0.05, Math.min(0.9, startScaleY + sdy));
       onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
     }
-  }, [dragMode, coords, onCoordsChange]);
+  }, [dragMode, coords, onCoordsChange, getCenterPoint]);
 
   const handlePointerUp = useCallback(() => {
     setDragMode(null);
@@ -61,12 +101,14 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
 
   const scaleX = coords.scale;
   const scaleY = coords.scaleY ?? coords.scale;
+  const rotation = coords.rotation ?? 0;
   const left = `${(coords.x - scaleX / 2) * 100}%`;
   const top = `${(coords.y - scaleY / 2) * 100}%`;
   const width = `${scaleX * 100}%`;
   const height = `${scaleY * 100}%`;
 
   const handleClass = `absolute w-3 h-3 rounded-full border-2 border-primary-foreground z-10 ${accentClass ? accentClass : "bg-primary"}`;
+  const isRotating = dragMode === "rotate";
 
   return (
     <div
@@ -74,7 +116,7 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
       className={`absolute border-2 border-dashed rounded-md transition-colors ${
         disabled ? "border-muted-foreground/30 pointer-events-none" : "border-primary/60 cursor-move"
       } ${dragMode === "move" ? "border-primary" : ""}`}
-      style={{ left, top, width, height, touchAction: "none" }}
+      style={{ left, top, width, height, touchAction: "none", transform: `rotate(${rotation}deg)` }}
       onPointerDown={(e) => handlePointerDown(e, "move")}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -86,8 +128,15 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
         </div>
       )}
 
+      {/* Rotation readout */}
+      {isRotating && (
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono whitespace-nowrap pointer-events-none px-1.5 py-0.5 rounded bg-foreground text-background">
+          {rotation}°
+        </div>
+      )}
+
       {/* Coordinate readout */}
-      {!hideReadout && (
+      {!hideReadout && !isRotating && (
         <div className="absolute -top-5 left-0 text-[10px] text-primary font-mono whitespace-nowrap pointer-events-none">
           {Math.round(coords.x * 100)}%, {Math.round(coords.y * 100)}%
         </div>
@@ -100,6 +149,19 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
           <div className={`${handleClass} -top-1.5 -right-1.5 cursor-ne-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tr")} />
           <div className={`${handleClass} -bottom-1.5 -left-1.5 cursor-sw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-bl")} />
           <div className={`${handleClass} -bottom-1.5 -right-1.5 cursor-se-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-br")} />
+
+          {/* Rotation handle - centered below bottom edge */}
+          <div
+            className="absolute -bottom-8 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing z-10"
+            onPointerDown={(e) => handlePointerDown(e, "rotate")}
+          >
+            <div className="flex flex-col items-center">
+              <div className={`w-px h-3 ${accentClass ? accentClass : "bg-primary"} opacity-60`} />
+              <div className={`w-5 h-5 rounded-full border-2 border-primary-foreground flex items-center justify-center ${accentClass ? accentClass : "bg-primary"}`}>
+                <RotateCw className="w-2.5 h-2.5 text-white" />
+              </div>
+            </div>
+          </div>
         </>
       )}
     </div>
