@@ -25,7 +25,7 @@ const PRICES: Record<string, PriceTier> = {
 
   // Hoodie brands
   "GILDAN Hoodie":       { frontOnly: 75, backPhoto: 90, backText: 85 },
-  "JEL Washed Hoodie":   { frontOnly: 95, backPhoto: 110, backText: 105 },
+  "Premium Hoodie":      { frontOnly: 95, backPhoto: 110, backText: 105 },
   "JEL Standard Hoodie": { frontOnly: 80, backPhoto: 95, backText: 90 },
   "JEL Standard Zipper": { frontOnly: 85, backPhoto: 100, backText: 95 },
   "JEL Zipper":          { frontOnly: 100, backPhoto: 115, backText: 110 },
