@@ -5,7 +5,7 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice, type BackType } from "@/lib/pricing";
@@ -43,23 +43,41 @@ const TEXT_COLORS = [
   { name: "Navy", hex: "#1E3A5F" },
 ];
 
+const LAYER_COLORS = [
+  "bg-blue-500",
+  "bg-orange-500",
+  "bg-cyan-500",
+  "bg-rose-500",
+  "bg-amber-500",
+];
+
+const MAX_PHOTOS = 5;
+
+interface PhotoLayer {
+  id: string;
+  image: string;
+  coords: PlacementCoords;
+}
+
 interface SideData {
-  designImage: string | null;
+  photos: PhotoLayer[];
   designText: string;
   selectedFont: typeof FONTS[0];
   textColor: string;
-  photoCoords: PlacementCoords;
   textCoords: PlacementCoords;
 }
 
+const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.38, scale: 0.35, scaleY: 0.35 };
+
 const DEFAULT_SIDE: SideData = {
-  designImage: null,
+  photos: [],
   designText: "",
   selectedFont: FONTS[0],
   textColor: "#000000",
-  photoCoords: { x: 0.5, y: 0.38, scale: 0.35, scaleY: 0.35 },
   textCoords: { x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 },
 };
+
+let photoIdCounter = 0;
 
 export default function SimplePage() {
   const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
@@ -92,17 +110,38 @@ export default function SimplePage() {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      setSideData(prev => ({ ...prev, designImage: result }));
+      setSideData(prev => {
+        if (prev.photos.length >= MAX_PHOTOS) return prev;
+        const newPhoto: PhotoLayer = {
+          id: `photo-${++photoIdCounter}`,
+          image: result,
+          coords: { ...DEFAULT_PHOTO_COORDS },
+        };
+        return { ...prev, photos: [...prev.photos, newPhoto] };
+      });
     };
     reader.readAsDataURL(file);
-    // Reset input so same file can be re-uploaded
     e.target.value = "";
+  }, [setSideData]);
+
+  const removePhoto = (id: string) => {
+    setSideData(prev => ({
+      ...prev,
+      photos: prev.photos.filter(p => p.id !== id),
+    }));
+  };
+
+  const updatePhotoCoords = useCallback((id: string, coords: PlacementCoords) => {
+    setSideData(prev => ({
+      ...prev,
+      photos: prev.photos.map(p => p.id === id ? { ...p, coords } : p),
+    }));
   }, [setSideData]);
 
   const clearDesign = () => {
     setSideData(prev => ({
       ...prev,
-      designImage: null,
+      photos: [],
       designText: "",
     }));
   };
@@ -134,15 +173,15 @@ export default function SimplePage() {
   // Build layers array
   const layers = useMemo<DesignLayer[]>(() => {
     const result: DesignLayer[] = [];
-    if (sideData.designImage) {
+    sideData.photos.forEach((photo, index) => {
       result.push({
-        id: "photo",
-        image: sideData.designImage,
-        coords: sideData.photoCoords,
-        onCoordsChange: (c) => setSideData(prev => ({ ...prev, photoCoords: c })),
-        accentClass: "bg-blue-500",
+        id: photo.id,
+        image: photo.image,
+        coords: photo.coords,
+        onCoordsChange: (c) => updatePhotoCoords(photo.id, c),
+        accentClass: LAYER_COLORS[index % LAYER_COLORS.length],
       });
-    }
+    });
     if (textImage) {
       result.push({
         id: "text",
@@ -153,7 +192,10 @@ export default function SimplePage() {
       });
     }
     return result;
-  }, [sideData.designImage, textImage, sideData.photoCoords, sideData.textCoords, setSideData]);
+  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords]);
+
+  const hasPhotos = sideData.photos.length > 0;
+  const canAddMore = sideData.photos.length < MAX_PHOTOS;
 
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
@@ -203,28 +245,62 @@ export default function SimplePage() {
           <div className="border-t border-sidebar-border pt-4 space-y-3">
             <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <Upload className="h-3.5 w-3.5" />
-              {lang === "en" ? "Photo" : "ფოტო"}
-              {sideData.designImage && <span className="ml-auto text-[10px] font-normal text-blue-500">● {lang === "en" ? "Blue handles" : "ლურჯი"}</span>}
+              {lang === "en" ? "Photos" : "ფოტოები"}
+              <span className="ml-auto text-[10px] font-normal text-muted-foreground">
+                {sideData.photos.length}/{MAX_PHOTOS}
+              </span>
             </h3>
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-            <Button variant="outline" className="w-full h-20 border-dashed" onClick={() => fileInputRef.current?.click()}>
-              <div className="flex flex-col items-center gap-1">
-                <Upload className="h-5 w-5 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">
-                  {lang === "en" ? "Upload image" : "ატვირთეთ სურათი"}
-                </span>
+
+            {/* Photo thumbnails */}
+            {hasPhotos && (
+              <div className="flex flex-wrap gap-2">
+                {sideData.photos.map((photo, index) => (
+                  <div key={photo.id} className="relative group">
+                    <div className={`absolute -top-1 -left-1 h-4 w-4 rounded-full ${LAYER_COLORS[index % LAYER_COLORS.length]} flex items-center justify-center z-10`}>
+                      <span className="text-[9px] text-white font-bold">{index + 1}</span>
+                    </div>
+                    <img
+                      src={photo.image}
+                      alt={`photo ${index + 1}`}
+                      className="h-16 w-16 rounded-lg object-cover border border-border"
+                    />
+                    <button
+                      onClick={() => removePhoto(photo.id)}
+                      className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            </Button>
-            {sideData.designImage && (
-              <div className="relative inline-block">
-                <img src={sideData.designImage} alt="design" className="h-20 w-20 rounded-lg object-cover border border-border" />
-                <button
-                  onClick={() => updateField("designImage", null)}
-                  className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
+            )}
+
+            {/* Upload / Add more button */}
+            {canAddMore && (
+              <Button
+                variant="outline"
+                className={`w-full ${hasPhotos ? "h-10" : "h-20"} border-dashed`}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <div className="flex items-center gap-2">
+                  {hasPhotos ? (
+                    <>
+                      <Plus className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        {lang === "en" ? "Add another photo" : "დაამატეთ ფოტო"}
+                      </span>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Upload className="h-5 w-5 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        {lang === "en" ? "Upload image" : "ატვირთეთ სურათი"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </Button>
             )}
           </div>
 
@@ -293,7 +369,7 @@ export default function SimplePage() {
             </div>
           </div>
 
-          {(sideData.designImage || sideData.designText.trim()) && (
+          {(hasPhotos || sideData.designText.trim()) && (
             <Button variant="outline" size="sm" onClick={clearDesign}>
               {lang === "en" ? "Clear all" : "გასუფთავება"}
             </Button>
@@ -301,7 +377,7 @@ export default function SimplePage() {
 
           {/* Price Display & Order */}
           {(() => {
-            const backType: BackType = backData.designImage
+            const backType: BackType = backData.photos.length > 0
               ? "photo"
               : backData.designText.trim()
                 ? "text"
