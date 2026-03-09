@@ -86,7 +86,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Mug": ["White"],
 };
 
-// Allith display hex values
+// All colors with display hex values
 export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "White", hex: "#FFFFFF" },
   { name: "Black", hex: "#000000" },
