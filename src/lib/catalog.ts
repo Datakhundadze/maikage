@@ -119,7 +119,7 @@ const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 
 // Hoodie-specific: design sits lower on the chest, below collar/zipper
 const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.51, scale: 0.28, scaleY: 0.28 };
-const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.52 };
+const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.28, scaleY: 0.28 };
 
 // Tote Bag-specific: move design zone down by 18%
 const TOTE_BAG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, y: DEFAULT_FRONT.y + 0.18 };
