@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo"],
-  "Hoodie": ["GILDAN Hoodie", "JEL Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
+  "Hoodie": ["GILDAN Hoodie", "JEL Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
