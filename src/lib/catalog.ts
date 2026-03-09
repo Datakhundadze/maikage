@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo"],
-  "Hoodie": ["GILDAN Hoodie", "JEL Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
+  "Hoodie": ["GILDAN Hoodie", "JEL Washed Washed Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
@@ -72,7 +72,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
 
   // Hoodie brands
   "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "JEL Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple", "Cream", "Dark Navy", "Light Gray"],
+  "JEL Washed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple"],
   "JEL Standard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
@@ -83,7 +83,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Apron": ["White", "Black"],
   "Phone Case": [],
   "Tote Bag": ["White", "Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
-  "Mug": ["White", "Black"],
+  "Mug": ["White"],
 };
 
 // All colors with display hex values
@@ -162,16 +162,16 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png",
   "Hoodie|GILDAN Hoodie|Black|front": "/products/hoodie/gildan-hoodie-black-front.png",
   "Hoodie|GILDAN Hoodie|Black|back": "/products/hoodie/gildan-hoodie-black-back.png",
-  "Hoodie|JEL Hoodie|Black|front": "/products/hoodie/jel-hoodie-black-front.png",
-  "Hoodie|JEL Hoodie|Black|back": "/products/hoodie/jel-hoodie-black-back.png",
-  "Hoodie|JEL Hoodie|Pink|front": "/products/hoodie/jel-hoodie-pink-front.png",
-  "Hoodie|JEL Hoodie|Pink|back": "/products/hoodie/jel-hoodie-pink-back.png",
-  "Hoodie|JEL Hoodie|Purple|front": "/products/hoodie/jel-hoodie-purple-front.png",
-  "Hoodie|JEL Hoodie|Purple|back": "/products/hoodie/jel-hoodie-purple-back.png",
-  "Hoodie|JEL Hoodie|Khaki|front": "/products/hoodie/jel-hoodie-khaki-front.png",
-  "Hoodie|JEL Hoodie|Khaki|back": "/products/hoodie/jel-hoodie-khaki-back.png",
-  "Hoodie|JEL Hoodie|Light Gray|front": "/products/hoodie/jel-hoodie-lightgray-front.png",
-  "Hoodie|JEL Hoodie|Light Gray|back": "/products/hoodie/jel-hoodie-lightgray-back.png",
+  "Hoodie|JEL Washed Hoodie|Black|front": "/products/hoodie/jel-hoodie-black-front.png",
+  "Hoodie|JEL Washed Hoodie|Black|back": "/products/hoodie/jel-hoodie-black-back.png",
+  "Hoodie|JEL Washed Hoodie|Pink|front": "/products/hoodie/jel-hoodie-pink-front.png",
+  "Hoodie|JEL Washed Hoodie|Pink|back": "/products/hoodie/jel-hoodie-pink-back.png",
+  "Hoodie|JEL Washed Hoodie|Purple|front": "/products/hoodie/jel-hoodie-purple-front.png",
+  "Hoodie|JEL Washed Hoodie|Purple|back": "/products/hoodie/jel-hoodie-purple-back.png",
+  "Hoodie|JEL Washed Hoodie|Khaki|front": "/products/hoodie/jel-hoodie-khaki-front.png",
+  "Hoodie|JEL Washed Hoodie|Khaki|back": "/products/hoodie/jel-hoodie-khaki-back.png",
+  "Hoodie|JEL Washed Hoodie|Gray|front": "/products/hoodie/jel-hoodie-gray-front.png",
+  "Hoodie|JEL Washed Hoodie|Gray|back": "/products/hoodie/jel-hoodie-gray-back.png",
   "Hoodie|JEL Zipper|Black|front": "/products/hoodie/jel-zipper-black-front.png",
   "Hoodie|JEL Zipper|Black|back": "/products/hoodie/jel-zipper-black-back.png",
   "Hoodie|JEL Zipper|Dark Navy|front": "/products/hoodie/jel-zipper-navy-front.png",

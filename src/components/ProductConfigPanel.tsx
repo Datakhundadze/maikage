@@ -96,8 +96,8 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* View Toggle — all products */}
-      {(
+      {/* View Toggle — hide for Mug */}
+      {config.product !== "Mug" && (
         <div>
           <h3 className="text-sm font-semibold text-card-foreground mb-2">View</h3>
           <div className="flex gap-2">
