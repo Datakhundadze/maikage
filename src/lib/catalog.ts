@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo"],
-  "Hoodie": ["GILDAN Hoodie", "JEL Washed Washed Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
+  "Hoodie": ["GILDAN Hoodie", "Premium Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
@@ -72,8 +72,8 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
 
   // Hoodie brands
   "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "JEL Washed Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple"],
-  "JEL Standard Hoodie": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
+  "Premium Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple"],
+  "JEL Standard Hoodie": ["Black", "Light Gray", "Dark Navy", "Red", "Burgundy", "Electric Blue"],
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
@@ -119,7 +119,7 @@ const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.40, scale: 0.42 };
 
 // Hoodie-specific: design sits lower on the chest, below collar/zipper
 const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.51, scale: 0.28, scaleY: 0.28 };
-const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.52 };
+const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.28, scaleY: 0.28 };
 
 // Tote Bag-specific: move design zone down by 18%
 const TOTE_BAG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, y: DEFAULT_FRONT.y + 0.18 };
@@ -165,16 +165,16 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png.png",
   "Hoodie|GILDAN Hoodie|Black|front": "/products/hoodie/gildan-hoodie-black-front.png.png",
   "Hoodie|GILDAN Hoodie|Black|back": "/products/hoodie/gildan-hoodie-black-back.png.png",
-  "Hoodie|JEL Washed Hoodie|Black|front": "/products/hoodie/jel-hoodie-black-front.png.png",
-  "Hoodie|JEL Washed Hoodie|Black|back": "/products/hoodie/jel-hoodie-black-back.png.png",
-  "Hoodie|JEL Washed Hoodie|Pink|front": "/products/hoodie/jel-hoodie-pink-front.png.png",
-  "Hoodie|JEL Washed Hoodie|Pink|back": "/products/hoodie/jel-hoodie-pink-back.png.png",
-  "Hoodie|JEL Washed Hoodie|Purple|front": "/products/hoodie/jel-hoodie-purple-front.png",
-  "Hoodie|JEL Washed Hoodie|Purple|back": "/products/hoodie/jel-hoodie-purple-back.png",
-  "Hoodie|JEL Washed Hoodie|Khaki|front": "/products/hoodie/jel-hoodie-khaki-front.png.png",
-  "Hoodie|JEL Washed Hoodie|Khaki|back": "/products/hoodie/jel-hoodie-khaki-back.png.png",
-  "Hoodie|JEL Washed Hoodie|Gray|front": "/products/hoodie/jel-hoodie-lightgray-front.png.png",
-  "Hoodie|JEL Washed Hoodie|Gray|back": "/products/hoodie/jel-hoodie-lightgray-back.png.png",
+  "Hoodie|Premium Hoodie|Black|front": "/products/hoodie/jel-hoodie-black-front.png.png",
+  "Hoodie|Premium Hoodie|Black|back": "/products/hoodie/jel-hoodie-black-back.png.png",
+  "Hoodie|Premium Hoodie|Pink|front": "/products/hoodie/jel-hoodie-pink-front.png.png",
+  "Hoodie|Premium Hoodie|Pink|back": "/products/hoodie/jel-hoodie-pink-back.png.png",
+  "Hoodie|Premium Hoodie|Purple|front": "/products/hoodie/jel-hoodie-purple-front.png",
+  "Hoodie|Premium Hoodie|Purple|back": "/products/hoodie/jel-hoodie-purple-back.png",
+  "Hoodie|Premium Hoodie|Khaki|front": "/products/hoodie/jel-hoodie-khaki-front.png.png",
+  "Hoodie|Premium Hoodie|Khaki|back": "/products/hoodie/jel-hoodie-khaki-back.png.png",
+  "Hoodie|Premium Hoodie|Gray|front": "/products/hoodie/jel-hoodie-lightgray-front.png.png",
+  "Hoodie|Premium Hoodie|Gray|back": "/products/hoodie/jel-hoodie-lightgray-back.png.png",
   "Hoodie|JEL Zipper|Black|front": "/products/hoodie/jel-zipper-black-front.png.png",
   "Hoodie|JEL Zipper|Black|back": "/products/hoodie/jel-zipper-black-back.png.png",
   "Hoodie|JEL Zipper|Dark Navy|front": "/products/hoodie/jel-zipper-navy-front.png.png",
