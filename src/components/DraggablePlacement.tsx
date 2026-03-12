@@ -11,6 +11,10 @@ interface DraggablePlacementProps {
   accentClass?: string;
   /** Hide coordinate readout */
   hideReadout?: boolean;
+  /** Whether this layer is selected (shows handles/border) */
+  selected?: boolean;
+  /** Called when the layer is clicked to select it */
+  onSelect?: () => void;
 }
 
 type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | "rotate" | null;

@@ -9,6 +9,8 @@ export interface DesignLayer {
   coords: PlacementCoords;
   onCoordsChange: (coords: PlacementCoords) => void;
   accentClass?: string;
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
 interface ProductPreviewProps {
