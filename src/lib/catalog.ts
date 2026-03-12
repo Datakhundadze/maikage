@@ -65,7 +65,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "GILDAN": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
   "GILDAN HUMMER": ["White", "Black", "Electric Blue", "Light Gray Melange"],
   "TH": ["White", "Black"],
-  "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki"],
+  "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki", "Brown"],
   "GIORDANO": ["White", "Black"],
   "Khundadze": ["White", "Black"],
   "NIKE": ["Dark Navy", "White", "Cream"],
