@@ -229,6 +229,7 @@ export const COLOR_FILTERS: Record<ProductColor, string> = {
   "Green": "brightness(0.8) saturate(3) hue-rotate(110deg)",
   "Turquoise": "brightness(0.9) saturate(3) hue-rotate(165deg)",
   "Light Blue": "brightness(1.1) saturate(2) hue-rotate(190deg)",
+  "Blue": "brightness(0.7) saturate(3) hue-rotate(210deg)",
   "Standard Blue": "brightness(0.8) saturate(3) hue-rotate(200deg)",
   "Electric Blue": "brightness(1) saturate(4) hue-rotate(200deg)",
   "Dark Navy": "brightness(0.4) saturate(2) hue-rotate(210deg)",
