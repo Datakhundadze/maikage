@@ -9,6 +9,8 @@ export interface DesignLayer {
   coords: PlacementCoords;
   onCoordsChange: (coords: PlacementCoords) => void;
   accentClass?: string;
+  selected?: boolean;
+  onSelect?: () => void;
 }
 
 interface ProductPreviewProps {
@@ -22,6 +24,8 @@ interface ProductPreviewProps {
   disabled?: boolean;
   /** Multiple independent design layers (overrides single designImage if provided) */
   layers?: DesignLayer[];
+  /** Called when user clicks the background (outside any layer) */
+  onBackgroundClick?: () => void;
 }
 
 // SVG placeholder outlines for products without mockup images
@@ -100,7 +104,7 @@ function colorizeImage(img: HTMLImageElement, canvas: HTMLCanvasElement, targetH
 }
 
 export default function ProductPreview({
-  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers,
+  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers, onBackgroundClick,
 }: ProductPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -146,10 +150,16 @@ export default function ProductPreview({
   const hasLayers = layers && layers.length > 0;
 
   return (
-    <div className="flex h-full items-center justify-center p-8">
+    <div className="flex h-full items-center justify-center p-8" onPointerDown={(e) => { if (e.target === e.currentTarget && onBackgroundClick) onBackgroundClick(); }}>
       <div
         className={`relative w-full max-w-lg aspect-square rounded-2xl ${bgClass} border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300`}
         style={bgStyle}
+        onPointerDown={(e) => {
+          // Only fire if clicking directly on the container (background), not on a layer
+          if (e.target === e.currentTarget && onBackgroundClick) {
+            onBackgroundClick();
+          }
+        }}
       >
         {baseImageUrl ? (
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none" />
@@ -168,6 +178,8 @@ export default function ProductPreview({
             disabled={disabled}
             accentClass={layer.accentClass}
             hideReadout
+            selected={layer.selected}
+            onSelect={layer.onSelect}
           >
             <img src={layer.image} alt="Design" className="w-full h-full object-contain opacity-80" />
           </DraggablePlacement>

@@ -89,6 +89,7 @@ export default function SimplePage() {
     trackEvent("page_visit", { page: "simple" });
   }, [trackEvent]);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
   // Per-side state
   const [frontData, setFrontData] = useState<SideData>({ ...DEFAULT_SIDE });
@@ -180,6 +181,8 @@ export default function SimplePage() {
         coords: photo.coords,
         onCoordsChange: (c) => updatePhotoCoords(photo.id, c),
         accentClass: LAYER_COLORS[index % LAYER_COLORS.length],
+        selected: selectedLayerId === photo.id,
+        onSelect: () => setSelectedLayerId(photo.id),
       });
     });
     if (textImage) {
@@ -189,10 +192,12 @@ export default function SimplePage() {
         coords: sideData.textCoords,
         onCoordsChange: (c) => setSideData(prev => ({ ...prev, textCoords: c })),
         accentClass: "bg-emerald-500",
+        selected: selectedLayerId === "text",
+        onSelect: () => setSelectedLayerId("text"),
       });
     }
     return result;
-  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords]);
+  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords, selectedLayerId]);
 
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
@@ -414,6 +419,7 @@ export default function SimplePage() {
           placementCoords={productConfig.config.placementCoords}
           onCoordsChange={productConfig.setPlacementCoords}
           layers={layers.length > 0 ? layers : undefined}
+          onBackgroundClick={() => setSelectedLayerId(null)}
         />
       </main>
     </div>

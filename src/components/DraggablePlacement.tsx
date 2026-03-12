@@ -11,11 +11,15 @@ interface DraggablePlacementProps {
   accentClass?: string;
   /** Hide coordinate readout */
   hideReadout?: boolean;
+  /** Whether this layer is selected (shows handles/border) */
+  selected?: boolean;
+  /** Called when the layer is clicked to select it */
+  onSelect?: () => void;
 }
 
 type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | "rotate" | null;
 
-export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, hideReadout }: DraggablePlacementProps) {
+export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, hideReadout, selected, onSelect }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
   const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0, startAngle: 0, startRotation: 0 });
@@ -31,8 +35,16 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
 
   const handlePointerDown = useCallback((e: React.PointerEvent, mode: DragMode) => {
     if (disabled) return;
+    // If selection is managed and not selected, just select on click
+    if (selected === false && mode === "move") {
+      onSelect?.();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
+    onSelect?.();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setDragMode(mode);
 
@@ -110,12 +122,17 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
   const handleClass = `absolute w-3 h-3 rounded-full border-2 border-primary-foreground z-10 ${accentClass ? accentClass : "bg-primary"}`;
   const isRotating = dragMode === "rotate";
 
+  // When `selected` prop is provided, use it to control visibility of handles/border
+  const isManaged = selected !== undefined;
+  const showHandles = isManaged ? selected && !disabled : !disabled;
+  const showBorder = isManaged ? selected : true;
+
   return (
     <div
       ref={containerRef}
-      className={`absolute border-2 border-dashed rounded-md transition-colors ${
-        disabled ? "border-muted-foreground/30 pointer-events-none" : "border-primary/60 cursor-move"
-      } ${dragMode === "move" ? "border-primary" : ""}`}
+      className={`absolute rounded-md transition-colors ${
+        disabled ? "pointer-events-none" : "cursor-move"
+      } ${showBorder ? `border-2 border-dashed ${disabled ? "border-muted-foreground/30" : "border-primary/60"}` : "border-2 border-transparent"} ${dragMode === "move" ? "border-primary" : ""}`}
       style={{ left, top, width, height, touchAction: "none", transform: `rotate(${rotation}deg)` }}
       onPointerDown={(e) => handlePointerDown(e, "move")}
       onPointerMove={handlePointerMove}
@@ -129,28 +146,28 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
       )}
 
       {/* Rotation readout */}
-      {isRotating && (
+      {showHandles && isRotating && (
         <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono whitespace-nowrap pointer-events-none px-1.5 py-0.5 rounded bg-foreground text-background">
           {rotation}°
         </div>
       )}
 
       {/* Coordinate readout */}
-      {!hideReadout && !isRotating && (
+      {showHandles && !hideReadout && !isRotating && (
         <div className="absolute -top-5 left-0 text-[10px] text-primary font-mono whitespace-nowrap pointer-events-none">
           {Math.round(coords.x * 100)}%, {Math.round(coords.y * 100)}%
         </div>
       )}
 
       {/* Resize handles */}
-      {!disabled && (
+      {showHandles && (
         <>
           <div className={`${handleClass} -top-1.5 -left-1.5 cursor-nw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tl")} />
           <div className={`${handleClass} -top-1.5 -right-1.5 cursor-ne-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tr")} />
           <div className={`${handleClass} -bottom-1.5 -left-1.5 cursor-sw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-bl")} />
           <div className={`${handleClass} -bottom-1.5 -right-1.5 cursor-se-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-br")} />
 
-          {/* Rotation handle - centered below bottom edge */}
+          {/* Rotation handle */}
           <div
             className="absolute -bottom-8 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing z-10"
             onPointerDown={(e) => handlePointerDown(e, "rotate")}
