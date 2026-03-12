@@ -60,7 +60,8 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
     setSubmitting(true);
 
     try {
-      const { error } = await supabase.from("orders").insert({
+      // 1. Insert order into database
+      const { data: orderData, error } = await supabase.from("orders").insert({
         user_id: user?.id || null,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -76,22 +77,34 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         sub_product: subProduct,
         color,
         is_studio: isStudio,
-      } as any);
+        payment_status: "unpaid",
+      } as any).select("id").single();
 
       if (error) throw error;
 
-      toast({ title: "✅ შეკვეთა გაიგზავნა!", description: "მალე დაგიკავშირდებით." });
-      setOpen(false);
-      // Reset form
-      setFirstName("");
-      setLastName("");
-      setPhone("");
-      setComment("");
-      setAddress("");
-      setDelivery("pickup");
+      // 2. Call create-payment edge function
+      const paymentRes = await supabase.functions.invoke("create-payment", {
+        body: {
+          orderId: orderData.id,
+          amount: totalWithDelivery,
+          description: `${product} - ${subProduct} (${color})`,
+        },
+      });
+
+      if (paymentRes.error) {
+        throw new Error(paymentRes.error.message || "Payment creation failed");
+      }
+
+      const { redirect_url } = paymentRes.data as { redirect_url: string };
+
+      if (redirect_url) {
+        // 3. Redirect to BOG payment page
+        window.location.href = redirect_url;
+      } else {
+        throw new Error("No redirect URL received from payment provider");
+      }
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
-    } finally {
       setSubmitting(false);
     }
   };
@@ -185,7 +198,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           </div>
 
           <Button type="submit" disabled={!canSubmit || submitting} className="w-full h-12 font-semibold text-base">
-            {submitting ? "იგზავნება..." : "შეკვეთა"}
+            {submitting ? "იგზავნება..." : "გადახდა და შეკვეთა"}
           </Button>
         </form>
       </DialogContent>
