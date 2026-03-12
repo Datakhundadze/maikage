@@ -19,7 +19,7 @@ interface DraggablePlacementProps {
 
 type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | "rotate" | null;
 
-export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, hideReadout }: DraggablePlacementProps) {
+export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, hideReadout, selected, onSelect }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
   const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0, startAngle: 0, startRotation: 0 });
