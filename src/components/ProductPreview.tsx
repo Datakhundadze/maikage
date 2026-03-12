@@ -178,6 +178,8 @@ export default function ProductPreview({
             disabled={disabled}
             accentClass={layer.accentClass}
             hideReadout
+            selected={layer.selected}
+            onSelect={layer.onSelect}
           >
             <img src={layer.image} alt="Design" className="w-full h-full object-contain opacity-80" />
           </DraggablePlacement>
