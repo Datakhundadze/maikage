@@ -9,7 +9,7 @@ export type ProductColor =
   | "White" | "Black" | "Beige" | "Light Gray" | "Red" | "Electric Blue"
   | "Dark Navy" | "Yellow" | "Orange" | "Light Blue" | "Standard Blue"
   | "Burgundy" | "Gray" | "Lime" | "Purple" | "Light Gray Melange"
-  | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green";
+  | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green" | "Blue";
 
 export type ProductView = "front" | "back";
 
