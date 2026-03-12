@@ -9,7 +9,7 @@ export type ProductColor =
   | "White" | "Black" | "Beige" | "Light Gray" | "Red" | "Electric Blue"
   | "Dark Navy" | "Yellow" | "Orange" | "Light Blue" | "Standard Blue"
   | "Burgundy" | "Gray" | "Lime" | "Purple" | "Light Gray Melange"
-  | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green";
+  | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green" | "Blue";
 
 export type ProductView = "front" | "back";
 
@@ -65,7 +65,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "GILDAN": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
   "GILDAN HUMMER": ["White", "Black", "Electric Blue", "Light Gray Melange"],
   "TH": ["White", "Black"],
-  "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki"],
+  "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki", "Brown"],
   "GIORDANO": ["White", "Black"],
   "Khundadze": ["White", "Black"],
   "NIKE": ["Dark Navy", "White", "Cream"],
@@ -76,7 +76,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Premium Hoodie": ["Black", "Gray", "Khaki", "Pink", "Purple"],
   "JEL Standard Hoodie": ["White", "Black", "Red", "Burgundy", "Electric Blue", "Dark Navy", "Light Gray"],
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
-  "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Red"],
+  "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Blue"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
 
   // Standalone products (no sub-brands)
@@ -106,6 +106,7 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "Green", hex: "#228B22" },
   { name: "Turquoise", hex: "#40E0D0" },
   { name: "Light Blue", hex: "#87CEEB" },
+  { name: "Blue", hex: "#2563EB" },
   { name: "Standard Blue", hex: "#4169E1" },
   { name: "Electric Blue", hex: "#0066FF" },
   { name: "Dark Navy", hex: "#0A1128" },
@@ -160,6 +161,8 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|JEL T-Shirt|Electric Blue|back": "/products/tshirt/jel-tshirt-blue-back.png",
   "T-Shirt|JEL T-Shirt|Khaki|front": "/products/tshirt/jel-tshirt-khaki-front.png",
   "T-Shirt|JEL T-Shirt|Khaki|back": "/products/tshirt/jel-tshirt-khaki-back.png",
+  "T-Shirt|JEL T-Shirt|Brown|front": "/products/tshirt/jel-tshirt-brown-front.png",
+  "T-Shirt|JEL T-Shirt|Brown|back": "/products/tshirt/jel-tshirt-brown-back.png",
 
   // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png.png",
@@ -188,8 +191,8 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Hoodie|JEL Standard Zipper|Dark Navy|back": "/products/hoodie/jel-standard-zipper-navy-back.png",
   "Hoodie|JEL Standard Zipper|Light Gray Melange|front": "/products/hoodie/jel-standard-zipper-lightgray-front.png",
   "Hoodie|JEL Standard Zipper|Light Gray Melange|back": "/products/hoodie/jel-standard-zipper-lightgray-back.png",
-  "Hoodie|JEL Standard Zipper|Red|front": "/products/hoodie/jel-standard-zipper-red-front.png",
-  "Hoodie|JEL Standard Zipper|Red|back": "/products/hoodie/jel-standard-zipper-red-back.png",
+  "Hoodie|JEL Standard Zipper|Blue|front": "/products/hoodie/jel-standard-zipper-blue-front.png",
+  "Hoodie|JEL Standard Zipper|Blue|back": "/products/hoodie/jel-standard-zipper-blue-back.png",
   "Hoodie|JEL Standard Hoodie|White|front": "/products/hoodie/jel-standard-hoodie-white-front.png.png",
   "Hoodie|JEL Standard Hoodie|White|back": "/products/hoodie/jel-standard-hoodie-white-back.png.png",
   "Hoodie|JEL Standard Hoodie|Black|front": "/products/hoodie/jel-standard-hoodie-black-front.png.png",
@@ -226,6 +229,7 @@ export const COLOR_FILTERS: Record<ProductColor, string> = {
   "Green": "brightness(0.8) saturate(3) hue-rotate(110deg)",
   "Turquoise": "brightness(0.9) saturate(3) hue-rotate(165deg)",
   "Light Blue": "brightness(1.1) saturate(2) hue-rotate(190deg)",
+  "Blue": "brightness(0.7) saturate(3) hue-rotate(210deg)",
   "Standard Blue": "brightness(0.8) saturate(3) hue-rotate(200deg)",
   "Electric Blue": "brightness(1) saturate(4) hue-rotate(200deg)",
   "Dark Navy": "brightness(0.4) saturate(2) hue-rotate(210deg)",
