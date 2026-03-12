@@ -123,6 +123,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          bog_order_id: string | null
           color: string | null
           comment: string | null
           created_at: string
@@ -134,6 +135,8 @@ export type Database = {
           id: string
           is_studio: boolean
           last_name: string
+          paid_at: string | null
+          payment_status: string
           phone: string
           product: string
           product_price: number
@@ -143,6 +146,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          bog_order_id?: string | null
           color?: string | null
           comment?: string | null
           created_at?: string
@@ -154,6 +158,8 @@ export type Database = {
           id?: string
           is_studio?: boolean
           last_name: string
+          paid_at?: string | null
+          payment_status?: string
           phone?: string
           product: string
           product_price?: number
@@ -163,6 +169,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          bog_order_id?: string | null
           color?: string | null
           comment?: string | null
           created_at?: string
@@ -174,6 +181,8 @@ export type Database = {
           id?: string
           is_studio?: boolean
           last_name?: string
+          paid_at?: string | null
+          payment_status?: string
           phone?: string
           product?: string
           product_price?: number
