@@ -24,6 +24,8 @@ interface ProductPreviewProps {
   disabled?: boolean;
   /** Multiple independent design layers (overrides single designImage if provided) */
   layers?: DesignLayer[];
+  /** Called when user clicks the background (outside any layer) */
+  onBackgroundClick?: () => void;
 }
 
 // SVG placeholder outlines for products without mockup images
