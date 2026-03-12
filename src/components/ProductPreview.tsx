@@ -150,7 +150,7 @@ export default function ProductPreview({
   const hasLayers = layers && layers.length > 0;
 
   return (
-    <div className="flex h-full items-center justify-center p-8">
+    <div className="flex h-full items-center justify-center p-8" onPointerDown={(e) => { if (e.target === e.currentTarget && onBackgroundClick) onBackgroundClick(); }}>
       <div
         className={`relative w-full max-w-lg aspect-square rounded-2xl ${bgClass} border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300`}
         style={bgStyle}
