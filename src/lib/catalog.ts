@@ -106,6 +106,7 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "Green", hex: "#228B22" },
   { name: "Turquoise", hex: "#40E0D0" },
   { name: "Light Blue", hex: "#87CEEB" },
+  { name: "Blue", hex: "#2563EB" },
   { name: "Standard Blue", hex: "#4169E1" },
   { name: "Electric Blue", hex: "#0066FF" },
   { name: "Dark Navy", hex: "#0A1128" },
