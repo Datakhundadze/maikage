@@ -419,6 +419,7 @@ export default function SimplePage() {
           placementCoords={productConfig.config.placementCoords}
           onCoordsChange={productConfig.setPlacementCoords}
           layers={layers.length > 0 ? layers : undefined}
+          onBackgroundClick={() => setSelectedLayerId(null)}
         />
       </main>
     </div>
