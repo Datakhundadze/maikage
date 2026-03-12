@@ -1,1 +1,10 @@
 project_id = "ykoseamefoabptuijsza"
+
+[functions.gemini-proxy]
+verify_jwt = false
+
+[functions.create-payment]
+verify_jwt = false
+
+[functions.payment-callback]
+verify_jwt = false
