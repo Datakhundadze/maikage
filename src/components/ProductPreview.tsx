@@ -104,7 +104,7 @@ function colorizeImage(img: HTMLImageElement, canvas: HTMLCanvasElement, targetH
 }
 
 export default function ProductPreview({
-  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers,
+  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers, onBackgroundClick,
 }: ProductPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imgLoaded, setImgLoaded] = useState(false);
