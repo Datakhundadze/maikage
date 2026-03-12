@@ -89,6 +89,7 @@ export default function SimplePage() {
     trackEvent("page_visit", { page: "simple" });
   }, [trackEvent]);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
   // Per-side state
   const [frontData, setFrontData] = useState<SideData>({ ...DEFAULT_SIDE });
