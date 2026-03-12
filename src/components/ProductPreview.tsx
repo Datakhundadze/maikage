@@ -154,6 +154,12 @@ export default function ProductPreview({
       <div
         className={`relative w-full max-w-lg aspect-square rounded-2xl ${bgClass} border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300`}
         style={bgStyle}
+        onPointerDown={(e) => {
+          // Only fire if clicking directly on the container (background), not on a layer
+          if (e.target === e.currentTarget && onBackgroundClick) {
+            onBackgroundClick();
+          }
+        }}
       >
         {baseImageUrl ? (
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-contain p-4 pointer-events-none" />
