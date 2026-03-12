@@ -161,6 +161,8 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|JEL T-Shirt|Electric Blue|back": "/products/tshirt/jel-tshirt-blue-back.png",
   "T-Shirt|JEL T-Shirt|Khaki|front": "/products/tshirt/jel-tshirt-khaki-front.png",
   "T-Shirt|JEL T-Shirt|Khaki|back": "/products/tshirt/jel-tshirt-khaki-back.png",
+  "T-Shirt|JEL T-Shirt|Brown|front": "/products/tshirt/jel-tshirt-brown-front.png",
+  "T-Shirt|JEL T-Shirt|Brown|back": "/products/tshirt/jel-tshirt-brown-back.png",
 
   // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png.png",
