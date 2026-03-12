@@ -35,8 +35,16 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
 
   const handlePointerDown = useCallback((e: React.PointerEvent, mode: DragMode) => {
     if (disabled) return;
+    // If selection is managed and not selected, just select on click
+    if (selected === false && mode === "move") {
+      onSelect?.();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
+    onSelect?.();
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setDragMode(mode);
 
