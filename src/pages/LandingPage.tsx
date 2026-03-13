@@ -33,15 +33,15 @@ export default function LandingPage() {
 
         {/* Hero */}
         <div className="text-center mb-16 sm:mb-20 max-w-3xl">
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] mb-5 text-gray-900 dark:text-white">
-            Create your style
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] mb-4 text-gray-900 dark:text-white">
+            შექმენი შენი სტილი
             <br />
             <span className="bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 bg-clip-text text-transparent">
-              easily
+              მარტივად
             </span>
           </h1>
-          <p className="text-lg sm:text-xl text-gray-500 dark:text-white/50 font-light">
-            შექმენი შენი უნიკალური დიზაინი
+          <p className="text-base sm:text-lg text-gray-500 dark:text-white/50 font-light">
+            Create your unique design easily
           </p>
         </div>
 
