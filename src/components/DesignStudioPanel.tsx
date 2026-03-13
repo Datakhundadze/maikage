@@ -171,7 +171,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
       ) : (
         <Button
           className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 font-semibold text-base"
-          disabled={!designParams.character.trim() || isProcessing}
+          disabled={(!designParams.character.trim() && designParams.characterImages.length === 0) || isProcessing}
           onClick={onGenerate}
         >
           {isProcessing ? t(lang, "studio.processing") : t(lang, "studio.generate")}

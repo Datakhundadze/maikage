@@ -151,9 +151,10 @@ export default function DesignSection({
           {/* Add button */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="h-16 w-16 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-banana-500/50 hover:text-banana-500 transition-colors"
+            className="h-16 w-16 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:border-banana-500/50 hover:text-banana-500 transition-colors gap-0.5"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="h-4 w-4" />
+            <span className="text-[8px] font-medium leading-none">ატვირთვა</span>
           </button>
           <input
             ref={fileInputRef}
