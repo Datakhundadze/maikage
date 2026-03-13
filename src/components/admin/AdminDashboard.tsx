@@ -27,11 +27,11 @@ export default function AdminDashboard() {
     async function fetch() {
       const today = new Date().toISOString().slice(0, 10);
 
-      const [ordersRes, profilesRes, designsRes, todayDesignsRes] = await Promise.all([
+      const [ordersRes, profilesRes, designsRes, todayGenRes] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("designs").select("id", { count: "exact", head: true }),
-        supabase.from("designs").select("id", { count: "exact", head: true }).gte("created_at", today),
+        supabase.from("generations" as any).select("id", { count: "exact", head: true }).gte("created_at", today),
       ]);
 
       setOrders((ordersRes.data as Order[]) || []);
