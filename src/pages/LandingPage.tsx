@@ -112,16 +112,12 @@ export default function LandingPage() {
             </a>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
-            <button onClick={() => setMode("terms")} className="hover:text-gray-600 dark:hover:text-white/60 transition-colors text-xs">
+            <button onClick={() => setMode("terms")} className="text-white hover:text-white/80 transition-colors text-xs">
               წესები და პირობები
             </button>
-            <span className="text-gray-300 dark:text-white/10">•</span>
-            <button onClick={() => setMode("privacy")} className="hover:text-gray-600 dark:hover:text-white/60 transition-colors text-xs">
+            <span className="text-white/30">•</span>
+            <button onClick={() => setMode("privacy")} className="text-white hover:text-white/80 transition-colors text-xs">
               კონფიდენციალურობა
-            </button>
-            <span className="text-gray-300 dark:text-white/10">•</span>
-            <button onClick={() => setMode("corporate")} className="hover:text-gray-600 dark:hover:text-white/60 transition-colors text-xs">
-              კორპორატიული
             </button>
           </div>
           <div className="flex items-center gap-4">
