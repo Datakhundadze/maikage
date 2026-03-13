@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Eye } from "lucide-react";
+import { Plus, X, Eye, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ImageSlot {
   src: string;
