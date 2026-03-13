@@ -46,7 +46,7 @@ export default function LandingPage() {
         </div>
 
         {/* Mode Cards */}
-        <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-2 mb-20 sm:mb-28">
+        <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-2 mb-16 sm:mb-20">
           {/* Simple Mode */}
           <button
             onClick={() => setMode("simple")}
@@ -99,6 +99,52 @@ export default function LandingPage() {
               </div>
             </div>
           </button>
+        </div>
+
+        {/* Corporate Section */}
+        <div className="w-full max-w-4xl mb-20 sm:mb-28">
+          <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 dark:from-white/[0.03] dark:via-white/[0.02] dark:to-white/[0.01] p-8 sm:p-12 overflow-hidden">
+            {/* Subtle glow */}
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-amber-500/[0.06] blur-[100px] pointer-events-none" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-1 w-8 rounded-full bg-amber-500" />
+                <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">B2B</span>
+              </div>
+              
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                კორპორატიული განყოფილება
+              </h2>
+              <p className="text-sm sm:text-base text-white/50 leading-relaxed max-w-2xl mb-8">
+                გთავაზობთ კორპორატიულ მომსახურებას — ბრენდირებული ტანსაცმელი, აქსესუარები და სარეკლამო პროდუქცია თქვენი კომპანიისთვის. ინდივიდუალური მიდგომა ყველა პროექტისთვის.
+              </p>
+
+              {/* Feature Icons */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+                {[
+                  { icon: Shield, label: "ხარისხი" },
+                  { icon: Zap, label: "სისწრაფე" },
+                  { icon: Users, label: "ინდივიდუალური მიდგომა" },
+                  { icon: BadgeDollarSign, label: "კონკურენტული ფასები" },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex flex-col items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 text-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15">
+                      <Icon className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <span className="text-xs font-medium text-white/70">{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <a
+                href="mailto:maika@maika.ge"
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold px-6 py-3 text-sm transition-colors"
+              >
+                დაგვიკავშირდი <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Footer / Contact */}

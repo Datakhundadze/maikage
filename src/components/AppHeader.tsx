@@ -17,7 +17,6 @@ export default function AppHeader() {
     { path: "/", label: t(lang, "nav.studio"), icon: Paintbrush },
     { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
     { path: "/community", label: t(lang, "nav.community"), icon: Globe },
-    { path: "/corporate", label: "კორპორატიული", icon: Building2 },
     ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
 
