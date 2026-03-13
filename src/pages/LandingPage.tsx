@@ -33,7 +33,7 @@ export default function LandingPage() {
 
         {/* Hero */}
         <div className="text-center mb-16 sm:mb-20 max-w-3xl">
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] mb-5">
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.1] mb-5 text-gray-900 dark:text-white">
             Create your style
             <br />
             <span className="bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 bg-clip-text text-transparent">
