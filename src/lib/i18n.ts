@@ -155,7 +155,7 @@ const translations = {
         fast: "სწრაფი",
         pro: "პრო",
       },
-      generate: "მერჩის გენერაცია",
+      generate: "დიზაინის გენერაცია",
       regenerate: "ხელახლა გენერაცია",
       processing: "მუშავდება...",
       startNew: "ახალი დიზაინი",
