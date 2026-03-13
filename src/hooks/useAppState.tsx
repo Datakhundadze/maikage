@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import type { Lang } from "@/lib/i18n";
 
-export type AppMode = "landing" | "simple" | "studio";
+export type AppMode = "landing" | "simple" | "studio" | "terms" | "privacy" | "corporate";
 
 interface AppStateContextType {
   lang: Lang;

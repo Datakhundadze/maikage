@@ -23,13 +23,11 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const { mode } = useAppState();
 
-  if (mode === "landing") {
-    return <LandingPage />;
-  }
-
-  if (mode === "simple") {
-    return <SimplePage />;
-  }
+  if (mode === "landing") return <LandingPage />;
+  if (mode === "simple") return <SimplePage />;
+  if (mode === "terms") return <TermsPage />;
+  if (mode === "privacy") return <PrivacyPage />;
+  if (mode === "corporate") return <CorporatePage />;
 
   // Studio mode — requires auth
   if (loading) {

@@ -111,6 +111,19 @@ export default function LandingPage() {
               <Phone className="h-4 w-4" /> +(995 32) 2-05-06-20
             </a>
           </div>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <button onClick={() => setMode("terms")} className="hover:text-gray-600 dark:hover:text-white/60 transition-colors text-xs">
+              წესები და პირობები
+            </button>
+            <span className="text-gray-300 dark:text-white/10">•</span>
+            <button onClick={() => setMode("privacy")} className="hover:text-gray-600 dark:hover:text-white/60 transition-colors text-xs">
+              კონფიდენციალურობა
+            </button>
+            <span className="text-gray-300 dark:text-white/10">•</span>
+            <button onClick={() => setMode("corporate")} className="hover:text-gray-600 dark:hover:text-white/60 transition-colors text-xs">
+              კორპორატიული
+            </button>
+          </div>
           <div className="flex items-center gap-4">
             {/* Facebook */}
             <a href="#" className="hover:text-gray-600 dark:hover:text-white/60 transition-colors" aria-label="Facebook">
