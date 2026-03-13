@@ -12,6 +12,9 @@ import CommunityPage from "./pages/CommunityPage";
 import AdminPage from "./pages/AdminPage";
 import LandingPage from "./pages/LandingPage";
 import SimplePage from "./pages/SimplePage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import CorporatePage from "./pages/CorporatePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,13 +23,11 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const { mode } = useAppState();
 
-  if (mode === "landing") {
-    return <LandingPage />;
-  }
-
-  if (mode === "simple") {
-    return <SimplePage />;
-  }
+  if (mode === "landing") return <LandingPage />;
+  if (mode === "simple") return <SimplePage />;
+  if (mode === "terms") return <TermsPage />;
+  if (mode === "privacy") return <PrivacyPage />;
+  if (mode === "corporate") return <CorporatePage />;
 
   // Studio mode — requires auth
   if (loading) {
