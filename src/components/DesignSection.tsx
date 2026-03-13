@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Eye } from "lucide-react";
+import { Plus, X, Eye, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ImageSlot {
   src: string;
@@ -62,7 +62,7 @@ export default function DesignSection({
         className="w-full flex items-center justify-between rounded-xl border border-border bg-card p-3 text-sm font-medium text-card-foreground hover:border-banana-500/50 transition-colors"
       >
         <span>{title}</span>
-        <Plus className="h-4 w-4 text-muted-foreground" />
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>
     );
   }
@@ -106,7 +106,7 @@ export default function DesignSection({
         </div>
         {collapsible && (
           <button onClick={onToggle} className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
+            <ChevronUp className="h-4 w-4" />
           </button>
         )}
       </div>

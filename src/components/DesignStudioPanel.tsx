@@ -3,10 +3,8 @@ import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
-import { Zap, Sparkles, RefreshCw, Wand2 } from "lucide-react";
-import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Zap, Sparkles, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 
 interface DesignStudioPanelProps {
   onViewImage?: (src: string) => void;
@@ -20,46 +18,19 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
   const { state, dispatch } = useDesign();
   const { lang } = useAppState();
   const { designParams, speed, expandedSections, appStatus } = state;
-  const [randomizing, setRandomizing] = useState(false);
-  const { toast } = useToast();
 
   const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
 
-  const handleRandomize = useCallback(async () => {
-    setRandomizing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("gemini-proxy", {
-        body: { action: "randomize-prompt", params: { product: product || "Hoodie" } },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      // Parse JSON from text response
-      const text = data.text || "";
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Invalid response");
-      const parsed = JSON.parse(jsonMatch[0]);
-
-      if (parsed.character) dispatch({ type: "SET_CHARACTER", text: parsed.character });
-      if (parsed.scene) {
-        dispatch({ type: "SET_SCENE", text: parsed.scene });
-        if (!expandedSections.scene) dispatch({ type: "TOGGLE_SECTION", section: "scene" });
-      }
-      if (parsed.style) {
-        dispatch({ type: "SET_STYLE", text: parsed.style });
-        if (!expandedSections.style) dispatch({ type: "TOGGLE_SECTION", section: "style" });
-      }
-      if (parsed.text) {
-        dispatch({ type: "SET_TEXT", text: parsed.text });
-        if (!expandedSections.text) dispatch({ type: "TOGGLE_SECTION", section: "text" });
-      }
-    } catch (err: any) {
-      console.error("Randomize failed:", err);
-      toast({ title: "Randomize failed", description: err.message, variant: "destructive" });
-    } finally {
-      setRandomizing(false);
-    }
-  }, [product, dispatch, expandedSections, toast]);
+  const styleOptions = [
+    "რეალისტური",
+    "ანიმაციური",
+    "ილუსტრაცია",
+    "ოილ არტი",
+    "ანიმე",
+    "კომიქსი",
+    "Line Art",
+    "გრაფიკა",
+  ];
 
   const guideLabels = ["studio.guide.character", "studio.guide.scene", "studio.guide.style", "studio.guide.generate"];
 
@@ -78,17 +49,6 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         <p className="mt-2 text-center text-[10px] text-muted-foreground">{t(lang, "studio.guide.paste")}</p>
       </div>
 
-      {/* Magic Randomizer */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full gap-1.5 border-dashed"
-        onClick={handleRandomize}
-        disabled={randomizing || isProcessing}
-      >
-        <Wand2 className={`h-3.5 w-3.5 ${randomizing ? "animate-spin" : ""}`} />
-        {randomizing ? t(lang, "studio.randomizing") : t(lang, "studio.randomize")}
-      </Button>
 
       {/* Character */}
       <DesignSection
@@ -117,19 +77,40 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         onViewImage={onViewImage}
       />
 
-      {/* Style */}
-      <DesignSection
-        title={t(lang, "studio.style.title")}
-        subtitle={t(lang, "studio.style.subtitle")}
-        text={designParams.style}
-        onTextChange={(txt) => dispatch({ type: "SET_STYLE", text: txt })}
-        placeholder={t(lang, "studio.style.placeholder")}
-        image={designParams.styleImage}
-        onImageChange={(img) => dispatch({ type: "SET_STYLE_IMAGE", image: img })}
-        collapsible expanded={expandedSections.style}
-        onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })}
-        onViewImage={onViewImage}
-      />
+      {/* Style - Dropdown */}
+      {!expandedSections.style ? (
+        <button
+          onClick={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })}
+          className="w-full flex items-center justify-between rounded-xl border border-border bg-card p-3 text-sm font-medium text-card-foreground hover:border-banana-500/50 transition-colors"
+        >
+          <span>{t(lang, "studio.style.title")}{designParams.style ? ` — ${designParams.style}` : ""}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        </button>
+      ) : (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div>
+              <h4 className="text-sm font-semibold text-card-foreground">{t(lang, "studio.style.title")}</h4>
+              <p className="text-xs text-muted-foreground">{t(lang, "studio.style.subtitle")}</p>
+            </div>
+            <button onClick={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })} className="text-muted-foreground hover:text-foreground">
+              <ChevronUp className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-3">
+            <Select value={designParams.style} onValueChange={(val) => dispatch({ type: "SET_STYLE", text: val })}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t(lang, "studio.style.placeholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {styleOptions.map((opt) => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Typography */}
       <DesignSection
