@@ -76,7 +76,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         onViewImage={onViewImage}
       />
 
-      {/* Style - Dropdown */}
+      {/* Style - Pill Chips */}
       {!expandedSections.style ? (
         <button
           onClick={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })}
@@ -96,17 +96,23 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
               <ChevronUp className="h-4 w-4" />
             </button>
           </div>
-          <div className="p-3">
-            <Select value={designParams.style} onValueChange={(val) => dispatch({ type: "SET_STYLE", text: val })}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t(lang, "studio.style.placeholder")} />
-              </SelectTrigger>
-              <SelectContent>
-                {styleOptions.map((opt) => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="p-3 grid grid-cols-4 gap-1.5">
+            {styleOptions.map((opt) => {
+              const active = designParams.style === opt;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => dispatch({ type: "SET_STYLE", text: active ? "" : opt })}
+                  className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                    active
+                      ? "bg-amber-500 text-white"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                  }`}
+                >
+                  {opt}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
