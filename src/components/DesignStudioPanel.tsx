@@ -40,17 +40,6 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         <p className="mt-2 text-center text-[10px] text-muted-foreground">{t(lang, "studio.guide.paste")}</p>
       </div>
 
-      {/* Magic Randomizer */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full gap-1.5 border-dashed"
-        onClick={handleRandomize}
-        disabled={randomizing || isProcessing}
-      >
-        <Wand2 className={`h-3.5 w-3.5 ${randomizing ? "animate-spin" : ""}`} />
-        {randomizing ? t(lang, "studio.randomizing") : t(lang, "studio.randomize")}
-      </Button>
 
       {/* Character */}
       <DesignSection
