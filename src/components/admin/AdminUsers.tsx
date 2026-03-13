@@ -110,6 +110,7 @@ export default function AdminUsers() {
                     {user.is_anonymous ? "სტუმარი" : "რეგ."}
                   </Badge>
                 </TableCell>
+                <TableCell className="font-medium">{user.orderCount || 0}</TableCell>
                 <TableCell>
                   {user.is_blocked ? (
                     <Badge variant="destructive">დაბლოკილი</Badge>
