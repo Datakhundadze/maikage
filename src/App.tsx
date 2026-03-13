@@ -12,6 +12,9 @@ import CommunityPage from "./pages/CommunityPage";
 import AdminPage from "./pages/AdminPage";
 import LandingPage from "./pages/LandingPage";
 import SimplePage from "./pages/SimplePage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import CorporatePage from "./pages/CorporatePage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
