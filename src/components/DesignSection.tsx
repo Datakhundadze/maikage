@@ -106,7 +106,7 @@ export default function DesignSection({
         </div>
         {collapsible && (
           <button onClick={onToggle} className="text-muted-foreground hover:text-foreground">
-            <X className="h-4 w-4" />
+            <ChevronUp className="h-4 w-4" />
           </button>
         )}
       </div>
