@@ -84,7 +84,7 @@ function StudioContent() {
         variant: "destructive",
       });
     }
-  }, [state.designParams, state.speed, productConfig, dispatch, toast]);
+  }, [state.designParams, state.speed, productConfig, dispatch, toast, user]);
 
   const handleSave = useCallback(async () => {
     if (!result) return;
