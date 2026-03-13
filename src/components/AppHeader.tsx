@@ -23,11 +23,11 @@ export default function AppHeader() {
   return (
     <header className="flex flex-col gap-3 p-4 border-b border-sidebar-border">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <button onClick={() => setMode("landing")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background text-lg font-black dark:bg-primary dark:text-primary-foreground">
             M
           </div>
-          <div>
+          <div className="text-left">
             <h1 className="text-xl font-bold leading-tight">{t(lang, "header.title")}</h1>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <span>{user?.email || t(lang, "header.guestMode")}</span>
