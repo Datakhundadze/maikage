@@ -56,7 +56,7 @@ export default function LandingPage() {
               <Upload className="h-6 w-6 text-amber-500" />
             </div>
             <div className="flex items-center gap-3 mb-3">
-              <h2 className="text-2xl font-bold text-white">მარტივი რეჟიმი</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">მარტივი რეჟიმი</h2>
             </div>
             <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
               ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის.
