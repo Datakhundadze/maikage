@@ -162,13 +162,15 @@ function StudioContent() {
                 return (
                   <>
                     <PriceDisplay breakdown={bd} />
-                    <OrderDialog
-                      breakdown={bd}
-                      product={productConfig.config.product}
-                      subProduct={productConfig.config.subProduct}
-                      color={productConfig.config.color}
-                      isStudio={true}
-                    />
+                    {result && (
+                      <OrderDialog
+                        breakdown={bd}
+                        product={productConfig.config.product}
+                        subProduct={productConfig.config.subProduct}
+                        color={productConfig.config.color}
+                        isStudio={true}
+                      />
+                    )}
                   </>
                 );
               })()}
