@@ -208,12 +208,12 @@ export default function SimplePage() {
       <aside className="w-full lg:w-[450px] lg:min-w-[450px] flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:h-screen lg:overflow-y-auto">
         {/* Header */}
         <header className="flex items-center justify-between p-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
+          <button onClick={() => setMode("landing")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background text-lg font-black dark:bg-primary dark:text-primary-foreground">
               M
             </div>
             <h1 className="text-xl font-bold">maika.ge</h1>
-          </div>
+          </button>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
               {lang.toUpperCase()}
