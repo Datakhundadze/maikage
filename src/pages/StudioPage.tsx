@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import AppLayout from "@/components/AppLayout";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview from "@/components/ProductPreview";
@@ -13,9 +13,11 @@ import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useAuth } from "@/hooks/useAuth";
 import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
+import LoginModal from "@/components/LoginModal";
 
 function StudioContent() {
   const productConfig = useProductConfig();
@@ -23,6 +25,9 @@ function StudioContent() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const generationCountRef = useRef(0);
+  const { user } = useAuth();
   const { toast } = useToast();
   const { saveDesign } = useDesignStorage();
   const { trackEvent } = useAnalytics();
@@ -36,7 +41,14 @@ function StudioContent() {
   }, [productConfig.config.product, trackEvent]);
 
   const handleGenerate = useCallback(async () => {
+    // Check if user needs to log in (allow first generation free)
+    if (!user && generationCountRef.current >= 1) {
+      setShowLoginModal(true);
+      return;
+    }
+
     try {
+      generationCountRef.current += 1;
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
       productConfig.setLocked(true);
 
@@ -72,7 +84,7 @@ function StudioContent() {
         variant: "destructive",
       });
     }
-  }, [state.designParams, state.speed, productConfig, dispatch, toast]);
+  }, [state.designParams, state.speed, productConfig, dispatch, toast, user]);
 
   const handleSave = useCallback(async () => {
     if (!result) return;
@@ -173,6 +185,7 @@ function StudioContent() {
         main={mainContent}
       />
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </>
   );
 }
