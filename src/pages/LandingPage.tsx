@@ -81,7 +81,7 @@ export default function LandingPage() {
             
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15 mb-6 transition-colors group-hover:bg-amber-500/25">
-                <Sparkles className="h-6 w-6 text-amber-400" />
+                <Sparkles className="h-6 w-6 text-amber-500" />
               </div>
               <div className="flex items-center gap-3 mb-3">
                 <h2 className="text-2xl font-bold text-white">AI სტუდიო</h2>
