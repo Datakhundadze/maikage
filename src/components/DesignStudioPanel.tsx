@@ -20,46 +20,8 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
   const { state, dispatch } = useDesign();
   const { lang } = useAppState();
   const { designParams, speed, expandedSections, appStatus } = state;
-  const [randomizing, setRandomizing] = useState(false);
-  const { toast } = useToast();
 
   const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
-
-  const handleRandomize = useCallback(async () => {
-    setRandomizing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("gemini-proxy", {
-        body: { action: "randomize-prompt", params: { product: product || "Hoodie" } },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      // Parse JSON from text response
-      const text = data.text || "";
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Invalid response");
-      const parsed = JSON.parse(jsonMatch[0]);
-
-      if (parsed.character) dispatch({ type: "SET_CHARACTER", text: parsed.character });
-      if (parsed.scene) {
-        dispatch({ type: "SET_SCENE", text: parsed.scene });
-        if (!expandedSections.scene) dispatch({ type: "TOGGLE_SECTION", section: "scene" });
-      }
-      if (parsed.style) {
-        dispatch({ type: "SET_STYLE", text: parsed.style });
-        if (!expandedSections.style) dispatch({ type: "TOGGLE_SECTION", section: "style" });
-      }
-      if (parsed.text) {
-        dispatch({ type: "SET_TEXT", text: parsed.text });
-        if (!expandedSections.text) dispatch({ type: "TOGGLE_SECTION", section: "text" });
-      }
-    } catch (err: any) {
-      console.error("Randomize failed:", err);
-      toast({ title: "Randomize failed", description: err.message, variant: "destructive" });
-    } finally {
-      setRandomizing(false);
-    }
-  }, [product, dispatch, expandedSections, toast]);
 
   const guideLabels = ["studio.guide.character", "studio.guide.scene", "studio.guide.style", "studio.guide.generate"];
 
