@@ -75,6 +75,22 @@ function StudioContent() {
       dispatch({ type: "SET_STATUS", status: "COMPLETE" });
       productConfig.setLocked(false);
       trackEvent("design_generated", { product: productConfig.config.product });
+
+      // Save generation record for analytics (guest + logged-in)
+      try {
+        const isGuest = !user;
+        await supabase.from("generations" as any).insert({
+          user_id: user?.id ?? null,
+          session_id: isGuest ? getGuestSessionId() : null,
+          is_guest: isGuest,
+          product: config.product,
+          color: config.color,
+          style: state.designParams.style || null,
+          prompt: genResult.prompt || null,
+        });
+      } catch (e) {
+        console.warn("Failed to save generation record:", e);
+      }
     } catch (err: any) {
       console.error("Generation failed:", err);
       dispatch({ type: "SET_STATUS", status: "ERROR" });
