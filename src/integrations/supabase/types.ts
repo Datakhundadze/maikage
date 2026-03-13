@@ -121,6 +121,48 @@ export type Database = {
         }
         Relationships: []
       }
+      generations: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_guest: boolean
+          mockup_image_path: string | null
+          product: string
+          prompt: string | null
+          session_id: string | null
+          style: string | null
+          transparent_image_path: string | null
+          user_id: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          is_guest?: boolean
+          mockup_image_path?: string | null
+          product: string
+          prompt?: string | null
+          session_id?: string | null
+          style?: string | null
+          transparent_image_path?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_guest?: boolean
+          mockup_image_path?: string | null
+          product?: string
+          prompt?: string | null
+          session_id?: string | null
+          style?: string | null
+          transparent_image_path?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           bog_order_id: string | null
