@@ -185,6 +185,7 @@ function StudioContent() {
         main={mainContent}
       />
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} />
     </>
   );
 }
