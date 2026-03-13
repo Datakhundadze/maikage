@@ -77,19 +77,40 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         onViewImage={onViewImage}
       />
 
-      {/* Style */}
-      <DesignSection
-        title={t(lang, "studio.style.title")}
-        subtitle={t(lang, "studio.style.subtitle")}
-        text={designParams.style}
-        onTextChange={(txt) => dispatch({ type: "SET_STYLE", text: txt })}
-        placeholder={t(lang, "studio.style.placeholder")}
-        image={designParams.styleImage}
-        onImageChange={(img) => dispatch({ type: "SET_STYLE_IMAGE", image: img })}
-        collapsible expanded={expandedSections.style}
-        onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })}
-        onViewImage={onViewImage}
-      />
+      {/* Style - Dropdown */}
+      {!expandedSections.style ? (
+        <button
+          onClick={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })}
+          className="w-full flex items-center justify-between rounded-xl border border-border bg-card p-3 text-sm font-medium text-card-foreground hover:border-banana-500/50 transition-colors"
+        >
+          <span>{t(lang, "studio.style.title")}{designParams.style ? ` — ${designParams.style}` : ""}</span>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        </button>
+      ) : (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div>
+              <h4 className="text-sm font-semibold text-card-foreground">{t(lang, "studio.style.title")}</h4>
+              <p className="text-xs text-muted-foreground">{t(lang, "studio.style.subtitle")}</p>
+            </div>
+            <button onClick={() => dispatch({ type: "TOGGLE_SECTION", section: "style" })} className="text-muted-foreground hover:text-foreground">
+              <ChevronUp className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-3">
+            <Select value={designParams.style} onValueChange={(val) => dispatch({ type: "SET_STYLE", text: val })}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t(lang, "studio.style.placeholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {styleOptions.map((opt) => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Typography */}
       <DesignSection
