@@ -21,6 +21,17 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
 
   const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
 
+  const styleOptions = [
+    "რეალისტური",
+    "ანიმაციური",
+    "ილუსტრაცია",
+    "ოილ არტი",
+    "ანიმე",
+    "კომიქსი",
+    "Line Art",
+    "გრაფიკა",
+  ];
+
   const guideLabels = ["studio.guide.character", "studio.guide.scene", "studio.guide.style", "studio.guide.generate"];
 
   return (
