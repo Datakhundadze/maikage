@@ -37,7 +37,7 @@ export default function AdminDashboard() {
       setOrders((ordersRes.data as Order[]) || []);
       setProfileCount(profilesRes.count || 0);
       setDesignCount(designsRes.count || 0);
-      setTodayDesignCount(todayDesignsRes.count || 0);
+      setTodayDesignCount(todayGenRes.count || 0);
       setLoading(false);
     }
     fetch();
