@@ -81,8 +81,9 @@ export default function AdminUsers() {
           <TableHeader>
             <TableRow>
               <TableHead>მომხმარებელი</TableHead>
-              <TableHead>User ID</TableHead>
+              <TableHead>ელ.ფოსტა / ID</TableHead>
               <TableHead>ტიპი</TableHead>
+              <TableHead>შეკვეთები</TableHead>
               <TableHead>სტატუსი</TableHead>
               <TableHead>რეგისტრაცია</TableHead>
               <TableHead className="w-[100px]">მოქმედება</TableHead>
