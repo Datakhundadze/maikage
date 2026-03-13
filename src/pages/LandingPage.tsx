@@ -102,7 +102,7 @@ export default function LandingPage() {
         </div>
 
         {/* Footer / Contact */}
-        <div className="mt-auto flex flex-col items-center gap-4 text-gray-400 dark:text-white/30 text-sm">
+        <div className="mt-auto flex flex-col items-center gap-4 text-white text-sm">
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <a href="mailto:maika@maika.ge" className="inline-flex items-center gap-2 hover:text-gray-600 dark:hover:text-white/60 transition-colors">
               <Mail className="h-4 w-4" /> maika@maika.ge
