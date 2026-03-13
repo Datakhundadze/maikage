@@ -15,6 +15,8 @@ interface Profile {
   is_anonymous: boolean | null;
   is_blocked: boolean;
   created_at: string;
+  email?: string;
+  orderCount?: number;
 }
 
 export default function AdminUsers() {
@@ -28,11 +30,24 @@ export default function AdminUsers() {
 
   async function fetchUsers() {
     setLoading(true);
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, user_id, display_name, avatar_url, is_anonymous, is_blocked, created_at")
-      .order("created_at", { ascending: false });
-    setUsers((data as Profile[]) || []);
+    const [profilesRes, ordersRes] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, user_id, display_name, avatar_url, is_anonymous, is_blocked, created_at")
+        .order("created_at", { ascending: false }),
+      supabase.from("orders").select("user_id"),
+    ]);
+
+    const orderCounts = new Map<string, number>();
+    (ordersRes.data || []).forEach((o: any) => {
+      if (o.user_id) orderCounts.set(o.user_id, (orderCounts.get(o.user_id) ?? 0) + 1);
+    });
+
+    const profiles = ((profilesRes.data as Profile[]) || []).map(p => ({
+      ...p,
+      orderCount: orderCounts.get(p.user_id) || 0,
+    }));
+    setUsers(profiles);
     setLoading(false);
   }
 
@@ -66,8 +81,9 @@ export default function AdminUsers() {
           <TableHeader>
             <TableRow>
               <TableHead>მომხმარებელი</TableHead>
-              <TableHead>User ID</TableHead>
+              <TableHead>ელ.ფოსტა / ID</TableHead>
               <TableHead>ტიპი</TableHead>
+              <TableHead>შეკვეთები</TableHead>
               <TableHead>სტატუსი</TableHead>
               <TableHead>რეგისტრაცია</TableHead>
               <TableHead className="w-[100px]">მოქმედება</TableHead>
@@ -94,6 +110,7 @@ export default function AdminUsers() {
                     {user.is_anonymous ? "სტუმარი" : "რეგ."}
                   </Badge>
                 </TableCell>
+                <TableCell className="font-medium">{user.orderCount || 0}</TableCell>
                 <TableCell>
                   {user.is_blocked ? (
                     <Badge variant="destructive">დაბლოკილი</Badge>
