@@ -200,6 +200,7 @@ export type Database = {
           display_name: string | null
           id: string
           is_anonymous: boolean | null
+          is_blocked: boolean
           updated_at: string
           user_id: string
         }
@@ -209,6 +210,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_anonymous?: boolean | null
+          is_blocked?: boolean
           updated_at?: string
           user_id: string
         }
@@ -218,6 +220,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           is_anonymous?: boolean | null
+          is_blocked?: boolean
           updated_at?: string
           user_id?: string
         }
