@@ -65,7 +65,7 @@ export default function LandingPage() {
               <span className="inline-flex items-center rounded-full bg-gray-200 dark:bg-white/10 px-3 py-1 text-xs font-medium text-gray-600 dark:text-white/60">
                 უფასო • სწრაფი
               </span>
-              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/70 group-hover:text-white transition-colors">
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-white/70 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
                 დაწყება <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
               </span>
             </div>
