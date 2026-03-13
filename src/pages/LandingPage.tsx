@@ -107,7 +107,7 @@ export default function LandingPage() {
             <a href="mailto:maika@maika.ge" className="inline-flex items-center gap-2 hover:text-gray-600 dark:hover:text-white/60 transition-colors">
               <Mail className="h-4 w-4" /> maika@maika.ge
             </a>
-            <a href="tel:+995322050620" className="inline-flex items-center gap-2 hover:text-white/60 transition-colors">
+            <a href="tel:+995322050620" className="inline-flex items-center gap-2 hover:text-gray-600 dark:hover:text-white/60 transition-colors">
               <Phone className="h-4 w-4" /> +(995 32) 2-05-06-20
             </a>
           </div>
