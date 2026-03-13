@@ -58,7 +58,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-3 mb-3">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">მარტივი რეჟიმი</h2>
             </div>
-            <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
+            <p className="text-sm text-gray-500 dark:text-white/40 leading-relaxed mb-6 flex-1">
               ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის.
             </p>
             <div className="flex items-center justify-between w-full">
