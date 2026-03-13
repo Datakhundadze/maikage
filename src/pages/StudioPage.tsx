@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getGuestSessionId } from "@/lib/guestSession";
 import AppLayout from "@/components/AppLayout";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview from "@/components/ProductPreview";
