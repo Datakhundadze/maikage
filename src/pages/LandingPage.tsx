@@ -16,7 +16,7 @@ export default function LandingPage() {
       {/* Theme toggle */}
       <button
         onClick={toggleTheme}
-        className="fixed top-5 right-5 z-50 rounded-full p-2 text-white/40 hover:text-white/80 transition-colors"
+        className="fixed top-5 right-5 z-50 rounded-full p-2 text-gray-400 dark:text-white/40 hover:text-gray-800 dark:hover:text-white/80 transition-colors"
       >
         {theme === "dark" ? "☀️" : "🌙"}
       </button>
