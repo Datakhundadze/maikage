@@ -25,6 +25,9 @@ function StudioContent() {
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const generationCountRef = useRef(0);
+  const { user } = useAuth();
   const { toast } = useToast();
   const { saveDesign } = useDesignStorage();
   const { trackEvent } = useAnalytics();
