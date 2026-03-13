@@ -50,7 +50,7 @@ export default function LandingPage() {
           {/* Simple Mode */}
           <button
             onClick={() => setMode("simple")}
-            className="group relative flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm p-8 sm:p-10 text-left transition-all duration-300 hover:border-white/20 hover:bg-white/[0.06] hover:scale-[1.02] hover:shadow-2xl hover:shadow-white/5"
+            className="group relative flex flex-col rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.03] backdrop-blur-sm p-8 sm:p-10 text-left transition-all duration-300 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/5 dark:hover:shadow-white/5"
           >
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 mb-6 transition-colors group-hover:bg-white/15">
               <Upload className="h-6 w-6 text-white/70" />
