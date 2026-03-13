@@ -34,7 +34,7 @@ export default function AppHeader() {
               <span className={`inline-block h-1.5 w-1.5 rounded-full ${isAnonymous ? "bg-primary" : "bg-green-500"}`} />
             </div>
           </div>
-        </div>
+        </button>
 
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="sm" onClick={() => setMode("simple")} className="text-xs gap-1 px-2">
