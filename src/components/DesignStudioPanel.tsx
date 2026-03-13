@@ -3,7 +3,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
-import { Zap, Sparkles, RefreshCw, Wand2 } from "lucide-react";
+import { Zap, Sparkles, RefreshCw } from "lucide-react";
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
