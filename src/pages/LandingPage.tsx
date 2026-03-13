@@ -28,7 +28,7 @@ export default function LandingPage() {
           <div className="h-10 w-10 rounded-xl bg-amber-500 flex items-center justify-center text-black text-xl font-black">
             M
           </div>
-          <span className="text-xl font-bold tracking-tight text-white/90">maika.ge</span>
+          <span className="text-xl font-bold tracking-tight text-gray-900/90 dark:text-white/90">maika.ge</span>
         </div>
 
         {/* Hero */}
