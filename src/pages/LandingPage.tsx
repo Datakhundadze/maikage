@@ -62,7 +62,7 @@ export default function LandingPage() {
               ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის.
             </p>
             <div className="flex items-center justify-between w-full">
-              <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/60">
+              <span className="inline-flex items-center rounded-full bg-gray-200 dark:bg-white/10 px-3 py-1 text-xs font-medium text-gray-600 dark:text-white/60">
                 უფასო • სწრაფი
               </span>
               <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/70 group-hover:text-white transition-colors">
