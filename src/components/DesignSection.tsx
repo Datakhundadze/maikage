@@ -62,7 +62,7 @@ export default function DesignSection({
         className="w-full flex items-center justify-between rounded-xl border border-border bg-card p-3 text-sm font-medium text-card-foreground hover:border-banana-500/50 transition-colors"
       >
         <span>{title}</span>
-        <Plus className="h-4 w-4 text-muted-foreground" />
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>
     );
   }
