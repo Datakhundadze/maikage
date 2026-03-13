@@ -15,6 +15,8 @@ interface Profile {
   is_anonymous: boolean | null;
   is_blocked: boolean;
   created_at: string;
+  email?: string;
+  orderCount?: number;
 }
 
 export default function AdminUsers() {
