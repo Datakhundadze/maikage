@@ -22,6 +22,10 @@ const queryClient = new QueryClient();
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { mode } = useAppState();
+  const location = window.location.pathname;
+
+  // Admin route is standalone — bypass mode checks
+  if (location === "/admin") return <Routes><Route path="/admin" element={<AdminPage />} /></Routes>;
 
   if (mode === "landing") return <LandingPage />;
   if (mode === "simple") return <SimplePage />;
@@ -29,7 +33,6 @@ function AppRoutes() {
   if (mode === "privacy") return <PrivacyPage />;
   if (mode === "corporate") return <CorporatePage />;
 
-  // Studio mode — no longer requires auth upfront
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -44,7 +47,6 @@ function AppRoutes() {
       <Route path="/my-designs" element={<MyDesignsPage />} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/corporate" element={<CorporatePage />} />
-      <Route path="/admin" element={<AdminPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
