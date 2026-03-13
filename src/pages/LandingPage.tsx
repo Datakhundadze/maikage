@@ -104,10 +104,10 @@ export default function LandingPage() {
         {/* Footer / Contact */}
         <div className="mt-auto flex flex-col items-center gap-4 text-white text-sm">
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-            <a href="mailto:maika@maika.ge" className="inline-flex items-center gap-2 hover:text-gray-600 dark:hover:text-white/60 transition-colors">
+            <a href="mailto:maika@maika.ge" className="inline-flex items-center gap-2 text-white hover:text-white/80 transition-colors">
               <Mail className="h-4 w-4" /> maika@maika.ge
             </a>
-            <a href="tel:+995322050620" className="inline-flex items-center gap-2 hover:text-gray-600 dark:hover:text-white/60 transition-colors">
+            <a href="tel:+995322050620" className="inline-flex items-center gap-2 text-white hover:text-white/80 transition-colors">
               <Phone className="h-4 w-4" /> +(995 32) 2-05-06-20
             </a>
           </div>
