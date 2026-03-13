@@ -40,7 +40,7 @@ export default function LandingPage() {
               easily
             </span>
           </h1>
-          <p className="text-lg sm:text-xl text-white/50 font-light">
+          <p className="text-lg sm:text-xl text-gray-500 dark:text-white/50 font-light">
             შექმენი შენი უნიკალური დიზაინი
           </p>
         </div>
