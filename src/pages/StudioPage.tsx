@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import AppLayout from "@/components/AppLayout";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview from "@/components/ProductPreview";
@@ -13,9 +13,11 @@ import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { useAuth } from "@/hooks/useAuth";
 import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
+import LoginModal from "@/components/LoginModal";
 
 function StudioContent() {
   const productConfig = useProductConfig();
