@@ -41,7 +41,14 @@ function StudioContent() {
   }, [productConfig.config.product, trackEvent]);
 
   const handleGenerate = useCallback(async () => {
+    // Check if user needs to log in (allow first generation free)
+    if (!user && generationCountRef.current >= 1) {
+      setShowLoginModal(true);
+      return;
+    }
+
     try {
+      generationCountRef.current += 1;
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
       productConfig.setLocked(true);
 
