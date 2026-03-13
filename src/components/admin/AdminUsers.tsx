@@ -30,11 +30,24 @@ export default function AdminUsers() {
 
   async function fetchUsers() {
     setLoading(true);
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, user_id, display_name, avatar_url, is_anonymous, is_blocked, created_at")
-      .order("created_at", { ascending: false });
-    setUsers((data as Profile[]) || []);
+    const [profilesRes, ordersRes] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, user_id, display_name, avatar_url, is_anonymous, is_blocked, created_at")
+        .order("created_at", { ascending: false }),
+      supabase.from("orders").select("user_id"),
+    ]);
+
+    const orderCounts = new Map<string, number>();
+    (ordersRes.data || []).forEach((o: any) => {
+      if (o.user_id) orderCounts.set(o.user_id, (orderCounts.get(o.user_id) ?? 0) + 1);
+    });
+
+    const profiles = ((profilesRes.data as Profile[]) || []).map(p => ({
+      ...p,
+      orderCount: orderCounts.get(p.user_id) || 0,
+    }));
+    setUsers(profiles);
     setLoading(false);
   }
 
