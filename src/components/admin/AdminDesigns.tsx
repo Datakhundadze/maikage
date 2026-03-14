@@ -32,19 +32,55 @@ export default function AdminDesigns() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     fetchGenerations();
-  }, []);
+  }, [user?.id, authLoading]);
 
   async function fetchGenerations() {
     setLoading(true);
     setError(null);
 
+    console.log("[AdminDesigns] Fetch start", {
+      userId: user?.id ?? null,
+      authLoading,
+    });
+
+    if (user?.id) {
+      const { data: roleData, error: roleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
+      console.log("[AdminDesigns] Admin role lookup", {
+        userId: user.id,
+        roleData,
+        roleError,
+      });
+    } else {
+      console.warn("[AdminDesigns] No authenticated user found while fetching generations");
+    }
+
     const { data, error: fetchError } = await supabase
       .from("generations")
       .select("id, prompt, product, color, style, is_guest, user_id, session_id, created_at, transparent_image_path, mockup_image_path")
       .order("created_at", { ascending: false });
+
+    console.log("[AdminDesigns] generations query result", {
+      count: data?.length ?? 0,
+      sample: data?.[0]
+        ? {
+            id: data[0].id,
+            created_at: data[0].created_at,
+            product: data[0].product,
+            color: data[0].color,
+            hasMockup: !!data[0].mockup_image_path,
+            hasTransparent: !!data[0].transparent_image_path,
+          }
+        : null,
+      error: fetchError,
+    });
 
     if (fetchError) {
       console.error("[AdminDesigns] generations fetch error:", fetchError);
