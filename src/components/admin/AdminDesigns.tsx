@@ -35,6 +35,10 @@ export default function AdminDesigns() {
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) {
+      console.log("[AdminDesigns] Waiting for auth to load...");
+      return;
+    }
     fetchGenerations();
   }, [user?.id, authLoading]);
 
