@@ -37,12 +37,16 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (authLoading) return;
     fetchOrders();
+    intervalRef.current = setInterval(fetchOrders, 60000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [user?.id, authLoading]);
 
   async function fetchOrders() {
