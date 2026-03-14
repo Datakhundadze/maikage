@@ -25,9 +25,31 @@ export default function AdminDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { user, loading: authLoading } = useAuth();
+
   useEffect(() => {
     async function fetch() {
       const today = new Date().toISOString().slice(0, 10);
+
+      console.log("[AdminDashboard] Fetch start", {
+        userId: user?.id ?? null,
+        authLoading,
+      });
+
+      if (user?.id) {
+        const { data: roleData, error: roleError } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+
+        console.log("[AdminDashboard] Admin role lookup", {
+          userId: user.id,
+          roleData,
+          roleError,
+        });
+      } else {
+        console.warn("[AdminDashboard] No authenticated user found while fetching admin data");
+      }
 
       const [ordersRes, profilesRes, generationsRes, todayGenRes] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
@@ -35,6 +57,17 @@ export default function AdminDashboard() {
         supabase.from("generations").select("id", { count: "exact", head: true }),
         supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", today),
       ]);
+
+      console.log("[AdminDashboard] Query results", {
+        ordersCount: ordersRes.data?.length ?? 0,
+        profilesCount: profilesRes.count ?? 0,
+        generationsCount: generationsRes.count ?? 0,
+        todayGenerationsCount: todayGenRes.count ?? 0,
+        ordersError: ordersRes.error,
+        profilesError: profilesRes.error,
+        generationsError: generationsRes.error,
+        todayGenerationsError: todayGenRes.error,
+      });
 
       const errors = [ordersRes.error, profilesRes.error, generationsRes.error, todayGenRes.error].filter(Boolean);
       if (errors.length > 0) {
@@ -51,7 +84,7 @@ export default function AdminDashboard() {
       setLoading(false);
     }
     fetch();
-  }, []);
+  }, [user?.id, authLoading]);
 
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
