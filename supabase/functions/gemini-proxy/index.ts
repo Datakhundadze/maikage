@@ -179,13 +179,23 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
     // Extract image from response
     const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     const textContent = data.choices?.[0]?.message?.content;
+    const nativeFinishReason = data.choices?.[0]?.native_finish_reason;
+    const finishReason = data.choices?.[0]?.finish_reason;
 
-    console.log("AI response - action:", action, "hasImage:", !!imageData, "textLength:", textContent?.length || 0);
+    console.log("AI response - action:", action, "hasImage:", !!imageData, "finishReason:", finishReason, "nativeFinishReason:", nativeFinishReason);
 
     if (!imageData) {
-      console.error("No image in AI response. Full response:", JSON.stringify(data).slice(0, 500));
-      return new Response(JSON.stringify({ error: "AI did not return an image. Please try again.", text: textContent }), {
-        status: 500,
+      let userError = "AI did not return an image. Please try again.";
+      if (nativeFinishReason === "IMAGE_PROHIBITED_CONTENT") {
+        userError = "The AI could not generate this image due to content policy restrictions. Try modifying your prompt or using different reference images.";
+      } else if (nativeFinishReason === "MAX_TOKENS" || finishReason === "length") {
+        userError = "The image was too complex to generate. Try simplifying your prompt or using smaller reference images.";
+      } else if (nativeFinishReason === "SAFETY") {
+        userError = "The request was blocked by safety filters. Please adjust your prompt.";
+      }
+      console.error("No image in AI response. Reason:", nativeFinishReason, "Response:", JSON.stringify(data).slice(0, 500));
+      return new Response(JSON.stringify({ error: userError, text: textContent }), {
+        status: 422,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
