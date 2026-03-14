@@ -90,7 +90,10 @@ export default function AdminDesigns() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">გენერაციები ({generations.length})</h2>
-        <Button variant="outline" size="sm" onClick={fetchGenerations}>განახლება</Button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+          <Button variant="outline" size="sm" onClick={fetchGenerations}>განახლება</Button>
+        </div>
       </div>
 
       {error && (
