@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,10 +22,14 @@ interface Profile {
 export default function AdminUsers() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchUsers();
+    intervalRef.current = setInterval(fetchUsers, 60000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
   async function fetchUsers() {
@@ -49,6 +53,7 @@ export default function AdminUsers() {
     }));
     setUsers(profiles);
     setLoading(false);
+    setLastRefresh(new Date());
   }
 
   async function toggleBlock(userId: string, currentBlocked: boolean) {
@@ -73,7 +78,10 @@ export default function AdminUsers() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">მომხმარებლები ({users.length})</h2>
-        <Button variant="outline" size="sm" onClick={fetchUsers}>განახლება</Button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+          <Button variant="outline" size="sm" onClick={fetchUsers}>განახლება</Button>
+        </div>
       </div>
 
       <div className="rounded-lg border border-border overflow-auto">

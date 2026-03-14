@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -47,11 +47,15 @@ export default function AdminDesigns() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (authLoading) return;
     fetchGenerations();
+    intervalRef.current = setInterval(fetchGenerations, 60000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [user?.id, authLoading]);
 
   async function fetchGenerations() {
@@ -71,6 +75,7 @@ export default function AdminDesigns() {
     }
 
     setLoading(false);
+    setLastRefresh(new Date());
   }
 
   if (loading) {
@@ -85,7 +90,10 @@ export default function AdminDesigns() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">გენერაციები ({generations.length})</h2>
-        <Button variant="outline" size="sm" onClick={fetchGenerations}>განახლება</Button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+          <Button variant="outline" size="sm" onClick={fetchGenerations}>განახლება</Button>
+        </div>
       </div>
 
       {error && (

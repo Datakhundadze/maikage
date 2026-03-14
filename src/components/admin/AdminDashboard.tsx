@@ -58,8 +58,8 @@ export default function AdminDashboard() {
     if (authLoading) return;
     fetchData();
 
-    // Auto-refresh every 30 seconds
-    intervalRef.current = setInterval(fetchData, 30000);
+    // Auto-refresh every 60 seconds
+    intervalRef.current = setInterval(fetchData, 60000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
@@ -131,7 +131,7 @@ export default function AdminDashboard() {
       {/* Auto-refresh indicator */}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <RefreshCw className="h-3 w-3" />
-        <span>ავტო-განახლება 30წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+        <span>ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
       </div>
 
       {/* Summary Cards */}

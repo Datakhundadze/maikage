@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -24,18 +24,24 @@ export default function AdminAnalytics() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchData = async () => {
+    const [ordersRes, eventsRes] = await Promise.all([
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("analytics_events").select("event_type, event_data, created_at"),
+    ]);
+    setOrders((ordersRes.data as Order[]) || []);
+    setEvents(eventsRes.data || []);
+    setLoading(false);
+    setLastRefresh(new Date());
+  };
 
   useEffect(() => {
-    async function fetch() {
-      const [ordersRes, eventsRes] = await Promise.all([
-        supabase.from("orders").select("*").order("created_at", { ascending: false }),
-        supabase.from("analytics_events").select("event_type, event_data, created_at"),
-      ]);
-      setOrders((ordersRes.data as Order[]) || []);
-      setEvents(eventsRes.data || []);
-      setLoading(false);
-    }
-    fetch();
+    fetchData();
+    intervalRef.current = setInterval(fetchData, 60000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
   const analytics = useMemo(() => {
