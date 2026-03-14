@@ -3,76 +3,113 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
-interface Design {
+interface Generation {
   id: string;
-  title: string;
   prompt: string | null;
   product: string;
   color: string;
-  is_published: boolean;
-  likes_count: number;
+  style: string | null;
+  is_guest: boolean;
+  user_id: string | null;
+  session_id: string | null;
   created_at: string;
-  user_id: string;
   transparent_image_path: string | null;
   mockup_image_path: string | null;
 }
 
+function resolveImageUrl(path: string | null) {
+  if (!path) return null;
+  if (path.startsWith("data:") || path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  const { data } = supabase.storage.from("designs").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export default function AdminDesigns() {
-  const [designs, setDesigns] = useState<Design[]>([]);
+  const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDesigns();
+    fetchGenerations();
   }, []);
 
-  async function fetchDesigns() {
+  async function fetchGenerations() {
     setLoading(true);
-    const { data } = await supabase.from("designs").select("*").order("created_at", { ascending: false });
-    setDesigns((data as Design[]) || []);
+    setError(null);
+
+    const { data, error: fetchError } = await supabase
+      .from("generations")
+      .select("id, prompt, product, color, style, is_guest, user_id, session_id, created_at, transparent_image_path, mockup_image_path")
+      .order("created_at", { ascending: false });
+
+    if (fetchError) {
+      console.error("[AdminDesigns] generations fetch error:", fetchError);
+      setError(fetchError.message);
+      setGenerations([]);
+    } else {
+      setGenerations((data as Generation[]) || []);
+    }
+
     setLoading(false);
   }
 
-  function getImageUrl(path: string | null) {
-    if (!path) return null;
-    const { data } = supabase.storage.from("designs").getPublicUrl(path);
-    return data.publicUrl;
-  }
-
   if (loading) {
-    return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
+    return (
+      <div className="flex justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">დიზაინები ({designs.length})</h2>
-        <Button variant="outline" size="sm" onClick={fetchDesigns}>განახლება</Button>
+        <h2 className="text-lg font-semibold">გენერაციები ({generations.length})</h2>
+        <Button variant="outline" size="sm" onClick={fetchGenerations}>განახლება</Button>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          გენერაციების წამოღება ვერ მოხერხდა: {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {designs.map(design => {
-          const imgUrl = getImageUrl(design.mockup_image_path) || getImageUrl(design.transparent_image_path);
+        {generations.map((generation) => {
+          const imgUrl =
+            resolveImageUrl(generation.mockup_image_path) ||
+            resolveImageUrl(generation.transparent_image_path);
+
           return (
-            <div key={design.id} className="rounded-lg border border-border overflow-hidden bg-card">
+            <div key={generation.id} className="rounded-lg border border-border overflow-hidden bg-card">
               <div className="aspect-square bg-muted flex items-center justify-center">
                 {imgUrl ? (
-                  <img src={imgUrl} alt={design.title} className="w-full h-full object-contain" />
+                  <img
+                    src={imgUrl}
+                    alt={generation.prompt || "Generated design"}
+                    className="w-full h-full object-contain"
+                    loading="lazy"
+                  />
                 ) : (
                   <span className="text-muted-foreground text-sm">ფოტო არ არის</span>
                 )}
               </div>
               <div className="p-3 space-y-1">
-                <h3 className="font-medium text-sm truncate">{design.title}</h3>
+                <h3 className="font-medium text-sm truncate">{generation.prompt || "Untitled generation"}</h3>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{design.product} • {design.color}</span>
-                  <span>❤️ {design.likes_count}</span>
+                  <span>{generation.product} • {generation.color}</span>
+                  <span>{generation.style || "no-style"}</span>
                 </div>
-                {design.prompt && (
-                  <p className="text-xs text-muted-foreground truncate">{design.prompt}</p>
-                )}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{format(new Date(design.created_at), "dd.MM.yy")}</span>
-                  <span className="font-mono">{design.user_id.slice(0, 8)}</span>
+                  <span>{format(new Date(generation.created_at), "dd.MM.yy")}</span>
+                  <span className="font-mono">
+                    {generation.is_guest
+                      ? `guest:${(generation.session_id || "-").slice(0, 8)}`
+                      : `user:${(generation.user_id || "-").slice(0, 8)}`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -80,9 +117,9 @@ export default function AdminDesigns() {
         })}
       </div>
 
-      {designs.length === 0 && (
+      {generations.length === 0 && !error && (
         <div className="text-center py-12 text-muted-foreground">
-          დიზაინები არ მოიძებნა
+          გენერაციები არ მოიძებნა
         </div>
       )}
     </div>
