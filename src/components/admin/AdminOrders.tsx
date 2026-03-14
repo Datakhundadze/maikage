@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,14 +38,20 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (authLoading) return;
     fetchOrders();
-  }, []);
+  }, [user?.id, authLoading]);
 
   async function fetchOrders() {
     setLoading(true);
-    const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+    if (error) {
+      console.error("[AdminOrders] fetch error:", error);
+      toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
+    }
     setOrders((data as Order[]) || []);
     setLoading(false);
   }
@@ -194,6 +200,12 @@ export default function AdminOrders() {
           </TableBody>
         </Table>
       </div>
+
+      {orders.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          შეკვეთები არ მოიძებნა
+        </div>
+      )}
     </div>
   );
 }

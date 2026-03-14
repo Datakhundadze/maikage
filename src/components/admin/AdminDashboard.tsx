@@ -1,8 +1,8 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, DollarSign, Users, Layers, CalendarDays, TrendingUp } from "lucide-react";
+import { ShoppingCart, DollarSign, Users, Layers, CalendarDays, RefreshCw } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area,
@@ -24,72 +24,45 @@ export default function AdminDashboard() {
   const [todayDesignCount, setTodayDesignCount] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { user, loading: authLoading } = useAuth();
 
+  const fetchData = async () => {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const [ordersRes, profilesRes, generationsRes, todayGenRes] = await Promise.all([
+      supabase.from("orders").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id", { count: "exact", head: true }),
+      supabase.from("generations").select("id", { count: "exact", head: true }),
+      supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", today),
+    ]);
+
+    const errors = [ordersRes.error, profilesRes.error, generationsRes.error, todayGenRes.error].filter(Boolean);
+    if (errors.length > 0) {
+      setFetchError(errors.map((e: any) => e?.message).filter(Boolean).join(" | "));
+    } else {
+      setFetchError(null);
+    }
+
+    setOrders((ordersRes.data as Order[]) || []);
+    setProfileCount(profilesRes.count || 0);
+    setDesignCount(generationsRes.count || 0);
+    setTodayDesignCount(todayGenRes.count || 0);
+    setLoading(false);
+    setLastRefresh(new Date());
+  };
+
   useEffect(() => {
-    // Wait for auth to be fully loaded before fetching
-    if (authLoading) {
-      console.log("[AdminDashboard] Waiting for auth to load...");
-      return;
-    }
-
-    async function fetchData() {
-      const today = new Date().toISOString().slice(0, 10);
-
-      console.log("[AdminDashboard] Fetch start", {
-        userId: user?.id ?? null,
-        isAnonymous: user?.is_anonymous,
-      });
-
-      if (user?.id) {
-        const { data: roleData, error: roleError } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id);
-
-        console.log("[AdminDashboard] Admin role lookup", {
-          userId: user.id,
-          roleData,
-          roleError,
-        });
-      } else {
-        console.warn("[AdminDashboard] No authenticated user — RLS will block admin reads");
-      }
-
-      const [ordersRes, profilesRes, generationsRes, todayGenRes] = await Promise.all([
-        supabase.from("orders").select("*").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("generations").select("id", { count: "exact", head: true }),
-        supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", today),
-      ]);
-
-      console.log("[AdminDashboard] Query results", {
-        ordersCount: ordersRes.data?.length ?? 0,
-        ordersError: ordersRes.error?.message ?? null,
-        profilesCount: profilesRes.count ?? 0,
-        profilesError: profilesRes.error?.message ?? null,
-        generationsCount: generationsRes.count ?? 0,
-        generationsError: generationsRes.error?.message ?? null,
-        todayGenerationsCount: todayGenRes.count ?? 0,
-        todayGenerationsError: todayGenRes.error?.message ?? null,
-      });
-
-      const errors = [ordersRes.error, profilesRes.error, generationsRes.error, todayGenRes.error].filter(Boolean);
-      if (errors.length > 0) {
-        console.error("[AdminDashboard] Fetch errors:", errors);
-        setFetchError(errors.map((e: any) => e?.message).filter(Boolean).join(" | "));
-      } else {
-        setFetchError(null);
-      }
-
-      setOrders((ordersRes.data as Order[]) || []);
-      setProfileCount(profilesRes.count || 0);
-      setDesignCount(generationsRes.count || 0);
-      setTodayDesignCount(todayGenRes.count || 0);
-      setLoading(false);
-    }
+    if (authLoading) return;
     fetchData();
+
+    // Auto-refresh every 30 seconds
+    intervalRef.current = setInterval(fetchData, 30000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [user?.id, authLoading]);
 
   const stats = useMemo(() => {
@@ -98,7 +71,6 @@ export default function AdminDashboard() {
     const paidOrders = orders.filter(o => o.payment_status === "paid");
     const totalRevenue = paidOrders.reduce((s, o) => s + (o.total_price || 0), 0);
 
-    // Daily orders (30 days)
     const now = new Date();
     const dailyOrders: { date: string; orders: number }[] = [];
     const weeklyRevenue: { week: string; revenue: number }[] = [];
@@ -112,7 +84,6 @@ export default function AdminDashboard() {
       dailyOrders.push({ date: label, orders: dayOrders.length });
     }
 
-    // Weekly revenue (last 8 weeks)
     for (let w = 7; w >= 0; w--) {
       const weekStart = new Date(now);
       weekStart.setDate(weekStart.getDate() - (w * 7 + 6));
@@ -156,6 +127,13 @@ export default function AdminDashboard() {
           სტატისტიკის მონაცემების წამოღება ნაწილობრივ ვერ მოხერხდა: {fetchError}
         </div>
       )}
+
+      {/* Auto-refresh indicator */}
+      <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        <RefreshCw className="h-3 w-3" />
+        <span>ავტო-განახლება 30წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <Card>
