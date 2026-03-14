@@ -28,6 +28,18 @@ serve(async (req) => {
       const content: any[] = [];
 
       // System-like instruction as first text block
+      // Sanitize character description to avoid content policy issues
+      const safeCharacter = (character || "No character specified")
+        .replace(/\b(boy|girl|child|kid|teen|teenager|minor|infant|baby|toddler)\b/gi, (match) => {
+          const replacements: Record<string, string> = {
+            boy: "young adult man", girl: "young adult woman", child: "adult person",
+            kid: "adult person", teen: "young adult", teenager: "young adult",
+            minor: "adult person", infant: "adult person", baby: "adult person",
+            toddler: "adult person"
+          };
+          return replacements[match.toLowerCase()] || "adult person";
+        });
+
       content.push({
         type: "text",
         text: `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).
@@ -43,9 +55,10 @@ CRITICAL RULES:
 2. Design must be a printable silhouette/illustration suitable for garment printing
 3. High contrast, bold lines, vibrant colors
 4. No frame, no border, no mockup — just the raw design on white
-5. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. This is mandatory and non-negotiable. Use English or other non-Russian languages only.
+5. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
+6. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
 
-CHARACTER/SUBJECT: ${character || "No character specified"}
+CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
 ${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : ""}
