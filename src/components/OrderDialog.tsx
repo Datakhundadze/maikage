@@ -32,13 +32,18 @@ interface OrderDialogProps {
   color: string;
   isStudio: boolean;
   children?: React.ReactNode;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onExternalOpenChange || setInternalOpen;
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

@@ -30,6 +30,7 @@ function StudioContent() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const generationCountRef = useRef(0);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -202,6 +203,7 @@ function StudioContent() {
       onSave={handleSave}
       saving={saving}
       onResultUpdate={setResult}
+      onOrder={() => setOrderDialogOpen(true)}
     />
   ) : (
     <ProductPreview
@@ -213,6 +215,13 @@ function StudioContent() {
       onCoordsChange={productConfig.setPlacementCoords}
       designImage={null}
     />
+  );
+
+  const priceBreakdown = calculatePrice(
+    productConfig.config.product,
+    productConfig.config.subProduct,
+    "none",
+    true,
   );
 
   return (
@@ -229,28 +238,18 @@ function StudioContent() {
               onViewChange={productConfig.setView}
             />
             <div className="border-t border-sidebar-border pt-4 space-y-4">
-              {(() => {
-                const bd = calculatePrice(
-                  productConfig.config.product,
-                  productConfig.config.subProduct,
-                  "none",
-                  true,
-                );
-                return (
-                  <>
-                    <PriceDisplay breakdown={bd} />
-                    {result && (
-                      <OrderDialog
-                        breakdown={bd}
-                        product={productConfig.config.product}
-                        subProduct={productConfig.config.subProduct}
-                        color={productConfig.config.color}
-                        isStudio={true}
-                      />
-                    )}
-                  </>
-                );
-              })()}
+              <PriceDisplay breakdown={priceBreakdown} />
+              {result && (
+                <OrderDialog
+                  breakdown={priceBreakdown}
+                  product={productConfig.config.product}
+                  subProduct={productConfig.config.subProduct}
+                  color={productConfig.config.color}
+                  isStudio={true}
+                  externalOpen={orderDialogOpen}
+                  onExternalOpenChange={setOrderDialogOpen}
+                />
+              )}
               <DesignStudioPanel
                 onViewImage={setLightboxSrc}
                 onGenerate={handleGenerate}

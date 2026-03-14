@@ -4,7 +4,7 @@ import { upscaleImage } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Copy, Package, Save, Maximize } from "lucide-react";
+import { Download, Eye, Copy, Package, Save, Maximize, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResultViewProps {
@@ -15,9 +15,10 @@ interface ResultViewProps {
   onSave?: () => void;
   saving?: boolean;
   onResultUpdate?: (result: GenerationResult) => void;
+  onOrder?: () => void;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving, onResultUpdate }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving, onResultUpdate, onOrder }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
@@ -102,6 +103,18 @@ export default function ResultView({ result, onViewImage, productName = "design"
           </div>
         </div>
       </div>
+
+      {/* Order Button - prominent after generation */}
+      {onOrder && (
+        <div className="w-full">
+          <Button
+            onClick={onOrder}
+            className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25"
+          >
+            <ShoppingBag className="h-5 w-5" /> შეკვეთა
+          </Button>
+        </div>
+      )}
 
       {/* Print File Card */}
       <div className="w-full max-w-xl rounded-2xl border border-border bg-card overflow-hidden">
