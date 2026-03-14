@@ -116,7 +116,7 @@ function StudioContent() {
           console.log("[Generation] Saved successfully:", insertData);
           toast({
             title: "✅ Generation tracked",
-            description: `Saved to analytics (ID: ${insertData?.id?.slice(0, 8) ?? "ok"})`,
+            description: `Saved to analytics successfully`,
           });
         }
       } catch (e: any) {
