@@ -188,19 +188,34 @@ export async function runGenerationPipeline(
 
   const designImage = designResult.image;
 
-  // Stage 2: Background removal via difference matting
+  // Stage 2: Background removal via difference matting with fallback
   onStatusChange("PROCESSING_TRANSPARENCY");
 
-  // Convert white bg to black bg
-  const blackBgResult = await callGemini("convert-bg-black", { image: designImage });
+  let transparentImage: string;
+  try {
+    // Try difference matting: convert white bg to black bg, then extract alpha
+    const blackBgResult = await callGemini("convert-bg-black", { image: designImage });
+    const whiteImg = await loadImage(designImage);
+    const blackImg = await loadImage(blackBgResult.image);
+    const whiteCanvas = imageToCanvas(whiteImg);
+    const blackCanvas = imageToCanvas(blackImg);
+    const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
 
-  // Load both images and apply difference matting
-  const whiteImg = await loadImage(designImage);
-  const blackImg = await loadImage(blackBgResult.image);
-  const whiteCanvas = imageToCanvas(whiteImg);
-  const blackCanvas = imageToCanvas(blackImg);
-  const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
-  const transparentImage = transparentCanvas.toDataURL("image/png");
+    // Validate matting result — if mostly transparent, fallback to simple removal
+    if (isMostlyTransparent(transparentCanvas)) {
+      console.warn("[Generation] Difference matting produced mostly transparent result, falling back to white bg removal");
+      const fallbackCanvas = removeWhiteBackground(whiteCanvas);
+      transparentImage = fallbackCanvas.toDataURL("image/png");
+    } else {
+      transparentImage = transparentCanvas.toDataURL("image/png");
+    }
+  } catch (mattingError) {
+    console.warn("[Generation] Difference matting failed, using white bg removal fallback:", mattingError);
+    const whiteImg = await loadImage(designImage);
+    const whiteCanvas = imageToCanvas(whiteImg);
+    const fallbackCanvas = removeWhiteBackground(whiteCanvas);
+    transparentImage = fallbackCanvas.toDataURL("image/png");
+  }
 
   // Stage 3: Mockup compositing
   onStatusChange("GENERATING_MOCKUP");
