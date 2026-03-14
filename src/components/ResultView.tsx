@@ -17,7 +17,7 @@ interface ResultViewProps {
   onResultUpdate?: (result: GenerationResult) => void;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving, onResultUpdate }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving, onResultUpdate, onOrder }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
