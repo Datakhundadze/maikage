@@ -84,6 +84,47 @@ function differenceMatting(whiteCanvas: HTMLCanvasElement, blackCanvas: HTMLCanv
   return outCanvas;
 }
 
+// Fallback: simple white background removal for when difference matting fails
+function removeWhiteBackground(canvas: HTMLCanvasElement, threshold = 240): HTMLCanvasElement {
+  const w = canvas.width;
+  const h = canvas.height;
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = w;
+  outCanvas.height = h;
+
+  const ctx = canvas.getContext("2d")!;
+  const oCtx = outCanvas.getContext("2d")!;
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const px = imgData.data;
+
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i], g = px[i + 1], b = px[i + 2];
+    // Check if pixel is near-white
+    if (r >= threshold && g >= threshold && b >= threshold) {
+      // Smooth alpha based on how close to white
+      const minChannel = Math.min(r, g, b);
+      const alpha = Math.max(0, 1 - (minChannel - threshold) / (255 - threshold));
+      px[i + 3] = Math.round(alpha * 255);
+    }
+  }
+
+  oCtx.putImageData(imgData, 0, 0);
+  return outCanvas;
+}
+
+// Check if an image is mostly one color (matting failed)
+function isMostlyTransparent(canvas: HTMLCanvasElement): boolean {
+  const ctx = canvas.getContext("2d")!;
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let transparentCount = 0;
+  const total = data.length / 4;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < 10) transparentCount++;
+  }
+  // If more than 95% is transparent, matting likely failed
+  return transparentCount / total > 0.95;
+}
+
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -147,19 +188,34 @@ export async function runGenerationPipeline(
 
   const designImage = designResult.image;
 
-  // Stage 2: Background removal via difference matting
+  // Stage 2: Background removal via difference matting with fallback
   onStatusChange("PROCESSING_TRANSPARENCY");
 
-  // Convert white bg to black bg
-  const blackBgResult = await callGemini("convert-bg-black", { image: designImage });
+  let transparentImage: string;
+  try {
+    // Try difference matting: convert white bg to black bg, then extract alpha
+    const blackBgResult = await callGemini("convert-bg-black", { image: designImage });
+    const whiteImg = await loadImage(designImage);
+    const blackImg = await loadImage(blackBgResult.image);
+    const whiteCanvas = imageToCanvas(whiteImg);
+    const blackCanvas = imageToCanvas(blackImg);
+    const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
 
-  // Load both images and apply difference matting
-  const whiteImg = await loadImage(designImage);
-  const blackImg = await loadImage(blackBgResult.image);
-  const whiteCanvas = imageToCanvas(whiteImg);
-  const blackCanvas = imageToCanvas(blackImg);
-  const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
-  const transparentImage = transparentCanvas.toDataURL("image/png");
+    // Validate matting result — if mostly transparent, fallback to simple removal
+    if (isMostlyTransparent(transparentCanvas)) {
+      console.warn("[Generation] Difference matting produced mostly transparent result, falling back to white bg removal");
+      const fallbackCanvas = removeWhiteBackground(whiteCanvas);
+      transparentImage = fallbackCanvas.toDataURL("image/png");
+    } else {
+      transparentImage = transparentCanvas.toDataURL("image/png");
+    }
+  } catch (mattingError) {
+    console.warn("[Generation] Difference matting failed, using white bg removal fallback:", mattingError);
+    const whiteImg = await loadImage(designImage);
+    const whiteCanvas = imageToCanvas(whiteImg);
+    const fallbackCanvas = removeWhiteBackground(whiteCanvas);
+    transparentImage = fallbackCanvas.toDataURL("image/png");
+  }
 
   // Stage 3: Mockup compositing
   onStatusChange("GENERATING_MOCKUP");
