@@ -75,6 +75,7 @@ export default function AdminDesigns() {
     }
 
     setLoading(false);
+    setLastRefresh(new Date());
   }
 
   if (loading) {
