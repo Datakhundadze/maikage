@@ -58,6 +58,7 @@ export default function AdminOrders() {
     }
     setOrders((data as Order[]) || []);
     setLoading(false);
+    setLastRefresh(new Date());
   }
 
   async function updateOrder(id: string, field: string, value: string) {
