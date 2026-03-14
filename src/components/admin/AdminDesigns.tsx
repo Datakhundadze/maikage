@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { format } from "date-fns";
 
 interface Generation {
@@ -23,9 +24,23 @@ function resolveImageUrl(path: string | null) {
   if (path.startsWith("data:") || path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
-
   const { data } = supabase.storage.from("designs").getPublicUrl(path);
   return data.publicUrl;
+}
+
+async function downloadImage(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch {
+    // Fallback: open in new tab
+    window.open(url, "_blank");
+  }
 }
 
 export default function AdminDesigns() {
@@ -35,10 +50,7 @@ export default function AdminDesigns() {
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    if (authLoading) {
-      console.log("[AdminDesigns] Waiting for auth to load...");
-      return;
-    }
+    if (authLoading) return;
     fetchGenerations();
   }, [user?.id, authLoading]);
 
@@ -46,48 +58,12 @@ export default function AdminDesigns() {
     setLoading(true);
     setError(null);
 
-    console.log("[AdminDesigns] Fetch start", {
-      userId: user?.id ?? null,
-      authLoading,
-    });
-
-    if (user?.id) {
-      const { data: roleData, error: roleError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-
-      console.log("[AdminDesigns] Admin role lookup", {
-        userId: user.id,
-        roleData,
-        roleError,
-      });
-    } else {
-      console.warn("[AdminDesigns] No authenticated user found while fetching generations");
-    }
-
     const { data, error: fetchError } = await supabase
       .from("generations")
       .select("id, prompt, product, color, style, is_guest, user_id, session_id, created_at, transparent_image_path, mockup_image_path")
       .order("created_at", { ascending: false });
 
-    console.log("[AdminDesigns] generations query result", {
-      count: data?.length ?? 0,
-      sample: data?.[0]
-        ? {
-            id: data[0].id,
-            created_at: data[0].created_at,
-            product: data[0].product,
-            color: data[0].color,
-            hasMockup: !!data[0].mockup_image_path,
-            hasTransparent: !!data[0].transparent_image_path,
-          }
-        : null,
-      error: fetchError,
-    });
-
     if (fetchError) {
-      console.error("[AdminDesigns] generations fetch error:", fetchError);
       setError(fetchError.message);
       setGenerations([]);
     } else {
@@ -120,9 +96,9 @@ export default function AdminDesigns() {
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {generations.map((generation) => {
-          const imgUrl =
-            resolveImageUrl(generation.mockup_image_path) ||
-            resolveImageUrl(generation.transparent_image_path);
+          const mockupUrl = resolveImageUrl(generation.mockup_image_path);
+          const transparentUrl = resolveImageUrl(generation.transparent_image_path);
+          const imgUrl = mockupUrl || transparentUrl;
 
           return (
             <div key={generation.id} className="rounded-lg border border-border overflow-hidden bg-card">
@@ -145,12 +121,35 @@ export default function AdminDesigns() {
                   <span>{generation.style || "no-style"}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{format(new Date(generation.created_at), "dd.MM.yy")}</span>
+                  <span>{format(new Date(generation.created_at), "dd.MM.yy HH:mm")}</span>
                   <span className="font-mono">
                     {generation.is_guest
                       ? `guest:${(generation.session_id || "-").slice(0, 8)}`
                       : `user:${(generation.user_id || "-").slice(0, 8)}`}
                   </span>
+                </div>
+                {/* Download buttons */}
+                <div className="flex gap-1 pt-1">
+                  {mockupUrl && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1 flex-1"
+                      onClick={() => downloadImage(mockupUrl, `${generation.id}-mockup.png`)}
+                    >
+                      <Download className="h-3 w-3" /> მოკაპი
+                    </Button>
+                  )}
+                  {transparentUrl && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1 flex-1"
+                      onClick={() => downloadImage(transparentUrl, `${generation.id}-print.png`)}
+                    >
+                      <Download className="h-3 w-3" /> პრინტი
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

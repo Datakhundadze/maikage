@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
+import { getGuestSessionId } from "@/lib/guestSession";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Trash2, Globe, GlobeLock, Eye } from "lucide-react";
@@ -22,22 +23,62 @@ interface Design {
   created_at: string;
 }
 
+interface Generation {
+  id: string;
+  prompt: string | null;
+  product: string;
+  color: string;
+  mockup_image_path: string | null;
+  transparent_image_path: string | null;
+  created_at: string;
+}
+
+function resolveImageUrl(path: string | null) {
+  if (!path) return null;
+  if (path.startsWith("data:") || path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+  const { data } = supabase.storage.from("designs").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export default function MyDesignsPage() {
   const { user } = useAuth();
   const { lang } = useAppState();
   const { deleteDesign, togglePublish, getPublicUrl } = useDesignStorage();
   const [designs, setDesigns] = useState<Design[]>([]);
+  const [guestGenerations, setGuestGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const fetchDesigns = useCallback(async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("designs")
-      .select("*")
-      .eq("user_id", user.id)
+    setLoading(true);
+
+    // Fetch saved designs for logged-in user
+    if (user) {
+      const { data } = await supabase
+        .from("designs")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      setDesigns((data as Design[]) || []);
+    } else {
+      setDesigns([]);
+    }
+
+    // Fetch generations for guest session
+    const sessionId = getGuestSessionId();
+    const { data: genData } = await supabase
+      .from("generations")
+      .select("id, prompt, product, color, mockup_image_path, transparent_image_path, created_at")
+      .or(
+        user
+          ? `user_id.eq.${user.id},session_id.eq.${sessionId}`
+          : `session_id.eq.${sessionId}`
+      )
       .order("created_at", { ascending: false });
-    setDesigns((data as Design[]) || []);
+    setGuestGenerations((genData as Generation[]) || []);
+
     setLoading(false);
   }, [user]);
 
@@ -54,6 +95,12 @@ export default function MyDesignsPage() {
     if (ok) setDesigns((prev) => prev.map((x) => x.id === d.id ? { ...x, is_published: !x.is_published } : x));
   };
 
+  // Merge: show saved designs first, then generations not already in designs
+  const designIds = new Set(designs.map(d => d.id));
+  const extraGenerations = guestGenerations.filter(g => !designIds.has(g.id));
+
+  const totalCount = designs.length + extraGenerations.length;
+
   return (
     <>
       <AppLayout
@@ -61,7 +108,7 @@ export default function MyDesignsPage() {
           <div className="space-y-4">
             <h2 className="text-lg font-bold">{t(lang, "myDesigns.title")}</h2>
             <p className="text-sm text-muted-foreground">
-              {t(lang, "myDesigns.count", designs.length)}
+              {t(lang, "myDesigns.count", totalCount)}
             </p>
           </div>
         }
@@ -71,13 +118,14 @@ export default function MyDesignsPage() {
               <div className="flex items-center justify-center h-64">
                 <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               </div>
-            ) : designs.length === 0 ? (
+            ) : totalCount === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
                 <p className="text-lg">{t(lang, "myDesigns.empty")}</p>
                 <p className="text-sm">{t(lang, "myDesigns.emptyHint")}</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Saved designs (with full controls) */}
                 {designs.map((d) => (
                   <div key={d.id} className="rounded-2xl border border-border bg-card overflow-hidden group">
                     <div className="relative aspect-square bg-muted">
@@ -113,6 +161,34 @@ export default function MyDesignsPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* Guest/session generations (view only) */}
+                {extraGenerations.map((g) => {
+                  const imgUrl = resolveImageUrl(g.mockup_image_path) || resolveImageUrl(g.transparent_image_path);
+                  return (
+                    <div key={g.id} className="rounded-2xl border border-border bg-card overflow-hidden group">
+                      <div className="relative aspect-square bg-muted">
+                        {imgUrl && (
+                          <img
+                            src={imgUrl}
+                            alt={g.prompt || "Generation"}
+                            className="w-full h-full object-contain"
+                            loading="lazy"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => imgUrl && setLightboxSrc(imgUrl)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="p-3">
+                        <p className="text-sm font-medium truncate">{g.prompt || "Untitled"}</p>
+                        <span className="text-xs text-muted-foreground">{g.product} · {g.color}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

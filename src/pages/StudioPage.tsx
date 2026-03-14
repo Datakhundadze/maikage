@@ -21,6 +21,8 @@ import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
 import LoginModal from "@/components/LoginModal";
 
+const RESULT_STORAGE_KEY = "maika_last_generation";
+
 function StudioContent() {
   const productConfig = useProductConfig();
   const { state, dispatch } = useDesign();
@@ -34,6 +36,33 @@ function StudioContent() {
   const { saveDesign } = useDesignStorage();
   const { trackEvent } = useAnalytics();
 
+  // Restore last generation from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(RESULT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as GenerationResult;
+        if (parsed.mockupImage && parsed.transparentImage) {
+          setResult(parsed);
+          dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, [dispatch]);
+
+  // Persist result to localStorage whenever it changes
+  useEffect(() => {
+    if (result) {
+      try {
+        localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(result));
+      } catch {
+        // quota exceeded — ignore
+      }
+    }
+  }, [result]);
+
   useEffect(() => {
     trackEvent("page_visit", { page: "studio" });
   }, [trackEvent]);
@@ -43,7 +72,6 @@ function StudioContent() {
   }, [productConfig.config.product, trackEvent]);
 
   const handleGenerate = useCallback(async () => {
-    // Check if user needs to log in (allow first generation free)
     if (!user && generationCountRef.current >= 1) {
       setShowLoginModal(true);
       return;
@@ -54,7 +82,6 @@ function StudioContent() {
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
       productConfig.setLocked(true);
 
-      // Resolve the White base mockup image for compositing
       const { config } = productConfig;
       const entry = catalog.findProduct(config.product, config.subProduct, "White" as any, config.view);
       const productImageUrl = entry?.imageUrl ?? null;
@@ -76,10 +103,9 @@ function StudioContent() {
       productConfig.setLocked(false);
       trackEvent("design_generated", { product: productConfig.config.product });
 
-      // Save generation record for analytics (guest + logged-in)
+      // Save generation record for analytics
       try {
         const isGuest = !user;
-        const generationTable = "generations";
         const genRecord = {
           user_id: user?.id ?? null,
           session_id: isGuest ? getGuestSessionId() : null,
@@ -92,40 +118,36 @@ function StudioContent() {
           transparent_image_path: genResult.transparentImage || null,
         };
 
-        console.log(`[Generation] Saving to table: ${generationTable}`, genRecord);
-        const { data: insertData, error: insertError } = await supabase
-          .from(generationTable as any)
-          .insert(genRecord)
-          .select("id")
-          .maybeSingle();
+        const { error: insertError } = await supabase
+          .from("generations" as any)
+          .insert(genRecord);
 
         if (insertError) {
-          console.error("[Generation] Insert error:", {
-            table: generationTable,
-            message: insertError.message,
-            details: insertError.details,
-            hint: insertError.hint,
-            code: insertError.code,
-          });
-          toast({
-            title: "⚠️ Generation Save Failed",
-            description: `Error: ${insertError.message} (code: ${insertError.code})`,
-            variant: "destructive",
-          });
-        } else {
-          console.log("[Generation] Saved successfully:", insertData);
-          toast({
-            title: "✅ Generation tracked",
-            description: `Saved to analytics successfully`,
-          });
+          console.error("[Generation] Insert error:", insertError);
         }
       } catch (e: any) {
         console.error("[Generation] Failed to save generation record:", e);
-        toast({
-          title: "⚠️ Generation Save Error",
-          description: e?.message || "Unexpected error saving generation record.",
-          variant: "destructive",
-        });
+      }
+
+      // Auto-save to designs table for "My Designs"
+      try {
+        if (user) {
+          const title = state.designParams.character.slice(0, 60) || "Untitled";
+          await saveDesign({
+            title,
+            prompt: genResult.prompt,
+            product: config.product,
+            color: config.color,
+            placementX: config.placementCoords.x,
+            placementY: config.placementCoords.y,
+            placementScale: config.placementCoords.scale,
+            transparentImageDataUrl: genResult.transparentImage,
+            mockupImageDataUrl: genResult.mockupImage,
+          });
+          toast({ title: "დიზაინი შენახულია ✅" });
+        }
+      } catch (e: any) {
+        console.error("[Generation] Auto-save to designs failed:", e);
       }
     } catch (err: any) {
       console.error("Generation failed:", err);
@@ -138,7 +160,7 @@ function StudioContent() {
         variant: "destructive",
       });
     }
-  }, [state.designParams, state.speed, productConfig, dispatch, toast, user]);
+  }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent]);
 
   const handleSave = useCallback(async () => {
     if (!result) return;
@@ -160,6 +182,7 @@ function StudioContent() {
 
   const handleStartNew = useCallback(() => {
     setResult(null);
+    localStorage.removeItem(RESULT_STORAGE_KEY);
     dispatch({ type: "RESET" });
     productConfig.setLocked(false);
   }, [dispatch, productConfig]);
