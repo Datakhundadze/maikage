@@ -4,7 +4,7 @@ import { upscaleImage } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Copy, Package, Save, Maximize } from "lucide-react";
+import { Download, Eye, Copy, Package, Save, Maximize, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResultViewProps {
