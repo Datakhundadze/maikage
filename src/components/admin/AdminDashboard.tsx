@@ -21,22 +21,31 @@ export default function AdminDashboard() {
   const [profileCount, setProfileCount] = useState(0);
   const [designCount, setDesignCount] = useState(0);
   const [todayDesignCount, setTodayDesignCount] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetch() {
       const today = new Date().toISOString().slice(0, 10);
 
-      const [ordersRes, profilesRes, designsRes, todayGenRes] = await Promise.all([
+      const [ordersRes, profilesRes, generationsRes, todayGenRes] = await Promise.all([
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("designs").select("id", { count: "exact", head: true }),
-        supabase.from("generations" as any).select("id", { count: "exact", head: true }).gte("created_at", today),
+        supabase.from("generations").select("id", { count: "exact", head: true }),
+        supabase.from("generations").select("id", { count: "exact", head: true }).gte("created_at", today),
       ]);
+
+      const errors = [ordersRes.error, profilesRes.error, generationsRes.error, todayGenRes.error].filter(Boolean);
+      if (errors.length > 0) {
+        console.error("[AdminDashboard] Fetch errors:", errors);
+        setFetchError(errors.map((e: any) => e?.message).filter(Boolean).join(" | "));
+      } else {
+        setFetchError(null);
+      }
 
       setOrders((ordersRes.data as Order[]) || []);
       setProfileCount(profilesRes.count || 0);
-      setDesignCount(designsRes.count || 0);
+      setDesignCount(generationsRes.count || 0);
       setTodayDesignCount(todayGenRes.count || 0);
       setLoading(false);
     }
@@ -102,6 +111,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {fetchError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          სტატისტიკის მონაცემების წამოღება ნაწილობრივ ვერ მოხერხდა: {fetchError}
+        </div>
+      )}
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <Card>

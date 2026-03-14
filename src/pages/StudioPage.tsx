@@ -79,6 +79,7 @@ function StudioContent() {
       // Save generation record for analytics (guest + logged-in)
       try {
         const isGuest = !user;
+        const generationTable = "generations";
         const genRecord = {
           user_id: user?.id ?? null,
           session_id: isGuest ? getGuestSessionId() : null,
@@ -87,13 +88,25 @@ function StudioContent() {
           color: config.color,
           style: state.designParams.style || null,
           prompt: genResult.prompt || null,
+          mockup_image_path: genResult.mockupImage || null,
+          transparent_image_path: genResult.transparentImage || null,
         };
-        console.log("[Generation] Saving record:", genRecord);
+
+        console.log(`[Generation] Saving to table: ${generationTable}`, genRecord);
         const { data: insertData, error: insertError } = await supabase
-          .from("generations" as any)
-          .insert(genRecord);
+          .from(generationTable as any)
+          .insert(genRecord)
+          .select("id")
+          .maybeSingle();
+
         if (insertError) {
-          console.error("[Generation] Insert error:", insertError);
+          console.error("[Generation] Insert error:", {
+            table: generationTable,
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+            code: insertError.code,
+          });
         } else {
           console.log("[Generation] Saved successfully:", insertData);
         }
