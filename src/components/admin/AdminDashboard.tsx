@@ -111,6 +111,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {fetchError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          სტატისტიკის მონაცემების წამოღება ნაწილობრივ ვერ მოხერხდა: {fetchError}
+        </div>
+      )}
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         <Card>
