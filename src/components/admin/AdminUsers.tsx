@@ -53,6 +53,7 @@ export default function AdminUsers() {
     }));
     setUsers(profiles);
     setLoading(false);
+    setLastRefresh(new Date());
   }
 
   async function toggleBlock(userId: string, currentBlocked: boolean) {
