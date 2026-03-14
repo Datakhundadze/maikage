@@ -28,12 +28,18 @@ export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    async function fetch() {
+    // Wait for auth to be fully loaded before fetching
+    if (authLoading) {
+      console.log("[AdminDashboard] Waiting for auth to load...");
+      return;
+    }
+
+    async function fetchData() {
       const today = new Date().toISOString().slice(0, 10);
 
       console.log("[AdminDashboard] Fetch start", {
         userId: user?.id ?? null,
-        authLoading,
+        isAnonymous: user?.is_anonymous,
       });
 
       if (user?.id) {
@@ -48,7 +54,7 @@ export default function AdminDashboard() {
           roleError,
         });
       } else {
-        console.warn("[AdminDashboard] No authenticated user found while fetching admin data");
+        console.warn("[AdminDashboard] No authenticated user — RLS will block admin reads");
       }
 
       const [ordersRes, profilesRes, generationsRes, todayGenRes] = await Promise.all([
@@ -60,13 +66,13 @@ export default function AdminDashboard() {
 
       console.log("[AdminDashboard] Query results", {
         ordersCount: ordersRes.data?.length ?? 0,
+        ordersError: ordersRes.error?.message ?? null,
         profilesCount: profilesRes.count ?? 0,
+        profilesError: profilesRes.error?.message ?? null,
         generationsCount: generationsRes.count ?? 0,
+        generationsError: generationsRes.error?.message ?? null,
         todayGenerationsCount: todayGenRes.count ?? 0,
-        ordersError: ordersRes.error,
-        profilesError: profilesRes.error,
-        generationsError: generationsRes.error,
-        todayGenerationsError: todayGenRes.error,
+        todayGenerationsError: todayGenRes.error?.message ?? null,
       });
 
       const errors = [ordersRes.error, profilesRes.error, generationsRes.error, todayGenRes.error].filter(Boolean);
@@ -83,7 +89,7 @@ export default function AdminDashboard() {
       setTodayDesignCount(todayGenRes.count || 0);
       setLoading(false);
     }
-    fetch();
+    fetchData();
   }, [user?.id, authLoading]);
 
   const stats = useMemo(() => {
