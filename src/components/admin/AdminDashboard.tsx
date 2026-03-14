@@ -131,7 +131,7 @@ export default function AdminDashboard() {
       {/* Auto-refresh indicator */}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <RefreshCw className="h-3 w-3" />
-        <span>ავტო-განახლება 30წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+        <span>ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
       </div>
 
       {/* Summary Cards */}
