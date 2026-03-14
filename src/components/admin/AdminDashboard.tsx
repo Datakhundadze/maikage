@@ -21,6 +21,7 @@ export default function AdminDashboard() {
   const [profileCount, setProfileCount] = useState(0);
   const [designCount, setDesignCount] = useState(0);
   const [todayDesignCount, setTodayDesignCount] = useState(0);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
