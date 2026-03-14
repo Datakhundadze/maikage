@@ -58,8 +58,8 @@ export default function AdminDashboard() {
     if (authLoading) return;
     fetchData();
 
-    // Auto-refresh every 30 seconds
-    intervalRef.current = setInterval(fetchData, 30000);
+    // Auto-refresh every 60 seconds
+    intervalRef.current = setInterval(fetchData, 60000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
