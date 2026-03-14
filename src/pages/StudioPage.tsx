@@ -107,11 +107,25 @@ function StudioContent() {
             hint: insertError.hint,
             code: insertError.code,
           });
+          toast({
+            title: "⚠️ Generation Save Failed",
+            description: `Error: ${insertError.message} (code: ${insertError.code})`,
+            variant: "destructive",
+          });
         } else {
           console.log("[Generation] Saved successfully:", insertData);
+          toast({
+            title: "✅ Generation tracked",
+            description: `Saved to analytics (ID: ${insertData?.id?.slice(0, 8) ?? "ok"})`,
+          });
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("[Generation] Failed to save generation record:", e);
+        toast({
+          title: "⚠️ Generation Save Error",
+          description: e?.message || "Unexpected error saving generation record.",
+          variant: "destructive",
+        });
       }
     } catch (err: any) {
       console.error("Generation failed:", err);
