@@ -47,11 +47,15 @@ export default function AdminDesigns() {
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (authLoading) return;
     fetchGenerations();
+    intervalRef.current = setInterval(fetchGenerations, 60000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [user?.id, authLoading]);
 
   async function fetchGenerations() {
