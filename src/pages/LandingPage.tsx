@@ -106,17 +106,15 @@ export default function LandingPage() {
             onClick={() => setMode("studio")}
             className="group relative flex flex-col rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] backdrop-blur-sm p-8 sm:p-10 text-left transition-all duration-300 hover:border-amber-500/40 hover:bg-amber-500/[0.08] hover:scale-[1.02] hover:shadow-2xl hover:shadow-amber-500/10"
           >
-            {/* Glow */}
             <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-amber-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-            
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15 mb-6 transition-colors group-hover:bg-amber-500/25">
                 <Sparkles className="h-6 w-6 text-amber-500" />
               </div>
               <div className="flex items-center gap-3 mb-3">
-                <h2 className="text-2xl font-bold text-white">AI სტუდიო</h2>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">AI სტუდიო</h2>
               </div>
-              <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
+              <p className="text-sm text-gray-500 dark:text-white/40 leading-relaxed mb-6 flex-1">
                 შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით
               </p>
               <div className="flex items-center justify-between w-full">
@@ -129,6 +127,29 @@ export default function LandingPage() {
               </div>
             </div>
           </button>
+
+          {/* Stickers */}
+          <a
+            href="https://studio.maika.ge"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative flex flex-col rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/[0.03] backdrop-blur-sm p-8 sm:p-10 text-left transition-all duration-300 hover:border-gray-300 dark:hover:border-white/20 hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:scale-[1.02] hover:shadow-2xl hover:shadow-black/5 dark:hover:shadow-white/5"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 mb-6 transition-colors group-hover:bg-amber-500/20">
+              <Sticker className="h-6 w-6 text-amber-500" />
+            </div>
+            <div className="flex items-center gap-3 mb-3">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">MAIKA.GE STICKERS</h2>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-white/40 leading-relaxed mb-6 flex-1">
+              შეუკვეთე პერსონალური სტიკერები სწრაფად და მარტივად
+            </p>
+            <div className="flex items-center justify-end w-full">
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 dark:text-white/70 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                სტიკერები <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </span>
+            </div>
+          </a>
         </div>
 
         {/* Corporate Section */}
