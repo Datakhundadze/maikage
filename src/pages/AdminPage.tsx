@@ -20,6 +20,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "users", label: "მომხმარებლები", icon: Users },
   { id: "designs", label: "დიზაინები", icon: Image },
   { id: "analytics", label: "ანალიტიკა", icon: BarChart3 },
+  { id: "corporate", label: "კორპორატიული", icon: Building2 },
 ];
 
 export default function AdminPage() {
