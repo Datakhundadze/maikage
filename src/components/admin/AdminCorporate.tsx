@@ -23,7 +23,6 @@ export default function AdminCorporate() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchInquiries = useCallback(async (bg = false) => {
     if (!bg) setInitialLoading(true);
