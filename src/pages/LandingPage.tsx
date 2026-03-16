@@ -24,6 +24,9 @@ export default function LandingPage() {
         </button>
 
         <div className="flex items-center gap-3">
+          <a href="tel:+995322050620" className="text-xs text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/80 transition-colors hidden sm:inline-flex items-center gap-1">
+            <Phone className="h-3 w-3" /> 032 2 05 06 20
+          </a>
           <a href="tel:+995599050807" className="text-xs text-gray-500 dark:text-white/50 hover:text-gray-800 dark:hover:text-white/80 transition-colors hidden sm:inline-flex items-center gap-1">
             <Phone className="h-3 w-3" /> 599 05 08 07
           </a>
