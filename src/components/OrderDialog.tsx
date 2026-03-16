@@ -34,9 +34,30 @@ interface OrderDialogProps {
   children?: React.ReactNode;
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
+  frontMockupDataUrl?: string | null;
+  backMockupDataUrl?: string | null;
+  prompt?: string | null;
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange }: OrderDialogProps) {
+async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const path = `order-mockups/${orderId}-${side}.png`;
+    const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png" });
+    if (error) {
+      console.error(`Upload ${side} mockup failed:`, error);
+      return null;
+    }
+    const { data } = supabase.storage.from("designs").getPublicUrl(path);
+    return data.publicUrl;
+  } catch (e) {
+    console.error(`Upload ${side} mockup error:`, e);
+    return null;
+  }
+}
+
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, prompt }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -65,8 +86,17 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
     setSubmitting(true);
 
     try {
+      const orderId = crypto.randomUUID();
+
+      // Upload mockup images in parallel if provided
+      const [frontUrl, backUrl] = await Promise.all([
+        frontMockupDataUrl ? uploadMockupImage(frontMockupDataUrl, orderId, "front") : Promise.resolve(null),
+        backMockupDataUrl ? uploadMockupImage(backMockupDataUrl, orderId, "back") : Promise.resolve(null),
+      ]);
+
       // 1. Insert order into database
       const { data: orderData, error } = await supabase.from("orders").insert({
+        id: orderId,
         user_id: user?.id || null,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -83,6 +113,9 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         color,
         is_studio: isStudio,
         payment_status: "unpaid",
+        front_mockup_url: frontUrl,
+        back_mockup_url: backUrl,
+        prompt: prompt || null,
       } as any).select("id").single();
 
       if (error) throw error;
