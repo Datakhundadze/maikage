@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -24,24 +24,22 @@ export default function AdminAnalytics() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [generationsCount, setGenerationsCount] = useState(0);
 
   const fetchData = async () => {
-    const [ordersRes, eventsRes] = await Promise.all([
+    const [ordersRes, eventsRes, generationsRes] = await Promise.all([
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("analytics_events").select("event_type, event_data, created_at"),
+      supabase.from("generations").select("id", { count: "exact", head: true }),
     ]);
     setOrders((ordersRes.data as Order[]) || []);
     setEvents(eventsRes.data || []);
+    setGenerationsCount(generationsRes.count || 0);
     setLoading(false);
-    setLastRefresh(new Date());
   };
 
   useEffect(() => {
     fetchData();
-    intervalRef.current = setInterval(fetchData, 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
   const analytics = useMemo(() => {
@@ -76,12 +74,13 @@ export default function AdminAnalytics() {
     const paymentStats = Array.from(paymentMap.entries())
       .map(([name, count]) => ({ name, count }));
 
-    // Conversion: visits → orders
+    // Conversion: visits → orders (from tracked page_visit events)
     const conversionRate = visits.length > 0 ? ((orders.length / visits.length) * 100).toFixed(1) : "0";
-    const designToOrderRate = designs.length > 0 ? ((orders.length / designs.length) * 100).toFixed(1) : "0";
+    // Conversion: designs → orders (from actual generations count)
+    const designToOrderRate = generationsCount > 0 ? ((orders.length / generationsCount) * 100).toFixed(1) : "0";
 
-    return { popularProducts, popularColors, paymentStats, conversionRate, designToOrderRate, totalVisits: visits.length, totalDesigns: designs.length };
-  }, [orders, events]);
+    return { popularProducts, popularColors, paymentStats, conversionRate, designToOrderRate, totalVisits: visits.length, totalDesigns: generationsCount };
+  }, [orders, events, generationsCount]);
 
   if (loading) {
     return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;

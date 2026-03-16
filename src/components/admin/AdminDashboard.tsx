@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,6 @@ export default function AdminDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { user, loading: authLoading } = useAuth();
 
@@ -57,12 +56,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (authLoading) return;
     fetchData();
-
-    // Auto-refresh every 60 seconds
-    intervalRef.current = setInterval(fetchData, 60000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
   }, [user?.id, authLoading]);
 
   const stats = useMemo(() => {
@@ -131,7 +124,7 @@ export default function AdminDashboard() {
       {/* Auto-refresh indicator */}
       <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
         <RefreshCw className="h-3 w-3" />
-        <span>ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+        <span>ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
       </div>
 
       {/* Summary Cards */}

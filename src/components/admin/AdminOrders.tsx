@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -38,15 +38,12 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (authLoading) return;
     fetchOrders();
-    intervalRef.current = setInterval(fetchOrders, 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [user?.id, authLoading]);
 
   async function fetchOrders() {
@@ -95,7 +92,7 @@ export default function AdminOrders() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">შეკვეთები ({orders.length})</h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
+          <span className="text-xs text-muted-foreground">ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
           <Button variant="outline" size="sm" onClick={fetchOrders}>განახლება</Button>
         </div>
       </div>

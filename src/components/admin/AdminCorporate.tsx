@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -23,7 +23,6 @@ export default function AdminCorporate() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchInquiries = useCallback(async (bg = false) => {
     if (!bg) setInitialLoading(true);
@@ -38,8 +37,6 @@ export default function AdminCorporate() {
 
   useEffect(() => {
     fetchInquiries(false);
-    intervalRef.current = setInterval(() => fetchInquiries(true), 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchInquiries]);
 
   const updateStatus = async (id: string, status: string) => {
