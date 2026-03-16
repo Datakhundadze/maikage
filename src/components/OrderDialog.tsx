@@ -37,6 +37,7 @@ interface OrderDialogProps {
   frontMockupDataUrl?: string | null;
   backMockupDataUrl?: string | null;
   prompt?: string | null;
+  onBeforeOpen?: () => void;
 }
 
 async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
@@ -57,14 +58,18 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
   }
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, prompt }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, prompt, onBeforeOpen }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
-  const setOpen = onExternalOpenChange || setInternalOpen;
+  const setOpen = (val: boolean) => {
+    if (val && onBeforeOpen) onBeforeOpen();
+    if (onExternalOpenChange) onExternalOpenChange(val);
+    else setInternalOpen(val);
+  };
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

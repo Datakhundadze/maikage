@@ -525,8 +525,8 @@ export default function SimplePage() {
                   isStudio={false}
                   frontMockupDataUrl={frontMockup}
                   backMockupDataUrl={backMockup}
-                  onExternalOpenChange={(open) => {
-                    if (open && (frontMockup || backMockup)) {
+                  onBeforeOpen={() => {
+                    if (frontMockup || backMockup) {
                       saveToGenerations(frontMockup, backMockup);
                     }
                   }}
