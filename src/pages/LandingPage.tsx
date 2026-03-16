@@ -76,7 +76,7 @@ export default function LandingPage() {
         </div>
 
         {/* Mode Cards */}
-        <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-2 mb-16 sm:mb-20">
+        <div className="grid w-full max-w-4xl gap-6 sm:grid-cols-3 mb-16 sm:mb-20">
           {/* Simple Mode */}
           <button
             onClick={() => setMode("simple")}
