@@ -2,16 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2 } from "lucide-react";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminDesigns from "@/components/admin/AdminDesigns";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
+import AdminCorporate from "@/components/admin/AdminCorporate";
 
 const ADMIN_PASSWORD = "maika2026admin";
 
-type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics";
+type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "დეშბორდი", icon: LayoutDashboard },
