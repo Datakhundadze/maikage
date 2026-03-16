@@ -1,0 +1,1 @@
+CREATE POLICY "Admins can delete generations" ON public.generations FOR DELETE TO authenticated USING (public.has_role(auth.uid(), 'admin'::app_role));
