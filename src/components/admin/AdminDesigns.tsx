@@ -55,11 +55,12 @@ export default function AdminDesigns() {
     setInitialLoading(true);
     setError(null);
 
-    console.log("[AdminDesigns] Fetching generations...");
+    console.log("[AdminDesigns] Fetching generations (limit 50)...");
     const { data, error: fetchError } = await supabase
       .from("generations")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("id, created_at, prompt, product, color, style, is_guest, session_id, user_id, mockup_image_path, transparent_image_path")
+      .order("created_at", { ascending: false })
+      .limit(50);
 
     console.log("[AdminDesigns] Result:", { count: data?.length, error: fetchError });
 
@@ -84,7 +85,6 @@ export default function AdminDesigns() {
     if (!confirm("წაშალოთ ეს გენერაცია?")) return;
     setDeleting(gen.id);
     try {
-      // Delete storage files if they're storage paths
       const paths: string[] = [];
       if (gen.transparent_image_path && !gen.transparent_image_path.startsWith("data:") && !gen.transparent_image_path.startsWith("http")) {
         paths.push(gen.transparent_image_path);
@@ -120,7 +120,7 @@ export default function AdminDesigns() {
         <h2 className="text-lg font-semibold">გენერაციები ({generations.length})</h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
-          <Button variant="outline" size="sm" onClick={() => fetchGenerations()}>განახლება</Button>
+          <Button variant="outline" size="sm" onClick={() => { hasFetched.current = false; fetchGenerations(); }}>განახლება</Button>
         </div>
       </div>
 
@@ -130,69 +130,79 @@ export default function AdminDesigns() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {generations.map((generation) => {
-          const mockupUrl = resolveImageUrl(generation.mockup_image_path);
-          const transparentUrl = resolveImageUrl(generation.transparent_image_path);
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {generations.map((gen) => {
+          const mockupUrl = resolveImageUrl(gen.mockup_image_path);
+          const transparentUrl = resolveImageUrl(gen.transparent_image_path);
           const imgUrl = mockupUrl || transparentUrl;
 
           return (
-            <div key={generation.id} className="rounded-lg border border-border overflow-hidden bg-card">
+            <div key={gen.id} className="rounded-lg border border-border overflow-hidden bg-card">
+              {/* Image */}
               <div className="aspect-square bg-muted flex items-center justify-center">
                 {imgUrl ? (
-                  <img
-                    src={imgUrl}
-                    alt={generation.prompt || "Generated design"}
-                    className="w-full h-full object-contain"
-                    loading="lazy"
-                  />
+                  <img src={imgUrl} alt={gen.prompt || "Generated design"} className="w-full h-full object-contain" loading="lazy" />
                 ) : (
                   <span className="text-muted-foreground text-sm">ფოტო არ არის</span>
                 )}
               </div>
-              <div className="p-3 space-y-1">
-                <h3 className="font-medium text-sm truncate">{generation.prompt || "Untitled generation"}</h3>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{generation.product} • {generation.color}</span>
-                  <span>{generation.style || "no-style"}</span>
+
+              {/* Details */}
+              <div className="p-3 space-y-2">
+                {/* Prompt */}
+                {gen.prompt && (
+                  <div>
+                    <span className="text-[10px] uppercase text-muted-foreground font-semibold">პრომპტი</span>
+                    <p className="text-sm leading-snug break-words">{gen.prompt}</p>
+                  </div>
+                )}
+
+                {/* Product & Color */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">პროდუქტი: </span>
+                    <span className="font-medium">{gen.product}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">ფერი: </span>
+                    <span className="font-medium">{gen.color}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{format(new Date(generation.created_at), "dd.MM.yy HH:mm")}</span>
+
+                {/* Style */}
+                {gen.style && (
+                  <div className="text-xs">
+                    <span className="text-muted-foreground">სტილი: </span>
+                    <span className="font-medium">{gen.style}</span>
+                  </div>
+                )}
+
+                {/* Date & User */}
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border">
+                  <span>{format(new Date(gen.created_at), "dd.MM.yyyy HH:mm")}</span>
                   <span className="font-mono">
-                    {generation.is_guest
-                      ? `guest:${(generation.session_id || "-").slice(0, 8)}`
-                      : `user:${(generation.user_id || "-").slice(0, 8)}`}
+                    {gen.is_guest
+                      ? `სტუმარი:${(gen.session_id || "-").slice(0, 8)}`
+                      : `მომხმარებელი:${(gen.user_id || "-").slice(0, 8)}`}
                   </span>
                 </div>
+
                 {/* Action buttons */}
                 <div className="flex gap-1 pt-1">
                   {mockupUrl && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1 flex-1"
-                      onClick={() => downloadImage(mockupUrl, `${generation.id}-mockup.png`)}
-                    >
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 flex-1"
+                      onClick={() => downloadImage(mockupUrl, `${gen.id}-mockup.png`)}>
                       <Download className="h-3 w-3" /> მოკაპი
                     </Button>
                   )}
                   {transparentUrl && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1 flex-1"
-                      onClick={() => downloadImage(transparentUrl, `${generation.id}-print.png`)}
-                    >
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1 flex-1"
+                      onClick={() => downloadImage(transparentUrl, `${gen.id}-print.png`)}>
                       <Download className="h-3 w-3" /> პრინტი
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="h-7 text-xs gap-1"
-                    disabled={deleting === generation.id}
-                    onClick={() => handleDelete(generation)}
-                  >
+                  <Button size="sm" variant="destructive" className="h-7 text-xs gap-1"
+                    disabled={deleting === gen.id} onClick={() => handleDelete(gen)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
