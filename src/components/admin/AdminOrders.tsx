@@ -45,8 +45,6 @@ export default function AdminOrders() {
   useEffect(() => {
     if (authLoading) return;
     fetchOrders();
-    intervalRef.current = setInterval(fetchOrders, 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [user?.id, authLoading]);
 
   async function fetchOrders() {
