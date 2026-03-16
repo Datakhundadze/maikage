@@ -54,30 +54,26 @@ export default function MyDesignsPage() {
   const fetchDesigns = useCallback(async () => {
     setLoading(true);
 
-    // Fetch saved designs for logged-in user
     if (user) {
+      // Logged-in users: only show designs table (auto-saved on generation)
       const { data } = await supabase
         .from("designs")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       setDesigns((data as Design[]) || []);
+      setGuestGenerations([]);
     } else {
+      // Guest users: show generations by session
       setDesigns([]);
+      const sessionId = getGuestSessionId();
+      const { data: genData } = await supabase
+        .from("generations")
+        .select("id, prompt, product, color, mockup_image_path, transparent_image_path, created_at")
+        .eq("session_id", sessionId)
+        .order("created_at", { ascending: false });
+      setGuestGenerations((genData as Generation[]) || []);
     }
-
-    // Fetch generations for guest session
-    const sessionId = getGuestSessionId();
-    const { data: genData } = await supabase
-      .from("generations")
-      .select("id, prompt, product, color, mockup_image_path, transparent_image_path, created_at")
-      .or(
-        user
-          ? `user_id.eq.${user.id},session_id.eq.${sessionId}`
-          : `session_id.eq.${sessionId}`
-      )
-      .order("created_at", { ascending: false });
-    setGuestGenerations((genData as Generation[]) || []);
 
     setLoading(false);
   }, [user]);
@@ -95,11 +91,7 @@ export default function MyDesignsPage() {
     if (ok) setDesigns((prev) => prev.map((x) => x.id === d.id ? { ...x, is_published: !x.is_published } : x));
   };
 
-  // Merge: show saved designs first, then generations not already in designs
-  const designIds = new Set(designs.map(d => d.id));
-  const extraGenerations = guestGenerations.filter(g => !designIds.has(g.id));
-
-  const totalCount = designs.length + extraGenerations.length;
+  const totalCount = designs.length + guestGenerations.length;
 
   return (
     <>
@@ -150,7 +142,7 @@ export default function MyDesignsPage() {
                       </div>
                     </div>
                     <div className="p-3">
-                      <p className="text-sm font-medium truncate">{d.title}</p>
+                      <p className="text-sm font-medium line-clamp-3 whitespace-pre-wrap">{d.prompt || d.title}</p>
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-muted-foreground">{d.product} · {d.color}</span>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -163,7 +155,7 @@ export default function MyDesignsPage() {
                 ))}
 
                 {/* Guest/session generations (view only) */}
-                {extraGenerations.map((g) => {
+                {guestGenerations.map((g) => {
                   const imgUrl = resolveImageUrl(g.mockup_image_path) || resolveImageUrl(g.transparent_image_path);
                   return (
                     <div key={g.id} className="rounded-2xl border border-border bg-card overflow-hidden group">
@@ -183,7 +175,7 @@ export default function MyDesignsPage() {
                         </div>
                       </div>
                       <div className="p-3">
-                        <p className="text-sm font-medium truncate">{g.prompt || "Untitled"}</p>
+                        <p className="text-sm font-medium line-clamp-3 whitespace-pre-wrap">{g.prompt || "Untitled"}</p>
                         <span className="text-xs text-muted-foreground">{g.product} · {g.color}</span>
                       </div>
                     </div>
