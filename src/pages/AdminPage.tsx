@@ -121,6 +121,7 @@ export default function AdminPage() {
         {activeTab === "designs" && <AdminDesigns />}
         {activeTab === "users" && <AdminUsers />}
         {activeTab === "analytics" && <AdminAnalytics />}
+        {activeTab === "corporate" && <AdminCorporate />}
       </div>
     </div>
   );
