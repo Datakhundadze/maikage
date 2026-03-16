@@ -27,10 +27,10 @@ export default function AdminCorporate() {
   const fetchInquiries = useCallback(async (bg = false) => {
     if (!bg) setInitialLoading(true);
     const { data } = await supabase
-      .from("corporate_inquiries" as any)
+      .from("corporate_inquiries")
       .select("*")
       .order("created_at", { ascending: false });
-    setInquiries((data as any as Inquiry[]) || []);
+    setInquiries((data as Inquiry[]) || []);
     if (!bg) setInitialLoading(false);
     setLastRefresh(new Date());
   }, []);
@@ -40,7 +40,7 @@ export default function AdminCorporate() {
   }, [fetchInquiries]);
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("corporate_inquiries" as any).update({ status }).eq("id", id);
+    await supabase.from("corporate_inquiries").update({ status }).eq("id", id);
     setInquiries((prev) => prev.map((i) => i.id === id ? { ...i, status } : i));
   };
 
