@@ -153,6 +153,13 @@ export default function AdminOrders() {
                 className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
               >
                 <span className="text-xs font-mono text-muted-foreground w-8">#{orders.length - i}</span>
+                {order.front_mockup_url ? (
+                  <div className="w-10 h-10 rounded border border-border bg-muted overflow-hidden flex-shrink-0">
+                    <img src={order.front_mockup_url} alt="" className="w-full h-full object-contain" />
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 rounded border border-border bg-muted flex-shrink-0" />
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm">{order.first_name} {order.last_name}</div>
                   <div className="text-xs text-muted-foreground">{order.product} {order.sub_product ? `• ${order.sub_product}` : ""} • {order.color || "—"}</div>

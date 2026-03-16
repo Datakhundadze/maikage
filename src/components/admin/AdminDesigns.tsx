@@ -1,6 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Download, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -49,33 +48,37 @@ export default function AdminDesigns() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [deleting, setDeleting] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const hasFetched = useRef(false);
 
-  const fetchGenerations = useCallback(async (isBackground = false) => {
-    if (!isBackground) setInitialLoading(true);
+  async function fetchGenerations() {
+    setInitialLoading(true);
     setError(null);
 
+    console.log("[AdminDesigns] Fetching generations...");
     const { data, error: fetchError } = await supabase
       .from("generations")
-      .select("id, prompt, product, color, style, is_guest, user_id, session_id, created_at, transparent_image_path, mockup_image_path")
+      .select("*")
       .order("created_at", { ascending: false });
+
+    console.log("[AdminDesigns] Result:", { count: data?.length, error: fetchError });
 
     if (fetchError) {
       setError(fetchError.message);
-      if (!isBackground) setGenerations([]);
+      setGenerations([]);
     } else {
       setGenerations((data as Generation[]) || []);
     }
 
-    if (!isBackground) setInitialLoading(false);
+    setInitialLoading(false);
     setLastRefresh(new Date());
-  }, []);
+  }
 
   useEffect(() => {
-    if (authLoading) return;
-    fetchGenerations(false);
-  }, [user?.id, authLoading, fetchGenerations]);
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    fetchGenerations();
+  }, []);
 
   const handleDelete = async (gen: Generation) => {
     if (!confirm("წაშალოთ ეს გენერაცია?")) return;
@@ -117,7 +120,7 @@ export default function AdminDesigns() {
         <h2 className="text-lg font-semibold">გენერაციები ({generations.length})</h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
-          <Button variant="outline" size="sm" onClick={() => fetchGenerations(false)}>განახლება</Button>
+          <Button variant="outline" size="sm" onClick={() => fetchGenerations()}>განახლება</Button>
         </div>
       </div>
 
