@@ -64,7 +64,7 @@ export default function CorporateInquiryModal({ children }: { children: React.Re
       }
 
       // Save to database
-      const { error } = await supabase.from("corporate_inquiries" as any).insert({
+      const { error } = await supabase.from("corporate_inquiries").insert({
         company_name: form.companyName,
         tax_id: form.taxId,
         contact_person: form.contactPerson,
