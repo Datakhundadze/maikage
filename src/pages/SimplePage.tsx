@@ -87,11 +87,15 @@ export default function SimplePage() {
   const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     trackEvent("page_visit", { page: "simple" });
   }, [trackEvent]);
+
+  // Track if generation was saved for current design session
+  const [savedToGenerations, setSavedToGenerations] = useState(false);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
