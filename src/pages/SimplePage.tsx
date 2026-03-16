@@ -523,6 +523,13 @@ export default function SimplePage() {
                   subProduct={productConfig.config.subProduct}
                   color={productConfig.config.color}
                   isStudio={false}
+                  frontMockupDataUrl={frontMockup}
+                  backMockupDataUrl={backMockup}
+                  onExternalOpenChange={(open) => {
+                    if (open && (frontMockup || backMockup)) {
+                      saveToGenerations(frontMockup, backMockup);
+                    }
+                  }}
                 />
               </>
             );
