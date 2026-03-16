@@ -210,6 +210,119 @@ export default function SimplePage() {
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
 
+  // Composite layers onto product image for a given side
+  const compositeSide = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
+    if (side.photos.length === 0 && !side.designText.trim()) return null;
+
+    const { config } = productConfig;
+    const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
+    const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, view);
+    const baseImageUrl = imageResult?.entry.imageUrl ?? null;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 800;
+    const ctx = canvas.getContext("2d")!;
+
+    // Draw product base
+    if (baseImageUrl) {
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = baseImageUrl;
+        });
+        ctx.drawImage(img, 0, 0, 800, 800);
+      } catch {
+        ctx.fillStyle = "#f0f0f0";
+        ctx.fillRect(0, 0, 800, 800);
+      }
+    } else {
+      ctx.fillStyle = "#f0f0f0";
+      ctx.fillRect(0, 0, 800, 800);
+    }
+
+    // Draw photo layers
+    for (const photo of side.photos) {
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = photo.image;
+        });
+        const w = 800 * photo.coords.scale;
+        const h = photo.coords.scaleY ? 800 * photo.coords.scaleY : (img.naturalHeight / img.naturalWidth) * w;
+        const x = 800 * photo.coords.x - w / 2;
+        const y = 800 * photo.coords.y - h / 2;
+        ctx.globalAlpha = 0.8;
+        ctx.drawImage(img, x, y, w, h);
+        ctx.globalAlpha = 1;
+      } catch { /* skip */ }
+    }
+
+    // Draw text
+    if (side.designText.trim()) {
+      const tc = side.textCoords;
+      const fontSize = Math.min(80, 600 / (side.designText.length * 0.55));
+      ctx.fillStyle = side.textColor;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `bold ${fontSize}px ${side.selectedFont.family}`;
+      ctx.fillText(side.designText, 800 * tc.x, 800 * tc.y, 600);
+    }
+
+    return canvas.toDataURL("image/png");
+  }, [productConfig]);
+
+  // Save Simple mode design to generations table
+  const saveToGenerations = useCallback(async (frontMockup: string | null, backMockup: string | null) => {
+    if (savedToGenerations) return;
+    try {
+      const { config } = productConfig;
+      const record = {
+        user_id: user?.id ?? null,
+        session_id: !user ? getGuestSessionId() : null,
+        is_guest: !user,
+        product: config.product,
+        color: config.color,
+        style: "simple",
+        prompt: null,
+        mockup_image_path: frontMockup || backMockup || null,
+        transparent_image_path: null,
+      };
+      await supabase.from("generations" as any).insert(record);
+      setSavedToGenerations(true);
+    } catch (e) {
+      console.error("[Simple] Failed to save generation:", e);
+    }
+  }, [user, productConfig, savedToGenerations]);
+
+  // Memoized mockup data URLs for order
+  const [frontMockup, setFrontMockup] = useState<string | null>(null);
+  const [backMockup, setBackMockup] = useState<string | null>(null);
+
+  // Generate mockups when design changes
+  useEffect(() => {
+    const hasFrontDesign = frontData.photos.length > 0 || frontData.designText.trim();
+    const hasBackDesign = backData.photos.length > 0 || backData.designText.trim();
+
+    if (hasFrontDesign) {
+      compositeSide(frontData, "front").then(setFrontMockup);
+    } else {
+      setFrontMockup(null);
+    }
+    if (hasBackDesign) {
+      compositeSide(backData, "back").then(setBackMockup);
+    } else {
+      setBackMockup(null);
+    }
+    setSavedToGenerations(false);
+  }, [frontData, backData, productConfig.config.product, productConfig.config.subProduct, productConfig.config.color]);
+
   return (
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Sidebar */}
