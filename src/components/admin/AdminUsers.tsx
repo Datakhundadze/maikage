@@ -28,8 +28,6 @@ export default function AdminUsers() {
 
   useEffect(() => {
     fetchUsers();
-    intervalRef.current = setInterval(fetchUsers, 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
   async function fetchUsers() {
