@@ -40,7 +40,7 @@ export default function AdminCorporate() {
   }, [fetchInquiries]);
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("corporate_inquiries" as any).update({ status }).eq("id", id);
+    await supabase.from("corporate_inquiries").update({ status }).eq("id", id);
     setInquiries((prev) => prev.map((i) => i.id === id ? { ...i, status } : i));
   };
 
