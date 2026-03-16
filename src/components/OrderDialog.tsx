@@ -37,6 +37,7 @@ interface OrderDialogProps {
   frontMockupDataUrl?: string | null;
   backMockupDataUrl?: string | null;
   prompt?: string | null;
+  onBeforeOpen?: () => void;
 }
 
 async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
