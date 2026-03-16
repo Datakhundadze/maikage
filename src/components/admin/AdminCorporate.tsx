@@ -27,10 +27,10 @@ export default function AdminCorporate() {
   const fetchInquiries = useCallback(async (bg = false) => {
     if (!bg) setInitialLoading(true);
     const { data } = await supabase
-      .from("corporate_inquiries" as any)
+      .from("corporate_inquiries")
       .select("*")
       .order("created_at", { ascending: false });
-    setInquiries((data as any as Inquiry[]) || []);
+    setInquiries((data as Inquiry[]) || []);
     if (!bg) setInitialLoading(false);
     setLastRefresh(new Date());
   }, []);
