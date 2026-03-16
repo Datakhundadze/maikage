@@ -130,9 +130,9 @@ function StudioContent() {
         console.error("[Generation] Failed to save generation record:", e);
       }
 
-      // Auto-save to designs table for "My Designs"
-      try {
-        if (user) {
+      // Auto-save to designs table for "My Designs" (only for logged-in users)
+      if (user) {
+        try {
           const title = state.designParams.character.slice(0, 60) || "Untitled";
           await saveDesign({
             title,
@@ -145,10 +145,9 @@ function StudioContent() {
             transparentImageDataUrl: genResult.transparentImage,
             mockupImageDataUrl: genResult.mockupImage,
           });
-          toast({ title: "დიზაინი შენახულია ✅" });
+        } catch (e: any) {
+          console.error("[Generation] Auto-save to designs failed:", e);
         }
-      } catch (e: any) {
-        console.error("[Generation] Auto-save to designs failed:", e);
       }
     } catch (err: any) {
       console.error("Generation failed:", err);

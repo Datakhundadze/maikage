@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface Generation {
   id: string;
@@ -38,28 +39,22 @@ async function downloadImage(url: string, filename: string) {
     a.click();
     URL.revokeObjectURL(a.href);
   } catch {
-    // Fallback: open in new tab
     window.open(url, "_blank");
   }
 }
 
 export default function AdminDesigns() {
   const [generations, setGenerations] = useState<Generation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [deleting, setDeleting] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
 
-  useEffect(() => {
-    if (authLoading) return;
-    fetchGenerations();
-    intervalRef.current = setInterval(fetchGenerations, 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [user?.id, authLoading]);
-
-  async function fetchGenerations() {
-    setLoading(true);
+  const fetchGenerations = useCallback(async (isBackground = false) => {
+    if (!isBackground) setInitialLoading(true);
     setError(null);
 
     const { data, error: fetchError } = await supabase
@@ -69,16 +64,49 @@ export default function AdminDesigns() {
 
     if (fetchError) {
       setError(fetchError.message);
-      setGenerations([]);
+      if (!isBackground) setGenerations([]);
     } else {
       setGenerations((data as Generation[]) || []);
     }
 
-    setLoading(false);
+    if (!isBackground) setInitialLoading(false);
     setLastRefresh(new Date());
-  }
+  }, []);
 
-  if (loading) {
+  useEffect(() => {
+    if (authLoading) return;
+    fetchGenerations(false);
+    intervalRef.current = setInterval(() => fetchGenerations(true), 60000);
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [user?.id, authLoading, fetchGenerations]);
+
+  const handleDelete = async (gen: Generation) => {
+    if (!confirm("წაშალოთ ეს გენერაცია?")) return;
+    setDeleting(gen.id);
+    try {
+      // Delete storage files if they're storage paths
+      const paths: string[] = [];
+      if (gen.transparent_image_path && !gen.transparent_image_path.startsWith("data:") && !gen.transparent_image_path.startsWith("http")) {
+        paths.push(gen.transparent_image_path);
+      }
+      if (gen.mockup_image_path && !gen.mockup_image_path.startsWith("data:") && !gen.mockup_image_path.startsWith("http")) {
+        paths.push(gen.mockup_image_path);
+      }
+      if (paths.length) await supabase.storage.from("designs").remove(paths);
+
+      const { error } = await supabase.from("generations").delete().eq("id", gen.id);
+      if (error) throw error;
+
+      setGenerations((prev) => prev.filter((g) => g.id !== gen.id));
+      toast({ title: "გენერაცია წაიშალა" });
+    } catch (err: any) {
+      toast({ title: "წაშლა ვერ მოხერხდა", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  if (initialLoading) {
     return (
       <div className="flex justify-center py-20">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -92,7 +120,7 @@ export default function AdminDesigns() {
         <h2 className="text-lg font-semibold">გენერაციები ({generations.length})</h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">ავტო-განახლება 60წმ · ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
-          <Button variant="outline" size="sm" onClick={fetchGenerations}>განახლება</Button>
+          <Button variant="outline" size="sm" onClick={() => fetchGenerations(false)}>განახლება</Button>
         </div>
       </div>
 
@@ -136,7 +164,7 @@ export default function AdminDesigns() {
                       : `user:${(generation.user_id || "-").slice(0, 8)}`}
                   </span>
                 </div>
-                {/* Download buttons */}
+                {/* Action buttons */}
                 <div className="flex gap-1 pt-1">
                   {mockupUrl && (
                     <Button
@@ -158,6 +186,15 @@ export default function AdminDesigns() {
                       <Download className="h-3 w-3" /> პრინტი
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-7 text-xs gap-1"
+                    disabled={deleting === generation.id}
+                    onClick={() => handleDelete(generation)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
             </div>
