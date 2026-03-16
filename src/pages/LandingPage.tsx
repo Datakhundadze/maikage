@@ -1,5 +1,6 @@
 import { useAppState } from "@/hooks/useAppState";
 import { Upload, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
+import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 
 export default function LandingPage() {
   const { setMode, theme, toggleTheme } = useAppState();
@@ -163,12 +164,13 @@ export default function LandingPage() {
                 ))}
               </div>
 
-              <a
-                href="mailto:maika@maika.ge"
-                className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold px-6 py-3 text-sm transition-colors"
-              >
-                დაგვიკავშირდი <ArrowRight className="h-4 w-4" />
-              </a>
+              <CorporateInquiryModal>
+                <button
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold px-6 py-3 text-sm transition-colors"
+                >
+                  დაგვიკავშირდი <ArrowRight className="h-4 w-4" />
+                </button>
+              </CorporateInquiryModal>
             </div>
           </div>
         </div>
