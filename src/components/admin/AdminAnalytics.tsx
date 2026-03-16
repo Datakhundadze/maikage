@@ -24,24 +24,22 @@ export default function AdminAnalytics() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [generationsCount, setGenerationsCount] = useState(0);
 
   const fetchData = async () => {
-    const [ordersRes, eventsRes] = await Promise.all([
+    const [ordersRes, eventsRes, generationsRes] = await Promise.all([
       supabase.from("orders").select("*").order("created_at", { ascending: false }),
       supabase.from("analytics_events").select("event_type, event_data, created_at"),
+      supabase.from("generations").select("id", { count: "exact", head: true }),
     ]);
     setOrders((ordersRes.data as Order[]) || []);
     setEvents(eventsRes.data || []);
+    setGenerationsCount(generationsRes.count || 0);
     setLoading(false);
-    setLastRefresh(new Date());
   };
 
   useEffect(() => {
     fetchData();
-    intervalRef.current = setInterval(fetchData, 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, []);
 
   const analytics = useMemo(() => {
