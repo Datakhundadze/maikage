@@ -120,7 +120,7 @@ export default function AdminDesigns() {
         <h2 className="text-lg font-semibold">გენერაციები ({generations.length})</h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
-          <Button variant="outline" size="sm" onClick={() => fetchGenerations(false)}>განახლება</Button>
+          <Button variant="outline" size="sm" onClick={() => fetchGenerations()}>განახლება</Button>
         </div>
       </div>
 
