@@ -25,7 +25,6 @@ export default function AdminDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const { user, loading: authLoading } = useAuth();
 

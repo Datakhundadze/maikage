@@ -49,7 +49,6 @@ export default function AdminDesigns() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [deleting, setDeleting] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
 

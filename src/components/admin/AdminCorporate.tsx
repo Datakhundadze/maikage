@@ -37,8 +37,6 @@ export default function AdminCorporate() {
 
   useEffect(() => {
     fetchInquiries(false);
-    intervalRef.current = setInterval(() => fetchInquiries(true), 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchInquiries]);
 
   const updateStatus = async (id: string, status: string) => {

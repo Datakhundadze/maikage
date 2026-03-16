@@ -74,12 +74,13 @@ export default function AdminAnalytics() {
     const paymentStats = Array.from(paymentMap.entries())
       .map(([name, count]) => ({ name, count }));
 
-    // Conversion: visits → orders
+    // Conversion: visits → orders (from tracked page_visit events)
     const conversionRate = visits.length > 0 ? ((orders.length / visits.length) * 100).toFixed(1) : "0";
-    const designToOrderRate = designs.length > 0 ? ((orders.length / designs.length) * 100).toFixed(1) : "0";
+    // Conversion: designs → orders (from actual generations count)
+    const designToOrderRate = generationsCount > 0 ? ((orders.length / generationsCount) * 100).toFixed(1) : "0";
 
-    return { popularProducts, popularColors, paymentStats, conversionRate, designToOrderRate, totalVisits: visits.length, totalDesigns: designs.length };
-  }, [orders, events]);
+    return { popularProducts, popularColors, paymentStats, conversionRate, designToOrderRate, totalVisits: visits.length, totalDesigns: generationsCount };
+  }, [orders, events, generationsCount]);
 
   if (loading) {
     return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
