@@ -76,8 +76,6 @@ export default function AdminDesigns() {
   useEffect(() => {
     if (authLoading) return;
     fetchGenerations(false);
-    intervalRef.current = setInterval(() => fetchGenerations(true), 60000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [user?.id, authLoading, fetchGenerations]);
 
   const handleDelete = async (gen: Generation) => {
