@@ -1,5 +1,6 @@
 import { useAppState } from "@/hooks/useAppState";
 import { Upload, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
+import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 
 export default function LandingPage() {
   const { setMode, theme, toggleTheme } = useAppState();
