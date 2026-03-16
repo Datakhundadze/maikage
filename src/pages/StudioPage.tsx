@@ -247,6 +247,8 @@ function StudioContent() {
                   isStudio={true}
                   externalOpen={orderDialogOpen}
                   onExternalOpenChange={setOrderDialogOpen}
+                  frontMockupDataUrl={result?.mockupImage || null}
+                  prompt={result?.prompt || null}
                 />
               )}
               <DesignStudioPanel
