@@ -297,6 +297,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          back_mockup_url: string | null
           bog_order_id: string | null
           color: string | null
           comment: string | null
@@ -306,6 +307,7 @@ export type Database = {
           delivery_type: string
           email: string
           first_name: string
+          front_mockup_url: string | null
           id: string
           is_studio: boolean
           last_name: string
@@ -314,12 +316,14 @@ export type Database = {
           phone: string
           product: string
           product_price: number
+          prompt: string | null
           status: string
           sub_product: string | null
           total_price: number
           user_id: string | null
         }
         Insert: {
+          back_mockup_url?: string | null
           bog_order_id?: string | null
           color?: string | null
           comment?: string | null
@@ -329,6 +333,7 @@ export type Database = {
           delivery_type?: string
           email: string
           first_name: string
+          front_mockup_url?: string | null
           id?: string
           is_studio?: boolean
           last_name: string
@@ -337,12 +342,14 @@ export type Database = {
           phone?: string
           product: string
           product_price?: number
+          prompt?: string | null
           status?: string
           sub_product?: string | null
           total_price?: number
           user_id?: string | null
         }
         Update: {
+          back_mockup_url?: string | null
           bog_order_id?: string | null
           color?: string | null
           comment?: string | null
@@ -352,6 +359,7 @@ export type Database = {
           delivery_type?: string
           email?: string
           first_name?: string
+          front_mockup_url?: string | null
           id?: string
           is_studio?: boolean
           last_name?: string
@@ -360,6 +368,7 @@ export type Database = {
           phone?: string
           product?: string
           product_price?: number
+          prompt?: string | null
           status?: string
           sub_product?: string | null
           total_price?: number
