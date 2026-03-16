@@ -57,12 +57,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (authLoading) return;
     fetchData();
-
-    // Auto-refresh every 60 seconds
-    intervalRef.current = setInterval(fetchData, 60000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
   }, [user?.id, authLoading]);
 
   const stats = useMemo(() => {
