@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
+import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice, type BackType } from "@/lib/pricing";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { getGuestSessionId } from "@/lib/guestSession";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
 
