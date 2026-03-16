@@ -38,6 +38,51 @@ export type Database = {
         }
         Relationships: []
       }
+      corporate_inquiries: {
+        Row: {
+          color: string | null
+          comment: string | null
+          company_name: string
+          contact_person: string
+          created_at: string
+          email: string
+          id: string
+          logo_path: string | null
+          phone: string
+          status: string
+          tax_id: string
+          tshirt_quantity: number
+        }
+        Insert: {
+          color?: string | null
+          comment?: string | null
+          company_name: string
+          contact_person: string
+          created_at?: string
+          email: string
+          id?: string
+          logo_path?: string | null
+          phone: string
+          status?: string
+          tax_id: string
+          tshirt_quantity: number
+        }
+        Update: {
+          color?: string | null
+          comment?: string | null
+          company_name?: string
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          logo_path?: string | null
+          phone?: string
+          status?: string
+          tax_id?: string
+          tshirt_quantity?: number
+        }
+        Relationships: []
+      }
       design_likes: {
         Row: {
           created_at: string
