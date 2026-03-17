@@ -128,6 +128,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         payment_status: "unpaid",
         front_mockup_url: frontUrl,
         back_mockup_url: backUrl,
+        transparent_image_url: transparentUrl,
         prompt: prompt || null,
       } as any).select("id").single();
 
