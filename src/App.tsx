@@ -23,6 +23,7 @@ const queryClient = new QueryClient();
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { mode } = useAppState();
+  useAutoLogout();
   const location = window.location.pathname;
 
   // Admin route is standalone — bypass mode checks

@@ -170,7 +170,7 @@ function StudioContent() {
         variant: "destructive",
       });
     }
-  }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent]);
+  }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration]);
 
   const handleSave = useCallback(async () => {
     if (!result) return;
