@@ -55,20 +55,33 @@ export default function AdminDesigns() {
     setInitialLoading(true);
     setError(null);
 
-    console.log("[AdminDesigns] Fetching generations (limit 50)...");
-    const { data, error: fetchError } = await supabase
-      .from("generations")
-      .select("id, created_at, prompt, product, color, style, is_guest, session_id, user_id, mockup_image_path, transparent_image_path")
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
 
-    console.log("[AdminDesigns] Result:", { count: data?.length, error: fetchError });
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("generations")
+        .select("id, created_at, prompt, product, color, style, mockup_image_path, transparent_image_path, is_guest")
+        .order("created_at", { ascending: false })
+        .limit(30)
+        .abortSignal(controller.signal);
 
-    if (fetchError) {
-      setError(fetchError.message);
+      clearTimeout(timeout);
+
+      if (fetchError) {
+        setError(fetchError.message);
+        setGenerations([]);
+      } else {
+        setGenerations((data as Generation[]) || []);
+      }
+    } catch (e: any) {
+      clearTimeout(timeout);
+      if (e.name === "AbortError" || e.message?.includes("abort")) {
+        setError("მოთხოვნა დრომ ამოწურა. სცადეთ განახლება.");
+      } else {
+        setError(e.message || "უცნობი შეცდომა");
+      }
       setGenerations([]);
-    } else {
-      setGenerations((data as Generation[]) || []);
     }
 
     setInitialLoading(false);
