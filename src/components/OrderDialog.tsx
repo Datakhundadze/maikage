@@ -42,18 +42,24 @@ interface OrderDialogProps {
 
 async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
   try {
+    if (!dataUrl) {
+      console.warn(`[OrderDialog] No ${side} mockup data URL provided`);
+      return null;
+    }
     const res = await fetch(dataUrl);
     const blob = await res.blob();
+    console.log(`[OrderDialog] Uploading ${side} mockup: ${blob.size} bytes`);
     const path = `order-mockups/${orderId}-${side}.png`;
-    const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png" });
+    const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png", upsert: true });
     if (error) {
-      console.error(`Upload ${side} mockup failed:`, error);
+      console.error(`[OrderDialog] Upload ${side} mockup failed:`, error);
       return null;
     }
     const { data } = supabase.storage.from("designs").getPublicUrl(path);
+    console.log(`[OrderDialog] ${side} mockup uploaded:`, data.publicUrl);
     return data.publicUrl;
   } catch (e) {
-    console.error(`Upload ${side} mockup error:`, e);
+    console.error(`[OrderDialog] Upload ${side} mockup error:`, e);
     return null;
   }
 }
