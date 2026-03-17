@@ -134,8 +134,9 @@ export default function AdminDesigns() {
       </div>
 
       {error && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          გენერაციების წამოღება ვერ მოხერხდა: {error}
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive flex items-center justify-between">
+          <span>გენერაციების წამოღება ვერ მოხერხდა: {error}</span>
+          <Button variant="outline" size="sm" onClick={() => { hasFetched.current = false; fetchGenerations(); }}>განახლება</Button>
         </div>
       )}
 
