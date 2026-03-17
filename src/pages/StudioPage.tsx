@@ -31,9 +31,11 @@ function StudioContent() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
-  const generationCountRef = useRef(0);
   const { user } = useAuth();
+  const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
   const { saveDesign } = useDesignStorage();
   const { trackEvent } = useAnalytics();
