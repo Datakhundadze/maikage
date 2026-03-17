@@ -55,18 +55,12 @@ export default function AdminDesigns() {
     setInitialLoading(true);
     setError(null);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-
     try {
       const { data, error: fetchError } = await supabase
         .from("generations")
-        .select("id, created_at, prompt, product, color, style, mockup_image_path, transparent_image_path, is_guest")
+        .select("id, created_at, prompt, product, color, style, mockup_image_path, transparent_image_path, is_guest, user_id, session_id")
         .order("created_at", { ascending: false })
-        .limit(30)
-        .abortSignal(controller.signal);
-
-      clearTimeout(timeout);
+        .limit(30);
 
       if (fetchError) {
         setError(fetchError.message);
@@ -75,12 +69,7 @@ export default function AdminDesigns() {
         setGenerations((data as Generation[]) || []);
       }
     } catch (e: any) {
-      clearTimeout(timeout);
-      if (e.name === "AbortError" || e.message?.includes("abort")) {
-        setError("მოთხოვნა დრომ ამოწურა. სცადეთ განახლება.");
-      } else {
-        setError(e.message || "უცნობი შეცდომა");
-      }
+      setError(e.message || "უცნობი შეცდომა");
       setGenerations([]);
     }
 
