@@ -78,10 +78,10 @@ function StudioContent() {
   const handleGenerate = useCallback(async () => {
     const limitResult = checkLimit();
     if (!limitResult.allowed) {
-      if (limitResult.reason === "guest_limit") {
-        setLoginModalMessage(limitResult.message);
+      if ('reason' in limitResult && limitResult.reason === "guest_limit") {
+        setLoginModalMessage('message' in limitResult ? limitResult.message : undefined);
         setShowLoginModal(true);
-      } else {
+      } else if ('message' in limitResult) {
         setLimitMessage(limitResult.message);
       }
       return;
