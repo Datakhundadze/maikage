@@ -14,7 +14,7 @@ interface LoginModalProps {
   message?: string;
 }
 
-export default function LoginModal({ open, onClose }: LoginModalProps) {
+export default function LoginModal({ open, onClose, message }: LoginModalProps) {
   const { signInWithEmail, signUpWithEmail, error } = useAuth();
   const { lang } = useAppState();
   const [isSignUp, setIsSignUp] = useState(false);
