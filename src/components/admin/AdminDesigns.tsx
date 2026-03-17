@@ -146,12 +146,10 @@ export default function AdminDesigns() {
               {/* Details */}
               <div className="p-3 space-y-2">
                 {/* Prompt */}
-                {gen.prompt && (
-                  <div>
-                    <span className="text-[10px] uppercase text-muted-foreground font-semibold">პრომპტი</span>
-                    <p className="text-sm leading-snug break-words">{gen.prompt}</p>
-                  </div>
-                )}
+                <div>
+                  <span className="text-[10px] uppercase text-muted-foreground font-semibold">პრომპტი:</span>
+                  <p className="text-sm leading-snug break-words">{gen.prompt || "პრომპტი არ არის"}</p>
+                </div>
 
                 {/* Product & Color */}
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
