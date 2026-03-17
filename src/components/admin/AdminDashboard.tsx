@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, DollarSign, Users, Layers, CalendarDays, RefreshCw } from "lucide-react";
 import {
@@ -25,8 +24,6 @@ export default function AdminDashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-
-  const { user, loading: authLoading } = useAuth();
 
   const fetchData = async () => {
     const today = new Date().toISOString().slice(0, 10);
@@ -59,9 +56,8 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (authLoading) return;
     fetchData();
-  }, [user?.id, authLoading]);
+  }, []);
 
   const stats = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
