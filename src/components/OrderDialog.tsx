@@ -36,6 +36,7 @@ interface OrderDialogProps {
   onExternalOpenChange?: (open: boolean) => void;
   frontMockupDataUrl?: string | null;
   backMockupDataUrl?: string | null;
+  transparentImageDataUrl?: string | null;
   prompt?: string | null;
   onBeforeOpen?: () => void;
 }
