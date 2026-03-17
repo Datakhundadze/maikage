@@ -64,9 +64,9 @@ export default function LoginModal({ open, onClose, message }: LoginModalProps) 
               <div>
                 <h2 className="text-lg font-bold text-foreground">maika.ge Studio</h2>
                 <p className="text-xs text-muted-foreground">
-                  {lang === "ge"
+                  {message || (lang === "ge"
                     ? "გაიარეთ ავტორიზაცია გასაგრძელებლად"
-                    : "Sign in to continue generating"}
+                    : "Sign in to continue generating")}
                 </p>
               </div>
             </div>
