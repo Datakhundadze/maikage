@@ -117,6 +117,25 @@ function StudioContent() {
       // Save generation record for analytics
       try {
         const isGuest = !user;
+        const genId = crypto.randomUUID();
+
+        // Upload images to storage (avoid storing large base64 in DB)
+        let mockupPath: string | null = null;
+        let transparentPath: string | null = null;
+
+        const [mockupBlob, transparentBlob] = await Promise.all([
+          genResult.mockupImage ? fetch(genResult.mockupImage).then(r => r.blob()) : Promise.resolve(null),
+          genResult.transparentImage ? fetch(genResult.transparentImage).then(r => r.blob()) : Promise.resolve(null),
+        ]);
+
+        const uploads = await Promise.all([
+          mockupBlob ? supabase.storage.from("designs").upload(`generations/${genId}-mockup.png`, mockupBlob, { contentType: "image/png" }) : Promise.resolve(null),
+          transparentBlob ? supabase.storage.from("designs").upload(`generations/${genId}-transparent.png`, transparentBlob, { contentType: "image/png" }) : Promise.resolve(null),
+        ]);
+
+        if (uploads[0] && !uploads[0].error) mockupPath = `generations/${genId}-mockup.png`;
+        if (uploads[1] && !uploads[1].error) transparentPath = `generations/${genId}-transparent.png`;
+
         const genRecord = {
           user_id: user?.id ?? null,
           session_id: isGuest ? getGuestSessionId() : null,
@@ -125,8 +144,8 @@ function StudioContent() {
           color: config.color,
           style: state.designParams.style || null,
           prompt: genResult.prompt || null,
-          mockup_image_path: genResult.mockupImage || null,
-          transparent_image_path: genResult.transparentImage || null,
+          mockup_image_path: mockupPath,
+          transparent_image_path: transparentPath,
         };
 
         const { error: insertError } = await supabase
