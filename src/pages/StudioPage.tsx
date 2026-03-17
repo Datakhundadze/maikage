@@ -275,7 +275,13 @@ function StudioContent() {
         main={mainContent}
       />
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
-      <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} />
+      <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} message={loginModalMessage} />
+      {limitMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm px-5 py-3 text-sm text-foreground shadow-lg flex items-center gap-3">
+          <span>{limitMessage}</span>
+          <button onClick={() => setLimitMessage(null)} className="text-muted-foreground hover:text-foreground ml-auto">✕</button>
+        </div>
+      )}
     </>
   );
 }
