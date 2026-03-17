@@ -11,6 +11,7 @@ import { X } from "lucide-react";
 interface LoginModalProps {
   open: boolean;
   onClose: () => void;
+  message?: string;
 }
 
 export default function LoginModal({ open, onClose }: LoginModalProps) {
