@@ -30,6 +30,7 @@ interface Order {
   bog_order_id: string | null;
   front_mockup_url: string | null;
   back_mockup_url: string | null;
+  transparent_image_url: string | null;
   prompt: string | null;
 }
 
