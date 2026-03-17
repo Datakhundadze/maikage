@@ -101,9 +101,10 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       const orderId = crypto.randomUUID();
 
       // Upload mockup images in parallel if provided
-      const [frontUrl, backUrl] = await Promise.all([
+      const [frontUrl, backUrl, transparentUrl] = await Promise.all([
         frontMockupDataUrl ? uploadMockupImage(frontMockupDataUrl, orderId, "front") : Promise.resolve(null),
         backMockupDataUrl ? uploadMockupImage(backMockupDataUrl, orderId, "back") : Promise.resolve(null),
+        transparentImageDataUrl ? uploadMockupImage(transparentImageDataUrl, orderId, "transparent") : Promise.resolve(null),
       ]);
 
       // 1. Insert order into database
