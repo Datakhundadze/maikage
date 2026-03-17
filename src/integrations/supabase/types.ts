@@ -320,6 +320,7 @@ export type Database = {
           status: string
           sub_product: string | null
           total_price: number
+          transparent_image_url: string | null
           user_id: string | null
         }
         Insert: {
@@ -346,6 +347,7 @@ export type Database = {
           status?: string
           sub_product?: string | null
           total_price?: number
+          transparent_image_url?: string | null
           user_id?: string | null
         }
         Update: {
@@ -372,6 +374,7 @@ export type Database = {
           status?: string
           sub_product?: string | null
           total_price?: number
+          transparent_image_url?: string | null
           user_id?: string | null
         }
         Relationships: []
