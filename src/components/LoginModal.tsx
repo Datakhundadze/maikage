@@ -11,9 +11,10 @@ import { X } from "lucide-react";
 interface LoginModalProps {
   open: boolean;
   onClose: () => void;
+  message?: string;
 }
 
-export default function LoginModal({ open, onClose }: LoginModalProps) {
+export default function LoginModal({ open, onClose, message }: LoginModalProps) {
   const { signInWithEmail, signUpWithEmail, error } = useAuth();
   const { lang } = useAppState();
   const [isSignUp, setIsSignUp] = useState(false);
@@ -63,9 +64,9 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
               <div>
                 <h2 className="text-lg font-bold text-foreground">maika.ge Studio</h2>
                 <p className="text-xs text-muted-foreground">
-                  {lang === "ge"
+                  {message || (lang === "ge"
                     ? "გაიარეთ ავტორიზაცია გასაგრძელებლად"
-                    : "Sign in to continue generating"}
+                    : "Sign in to continue generating")}
                 </p>
               </div>
             </div>

@@ -20,6 +20,7 @@ import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
 import LoginModal from "@/components/LoginModal";
+import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
 
@@ -30,9 +31,11 @@ function StudioContent() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
-  const generationCountRef = useRef(0);
   const { user } = useAuth();
+  const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
   const { saveDesign } = useDesignStorage();
   const { trackEvent } = useAnalytics();
@@ -73,13 +76,20 @@ function StudioContent() {
   }, [productConfig.config.product, trackEvent]);
 
   const handleGenerate = useCallback(async () => {
-    if (!user && generationCountRef.current >= 1) {
-      setShowLoginModal(true);
+    const limitResult = checkLimit();
+    if (!limitResult.allowed) {
+      if ('reason' in limitResult && limitResult.reason === "guest_limit") {
+        setLoginModalMessage('message' in limitResult ? limitResult.message : undefined);
+        setShowLoginModal(true);
+      } else if ('message' in limitResult) {
+        setLimitMessage(limitResult.message);
+      }
       return;
     }
+    setLimitMessage(null);
 
     try {
-      generationCountRef.current += 1;
+      recordGeneration();
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
       productConfig.setLocked(true);
 
@@ -160,7 +170,7 @@ function StudioContent() {
         variant: "destructive",
       });
     }
-  }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent]);
+  }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration]);
 
   const handleSave = useCallback(async () => {
     if (!result) return;
@@ -265,7 +275,13 @@ function StudioContent() {
         main={mainContent}
       />
       {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
-      <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} />
+      <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} message={loginModalMessage} />
+      {limitMessage && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm px-5 py-3 text-sm text-foreground shadow-lg flex items-center gap-3">
+          <span>{limitMessage}</span>
+          <button onClick={() => setLimitMessage(null)} className="text-muted-foreground hover:text-foreground ml-auto">✕</button>
+        </div>
+      )}
     </>
   );
 }
