@@ -81,29 +81,25 @@ export default function AdminDesigns() {
     fetchGenerations();
   }, []);
 
-  const handleDelete = async (gen: Generation) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("წაშალოთ ეს გენერაცია?")) return;
-    setDeleting(gen.id);
-    try {
-      const paths: string[] = [];
-      if (gen.transparent_image_path && !gen.transparent_image_path.startsWith("data:") && !gen.transparent_image_path.startsWith("http")) {
-        paths.push(gen.transparent_image_path);
-      }
-      if (gen.mockup_image_path && !gen.mockup_image_path.startsWith("data:") && !gen.mockup_image_path.startsWith("http")) {
-        paths.push(gen.mockup_image_path);
-      }
-      if (paths.length) await supabase.storage.from("designs").remove(paths);
+    setDeleting(id);
 
-      const { error } = await supabase.from("generations").delete().eq("id", gen.id);
-      if (error) throw error;
+    const { error } = await supabase
+      .from('generations')
+      .delete()
+      .eq('id', id);
 
-      setGenerations((prev) => prev.filter((g) => g.id !== gen.id));
-      toast({ title: "გენერაცია წაიშალა" });
-    } catch (err: any) {
-      toast({ title: "წაშლა ვერ მოხერხდა", description: err.message, variant: "destructive" });
-    } finally {
+    if (error) {
+      console.error('Delete error:', error);
+      toast({ title: 'შეცდომა წაშლისას', variant: 'destructive' });
       setDeleting(null);
+      return;
     }
+
+    setGenerations(prev => prev.filter(d => d.id !== id));
+    toast({ title: 'წაიშალა წარმატებით' });
+    setDeleting(null);
   };
 
   if (initialLoading) {
