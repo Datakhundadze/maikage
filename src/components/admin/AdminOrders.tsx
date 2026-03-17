@@ -241,43 +241,39 @@ export default function AdminOrders() {
                   )}
 
                   {/* Design mockups */}
-                  {(order.front_mockup_url || order.back_mockup_url) && (
-                    <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">დიზაინი</h4>
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">დიზაინი</h4>
+                    {order.front_mockup_url || order.back_mockup_url ? (
                       <div className="flex gap-4 flex-wrap">
                         {order.front_mockup_url && (
                           <div className="space-y-1.5">
+                            <p className="text-xs text-muted-foreground">წინა მხარე</p>
                             <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
                               <img src={order.front_mockup_url} alt="წინა მხარე" className="w-full h-full object-contain" />
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full h-7 text-xs gap-1"
-                              onClick={() => downloadImage(order.front_mockup_url!, `order-${order.id}-front.png`)}
-                            >
-                              <Download className="h-3 w-3" /> წინა
+                            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                              onClick={() => downloadImage(order.front_mockup_url!, `order-${order.id}-front.png`)}>
+                              <Download className="h-3 w-3" /> ჩამოტვირთვა
                             </Button>
                           </div>
                         )}
                         {order.back_mockup_url && (
                           <div className="space-y-1.5">
+                            <p className="text-xs text-muted-foreground">უკანა მხარე</p>
                             <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
                               <img src={order.back_mockup_url} alt="უკანა მხარე" className="w-full h-full object-contain" />
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full h-7 text-xs gap-1"
-                              onClick={() => downloadImage(order.back_mockup_url!, `order-${order.id}-back.png`)}
-                            >
-                              <Download className="h-3 w-3" /> უკანა
+                            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                              onClick={() => downloadImage(order.back_mockup_url!, `order-${order.id}-back.png`)}>
+                              <Download className="h-3 w-3" /> ჩამოტვირთვა
                             </Button>
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <p className="text-sm text-muted-foreground">პრევიუ არ არის</p>
+                    )}
+                  </div>
 
                   {/* Comment */}
                   {order.comment && (
