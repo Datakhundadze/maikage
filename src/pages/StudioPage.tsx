@@ -248,6 +248,7 @@ function StudioContent() {
                   externalOpen={orderDialogOpen}
                   onExternalOpenChange={setOrderDialogOpen}
                   frontMockupDataUrl={result?.mockupImage || null}
+                  transparentImageDataUrl={result?.transparentImage || null}
                   prompt={result?.prompt || null}
                 />
               )}

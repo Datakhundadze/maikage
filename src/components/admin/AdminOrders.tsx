@@ -30,6 +30,7 @@ interface Order {
   bog_order_id: string | null;
   front_mockup_url: string | null;
   back_mockup_url: string | null;
+  transparent_image_url: string | null;
   prompt: string | null;
 }
 
@@ -272,6 +273,20 @@ export default function AdminOrders() {
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">პრევიუ არ არის</p>
+                    )}
+                    {order.transparent_image_url && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-xs text-muted-foreground mb-1.5">ორიგინალი დიზაინი (პრინტ ფაილი)</p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
+                            <img src={order.transparent_image_url} alt="ორიგინალი" className="w-full h-full object-contain" />
+                          </div>
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                            onClick={() => downloadImage(order.transparent_image_url!, `order-${order.id}-print.png`)}>
+                            <Download className="h-3 w-3" /> პრინტ ფაილი
+                          </Button>
+                        </div>
+                      </div>
                     )}
                   </div>
 

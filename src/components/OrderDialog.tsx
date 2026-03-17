@@ -36,6 +36,7 @@ interface OrderDialogProps {
   onExternalOpenChange?: (open: boolean) => void;
   frontMockupDataUrl?: string | null;
   backMockupDataUrl?: string | null;
+  transparentImageDataUrl?: string | null;
   prompt?: string | null;
   onBeforeOpen?: () => void;
 }
@@ -64,7 +65,7 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
   }
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, prompt, onBeforeOpen }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, prompt, onBeforeOpen }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -100,9 +101,10 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       const orderId = crypto.randomUUID();
 
       // Upload mockup images in parallel if provided
-      const [frontUrl, backUrl] = await Promise.all([
+      const [frontUrl, backUrl, transparentUrl] = await Promise.all([
         frontMockupDataUrl ? uploadMockupImage(frontMockupDataUrl, orderId, "front") : Promise.resolve(null),
         backMockupDataUrl ? uploadMockupImage(backMockupDataUrl, orderId, "back") : Promise.resolve(null),
+        transparentImageDataUrl ? uploadMockupImage(transparentImageDataUrl, orderId, "transparent") : Promise.resolve(null),
       ]);
 
       // 1. Insert order into database
@@ -126,6 +128,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         payment_status: "unpaid",
         front_mockup_url: frontUrl,
         back_mockup_url: backUrl,
+        transparent_image_url: transparentUrl,
         prompt: prompt || null,
       } as any).select("id").single();
 
