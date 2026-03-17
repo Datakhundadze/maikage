@@ -76,13 +76,20 @@ function StudioContent() {
   }, [productConfig.config.product, trackEvent]);
 
   const handleGenerate = useCallback(async () => {
-    if (!user && generationCountRef.current >= 1) {
-      setShowLoginModal(true);
+    const limitResult = checkLimit();
+    if (!limitResult.allowed) {
+      if (limitResult.reason === "guest_limit") {
+        setLoginModalMessage(limitResult.message);
+        setShowLoginModal(true);
+      } else {
+        setLimitMessage(limitResult.message);
+      }
       return;
     }
+    setLimitMessage(null);
 
     try {
-      generationCountRef.current += 1;
+      recordGeneration();
       dispatch({ type: "SET_STATUS", status: "GENERATING_DESIGN" });
       productConfig.setLocked(true);
 
