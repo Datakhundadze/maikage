@@ -20,6 +20,7 @@ import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
 import LoginModal from "@/components/LoginModal";
+import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
 
