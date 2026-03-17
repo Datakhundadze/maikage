@@ -283,6 +283,18 @@ export default function SimplePage() {
     if (savedToGenerations) return;
     try {
       const { config } = productConfig;
+      const genId = crypto.randomUUID();
+      const imageData = frontMockup || backMockup;
+
+      // Upload image to storage (avoid storing large base64 in DB)
+      let mockupPath: string | null = null;
+      if (imageData) {
+        const blob = await fetch(imageData).then(r => r.blob());
+        const path = `generations/${genId}-mockup.png`;
+        const { error: upErr } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png" });
+        if (!upErr) mockupPath = path;
+      }
+
       const record = {
         user_id: user?.id ?? null,
         session_id: !user ? getGuestSessionId() : null,
@@ -291,7 +303,7 @@ export default function SimplePage() {
         color: config.color,
         style: "simple",
         prompt: null,
-        mockup_image_path: frontMockup || backMockup || null,
+        mockup_image_path: mockupPath,
         transparent_image_path: null,
       };
       await supabase.from("generations" as any).insert(record);
