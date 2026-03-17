@@ -65,7 +65,7 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
   }
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, prompt, onBeforeOpen }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, prompt, onBeforeOpen }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
