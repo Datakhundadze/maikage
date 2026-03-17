@@ -198,7 +198,7 @@ export default function AdminDesigns() {
                     </Button>
                   )}
                   <Button size="sm" variant="destructive" className="h-7 text-xs gap-1"
-                    disabled={deleting === gen.id} onClick={() => handleDelete(gen)}>
+                    disabled={deleting === gen.id} onClick={() => handleDelete(gen.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
