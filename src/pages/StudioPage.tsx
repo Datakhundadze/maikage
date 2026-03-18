@@ -29,15 +29,15 @@ function StudioContent() {
   const { state, dispatch } = useDesign();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
-  const [saving, setSaving] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const savedDesignIdRef = useRef<string | null>(null);
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
-  const [publishing, setPublishing] = useState(false);
   const { saveDesign, togglePublish } = useDesignStorage();
   const { trackEvent } = useAnalytics();
 
@@ -88,6 +88,7 @@ function StudioContent() {
       return;
     }
     setLimitMessage(null);
+    savedDesignIdRef.current = null;
 
     try {
       recordGeneration();
@@ -156,6 +157,23 @@ function StudioContent() {
         if (insertError) {
           console.error("[Generation] Insert error:", insertError);
         }
+
+        // Auto-save to "My Designs" for logged-in users
+        if (user) {
+          const title = state.designParams.character.slice(0, 60) || "Untitled";
+          const id = await saveDesign({
+            title,
+            prompt: genResult.prompt,
+            product: config.product,
+            color: config.color,
+            placementX: config.placementCoords.x,
+            placementY: config.placementCoords.y,
+            placementScale: config.placementCoords.scale,
+            transparentImageDataUrl: genResult.transparentImage,
+            mockupImageDataUrl: genResult.mockupImage,
+          });
+          savedDesignIdRef.current = id;
+        }
       } catch (e: any) {
         console.error("[Generation] Failed to save generation record:", e);
       }
@@ -172,39 +190,26 @@ function StudioContent() {
     }
   }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration]);
 
-  const handleSave = useCallback(async () => {
-    if (!result) return;
-    setSaving(true);
-    const title = state.designParams.character.slice(0, 60) || "Untitled";
-    await saveDesign({
-      title,
-      prompt: result.prompt,
-      product: productConfig.config.product,
-      color: productConfig.config.color,
-      placementX: productConfig.config.placementCoords.x,
-      placementY: productConfig.config.placementCoords.y,
-      placementScale: productConfig.config.placementCoords.scale,
-      transparentImageDataUrl: result.transparentImage,
-      mockupImageDataUrl: result.mockupImage,
-    });
-    setSaving(false);
-  }, [result, state.designParams.character, productConfig.config, saveDesign]);
-
   const handlePublish = useCallback(async () => {
     if (!result || !user) { setShowLoginModal(true); return; }
     setPublishing(true);
-    const title = state.designParams.character.slice(0, 60) || "Untitled";
-    const id = await saveDesign({
-      title,
-      prompt: result.prompt,
-      product: productConfig.config.product,
-      color: productConfig.config.color,
-      placementX: productConfig.config.placementCoords.x,
-      placementY: productConfig.config.placementCoords.y,
-      placementScale: productConfig.config.placementCoords.scale,
-      transparentImageDataUrl: result.transparentImage,
-      mockupImageDataUrl: result.mockupImage,
-    });
+    let id = savedDesignIdRef.current;
+    if (!id) {
+      // Not yet saved — save now then publish
+      const title = state.designParams.character.slice(0, 60) || "Untitled";
+      id = await saveDesign({
+        title,
+        prompt: result.prompt,
+        product: productConfig.config.product,
+        color: productConfig.config.color,
+        placementX: productConfig.config.placementCoords.x,
+        placementY: productConfig.config.placementCoords.y,
+        placementScale: productConfig.config.placementCoords.scale,
+        transparentImageDataUrl: result.transparentImage,
+        mockupImageDataUrl: result.mockupImage,
+      });
+      savedDesignIdRef.current = id;
+    }
     if (id) await togglePublish(id, false);
     setPublishing(false);
   }, [result, user, state.designParams.character, productConfig.config, saveDesign, togglePublish]);
@@ -228,8 +233,6 @@ function StudioContent() {
       onViewImage={setLightboxSrc}
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
-      onSave={handleSave}
-      saving={saving}
       onPublish={handlePublish}
       publishing={publishing}
       onResultUpdate={setResult}
