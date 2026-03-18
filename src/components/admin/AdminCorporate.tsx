@@ -22,15 +22,21 @@ interface Inquiry {
 export default function AdminCorporate() {
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
   const fetchInquiries = useCallback(async (bg = false) => {
     if (!bg) setInitialLoading(true);
-    const { data } = await supabase
+    setError(null);
+    const { data, error: fetchError } = await supabase
       .from("corporate_inquiries")
       .select("*")
       .order("created_at", { ascending: false });
-    setInquiries((data as Inquiry[]) || []);
+    if (fetchError) {
+      setError(fetchError.message);
+    } else {
+      setInquiries((data as Inquiry[]) || []);
+    }
     if (!bg) setInitialLoading(false);
     setLastRefresh(new Date());
   }, []);
@@ -61,6 +67,13 @@ export default function AdminCorporate() {
           <Button variant="outline" size="sm" onClick={() => fetchInquiries(false)}>განახლება</Button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive flex items-center justify-between">
+          <span>მოთხოვნების წამოღება ვერ მოხერხდა: {error}</span>
+          <Button variant="outline" size="sm" onClick={() => fetchInquiries(false)}>განახლება</Button>
+        </div>
+      )}
 
       <div className="space-y-3">
         {inquiries.map((inq) => (
