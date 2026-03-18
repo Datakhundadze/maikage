@@ -5,7 +5,7 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, LogIn, LogOut, FolderOpen, Globe } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -15,6 +15,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
+import LoginModal from "@/components/LoginModal";
+import { useDesignStorage } from "@/hooks/useDesignStorage";
+import { useNavigate } from "react-router-dom";
 
 const FONTS = [
   { name: "Sans Serif", family: "sans-serif" },
@@ -87,7 +90,11 @@ export default function SimplePage() {
   const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
-  const { user } = useAuth();
+  const { user, isAnonymous, signOut } = useAuth();
+  const { saveDesign, togglePublish } = useDesignStorage();
+  const navigate = useNavigate();
+  const [showLogin, setShowLogin] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -313,6 +320,25 @@ export default function SimplePage() {
     }
   }, [user, productConfig, savedToGenerations]);
 
+  const handlePublish = useCallback(async (frontMockupUrl: string | null) => {
+    if (!user) { setShowLogin(true); return; }
+    if (!frontMockupUrl) return;
+    setPublishing(true);
+    const id = await saveDesign({
+      title: "Simple Design",
+      prompt: null,
+      product: productConfig.config.product,
+      color: productConfig.config.color,
+      placementX: productConfig.config.placementCoords.x,
+      placementY: productConfig.config.placementCoords.y,
+      placementScale: productConfig.config.placementCoords.scale,
+      transparentImageDataUrl: frontMockupUrl,
+      mockupImageDataUrl: frontMockupUrl,
+    });
+    if (id) await togglePublish(id, false);
+    setPublishing(false);
+  }, [user, productConfig, saveDesign, togglePublish]);
+
   // Memoized mockup data URLs for order
   const [frontMockup, setFrontMockup] = useState<string | null>(null);
   const [backMockup, setBackMockup] = useState<string | null>(null);
@@ -340,26 +366,54 @@ export default function SimplePage() {
       {/* Sidebar */}
       <aside className="w-full lg:w-[450px] lg:min-w-[450px] flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:h-screen lg:overflow-y-auto">
         {/* Header */}
-        <header className="flex items-center justify-between p-4 border-b border-sidebar-border">
-          <button onClick={() => setMode("landing")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background text-lg font-black dark:bg-primary dark:text-primary-foreground">
-              M
+        <header className="flex flex-col gap-2 p-4 border-b border-sidebar-border">
+          <div className="flex items-center justify-between">
+            <button onClick={() => setMode("landing")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background text-lg font-black dark:bg-primary dark:text-primary-foreground">
+                M
+              </div>
+              <div className="text-left">
+                <h1 className="text-xl font-bold leading-tight">maika.ge</h1>
+                <div className="text-xs text-muted-foreground">{user?.email || (lang === "en" ? "Guest mode" : "სტუმრის რეჟიმი")}</div>
+              </div>
+            </button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
+                {lang.toUpperCase()}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={toggleTheme} className="px-2">
+                {theme === "dark" ? "☀️" : "🌙"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setMode("studio")} className="gap-1 text-xs">
+                <Sparkles className="h-3.5 w-3.5" />
+                Studio
+              </Button>
+              {isAnonymous ? (
+                <Button variant="ghost" size="sm" onClick={() => setShowLogin(true)} className="text-xs gap-1 px-2">
+                  <LogIn className="h-3.5 w-3.5" /> შესვლა
+                </Button>
+              ) : (
+                <Button variant="ghost" size="icon" onClick={() => signOut(setMode)} className="h-8 w-8" title="გასვლა">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              )}
             </div>
-            <h1 className="text-xl font-bold">maika.ge</h1>
-          </button>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
-              {lang.toUpperCase()}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={toggleTheme} className="px-2">
-              {theme === "dark" ? "☀️" : "🌙"}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setMode("studio")} className="gap-1 text-xs">
-              <Sparkles className="h-3.5 w-3.5" />
-              Studio
-            </Button>
           </div>
+          <nav className="flex gap-1">
+            <button onClick={() => navigate("/my-designs")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <FolderOpen className="h-3.5 w-3.5" /> {lang === "en" ? "My Designs" : "ჩემი დიzaინები"}
+            </button>
+            <button onClick={() => navigate("/community")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Globe className="h-3.5 w-3.5" /> {lang === "en" ? "Community" : "საზოგადოება"}
+            </button>
+            {frontMockup && (
+              <button onClick={() => handlePublish(frontMockup)} disabled={publishing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-500 border border-amber-500/30 hover:bg-amber-500/10 transition-colors disabled:opacity-50">
+                <Globe className="h-3.5 w-3.5" /> {publishing ? "..." : (lang === "en" ? "Publish" : "გამოქვეყნება")}
+              </button>
+            )}
+          </nav>
         </header>
+        <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Product config */}
