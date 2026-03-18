@@ -4,7 +4,7 @@ import { upscaleImage } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Copy, Package, Save, Maximize, ShoppingBag } from "lucide-react";
+import { Download, Eye, Copy, Package, Save, Maximize, ShoppingBag, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResultViewProps {
@@ -14,11 +14,13 @@ interface ResultViewProps {
   colorName?: string;
   onSave?: () => void;
   saving?: boolean;
+  onPublish?: () => void;
+  publishing?: boolean;
   onResultUpdate?: (result: GenerationResult) => void;
   onOrder?: () => void;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving, onResultUpdate, onOrder }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving, onPublish, publishing, onResultUpdate, onOrder }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
@@ -65,6 +67,11 @@ export default function ResultView({ result, onViewImage, productName = "design"
     <div className="flex flex-col items-center gap-6 p-6 w-full max-w-2xl mx-auto">
       {/* Top actions */}
       <div className="w-full flex flex-wrap justify-end gap-2">
+        {onPublish && (
+          <Button size="sm" variant="outline" className="gap-1.5 border-amber-500/50 text-amber-500 hover:bg-amber-500/10" onClick={onPublish} disabled={publishing}>
+            <Globe className="h-4 w-4" /> {publishing ? "..." : "საზოგადოება"}
+          </Button>
+        )}
         {onSave && (
           <Button size="sm" variant="default" className="gap-1.5" onClick={onSave} disabled={saving}>
             <Save className="h-4 w-4" /> {saving ? t(lang, "result.saving") : t(lang, "result.save")}

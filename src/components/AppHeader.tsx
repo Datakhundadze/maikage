@@ -3,8 +3,10 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { LogOut, Paintbrush, FolderOpen, Globe, Image, ShieldCheck } from "lucide-react";
+import { LogOut, LogIn, Paintbrush, FolderOpen, Globe, Image, ShieldCheck } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import LoginModal from "@/components/LoginModal";
 
 export default function AppHeader() {
   const { user, isAnonymous, signOut } = useAuth();
@@ -12,6 +14,7 @@ export default function AppHeader() {
   const { isAdmin } = useAdminCheck();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showLogin, setShowLogin] = useState(false);
 
   const navItems = [
     { path: "/", label: t(lang, "nav.studio"), icon: Paintbrush },
@@ -47,9 +50,15 @@ export default function AppHeader() {
           <Button variant="ghost" size="sm" onClick={toggleTheme} className="px-2">
             {theme === "dark" ? "☀️" : "🌙"}
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => signOut(setMode)} className="h-8 w-8">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          {isAnonymous ? (
+            <Button variant="ghost" size="sm" onClick={() => setShowLogin(true)} className="text-xs gap-1 px-2">
+              <LogIn className="h-3.5 w-3.5" /> შესვლა
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon" onClick={() => signOut(setMode)} className="h-8 w-8" title="გასვლა">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
 
@@ -72,6 +81,7 @@ export default function AppHeader() {
           );
         })}
       </nav>
+      <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
     </header>
   );
 }

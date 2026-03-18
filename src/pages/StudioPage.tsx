@@ -37,7 +37,8 @@ function StudioContent() {
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
-  const { saveDesign } = useDesignStorage();
+  const [publishing, setPublishing] = useState(false);
+  const { saveDesign, togglePublish } = useDesignStorage();
   const { trackEvent } = useAnalytics();
 
   // Restore last generation from localStorage on mount
@@ -143,7 +144,7 @@ function StudioContent() {
           product: config.product,
           color: config.color,
           style: state.designParams.style || null,
-          prompt: genResult.prompt || null,
+          prompt: [state.designParams.character, state.designParams.scene].filter(Boolean).join(" / ") || null,
           mockup_image_path: mockupPath,
           transparent_image_path: transparentPath,
         };
@@ -157,26 +158,6 @@ function StudioContent() {
         }
       } catch (e: any) {
         console.error("[Generation] Failed to save generation record:", e);
-      }
-
-      // Auto-save to designs table for "My Designs" (only for logged-in users)
-      if (user) {
-        try {
-          const title = state.designParams.character.slice(0, 60) || "Untitled";
-          await saveDesign({
-            title,
-            prompt: genResult.prompt,
-            product: config.product,
-            color: config.color,
-            placementX: config.placementCoords.x,
-            placementY: config.placementCoords.y,
-            placementScale: config.placementCoords.scale,
-            transparentImageDataUrl: genResult.transparentImage,
-            mockupImageDataUrl: genResult.mockupImage,
-          });
-        } catch (e: any) {
-          console.error("[Generation] Auto-save to designs failed:", e);
-        }
       }
     } catch (err: any) {
       console.error("Generation failed:", err);
@@ -209,6 +190,25 @@ function StudioContent() {
     setSaving(false);
   }, [result, state.designParams.character, productConfig.config, saveDesign]);
 
+  const handlePublish = useCallback(async () => {
+    if (!result || !user) { setShowLoginModal(true); return; }
+    setPublishing(true);
+    const title = state.designParams.character.slice(0, 60) || "Untitled";
+    const id = await saveDesign({
+      title,
+      prompt: result.prompt,
+      product: productConfig.config.product,
+      color: productConfig.config.color,
+      placementX: productConfig.config.placementCoords.x,
+      placementY: productConfig.config.placementCoords.y,
+      placementScale: productConfig.config.placementCoords.scale,
+      transparentImageDataUrl: result.transparentImage,
+      mockupImageDataUrl: result.mockupImage,
+    });
+    if (id) await togglePublish(id, false);
+    setPublishing(false);
+  }, [result, user, state.designParams.character, productConfig.config, saveDesign, togglePublish]);
+
   const handleStartNew = useCallback(() => {
     setResult(null);
     localStorage.removeItem(RESULT_STORAGE_KEY);
@@ -230,6 +230,8 @@ function StudioContent() {
       colorName={productConfig.config.color}
       onSave={handleSave}
       saving={saving}
+      onPublish={handlePublish}
+      publishing={publishing}
       onResultUpdate={setResult}
       onOrder={() => setOrderDialogOpen(true)}
     />
