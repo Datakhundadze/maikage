@@ -23,6 +23,8 @@ import LoginModal from "@/components/LoginModal";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
+const RESULT_TS_KEY = "maika_last_generation_ts";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 function StudioContent() {
   const productConfig = useProductConfig();
@@ -40,32 +42,61 @@ function StudioContent() {
   const { saveDesign } = useDesignStorage();
   const { trackEvent } = useAnalytics();
 
-  // Restore last generation from localStorage on mount
+  // Restore last generation from localStorage on mount (only if < 30 min old)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(RESULT_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as GenerationResult;
-        if (parsed.mockupImage && parsed.transparentImage) {
-          setResult(parsed);
-          dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+      const savedTs = localStorage.getItem(RESULT_TS_KEY);
+      if (saved && savedTs) {
+        const age = Date.now() - Number(savedTs);
+        if (age < SESSION_TIMEOUT_MS) {
+          const parsed = JSON.parse(saved) as GenerationResult;
+          if (parsed.mockupImage && parsed.transparentImage) {
+            setResult(parsed);
+            dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+          }
+        } else {
+          localStorage.removeItem(RESULT_STORAGE_KEY);
+          localStorage.removeItem(RESULT_TS_KEY);
         }
+      } else if (saved) {
+        localStorage.removeItem(RESULT_STORAGE_KEY);
       }
     } catch {
       // ignore parse errors
     }
   }, [dispatch]);
 
-  // Persist result to localStorage whenever it changes
+  // Persist result with timestamp
   useEffect(() => {
     if (result) {
       try {
         localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(result));
-      } catch {
-        // quota exceeded — ignore
-      }
+        localStorage.setItem(RESULT_TS_KEY, String(Date.now()));
+      } catch {}
     }
   }, [result]);
+
+  // 30-minute inactivity → redirect to landing
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setResult(null);
+        localStorage.removeItem(RESULT_STORAGE_KEY);
+        localStorage.removeItem(RESULT_TS_KEY);
+        window.location.href = "/";
+      }, SESSION_TIMEOUT_MS);
+    };
+    const events = ["click", "keydown", "scroll", "mousemove", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    reset();
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, []);
 
   useEffect(() => {
     trackEvent("page_visit", { page: "studio" });
@@ -212,7 +243,8 @@ function StudioContent() {
   const handleStartNew = useCallback(() => {
     setResult(null);
     localStorage.removeItem(RESULT_STORAGE_KEY);
-    dispatch({ type: "RESET" });
+    localStorage.removeItem(RESULT_TS_KEY);
+    dispatch({ type: "SET_STATUS", status: "IDLE" });
     productConfig.setLocked(false);
   }, [dispatch, productConfig]);
 
