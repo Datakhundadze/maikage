@@ -156,10 +156,19 @@ function StudioContent() {
         let mockupPath: string | null = null;
         let transparentPath: string | null = null;
 
-        const [mockupBlob, transparentBlob] = await Promise.all([
-          genResult.mockupImage ? fetch(genResult.mockupImage).then(r => r.blob()) : Promise.resolve(null),
-          genResult.transparentImage ? fetch(genResult.transparentImage).then(r => r.blob()) : Promise.resolve(null),
-        ]);
+        function base64ToBlob(dataUrl: string): Blob {
+          const [header, base64] = dataUrl.split(",");
+          const mime = header.match(/:(.*?);/)?.[1] || "image/png";
+          const binary = atob(base64);
+          const arr = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+          return new Blob([arr], { type: mime });
+        }
+
+        const [mockupBlob, transparentBlob] = [
+          genResult.mockupImage ? base64ToBlob(genResult.mockupImage) : null,
+          genResult.transparentImage ? base64ToBlob(genResult.transparentImage) : null,
+        ];
 
         const uploads = await Promise.all([
           mockupBlob ? supabase.storage.from("designs").upload(`generations/${genId}-mockup.png`, mockupBlob, { contentType: "image/png" }) : Promise.resolve(null),
