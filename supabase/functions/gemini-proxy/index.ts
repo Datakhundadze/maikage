@@ -99,7 +99,7 @@ CRITICAL RULES:
 CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
-${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : ""}
+${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : "DO NOT include any text, words, letters, numbers, or typography of any kind in the design. The design must be purely visual/illustrative with absolutely no written elements."}
 
 OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.`,
   });
