@@ -243,7 +243,8 @@ function StudioContent() {
   const handleStartNew = useCallback(() => {
     setResult(null);
     localStorage.removeItem(RESULT_STORAGE_KEY);
-    dispatch({ type: "RESET" });
+    localStorage.removeItem(RESULT_TS_KEY);
+    dispatch({ type: "SET_STATUS", status: "IDLE" });
     productConfig.setLocked(false);
   }, [dispatch, productConfig]);
 
