@@ -41,7 +41,7 @@ function StudioContent() {
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
-  const { saveDesign } = useDesignStorage();
+  const { saveDesign, togglePublish } = useDesignStorage();
   const { trackEvent } = useAnalytics();
 
   // Restore last generation from localStorage on mount (only if < 30 min old)
