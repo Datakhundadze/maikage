@@ -167,7 +167,13 @@ function StudioContent() {
         ]);
 
         if (uploads[0] && !uploads[0].error) mockupPath = `generations/${genId}-mockup.png`;
+        else if (uploads[0]?.error) console.error("[Generation] Mockup upload failed:", uploads[0].error);
         if (uploads[1] && !uploads[1].error) transparentPath = `generations/${genId}-transparent.png`;
+        else if (uploads[1]?.error) console.error("[Generation] Transparent upload failed:", uploads[1].error);
+
+        // Use user's typed input as prompt (Gemini's text response is typically empty for image generation)
+        const userPrompt = [state.designParams.character, state.designParams.scene]
+          .filter(Boolean).join(" • ") || null;
 
         const genRecord = {
           user_id: user?.id ?? null,
@@ -176,7 +182,7 @@ function StudioContent() {
           product: config.product,
           color: config.color,
           style: state.designParams.style || null,
-          prompt: genResult.prompt || null,
+          prompt: userPrompt,
           mockup_image_path: mockupPath,
           transparent_image_path: transparentPath,
         };
