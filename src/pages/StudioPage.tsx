@@ -181,8 +181,12 @@ function StudioContent() {
         else if (uploads[1]?.error) console.error("[Generation] Transparent upload failed:", uploads[1].error);
 
         // Use user's typed input as prompt (Gemini's text response is typically empty for image generation)
-        const userPrompt = [state.designParams.character, state.designParams.scene]
-          .filter(Boolean).join(" • ") || null;
+        const userPrompt = [
+          state.designParams.character,
+          state.designParams.scene,
+          state.designParams.style,
+          genResult.prompt,
+        ].filter(Boolean).join(" • ") || null;
 
         const genRecord = {
           user_id: user?.id ?? null,
