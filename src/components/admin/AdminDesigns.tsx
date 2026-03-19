@@ -19,20 +19,20 @@ interface Generation {
   mockup_image_path: string | null;
 }
 
-// Async image resolver — tries signed URL (works for private buckets), falls back to public URL
+// Image resolver — bucket "designs" is public, so use getPublicUrl (no auth call needed).
+// Falls back to a signed URL in case the public flag was not applied yet.
 async function resolveImageUrl(path: string | null): Promise<string | null> {
   if (!path) return null;
   if (path.startsWith("data:") || path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
-  // Try signed URL first (60 min expiry) — works for both public and private buckets
-  const { data, error } = await supabase.storage
-    .from("designs")
-    .createSignedUrl(path, 3600);
-  if (!error && data?.signedUrl) return data.signedUrl;
-  // Fallback: public URL
+  // Primary: public URL (instant, no network call, works for public bucket)
   const { data: pub } = supabase.storage.from("designs").getPublicUrl(path);
-  return pub.publicUrl;
+  if (pub?.publicUrl) return pub.publicUrl;
+  // Fallback: signed URL (requires SELECT policy, works for private buckets)
+  const { data, error } = await supabase.storage.from("designs").createSignedUrl(path, 3600);
+  if (!error && data?.signedUrl) return data.signedUrl;
+  return null;
 }
 
 // Lazy image card that resolves its URL asynchronously
@@ -115,7 +115,9 @@ function GenerationCard({
       <div className="p-3 space-y-2">
         <div>
           <span className="text-[10px] uppercase text-muted-foreground font-semibold">პრომპტი:</span>
-          <p className="text-sm leading-snug break-words">{gen.prompt || "—"}</p>
+          <p className="text-sm leading-snug break-words text-muted-foreground italic">
+            {gen.prompt || "(პრომპტი არ შენახულა — Gemini-ს ტექსტური პასუხი ცარიელია)"}
+          </p>
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
           <div><span className="text-muted-foreground">პროდუქტი: </span><span className="font-medium">{gen.product}</span></div>
