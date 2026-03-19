@@ -196,7 +196,7 @@ function StudioContent() {
       if (user) {
         try {
           const title = state.designParams.character.slice(0, 60) || "Untitled";
-          await saveDesign({
+          const designId = await saveDesign({
             title,
             prompt: genResult.prompt,
             product: config.product,
@@ -207,6 +207,8 @@ function StudioContent() {
             transparentImageDataUrl: genResult.transparentImage,
             mockupImageDataUrl: genResult.mockupImage,
           });
+          if (designId) setSavedDesignId(designId);
+          setIsShared(false);
         } catch (e: any) {
           console.error("[Generation] Auto-save to designs failed:", e);
         }
