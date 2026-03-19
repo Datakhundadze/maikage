@@ -22,6 +22,7 @@ import LoginModal from "@/components/LoginModal";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
+const RESULT_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
 function StudioContent() {
   const productConfig = useProductConfig();
@@ -40,19 +41,21 @@ function StudioContent() {
   const { saveDesign, togglePublish } = useDesignStorage();
   const { trackEvent } = useAnalytics();
 
-  // Restore last generation from localStorage on mount
+  // Restore last generation from localStorage on mount (only if < 30 min old)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(RESULT_STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved) as GenerationResult;
-        if (parsed.mockupImage && parsed.transparentImage) {
+        const { result: parsed, timestamp } = JSON.parse(saved) as { result: GenerationResult; timestamp: number };
+        if (parsed.mockupImage && parsed.transparentImage && Date.now() - timestamp < RESULT_EXPIRY_MS) {
           setResult(parsed);
           dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+        } else {
+          localStorage.removeItem(RESULT_STORAGE_KEY);
         }
       }
     } catch {
-      // ignore parse errors
+      localStorage.removeItem(RESULT_STORAGE_KEY);
     }
   }, [dispatch]);
 
@@ -60,7 +63,7 @@ function StudioContent() {
   useEffect(() => {
     if (result) {
       try {
-        localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(result));
+        localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify({ result, timestamp: Date.now() }));
       } catch {
         // quota exceeded — ignore
       }

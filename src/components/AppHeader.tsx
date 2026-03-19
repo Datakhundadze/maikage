@@ -55,8 +55,8 @@ export default function AppHeader() {
               <LogIn className="h-3.5 w-3.5" /> შესვლა
             </Button>
           ) : (
-            <Button variant="ghost" size="icon" onClick={() => signOut(setMode)} className="h-8 w-8" title="გასვლა">
-              <LogOut className="h-4 w-4" />
+            <Button variant="ghost" size="sm" onClick={() => signOut(setMode)} className="text-xs gap-1 px-2 text-muted-foreground hover:text-destructive">
+              <LogOut className="h-3.5 w-3.5" /> გასვლა
             </Button>
           )}
         </div>
