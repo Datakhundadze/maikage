@@ -31,7 +31,9 @@ function StudioContent() {
   const { state, dispatch } = useDesign();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [savedDesignId, setSavedDesignId] = useState<string | null>(null);
+  const [isShared, setIsShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
