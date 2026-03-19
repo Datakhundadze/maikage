@@ -226,23 +226,16 @@ function StudioContent() {
     }
   }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration]);
 
-  const handleSave = useCallback(async () => {
-    if (!result) return;
-    setSaving(true);
-    const title = state.designParams.character.slice(0, 60) || "Untitled";
-    await saveDesign({
-      title,
-      prompt: result.prompt,
-      product: productConfig.config.product,
-      color: productConfig.config.color,
-      placementX: productConfig.config.placementCoords.x,
-      placementY: productConfig.config.placementCoords.y,
-      placementScale: productConfig.config.placementCoords.scale,
-      transparentImageDataUrl: result.transparentImage,
-      mockupImageDataUrl: result.mockupImage,
-    });
-    setSaving(false);
-  }, [result, state.designParams.character, productConfig.config, saveDesign]);
+  const handleShareToCommunity = useCallback(async () => {
+    if (!savedDesignId) {
+      toast({ title: "შესვლა საჭიროა", description: "გაზიარებისთვის გაიარეთ ავტორიზაცია.", variant: "destructive" });
+      return;
+    }
+    setSharing(true);
+    const ok = await togglePublish(savedDesignId, false);
+    if (ok) setIsShared(true);
+    setSharing(false);
+  }, [savedDesignId, togglePublish, toast]);
 
   const handleStartNew = useCallback(() => {
     setResult(null);
