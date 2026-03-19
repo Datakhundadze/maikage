@@ -11,7 +11,6 @@ import Lightbox from "@/components/Lightbox";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { DesignProvider, useDesign } from "@/hooks/useDesign";
 import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
-import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -96,9 +95,6 @@ function StudioContent() {
       productConfig.setLocked(true);
 
       const { config } = productConfig;
-      const entry = catalog.findProduct(config.product, config.subProduct, "White" as any, config.view);
-      const productImageUrl = entry?.imageUrl ?? null;
-
       const genResult = await runGenerationPipeline(
         {
           designParams: state.designParams,
@@ -107,7 +103,7 @@ function StudioContent() {
           speed: state.speed,
         },
         config.placementCoords,
-        productImageUrl,
+        null,
         (status) => dispatch({ type: "SET_STATUS", status: status as any }),
       );
 
