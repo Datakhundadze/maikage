@@ -5,44 +5,81 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+/** Extract base64 image from various response formats the gateway might return */
+function extractImage(data: any): string | null {
+  // Format 1: content array with image_url objects
+  const content = data?.choices?.[0]?.message?.content;
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (part?.type === "image_url" && part?.image_url?.url) return part.image_url.url;
+      if (part?.type === "image" && part?.image_url?.url) return part.image_url.url;
+      // Some models return inline_data
+      if (part?.inline_data?.data) {
+        const mime = part.inline_data.mime_type || "image/png";
+        return `data:${mime};base64,${part.inline_data.data}`;
+      }
+    }
   }
 
-  try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+  // Format 2: separate images array on message
+  const images = data?.choices?.[0]?.message?.images;
+  if (Array.isArray(images) && images.length > 0) {
+    if (images[0]?.image_url?.url) return images[0].image_url.url;
+    if (images[0]?.url) return images[0].url;
+    if (typeof images[0] === "string") return images[0];
+  }
 
-    const { action, params } = await req.json();
+  // Format 3: top-level data array (images/generations style)
+  if (Array.isArray(data?.data) && data.data[0]?.url) return data.data[0].url;
+  if (Array.isArray(data?.data) && data.data[0]?.b64_json) {
+    return `data:image/png;base64,${data.data[0].b64_json}`;
+  }
 
-    let model: string;
-    let messages: any[];
+  return null;
+}
 
-    if (action === "generate-design") {
-      const { character, characterImages, scene, sceneImage, style, styleImage, text, textImage, product, color, speed } = params;
-      
-      model = speed === "fast" ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image-preview";
+function getUserError(nativeFinishReason: string | undefined, finishReason: string | undefined): string | null {
+  if (nativeFinishReason === "IMAGE_PROHIBITED_CONTENT" || nativeFinishReason === "PROHIBITED_CONTENT") {
+    return "The AI could not generate this image due to content policy restrictions. Try modifying your prompt or using different reference images.";
+  }
+  if (nativeFinishReason === "MAX_TOKENS" || finishReason === "length") {
+    return "The image was too complex to generate. Try simplifying your prompt or using smaller reference images.";
+  }
+  if (nativeFinishReason === "SAFETY" || nativeFinishReason === "BLOCKLIST") {
+    return "The request was blocked by safety filters. Please adjust your prompt.";
+  }
+  if (nativeFinishReason === "RECITATION") {
+    return "The AI could not generate an original image for this prompt. Try rephrasing.";
+  }
+  return null;
+}
 
-      // Build multipart content
-      const content: any[] = [];
+/** Sanitize youth-related terms to avoid content policy */
+function sanitizeCharacter(character: string): string {
+  return character.replace(
+    /\b(boy|girl|child|kid|teen|teenager|minor|infant|baby|toddler)\b/gi,
+    (match) => {
+      const map: Record<string, string> = {
+        boy: "young adult man", girl: "young adult woman", child: "adult person",
+        kid: "adult person", teen: "young adult", teenager: "young adult",
+        minor: "adult person", infant: "adult person", baby: "adult person",
+        toddler: "adult person",
+      };
+      return map[match.toLowerCase()] || "adult person";
+    }
+  );
+}
 
-      // System-like instruction as first text block
-      // Sanitize character description to avoid content policy issues
-      const safeCharacter = (character || "No character specified")
-        .replace(/\b(boy|girl|child|kid|teen|teenager|minor|infant|baby|toddler)\b/gi, (match) => {
-          const replacements: Record<string, string> = {
-            boy: "young adult man", girl: "young adult woman", child: "adult person",
-            kid: "adult person", teen: "young adult", teenager: "young adult",
-            minor: "adult person", infant: "adult person", baby: "adult person",
-            toddler: "adult person"
-          };
-          return replacements[match.toLowerCase()] || "adult person";
-        });
+function buildGenerateDesignMessages(params: any) {
+  const { character, characterImages, scene, sceneImage, style, styleImage, text, textImage, product, color } = params;
+  const safeCharacter = sanitizeCharacter(character || "No character specified");
 
-      content.push({
-        type: "text",
-        text: `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).
+  const content: any[] = [];
+  content.push({
+    type: "text",
+    text: `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).
 
 DESIGN SYSTEM:
 - Character/Subject = WHO is in the design
@@ -63,74 +100,101 @@ ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
 ${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : ""}
 
-OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.`
-      });
+OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.`,
+  });
 
-      // Attach character reference images
-      if (characterImages?.length) {
-        content.push({ type: "text", text: "Character reference images:" });
-        for (const img of characterImages) {
-          content.push({ type: "image_url", image_url: { url: img } });
-        }
-      }
+  if (characterImages?.length) {
+    content.push({ type: "text", text: "Character reference images:" });
+    for (const img of characterImages) {
+      content.push({ type: "image_url", image_url: { url: img } });
+    }
+  }
+  if (sceneImage) {
+    content.push({ type: "text", text: "Scene reference:" });
+    content.push({ type: "image_url", image_url: { url: sceneImage } });
+  }
+  if (styleImage) {
+    content.push({ type: "text", text: "Style reference:" });
+    content.push({ type: "image_url", image_url: { url: styleImage } });
+  }
+  if (textImage) {
+    content.push({ type: "text", text: "Typography/font reference:" });
+    content.push({ type: "image_url", image_url: { url: textImage } });
+  }
 
-      // Attach scene reference
-      if (sceneImage) {
-        content.push({ type: "text", text: "Scene reference:" });
-        content.push({ type: "image_url", image_url: { url: sceneImage } });
-      }
+  return [{ role: "user", content }];
+}
 
-      // Attach style reference
-      if (styleImage) {
-        content.push({ type: "text", text: "Style reference:" });
-        content.push({ type: "image_url", image_url: { url: styleImage } });
-      }
+async function callGateway(model: string, messages: any[], attempt: number): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-      // Attach text/font reference
-      if (textImage) {
-        content.push({ type: "text", text: "Typography/font reference:" });
-        content.push({ type: "image_url", image_url: { url: textImage } });
-      }
+  console.log(`[gemini-proxy] Gateway call: model=${model}, attempt=${attempt + 1}`);
 
-      messages = [{ role: "user", content }];
+  const response = await fetch(GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      modalities: ["image", "text"],
+    }),
+  });
+
+  return response;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { action, params } = await req.json();
+    console.log(`[gemini-proxy] Action: ${action}`);
+
+    let model: string;
+    let messages: any[];
+
+    if (action === "generate-design") {
+      const speed = params.speed || "fast";
+      model = speed === "fast" ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image-preview";
+      messages = buildGenerateDesignMessages(params);
 
     } else if (action === "convert-bg-black") {
       model = "google/gemini-3-pro-image-preview";
-      const { image } = params;
-      
       messages = [{
         role: "user",
         content: [
           {
             type: "text",
-            text: "Change the background of this image from WHITE to PURE BLACK (#000000). Keep the subject/design EXACTLY identical — same colors, same details, same position. Only the white background should become pure black. Do not alter the subject in any way."
+            text: "Change the background of this image from WHITE to PURE BLACK (#000000). Keep the subject/design EXACTLY identical — same colors, same details, same position. Only the white background should become pure black. Do not alter the subject in any way.",
           },
-          { type: "image_url", image_url: { url: image } }
-        ]
+          { type: "image_url", image_url: { url: params.image } },
+        ],
       }];
 
     } else if (action === "upscale") {
       model = "google/gemini-3-pro-image-preview";
-      const { image } = params;
-      
       messages = [{
         role: "user",
         content: [
           {
             type: "text",
-            text: "Upscale this image to 4K resolution (4096x4096). Keep exact same details, colors, composition. Just increase resolution with enhanced detail."
+            text: "Upscale this image to 4K resolution (4096x4096). Keep exact same details, colors, composition. Just increase resolution with enhanced detail.",
           },
-          { type: "image_url", image_url: { url: image } }
-        ]
+          { type: "image_url", image_url: { url: params.image } },
+        ],
       }];
 
     } else if (action === "randomize-prompt") {
       model = "google/gemini-3-flash-preview";
-      const { product } = params;
-
       messages = [{
         role: "user",
-        content: `You are a creative director for a streetwear merch brand. Generate a random, creative, unique design concept for a ${product || "hoodie"}.
+        content: `You are a creative director for a streetwear merch brand. Generate a random, creative, unique design concept for a ${params.product || "hoodie"}.
 
 Return ONLY a JSON object with these fields (no markdown, no explanation):
 {
@@ -140,7 +204,7 @@ Return ONLY a JSON object with these fields (no markdown, no explanation):
   "text": "Optional catchy text/slogan to include (or empty string)"
 }
 
-Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista, underwater DJ, retro-futuristic gardener, etc. Make each concept unique and memorable.`
+Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista, underwater DJ, retro-futuristic gardener, etc. Make each concept unique and memorable.`,
       }];
 
     } else {
@@ -150,75 +214,122 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
       });
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        modalities: ["image", "text"],
-      }),
-    });
+    // Retry logic — up to 2 retries for image actions
+    const maxAttempts = action === "randomize-prompt" ? 1 : 3;
+    let lastError = "";
 
-    if (!response.ok) {
-      const status = response.status;
-      const text = await response.text();
-      console.error("AI gateway error:", status, text);
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await callGateway(model, messages, attempt);
 
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
-          status: 429,
+        if (!response.ok) {
+          const status = response.status;
+          const text = await response.text();
+          console.error(`[gemini-proxy] Gateway HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 300));
+
+          if (status === 429) {
+            return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
+              status: 429,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          if (status === 402) {
+            return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
+              status: 402,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          lastError = `Gateway returned ${status}`;
+          if (attempt < maxAttempts - 1) {
+            console.log(`[gemini-proxy] Retrying in ${(attempt + 1) * 2}s...`);
+            await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+            continue;
+          }
+
+          return new Response(JSON.stringify({ error: "AI generation failed. Please try again." }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const data = await response.json();
+        const nativeFinishReason = data.choices?.[0]?.native_finish_reason;
+        const finishReason = data.choices?.[0]?.finish_reason;
+        const textContent = typeof data.choices?.[0]?.message?.content === "string"
+          ? data.choices[0].message.content
+          : "";
+
+        // For randomize-prompt, just return text
+        if (action === "randomize-prompt") {
+          console.log(`[gemini-proxy] randomize-prompt success`);
+          return new Response(JSON.stringify({ image: null, text: textContent }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Extract image from response
+        const imageData = extractImage(data);
+        console.log(`[gemini-proxy] attempt=${attempt + 1} hasImage=${!!imageData} finishReason=${finishReason} native=${nativeFinishReason}`);
+
+        if (!imageData) {
+          // Check for policy/safety blocks — don't retry those
+          const userError = getUserError(nativeFinishReason, finishReason);
+          if (userError) {
+            console.error(`[gemini-proxy] Blocked: ${nativeFinishReason}`);
+            return new Response(JSON.stringify({ error: userError, text: textContent }), {
+              status: 422,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Log response structure for debugging
+          const responseKeys = JSON.stringify({
+            hasChoices: !!data.choices,
+            messageKeys: data.choices?.[0]?.message ? Object.keys(data.choices[0].message) : [],
+            contentType: typeof data.choices?.[0]?.message?.content,
+            contentIsArray: Array.isArray(data.choices?.[0]?.message?.content),
+            finishReason,
+            nativeFinishReason,
+          });
+          console.error(`[gemini-proxy] No image extracted (attempt ${attempt + 1}). Structure: ${responseKeys}`);
+
+          lastError = "No image in response";
+          if (attempt < maxAttempts - 1) {
+            console.log(`[gemini-proxy] Retrying in ${(attempt + 1) * 2}s...`);
+            await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+            continue;
+          }
+
+          return new Response(JSON.stringify({ error: "AI did not return an image after multiple attempts. Please try again.", text: textContent }), {
+            status: 422,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Success
+        console.log(`[gemini-proxy] Success: action=${action}, attempt=${attempt + 1}`);
+        return new Response(JSON.stringify({ image: imageData, text: textContent }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-      }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
 
-      return new Response(JSON.stringify({ error: "AI generation failed. Please try again." }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      } catch (attemptErr) {
+        lastError = attemptErr instanceof Error ? attemptErr.message : String(attemptErr);
+        console.error(`[gemini-proxy] Attempt ${attempt + 1} exception:`, lastError);
+        if (attempt < maxAttempts - 1) {
+          await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+          continue;
+        }
+      }
     }
 
-    const data = await response.json();
-    
-    // Extract image from response
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    const textContent = data.choices?.[0]?.message?.content;
-    const nativeFinishReason = data.choices?.[0]?.native_finish_reason;
-    const finishReason = data.choices?.[0]?.finish_reason;
-
-    console.log("AI response - action:", action, "hasImage:", !!imageData, "finishReason:", finishReason, "nativeFinishReason:", nativeFinishReason);
-
-    if (!imageData) {
-      let userError = "AI did not return an image. Please try again.";
-      if (nativeFinishReason === "IMAGE_PROHIBITED_CONTENT") {
-        userError = "The AI could not generate this image due to content policy restrictions. Try modifying your prompt or using different reference images.";
-      } else if (nativeFinishReason === "MAX_TOKENS" || finishReason === "length") {
-        userError = "The image was too complex to generate. Try simplifying your prompt or using smaller reference images.";
-      } else if (nativeFinishReason === "SAFETY") {
-        userError = "The request was blocked by safety filters. Please adjust your prompt.";
-      }
-      console.error("No image in AI response. Reason:", nativeFinishReason, "Response:", JSON.stringify(data).slice(0, 500));
-      return new Response(JSON.stringify({ error: userError, text: textContent }), {
-        status: 422,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ image: imageData, text: textContent }), {
+    return new Response(JSON.stringify({ error: `AI generation failed: ${lastError}` }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (e) {
-    console.error("gemini-proxy error:", e);
+    console.error("[gemini-proxy] Fatal error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
