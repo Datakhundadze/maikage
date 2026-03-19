@@ -129,7 +129,14 @@ async function callGateway(model: string, messages: any[], attempt: number): Pro
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-  console.log(`[gemini-proxy] Gateway call: model=${model}, attempt=${attempt + 1}`);
+  const needsImage = action !== "randomize-prompt";
+
+  console.log(`[gemini-proxy] Gateway call: model=${model}, attempt=${attempt + 1}, modalities=${needsImage ? "image+text" : "text"}`);
+
+  const body: any = { model, messages };
+  if (needsImage) {
+    body.modalities = ["image", "text"];
+  }
 
   const response = await fetch(GATEWAY_URL, {
     method: "POST",
@@ -137,11 +144,7 @@ async function callGateway(model: string, messages: any[], attempt: number): Pro
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      modalities: ["image", "text"],
-    }),
+    body: JSON.stringify(body),
   });
 
   return response;
