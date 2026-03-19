@@ -88,6 +88,27 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Mug": ["White"],
 };
 
+// Per-brand size availability
+export const BRAND_SIZES: Record<string, string[]> = {
+  // T-Shirts
+  "GILDAN": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"],
+  "GILDAN HUMMER": ["S", "M", "L", "XL", "XXL"],
+  "TH": ["S", "M", "L", "XL", "XXL"],
+  "JEL T-Shirt": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  "GIORDANO": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  "Khundadze": ["S", "M", "L", "XL", "XXL"],
+  "NIKE": ["S", "M", "L", "XL", "XXL"],
+  "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
+  // Hoodies
+  "GILDAN Hoodie": ["S", "M", "L", "XL", "XXL"],
+  "Premium Hoodie": ["S", "M", "L", "XL", "XXL"],
+  "JEL Standard Hoodie": ["S", "M", "L", "XL", "XXL"],
+  "JEL Zipper": ["S", "M", "L", "XL", "XXL"],
+  "JEL Standard Zipper": ["S", "M", "L", "XL", "XXL"],
+  "GILDAN Bomber": ["S", "M", "L", "XL", "XXL"],
+};
+
 // All colors with display hex values
 export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "White", hex: "#FFFFFF" },
