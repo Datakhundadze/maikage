@@ -22,11 +22,37 @@ async function callGemini(action: string, params: Record<string, any>, retries =
     });
 
     if (error) {
+      // Try to parse the error response for user-friendly messages (422 content policy, etc.)
+      let errorBody: any = null;
+      try {
+        if (error.context && typeof error.context.json === "function") {
+          errorBody = await error.context.json();
+        }
+      } catch { /* ignore parse errors */ }
+
+      const userMessage = errorBody?.error || error.message || "AI request failed";
+      
+      // Don't retry content policy / safety errors — they'll fail every time
+      const isContentBlock = userMessage.includes("content policy") || 
+                             userMessage.includes("safety filters") || 
+                             userMessage.includes("blocked by");
+      if (isContentBlock) {
+        console.error(`AI content blocked (${action}):`, userMessage);
+        throw new Error(userMessage);
+      }
+
       console.error(`AI call failed (${action}, attempt ${attempt + 1}):`, error);
-      if (attempt === retries) throw new Error(error.message || "AI request failed");
+      if (attempt === retries) throw new Error(userMessage);
       continue;
     }
     if (data?.error) {
+      const isContentBlock = data.error.includes("content policy") || 
+                             data.error.includes("safety filters") || 
+                             data.error.includes("blocked by");
+      if (isContentBlock) {
+        console.error(`AI content blocked (${action}):`, data.error);
+        throw new Error(data.error);
+      }
       console.error(`AI returned error (${action}, attempt ${attempt + 1}):`, data.error);
       if (attempt === retries) throw new Error(data.error);
       continue;
