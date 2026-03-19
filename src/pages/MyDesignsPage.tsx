@@ -45,7 +45,7 @@ function resolveImageUrl(path: string | null) {
 export default function MyDesignsPage() {
   const { user } = useAuth();
   const { lang } = useAppState();
-  const { deleteDesign, togglePublish, getPublicUrl } = useDesignStorage();
+  const { deleteDesign, togglePublish } = useDesignStorage();
   const [designs, setDesigns] = useState<Design[]>([]);
   const [guestGenerations, setGuestGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,16 +121,16 @@ export default function MyDesignsPage() {
                 {designs.map((d) => (
                   <div key={d.id} className="rounded-2xl border border-border bg-card overflow-hidden group">
                     <div className="relative aspect-square bg-muted">
-                      {d.mockup_image_path && (
+                      {resolveImageUrl(d.mockup_image_path) && (
                         <img
-                          src={getPublicUrl(d.mockup_image_path)}
+                          src={resolveImageUrl(d.mockup_image_path)!}
                           alt={d.title}
                           className="w-full h-full object-contain"
                           loading="lazy"
                         />
                       )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <Button size="sm" variant="secondary" onClick={() => d.mockup_image_path && setLightboxSrc(getPublicUrl(d.mockup_image_path))}>
+                        <Button size="sm" variant="secondary" onClick={() => { const u = resolveImageUrl(d.mockup_image_path); if (u) setLightboxSrc(u); }}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button size="sm" variant="secondary" onClick={() => handleTogglePublish(d)}>

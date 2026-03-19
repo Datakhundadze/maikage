@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
-const INACTIVITY_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000; // 20 minutes
 
 export function useAutoLogout() {
   const { user } = useAuth();
