@@ -239,6 +239,8 @@ function StudioContent() {
 
   const handleStartNew = useCallback(() => {
     setResult(null);
+    setSavedDesignId(null);
+    setIsShared(false);
     localStorage.removeItem(RESULT_STORAGE_KEY);
     localStorage.removeItem(RESULT_TS_KEY);
     dispatch({ type: "SET_STATUS", status: "IDLE" });
