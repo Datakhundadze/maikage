@@ -125,7 +125,7 @@ OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background.
   return [{ role: "user", content }];
 }
 
-async function callGateway(model: string, messages: any[], attempt: number): Promise<Response> {
+async function callGateway(model: string, messages: any[], attempt: number, action: string): Promise<Response> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
