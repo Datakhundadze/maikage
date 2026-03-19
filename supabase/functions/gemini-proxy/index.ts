@@ -223,7 +223,7 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const response = await callGateway(model, messages, attempt);
+        const response = await callGateway(model, messages, attempt, action);
 
         if (!response.ok) {
           const status = response.status;
