@@ -31,7 +31,9 @@ function StudioContent() {
   const { state, dispatch } = useDesign();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [savedDesignId, setSavedDesignId] = useState<string | null>(null);
+  const [isShared, setIsShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
@@ -39,7 +41,7 @@ function StudioContent() {
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
-  const { saveDesign } = useDesignStorage();
+  const { saveDesign, togglePublish } = useDesignStorage();
   const { trackEvent } = useAnalytics();
 
   // Restore last generation from localStorage on mount (only if < 30 min old)
@@ -194,7 +196,7 @@ function StudioContent() {
       if (user) {
         try {
           const title = state.designParams.character.slice(0, 60) || "Untitled";
-          await saveDesign({
+          const designId = await saveDesign({
             title,
             prompt: genResult.prompt,
             product: config.product,
@@ -205,6 +207,8 @@ function StudioContent() {
             transparentImageDataUrl: genResult.transparentImage,
             mockupImageDataUrl: genResult.mockupImage,
           });
+          if (designId) setSavedDesignId(designId);
+          setIsShared(false);
         } catch (e: any) {
           console.error("[Generation] Auto-save to designs failed:", e);
         }
@@ -222,26 +226,21 @@ function StudioContent() {
     }
   }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration]);
 
-  const handleSave = useCallback(async () => {
-    if (!result) return;
-    setSaving(true);
-    const title = state.designParams.character.slice(0, 60) || "Untitled";
-    await saveDesign({
-      title,
-      prompt: result.prompt,
-      product: productConfig.config.product,
-      color: productConfig.config.color,
-      placementX: productConfig.config.placementCoords.x,
-      placementY: productConfig.config.placementCoords.y,
-      placementScale: productConfig.config.placementCoords.scale,
-      transparentImageDataUrl: result.transparentImage,
-      mockupImageDataUrl: result.mockupImage,
-    });
-    setSaving(false);
-  }, [result, state.designParams.character, productConfig.config, saveDesign]);
+  const handleShareToCommunity = useCallback(async () => {
+    if (!savedDesignId) {
+      toast({ title: "შესვლა საჭიროა", description: "გაზიარებისთვის გაიარეთ ავტორიზაცია.", variant: "destructive" });
+      return;
+    }
+    setSharing(true);
+    const ok = await togglePublish(savedDesignId, false);
+    if (ok) setIsShared(true);
+    setSharing(false);
+  }, [savedDesignId, togglePublish, toast]);
 
   const handleStartNew = useCallback(() => {
     setResult(null);
+    setSavedDesignId(null);
+    setIsShared(false);
     localStorage.removeItem(RESULT_STORAGE_KEY);
     localStorage.removeItem(RESULT_TS_KEY);
     dispatch({ type: "SET_STATUS", status: "IDLE" });
@@ -260,10 +259,11 @@ function StudioContent() {
       onViewImage={setLightboxSrc}
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
-      onSave={handleSave}
-      saving={saving}
       onResultUpdate={setResult}
       onOrder={() => setOrderDialogOpen(true)}
+      onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}
+      sharing={sharing}
+      isShared={isShared}
     />
   ) : (
     <ProductPreview
