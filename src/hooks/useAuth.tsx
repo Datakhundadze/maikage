@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async (setMode?: (mode: string) => void) => {
     await supabase.auth.signOut();
     setState({ user: null, session: null, loading: false, error: null, isAnonymous: false, displayName: "", avatarUrl: null });
-    if (setMode) setMode("landing");
+    // Stay on studio page (don't redirect to landing)
   }, []);
 
   return (

@@ -50,13 +50,13 @@ export default function AppHeader() {
           <Button variant="ghost" size="sm" onClick={toggleTheme} className="px-2">
             {theme === "dark" ? "☀️" : "🌙"}
           </Button>
-          {isAnonymous ? (
-            <Button variant="ghost" size="sm" onClick={() => setShowLogin(true)} className="text-xs gap-1 px-2">
-              <LogIn className="h-3.5 w-3.5" /> შესვლა
+          {user && !isAnonymous ? (
+            <Button variant="ghost" size="sm" onClick={() => signOut()} className="text-xs gap-1 px-2 text-muted-foreground hover:text-destructive">
+              <LogOut className="h-3.5 w-3.5" /> გასვლა
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" onClick={() => signOut(setMode)} className="text-xs gap-1 px-2 text-muted-foreground hover:text-destructive">
-              <LogOut className="h-3.5 w-3.5" /> გასვლა
+            <Button variant="ghost" size="sm" onClick={() => setShowLogin(true)} className="text-xs gap-1 px-2">
+              <LogIn className="h-3.5 w-3.5" /> შესვლა
             </Button>
           )}
         </div>
