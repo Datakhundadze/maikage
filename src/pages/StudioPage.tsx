@@ -257,10 +257,11 @@ function StudioContent() {
       onViewImage={setLightboxSrc}
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
-      onSave={handleSave}
-      saving={saving}
       onResultUpdate={setResult}
       onOrder={() => setOrderDialogOpen(true)}
+      onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}
+      sharing={sharing}
+      isShared={isShared}
     />
   ) : (
     <ProductPreview
