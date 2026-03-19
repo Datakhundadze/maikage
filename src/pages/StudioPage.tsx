@@ -11,6 +11,7 @@ import Lightbox from "@/components/Lightbox";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { DesignProvider, useDesign } from "@/hooks/useDesign";
 import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
+import { catalog } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -22,19 +23,21 @@ import LoginModal from "@/components/LoginModal";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
-const RESULT_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
+const RESULT_TS_KEY = "maika_last_generation_ts";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 function StudioContent() {
   const productConfig = useProductConfig();
   const { state, dispatch } = useDesign();
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
+  const [savedDesignId, setSavedDesignId] = useState<string | null>(null);
+  const [isShared, setIsShared] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const savedDesignIdRef = useRef<string | null>(null);
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
@@ -45,30 +48,57 @@ function StudioContent() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(RESULT_STORAGE_KEY);
-      if (saved) {
-        const { result: parsed, timestamp } = JSON.parse(saved) as { result: GenerationResult; timestamp: number };
-        if (parsed.mockupImage && parsed.transparentImage && Date.now() - timestamp < RESULT_EXPIRY_MS) {
-          setResult(parsed);
-          dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+      const savedTs = localStorage.getItem(RESULT_TS_KEY);
+      if (saved && savedTs) {
+        const age = Date.now() - Number(savedTs);
+        if (age < SESSION_TIMEOUT_MS) {
+          const parsed = JSON.parse(saved) as GenerationResult;
+          if (parsed.mockupImage && parsed.transparentImage) {
+            setResult(parsed);
+            dispatch({ type: "SET_STATUS", status: "COMPLETE" });
+          }
         } else {
           localStorage.removeItem(RESULT_STORAGE_KEY);
+          localStorage.removeItem(RESULT_TS_KEY);
         }
+      } else if (saved) {
+        localStorage.removeItem(RESULT_STORAGE_KEY);
       }
     } catch {
-      localStorage.removeItem(RESULT_STORAGE_KEY);
+      // ignore parse errors
     }
   }, [dispatch]);
 
-  // Persist result to localStorage whenever it changes
+  // Persist result with timestamp
   useEffect(() => {
     if (result) {
       try {
-        localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify({ result, timestamp: Date.now() }));
-      } catch {
-        // quota exceeded — ignore
-      }
+        localStorage.setItem(RESULT_STORAGE_KEY, JSON.stringify(result));
+        localStorage.setItem(RESULT_TS_KEY, String(Date.now()));
+      } catch {}
     }
   }, [result]);
+
+  // 30-minute inactivity → redirect to landing
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        setResult(null);
+        localStorage.removeItem(RESULT_STORAGE_KEY);
+        localStorage.removeItem(RESULT_TS_KEY);
+        window.location.href = "/";
+      }, SESSION_TIMEOUT_MS);
+    };
+    const events = ["click", "keydown", "scroll", "mousemove", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    reset();
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, reset));
+    };
+  }, []);
 
   useEffect(() => {
     trackEvent("page_visit", { page: "studio" });
@@ -90,7 +120,6 @@ function StudioContent() {
       return;
     }
     setLimitMessage(null);
-    savedDesignIdRef.current = null;
 
     try {
       recordGeneration();
@@ -98,6 +127,9 @@ function StudioContent() {
       productConfig.setLocked(true);
 
       const { config } = productConfig;
+      const entry = catalog.findProduct(config.product, config.subProduct, "White" as any, config.view);
+      const productImageUrl = entry?.imageUrl ?? null;
+
       const genResult = await runGenerationPipeline(
         {
           designParams: state.designParams,
@@ -106,7 +138,7 @@ function StudioContent() {
           speed: state.speed,
         },
         config.placementCoords,
-        null,
+        productImageUrl,
         (status) => dispatch({ type: "SET_STATUS", status: status as any }),
       );
 
@@ -144,7 +176,7 @@ function StudioContent() {
           product: config.product,
           color: config.color,
           style: state.designParams.style || null,
-          prompt: [state.designParams.character, state.designParams.scene].filter(Boolean).join(" / ") || null,
+          prompt: genResult.prompt || null,
           mockup_image_path: mockupPath,
           transparent_image_path: transparentPath,
         };
@@ -156,11 +188,15 @@ function StudioContent() {
         if (insertError) {
           console.error("[Generation] Insert error:", insertError);
         }
+      } catch (e: any) {
+        console.error("[Generation] Failed to save generation record:", e);
+      }
 
-        // Auto-save to "My Designs" for logged-in users
-        if (user) {
+      // Auto-save to designs table for "My Designs" (only for logged-in users)
+      if (user) {
+        try {
           const title = state.designParams.character.slice(0, 60) || "Untitled";
-          const id = await saveDesign({
+          const designId = await saveDesign({
             title,
             prompt: genResult.prompt,
             product: config.product,
@@ -171,10 +207,11 @@ function StudioContent() {
             transparentImageDataUrl: genResult.transparentImage,
             mockupImageDataUrl: genResult.mockupImage,
           });
-          savedDesignIdRef.current = id;
+          if (designId) setSavedDesignId(designId);
+          setIsShared(false);
+        } catch (e: any) {
+          console.error("[Generation] Auto-save to designs failed:", e);
         }
-      } catch (e: any) {
-        console.error("[Generation] Failed to save generation record:", e);
       }
     } catch (err: any) {
       console.error("Generation failed:", err);
@@ -189,34 +226,24 @@ function StudioContent() {
     }
   }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration]);
 
-  const handlePublish = useCallback(async () => {
-    if (!result || !user) { setShowLoginModal(true); return; }
-    setPublishing(true);
-    let id = savedDesignIdRef.current;
-    if (!id) {
-      // Not yet saved — save now then publish
-      const title = state.designParams.character.slice(0, 60) || "Untitled";
-      id = await saveDesign({
-        title,
-        prompt: result.prompt,
-        product: productConfig.config.product,
-        color: productConfig.config.color,
-        placementX: productConfig.config.placementCoords.x,
-        placementY: productConfig.config.placementCoords.y,
-        placementScale: productConfig.config.placementCoords.scale,
-        transparentImageDataUrl: result.transparentImage,
-        mockupImageDataUrl: result.mockupImage,
-      });
-      savedDesignIdRef.current = id;
+  const handleShareToCommunity = useCallback(async () => {
+    if (!savedDesignId) {
+      toast({ title: "შესვლა საჭიროა", description: "გაზიარებისთვის გაიარეთ ავტორიზაცია.", variant: "destructive" });
+      return;
     }
-    if (id) await togglePublish(id, false);
-    setPublishing(false);
-  }, [result, user, state.designParams.character, productConfig.config, saveDesign, togglePublish]);
+    setSharing(true);
+    const ok = await togglePublish(savedDesignId, false);
+    if (ok) setIsShared(true);
+    setSharing(false);
+  }, [savedDesignId, togglePublish, toast]);
 
   const handleStartNew = useCallback(() => {
     setResult(null);
+    setSavedDesignId(null);
+    setIsShared(false);
     localStorage.removeItem(RESULT_STORAGE_KEY);
-    dispatch({ type: "RESET" });
+    localStorage.removeItem(RESULT_TS_KEY);
+    dispatch({ type: "SET_STATUS", status: "IDLE" });
     productConfig.setLocked(false);
   }, [dispatch, productConfig]);
 
@@ -232,10 +259,11 @@ function StudioContent() {
       onViewImage={setLightboxSrc}
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
-      onPublish={handlePublish}
-      publishing={publishing}
       onResultUpdate={setResult}
       onOrder={() => setOrderDialogOpen(true)}
+      onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}
+      sharing={sharing}
+      isShared={isShared}
     />
   ) : (
     <ProductPreview

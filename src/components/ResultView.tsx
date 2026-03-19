@@ -4,7 +4,7 @@ import { upscaleImage } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Copy, Package, Save, Maximize, ShoppingBag, Globe } from "lucide-react";
+import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResultViewProps {
@@ -12,15 +12,14 @@ interface ResultViewProps {
   onViewImage: (src: string) => void;
   productName?: string;
   colorName?: string;
-  onSave?: () => void;
-  saving?: boolean;
-  onPublish?: () => void;
-  publishing?: boolean;
   onResultUpdate?: (result: GenerationResult) => void;
   onOrder?: () => void;
+  onShareToCommunity?: () => void;
+  sharing?: boolean;
+  isShared?: boolean;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onSave, saving, onPublish, publishing, onResultUpdate, onOrder }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
@@ -67,16 +66,6 @@ export default function ResultView({ result, onViewImage, productName = "design"
     <div className="flex flex-col items-center gap-6 p-6 w-full max-w-2xl mx-auto">
       {/* Top actions */}
       <div className="w-full flex flex-wrap justify-end gap-2">
-        {onPublish && (
-          <Button size="sm" variant="outline" className="gap-1.5 border-amber-500/50 text-amber-500 hover:bg-amber-500/10" onClick={onPublish} disabled={publishing}>
-            <Globe className="h-4 w-4" /> {publishing ? "..." : "საზოგადოება"}
-          </Button>
-        )}
-        {onSave && (
-          <Button size="sm" variant="default" className="gap-1.5" onClick={onSave} disabled={saving}>
-            <Save className="h-4 w-4" /> {saving ? t(lang, "result.saving") : t(lang, "result.save")}
-          </Button>
-        )}
         <Button size="sm" variant="outline" className="gap-1.5" onClick={handleUpscale} disabled={upscaling}>
           <Maximize className="h-4 w-4" /> {upscaling ? t(lang, "result.upscaling") : t(lang, "result.upscale")}
         </Button>
@@ -111,17 +100,33 @@ export default function ResultView({ result, onViewImage, productName = "design"
         </div>
       </div>
 
-      {/* Order Button - prominent after generation */}
-      {onOrder && (
-        <div className="w-full">
+      {/* Action Buttons */}
+      <div className="w-full space-y-2">
+        {onOrder && (
           <Button
             onClick={onOrder}
             className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25"
           >
             <ShoppingBag className="h-5 w-5" /> შეკვეთა
           </Button>
-        </div>
-      )}
+        )}
+        {onShareToCommunity && !isShared && (
+          <Button
+            onClick={onShareToCommunity}
+            disabled={sharing}
+            variant="outline"
+            className="w-full h-11 gap-2 font-medium"
+          >
+            <Globe className="h-4 w-4" />
+            {sharing ? "..." : "გაზიარება საზოგადოებაში"}
+          </Button>
+        )}
+        {isShared && (
+          <div className="w-full text-center text-sm text-green-500 font-medium py-2">
+            ✓ გაზიარებულია საზოგადოებაში
+          </div>
+        )}
+      </div>
 
       {/* Print File Card */}
       <div className="w-full max-w-xl rounded-2xl border border-border bg-card overflow-hidden">
