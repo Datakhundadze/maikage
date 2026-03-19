@@ -9,6 +9,7 @@ import { ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { BRAND_SIZES } from "@/lib/catalog";
 import type { PriceBreakdown } from "@/lib/pricing";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
@@ -85,12 +86,17 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const [comment, setComment] = useState("");
   const [delivery, setDelivery] = useState<DeliveryType>("pickup");
   const [address, setAddress] = useState("");
+  const [selectedSize, setSelectedSize] = useState<string>("");
+
+  const availableSizes = subProduct ? (BRAND_SIZES[subProduct] || []) : [];
+  const sizeRequired = availableSizes.length > 0;
 
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = breakdown.total + deliveryPrice;
 
   const canSubmit = firstName.trim() && lastName.trim() && email.trim() && phone.trim() &&
-    (delivery === "pickup" || address.trim());
+    (delivery === "pickup" || address.trim()) &&
+    (!sizeRequired || selectedSize);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,6 +136,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         back_mockup_url: backUrl,
         transparent_image_url: transparentUrl,
         prompt: prompt || null,
+        size: selectedSize || null,
       } as any).select("id").single();
 
       if (error) throw error;
@@ -206,6 +213,29 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
             <Label htmlFor="comment">კომენტარი</Label>
             <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} maxLength={1000} placeholder="დამატებითი ინფორმაცია..." rows={2} />
           </div>
+
+          {/* Size selector */}
+          {availableSizes.length > 0 && (
+            <div className="space-y-2">
+              <Label>ზომა *</Label>
+              <div className="flex flex-wrap gap-2">
+                {availableSizes.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setSelectedSize(size)}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                      selectedSize === size
+                        ? "bg-[#F97316] text-white border-[#F97316]"
+                        : "bg-card text-card-foreground border-border hover:border-primary/50"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Delivery options */}
           <div className="space-y-2">

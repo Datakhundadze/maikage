@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
-  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo"],
+  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "GILDAN KIDS"],
   "Hoodie": ["GILDAN Hoodie", "Premium Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
@@ -70,6 +70,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Khundadze": ["White", "Black"],
   "NIKE": ["Dark Navy", "White", "Cream"],
   "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "GILDAN KIDS": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
 
   // Hoodie brands
   "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
@@ -85,6 +86,27 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Phone Case": [],
   "Tote Bag": ["White", "Black", "Cream", "Dark Navy", "Electric Blue", "Turquoise", "Green", "Lime", "Pink", "Red", "Burgundy", "Purple"],
   "Mug": ["White"],
+};
+
+// Per-brand size availability
+export const BRAND_SIZES: Record<string, string[]> = {
+  // T-Shirts
+  "GILDAN": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"],
+  "GILDAN HUMMER": ["S", "M", "L", "XL", "XXL"],
+  "TH": ["S", "M", "L", "XL", "XXL"],
+  "JEL T-Shirt": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  "GIORDANO": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  "Khundadze": ["S", "M", "L", "XL", "XXL"],
+  "NIKE": ["S", "M", "L", "XL", "XXL"],
+  "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
+  // Hoodies
+  "GILDAN Hoodie": ["S", "M", "L", "XL", "XXL"],
+  "Premium Hoodie": ["S", "M", "L", "XL", "XXL"],
+  "JEL Standard Hoodie": ["S", "M", "L", "XL", "XXL"],
+  "JEL Zipper": ["S", "M", "L", "XL", "XXL"],
+  "JEL Standard Zipper": ["S", "M", "L", "XL", "XXL"],
+  "GILDAN Bomber": ["S", "M", "L", "XL", "XXL"],
 };
 
 // All colors with display hex values
