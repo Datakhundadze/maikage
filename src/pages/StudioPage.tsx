@@ -23,6 +23,8 @@ import LoginModal from "@/components/LoginModal";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
+const RESULT_TS_KEY = "maika_last_generation_ts";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 function StudioContent() {
   const productConfig = useProductConfig();
