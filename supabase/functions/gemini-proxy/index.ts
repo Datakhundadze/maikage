@@ -73,7 +73,8 @@ function sanitizeCharacter(character: string): string {
 }
 
 function buildGenerateDesignMessages(params: any) {
-  const { character, characterImages, scene, sceneImage, style, styleImage, text, textImage, product, color } = params;
+  const { character, characterImages, scene, sceneImage, style, styleImage, text: rawText, textImage, product, color } = params;
+  const text = (rawText || "").trim();
   const safeCharacter = sanitizeCharacter(character || "No character specified");
 
   const content: any[] = [];

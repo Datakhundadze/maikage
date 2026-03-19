@@ -144,7 +144,7 @@ function imageToCanvas(img: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
-// Stage 3: Composite design onto product photo (exported for re-compositing)
+// Stage 3: Composite design onto product photo with watermark (exported for re-compositing)
 export function compositeMockup(
   productImg: HTMLImageElement,
   designImg: HTMLImageElement,
@@ -155,18 +155,31 @@ export function compositeMockup(
   canvas.height = productImg.naturalHeight;
   const ctx = canvas.getContext("2d")!;
 
-  // Draw product
   ctx.drawImage(productImg, 0, 0);
 
-  // Calculate design placement
   const designWidth = canvas.width * coords.scale;
   const designHeight = (designImg.naturalHeight / designImg.naturalWidth) * designWidth;
   const designX = canvas.width * coords.x - designWidth / 2;
   const designY = canvas.height * coords.y - designHeight / 2;
 
-  // Draw design
   ctx.globalAlpha = 1.0;
   ctx.drawImage(designImg, designX, designY, designWidth, designHeight);
+
+  // Watermark
+  ctx.globalAlpha = 0.45;
+  const fontSize = Math.max(12, Math.round(canvas.width * 0.025));
+  ctx.font = `600 ${fontSize}px "BPG Nino Mtavruli", "Noto Sans Georgian", "Segoe UI", sans-serif`;
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetX = 1;
+  ctx.shadowOffsetY = 1;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("maika.ge", canvas.width - fontSize * 0.8, canvas.height - fontSize * 0.6);
+  ctx.globalAlpha = 1.0;
+  ctx.shadowColor = "transparent";
+  ctx.shadowBlur = 0;
 
   return canvas.toDataURL("image/png");
 }
