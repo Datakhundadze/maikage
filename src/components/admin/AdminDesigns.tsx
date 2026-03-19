@@ -58,9 +58,9 @@ export default function AdminDesigns() {
     try {
       const { data, error: fetchError } = await supabase
         .from("generations")
-        .select("id, created_at, prompt, product, color, style, mockup_image_path, transparent_image_path, is_guest, user_id, session_id")
+        .select("id, created_at, prompt, product, color, style, mockup_image_path, transparent_image_path, is_guest")
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(20);
 
       if (fetchError) {
         setError(fetchError.message);
