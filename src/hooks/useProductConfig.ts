@@ -34,6 +34,7 @@ export function useProductConfig() {
       color,
       view: config.view,
       placementCoords: entry?.placementZone || { x: 0.5, y: 0.28, scale: 0.38 },
+      size: "",
     });
   }, [config.color, config.view]);
 
