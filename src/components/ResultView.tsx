@@ -100,35 +100,12 @@ export default function ResultView({ result, onViewImage, productName = "design"
         </div>
       </div>
 
-      {/* Size Selector */}
-      {availableSizes.length > 0 && (
-        <div className="w-full space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">ზომა <span className="text-destructive">*</span></h3>
-          <div className="flex flex-wrap gap-2">
-            {availableSizes.map(size => (
-              <button
-                key={size}
-                onClick={() => setSelectedSize(size)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                  selectedSize === size
-                    ? "bg-orange-500 border-orange-500 text-black"
-                    : "border-border bg-background text-foreground hover:border-orange-400"
-                }`}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="w-full space-y-2">
         {onOrder && (
           <Button
-            onClick={() => onOrder(selectedSize)}
-            disabled={availableSizes.length > 0 && !selectedSize}
-            className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25 disabled:opacity-50"
+            onClick={() => onOrder()}
+            className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25"
           >
             <ShoppingBag className="h-5 w-5" /> შეკვეთა
           </Button>

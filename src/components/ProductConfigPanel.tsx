@@ -101,6 +101,28 @@ export default function ProductConfigPanel({
         </div>
       )}
 
+      {/* Size Selector */}
+      {availableSizes.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">ზომა</h3>
+          <div className="flex flex-wrap gap-2">
+            {availableSizes.map((size) => (
+              <button
+                key={size}
+                onClick={() => onSizeChange?.(size)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                  selectedSize === size
+                    ? "bg-[hsl(25,95%,53%)] border-[hsl(25,95%,53%)] text-black"
+                    : "border-border bg-background text-foreground hover:border-[hsl(25,95%,48%)]"
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* View Toggle — hide for Mug */}
       {config.product !== "Mug" && (
         <div>

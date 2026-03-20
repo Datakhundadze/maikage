@@ -332,8 +332,8 @@ function StudioContent() {
                   onExternalOpenChange={setOrderDialogOpen}
                   frontMockupDataUrl={result?.mockupImage || null}
                   transparentImageDataUrl={result?.transparentImage || null}
-                  prompt={result?.prompt || null}
-                  size={selectedSize}
+                   prompt={result?.prompt || null}
+                   size={productConfig.config.size}
                 />
               )}
               <DesignStudioPanel

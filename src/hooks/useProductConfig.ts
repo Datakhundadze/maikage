@@ -73,5 +73,9 @@ export function useProductConfig() {
     setConfig((prev) => ({ ...prev, placementCoords: coords }));
   }, []);
 
-  return { config, locked, setLocked, setProduct, setSubProduct, setColor, setView, setPlacementCoords };
+  const setSize = useCallback((size: string) => {
+    setConfig((prev) => ({ ...prev, size }));
+  }, []);
+
+  return { config, locked, setLocked, setProduct, setSubProduct, setColor, setView, setPlacementCoords, setSize };
 }

@@ -593,6 +593,7 @@ export default function SimplePage() {
                   isStudio={false}
                   frontMockupDataUrl={frontMockup}
                   backMockupDataUrl={backMockup}
+                  size={productConfig.config.size}
                   onBeforeOpen={() => {
                     if (frontMockup || backMockup) {
                       saveToGenerations(frontMockup, backMockup);
