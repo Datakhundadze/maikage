@@ -6,7 +6,6 @@ import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { BRAND_SIZES } from "@/lib/catalog";
 
 interface ResultViewProps {
   result: GenerationResult;
@@ -14,20 +13,17 @@ interface ResultViewProps {
   productName?: string;
   colorName?: string;
   onResultUpdate?: (result: GenerationResult) => void;
-  onOrder?: (size: string) => void;
+  onOrder?: () => void;
   onShareToCommunity?: () => void;
   sharing?: boolean;
   isShared?: boolean;
-  subProduct?: string;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared, subProduct }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
-  const [selectedSize, setSelectedSize] = useState("");
   const prefix = `${productName.toLowerCase().replace(/\s/g, "-")}${colorName ? `-${colorName.toLowerCase().replace(/\s/g, "-")}` : ""}`;
-  const availableSizes = subProduct ? (BRAND_SIZES[subProduct] || []) : [];
 
   const downloadImage = (dataUrl: string, filename: string) => {
     const a = document.createElement("a");
