@@ -8,6 +8,7 @@ export interface ProductConfig {
   color: ProductColor;
   view: ProductView;
   placementCoords: PlacementCoords;
+  size: string;
 }
 
 export function useProductConfig() {
