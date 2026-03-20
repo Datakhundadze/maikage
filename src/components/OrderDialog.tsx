@@ -137,7 +137,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         back_mockup_url: backUrl,
         transparent_image_url: transparentUrl,
         prompt: prompt || null,
-        size: selectedSize || null,
+        size: size || selectedSize || null,
       } as any).select("id").single();
 
       if (error) throw error;
