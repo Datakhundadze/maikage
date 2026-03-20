@@ -210,28 +210,6 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
             <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} maxLength={1000} placeholder="დამატებითი ინფორმაცია..." rows={2} />
           </div>
 
-          {/* Size selector */}
-          {availableSizes.length > 0 && (
-            <div className="space-y-2">
-              <Label>ზომა *</Label>
-              <div className="flex flex-wrap gap-2">
-                {availableSizes.map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
-                      selectedSize === size
-                        ? "bg-[#F97316] text-white border-[#F97316]"
-                        : "bg-card text-card-foreground border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Delivery options */}
           <div className="space-y-2">
