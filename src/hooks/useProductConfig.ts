@@ -47,6 +47,7 @@ export function useProductConfig() {
       subProduct,
       color,
       placementCoords: entry?.placementZone || prev.placementCoords,
+      size: "",
     }));
   }, [config.product, config.color, config.view]);
 
