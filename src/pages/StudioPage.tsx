@@ -280,11 +280,7 @@ function StudioContent() {
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
       onResultUpdate={setResult}
-      subProduct={productConfig.config.subProduct}
-      onOrder={(size: string) => {
-        setSelectedSize(size);
-        setOrderDialogOpen(true);
-      }}
+      onOrder={() => setOrderDialogOpen(true)}
       onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}
       sharing={sharing}
       isShared={isShared}
