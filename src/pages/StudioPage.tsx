@@ -38,7 +38,7 @@ function StudioContent() {
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
-  const [selectedSize, setSelectedSize] = useState("");
+  
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
@@ -280,11 +280,7 @@ function StudioContent() {
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
       onResultUpdate={setResult}
-      subProduct={productConfig.config.subProduct}
-      onOrder={(size: string) => {
-        setSelectedSize(size);
-        setOrderDialogOpen(true);
-      }}
+      onOrder={() => setOrderDialogOpen(true)}
       onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}
       sharing={sharing}
       isShared={isShared}
@@ -320,6 +316,8 @@ function StudioContent() {
               onSubProductChange={productConfig.setSubProduct}
               onColorChange={productConfig.setColor}
               onViewChange={productConfig.setView}
+              selectedSize={productConfig.config.size}
+              onSizeChange={productConfig.setSize}
             />
             <div className="border-t border-sidebar-border pt-4 space-y-4">
               <PriceDisplay breakdown={priceBreakdown} />
@@ -334,8 +332,8 @@ function StudioContent() {
                   onExternalOpenChange={setOrderDialogOpen}
                   frontMockupDataUrl={result?.mockupImage || null}
                   transparentImageDataUrl={result?.transparentImage || null}
-                  prompt={result?.prompt || null}
-                  size={selectedSize}
+                   prompt={result?.prompt || null}
+                   size={productConfig.config.size}
                 />
               )}
               <DesignStudioPanel

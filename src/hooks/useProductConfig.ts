@@ -8,6 +8,7 @@ export interface ProductConfig {
   color: ProductColor;
   view: ProductView;
   placementCoords: PlacementCoords;
+  size: string;
 }
 
 export function useProductConfig() {
@@ -17,6 +18,7 @@ export function useProductConfig() {
     color: "White",
     view: "front",
     placementCoords: { x: 0.5, y: 0.42, scale: 0.38 },
+    size: "",
   });
 
   const [locked, setLocked] = useState(false);
@@ -32,6 +34,7 @@ export function useProductConfig() {
       color,
       view: config.view,
       placementCoords: entry?.placementZone || { x: 0.5, y: 0.28, scale: 0.38 },
+      size: "",
     });
   }, [config.color, config.view]);
 
@@ -44,6 +47,7 @@ export function useProductConfig() {
       subProduct,
       color,
       placementCoords: entry?.placementZone || prev.placementCoords,
+      size: "",
     }));
   }, [config.product, config.color, config.view]);
 
@@ -69,5 +73,9 @@ export function useProductConfig() {
     setConfig((prev) => ({ ...prev, placementCoords: coords }));
   }, []);
 
-  return { config, locked, setLocked, setProduct, setSubProduct, setColor, setView, setPlacementCoords };
+  const setSize = useCallback((size: string) => {
+    setConfig((prev) => ({ ...prev, size }));
+  }, []);
+
+  return { config, locked, setLocked, setProduct, setSubProduct, setColor, setView, setPlacementCoords, setSize };
 }
