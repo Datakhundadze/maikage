@@ -424,6 +424,8 @@ export default function SimplePage() {
             onSubProductChange={productConfig.setSubProduct}
             onColorChange={productConfig.setColor}
             onViewChange={productConfig.setView}
+            selectedSize={productConfig.config.size}
+            onSizeChange={productConfig.setSize}
           />
 
           {/* Side indicator */}
