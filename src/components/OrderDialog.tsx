@@ -87,10 +87,6 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const [comment, setComment] = useState("");
   const [delivery, setDelivery] = useState<DeliveryType>("pickup");
   const [address, setAddress] = useState("");
-  const [selectedSize, setSelectedSize] = useState<string>("");
-
-  const availableSizes = subProduct ? (BRAND_SIZES[subProduct] || []) : [];
-  const sizeRequired = availableSizes.length > 0;
 
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = breakdown.total + deliveryPrice;
