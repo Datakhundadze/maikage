@@ -9,7 +9,7 @@ import { ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { BRAND_SIZES } from "@/lib/catalog";
+
 import type { PriceBreakdown } from "@/lib/pricing";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
