@@ -18,6 +18,7 @@ export function useProductConfig() {
     color: "White",
     view: "front",
     placementCoords: { x: 0.5, y: 0.42, scale: 0.38 },
+    size: "",
   });
 
   const [locked, setLocked] = useState(false);
