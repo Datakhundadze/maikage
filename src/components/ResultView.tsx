@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { BRAND_SIZES } from "@/lib/catalog";
 
 interface ResultViewProps {
   result: GenerationResult;
@@ -13,10 +14,11 @@ interface ResultViewProps {
   productName?: string;
   colorName?: string;
   onResultUpdate?: (result: GenerationResult) => void;
-  onOrder?: () => void;
+  onOrder?: (size: string) => void;
   onShareToCommunity?: () => void;
   sharing?: boolean;
   isShared?: boolean;
+  subProduct?: string;
 }
 
 export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
