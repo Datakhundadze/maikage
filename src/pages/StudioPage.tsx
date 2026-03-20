@@ -38,6 +38,7 @@ function StudioContent() {
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
@@ -279,7 +280,11 @@ function StudioContent() {
       productName={productConfig.config.product}
       colorName={productConfig.config.color}
       onResultUpdate={setResult}
-      onOrder={() => setOrderDialogOpen(true)}
+      subProduct={productConfig.config.subProduct}
+      onOrder={(size: string) => {
+        setSelectedSize(size);
+        setOrderDialogOpen(true);
+      }}
       onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}
       sharing={sharing}
       isShared={isShared}
@@ -330,6 +335,7 @@ function StudioContent() {
                   frontMockupDataUrl={result?.mockupImage || null}
                   transparentImageDataUrl={result?.transparentImage || null}
                   prompt={result?.prompt || null}
+                  size={selectedSize}
                 />
               )}
               <DesignStudioPanel

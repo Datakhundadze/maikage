@@ -40,6 +40,7 @@ interface OrderDialogProps {
   transparentImageDataUrl?: string | null;
   prompt?: string | null;
   onBeforeOpen?: () => void;
+  size?: string;
 }
 
 async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
@@ -66,7 +67,7 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
   }
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, prompt, onBeforeOpen }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, prompt, onBeforeOpen, size }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -136,7 +137,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         back_mockup_url: backUrl,
         transparent_image_url: transparentUrl,
         prompt: prompt || null,
-        size: selectedSize || null,
+        size: size || selectedSize || null,
       } as any).select("id").single();
 
       if (error) throw error;

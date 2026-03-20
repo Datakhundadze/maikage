@@ -6,6 +6,7 @@ import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { BRAND_SIZES } from "@/lib/catalog";
 
 interface ResultViewProps {
   result: GenerationResult;
@@ -13,17 +14,20 @@ interface ResultViewProps {
   productName?: string;
   colorName?: string;
   onResultUpdate?: (result: GenerationResult) => void;
-  onOrder?: () => void;
+  onOrder?: (size: string) => void;
   onShareToCommunity?: () => void;
   sharing?: boolean;
   isShared?: boolean;
+  subProduct?: string;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared, subProduct }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
   const prefix = `${productName.toLowerCase().replace(/\s/g, "-")}${colorName ? `-${colorName.toLowerCase().replace(/\s/g, "-")}` : ""}`;
+  const availableSizes = subProduct ? (BRAND_SIZES[subProduct] || []) : [];
 
   const downloadImage = (dataUrl: string, filename: string) => {
     const a = document.createElement("a");
@@ -100,12 +104,35 @@ export default function ResultView({ result, onViewImage, productName = "design"
         </div>
       </div>
 
+      {/* Size Selector */}
+      {availableSizes.length > 0 && (
+        <div className="w-full space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">ზომა <span className="text-destructive">*</span></h3>
+          <div className="flex flex-wrap gap-2">
+            {availableSizes.map(size => (
+              <button
+                key={size}
+                onClick={() => setSelectedSize(size)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                  selectedSize === size
+                    ? "bg-orange-500 border-orange-500 text-black"
+                    : "border-border bg-background text-foreground hover:border-orange-400"
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Action Buttons */}
       <div className="w-full space-y-2">
         {onOrder && (
           <Button
-            onClick={onOrder}
-            className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25"
+            onClick={() => onOrder(selectedSize)}
+            disabled={availableSizes.length > 0 && !selectedSize}
+            className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25 disabled:opacity-50"
           >
             <ShoppingBag className="h-5 w-5" /> შეკვეთა
           </Button>

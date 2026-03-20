@@ -157,6 +157,8 @@ const KNOWN_IMAGES: Record<string, string> = {
   // T-Shirt brands
   "T-Shirt|GILDAN|White|front": "/products/tshirt/gildan-white-front.png",
   "T-Shirt|GILDAN|White|back": "/products/tshirt/gildan-white-back.png",
+  "T-Shirt|GILDAN KIDS|White|front": "/products/tshirt/gildan-white-front.png",
+  "T-Shirt|GILDAN KIDS|White|back": "/products/tshirt/gildan-white-back.png",
   "T-Shirt|GILDAN HUMMER|White|front": "/products/tshirt/gildan-hummer-white-front.png",
   "T-Shirt|GILDAN HUMMER|White|back": "/products/tshirt/gildan-hummer-white-back.png",
   "T-Shirt|GIORDANO|White|front": "/products/tshirt/giordano-white-front.png",
