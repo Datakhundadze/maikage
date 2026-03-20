@@ -20,9 +20,12 @@ export default function ProductConfigPanel({
   onSubProductChange,
   onColorChange,
   onViewChange,
+  selectedSize,
+  onSizeChange,
 }: ProductConfigPanelProps) {
   const subProducts = SUB_PRODUCTS[config.product];
   const availableColors = catalog.getAvailableColors(config.product, config.subProduct);
+  const availableSizes = BRAND_SIZES[config.subProduct] || [];
 
   return (
     <div className={`space-y-4 ${locked ? "opacity-60 pointer-events-none" : ""}`}>
