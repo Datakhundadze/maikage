@@ -21,11 +21,13 @@ interface ResultViewProps {
   subProduct?: string;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared, subProduct }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
   const prefix = `${productName.toLowerCase().replace(/\s/g, "-")}${colorName ? `-${colorName.toLowerCase().replace(/\s/g, "-")}` : ""}`;
+  const availableSizes = subProduct ? (BRAND_SIZES[subProduct] || []) : [];
 
   const downloadImage = (dataUrl: string, filename: string) => {
     const a = document.createElement("a");
