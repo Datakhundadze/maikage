@@ -1,4 +1,4 @@
-import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 
@@ -9,6 +9,8 @@ interface ProductConfigPanelProps {
   onSubProductChange: (s: string) => void;
   onColorChange: (c: ProductColor) => void;
   onViewChange: (v: ProductView) => void;
+  selectedSize?: string;
+  onSizeChange?: (size: string) => void;
 }
 
 export default function ProductConfigPanel({
