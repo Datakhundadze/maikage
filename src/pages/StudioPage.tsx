@@ -335,6 +335,7 @@ function StudioContent() {
                   frontMockupDataUrl={result?.mockupImage || null}
                   transparentImageDataUrl={result?.transparentImage || null}
                   prompt={result?.prompt || null}
+                  size={selectedSize}
                 />
               )}
               <DesignStudioPanel
