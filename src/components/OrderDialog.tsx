@@ -40,6 +40,7 @@ interface OrderDialogProps {
   transparentImageDataUrl?: string | null;
   prompt?: string | null;
   onBeforeOpen?: () => void;
+  size?: string;
 }
 
 async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
