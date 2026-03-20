@@ -316,6 +316,8 @@ function StudioContent() {
               onSubProductChange={productConfig.setSubProduct}
               onColorChange={productConfig.setColor}
               onViewChange={productConfig.setView}
+              selectedSize={productConfig.config.size}
+              onSizeChange={productConfig.setSize}
             />
             <div className="border-t border-sidebar-border pt-4 space-y-4">
               <PriceDisplay breakdown={priceBreakdown} />
