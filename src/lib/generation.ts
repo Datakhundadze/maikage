@@ -172,6 +172,30 @@ function imageToCanvas(img: HTMLImageElement): HTMLCanvasElement {
 }
 
 // Composite transparent design onto a solid color background (used when no product photo exists)
+function colorizeWhiteProduct(productImg: HTMLImageElement, colorHex: string): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = productImg.naturalWidth;
+  canvas.height = productImg.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(productImg, 0, 0);
+
+  const r = parseInt(colorHex.slice(1, 3), 16) / 255;
+  const g = parseInt(colorHex.slice(3, 5), 16) / 255;
+  const b = parseInt(colorHex.slice(5, 7), 16) / 255;
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    // Multiply blend: preserves shadows/highlights of the white t-shirt
+    data[i]     = Math.round(data[i]     * r);
+    data[i + 1] = Math.round(data[i + 1] * g);
+    data[i + 2] = Math.round(data[i + 2] * b);
+    // alpha unchanged
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
 function compositeMockupOnColorBg(
   designImg: HTMLImageElement,
   colorHex: string,
@@ -251,7 +275,8 @@ export async function runGenerationPipeline(
   params: GenerateDesignParams,
   placementCoords: { x: number; y: number; scale: number },
   productImageUrl: string | null,
-  onStatusChange: (status: string) => void
+  onStatusChange: (status: string) => void,
+  isExactColor: boolean = true
 ): Promise<GenerationResult> {
   // Stage 1: Generate design on white background
   onStatusChange("GENERATING_DESIGN");
@@ -304,9 +329,16 @@ export async function runGenerationPipeline(
   if (productImageUrl) {
     const productImg = await loadImage(productImageUrl);
     const transparentImg = await loadImage(transparentImage);
-    mockupImage = compositeMockup(productImg, transparentImg, placementCoords);
+    if (isExactColor) {
+      mockupImage = compositeMockup(productImg, transparentImg, placementCoords);
+    } else {
+      // Colorize the white t-shirt base image to match the selected color
+      const colorizedCanvas = colorizeWhiteProduct(productImg, colorHex);
+      const colorizedImg = await loadImage(colorizedCanvas.toDataURL("image/png"));
+      mockupImage = compositeMockup(colorizedImg, transparentImg, placementCoords);
+    }
   } else {
-    // No product photo for this color — composite design onto solid color background
+    // No product photo at all — composite design onto solid color background
     const transparentImg = await loadImage(transparentImage);
     mockupImage = compositeMockupOnColorBg(transparentImg, colorHex, placementCoords);
   }
