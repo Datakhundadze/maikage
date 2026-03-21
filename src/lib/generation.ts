@@ -139,6 +139,61 @@ function removeWhiteBackground(canvas: HTMLCanvasElement, threshold = 240): HTML
   return outCanvas;
 }
 
+// Post-process: flood-fill from image corners to remove connected white background.
+// Preserves white design elements not connected to the border (e.g. white in artwork).
+function removeConnectedWhiteBackground(canvas: HTMLCanvasElement, threshold = 235): HTMLCanvasElement {
+  const w = canvas.width;
+  const h = canvas.height;
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = w;
+  outCanvas.height = h;
+
+  const ctx = canvas.getContext("2d")!;
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const px = imgData.data;
+
+  const isNearWhite = (idx: number) =>
+    px[idx] >= threshold && px[idx + 1] >= threshold && px[idx + 2] >= threshold;
+
+  const visited = new Uint8Array(w * h);
+  const queue: number[] = [];
+
+  // Seed BFS from all four corners
+  for (const seed of [0, w - 1, (h - 1) * w, (h - 1) * w + w - 1]) {
+    if (!visited[seed] && isNearWhite(seed * 4)) {
+      visited[seed] = 1;
+      queue.push(seed);
+    }
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const pos = queue[head++];
+    const x = pos % w;
+    const y = Math.floor(pos / w);
+    // Make this pixel transparent
+    px[pos * 4 + 3] = 0;
+
+    // 4-connected neighbors
+    const neighbors = [
+      x > 0     ? pos - 1 : -1,
+      x < w - 1 ? pos + 1 : -1,
+      y > 0     ? pos - w : -1,
+      y < h - 1 ? pos + w : -1,
+    ];
+    for (const n of neighbors) {
+      if (n >= 0 && !visited[n]) {
+        visited[n] = 1;
+        if (isNearWhite(n * 4)) queue.push(n);
+      }
+    }
+  }
+
+  const oCtx = outCanvas.getContext("2d")!;
+  oCtx.putImageData(imgData, 0, 0);
+  return outCanvas;
+}
+
 // Check if an image is mostly one color (matting failed)
 function isMostlyTransparent(canvas: HTMLCanvasElement): boolean {
   const ctx = canvas.getContext("2d")!;
@@ -307,16 +362,18 @@ export async function runGenerationPipeline(
     // Validate matting result — if mostly transparent, fallback to simple removal
     if (isMostlyTransparent(transparentCanvas)) {
       console.warn("[Generation] Difference matting produced mostly transparent result, falling back to white bg removal");
-      const fallbackCanvas = removeWhiteBackground(whiteCanvas);
+      const fallbackCanvas = removeConnectedWhiteBackground(removeWhiteBackground(whiteCanvas));
       transparentImage = fallbackCanvas.toDataURL("image/png");
     } else {
-      transparentImage = transparentCanvas.toDataURL("image/png");
+      // Flood-fill to remove any residual white border the matting missed
+      const cleanedCanvas = removeConnectedWhiteBackground(transparentCanvas);
+      transparentImage = cleanedCanvas.toDataURL("image/png");
     }
   } catch (mattingError) {
     console.warn("[Generation] Difference matting failed, using white bg removal fallback:", mattingError);
     const whiteImg = await loadImage(designImage);
     const whiteCanvas = imageToCanvas(whiteImg);
-    const fallbackCanvas = removeWhiteBackground(whiteCanvas);
+    const fallbackCanvas = removeConnectedWhiteBackground(removeWhiteBackground(whiteCanvas));
     transparentImage = fallbackCanvas.toDataURL("image/png");
   }
 
