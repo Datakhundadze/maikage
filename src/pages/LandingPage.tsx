@@ -120,7 +120,7 @@ export default function LandingPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-amber-500/20 mb-6 transition-colors group-hover:border-amber-500/40" style={{ boxShadow: '0 0 20px rgba(251,146,60,0.1)' }}>
                 <Sparkles className="h-6 w-6 text-amber-400" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-3">AI სტუდიო</h2>
+              <h2 className="text-2xl font-bold text-white mb-3">MAIKA.GE AI სტუდიო</h2>
               <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
                 შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით
               </p>
