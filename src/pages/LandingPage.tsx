@@ -88,7 +88,7 @@ export default function LandingPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-white/[0.06] mb-6 transition-colors group-hover:bg-[#333]">
                 <Shirt className="h-6 w-6 text-white/80" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-3">მარტივი რეჟიმი</h2>
+              <h2 className="text-2xl font-bold text-white mb-3">MAIKA.GE მარტივი რეჟიმი</h2>
               <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
                 ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის.
               </p>
