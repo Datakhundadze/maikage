@@ -9,6 +9,7 @@ import { ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
 import type { PriceBreakdown } from "@/lib/pricing";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
@@ -39,6 +40,7 @@ interface OrderDialogProps {
   transparentImageDataUrl?: string | null;
   prompt?: string | null;
   onBeforeOpen?: () => void;
+  size?: string;
 }
 
 async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
@@ -65,7 +67,7 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
   }
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, prompt, onBeforeOpen }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, prompt, onBeforeOpen, size }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -130,6 +132,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         back_mockup_url: backUrl,
         transparent_image_url: transparentUrl,
         prompt: prompt || null,
+        size: size || null,
       } as any).select("id").single();
 
       if (error) throw error;
@@ -206,6 +209,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
             <Label htmlFor="comment">კომენტარი</Label>
             <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} maxLength={1000} placeholder="დამატებითი ინფორმაცია..." rows={2} />
           </div>
+
 
           {/* Delivery options */}
           <div className="space-y-2">

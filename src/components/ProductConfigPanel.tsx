@@ -1,4 +1,4 @@
-import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 
@@ -9,6 +9,8 @@ interface ProductConfigPanelProps {
   onSubProductChange: (s: string) => void;
   onColorChange: (c: ProductColor) => void;
   onViewChange: (v: ProductView) => void;
+  selectedSize?: string;
+  onSizeChange?: (size: string) => void;
 }
 
 export default function ProductConfigPanel({
@@ -18,9 +20,12 @@ export default function ProductConfigPanel({
   onSubProductChange,
   onColorChange,
   onViewChange,
+  selectedSize,
+  onSizeChange,
 }: ProductConfigPanelProps) {
   const subProducts = SUB_PRODUCTS[config.product];
   const availableColors = catalog.getAvailableColors(config.product, config.subProduct);
+  const availableSizes = BRAND_SIZES[config.subProduct] || [];
 
   return (
     <div className={`space-y-4 ${locked ? "opacity-60 pointer-events-none" : ""}`}>
@@ -92,6 +97,28 @@ export default function ProductConfigPanel({
                 </button>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Size Selector */}
+      {availableSizes.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">ზომა</h3>
+          <div className="flex flex-wrap gap-2">
+            {availableSizes.map((size) => (
+              <button
+                key={size}
+                onClick={() => onSizeChange?.(size)}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                  selectedSize === size
+                    ? "bg-[hsl(25,95%,53%)] border-[hsl(25,95%,53%)] text-black"
+                    : "border-border bg-background text-foreground hover:border-[hsl(25,95%,48%)]"
+                }`}
+              >
+                {size}
+              </button>
+            ))}
           </div>
         </div>
       )}

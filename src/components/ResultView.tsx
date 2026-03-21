@@ -104,7 +104,7 @@ export default function ResultView({ result, onViewImage, productName = "design"
       <div className="w-full space-y-2">
         {onOrder && (
           <Button
-            onClick={onOrder}
+            onClick={() => onOrder()}
             className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25"
           >
             <ShoppingBag className="h-5 w-5" /> შეკვეთა

@@ -38,6 +38,7 @@ function StudioContent() {
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
@@ -127,8 +128,8 @@ function StudioContent() {
       productConfig.setLocked(true);
 
       const { config } = productConfig;
-      const entry = catalog.findProduct(config.product, config.subProduct, config.color as any, config.view);
-      const productImageUrl = entry?.imageUrl ?? null;
+      const colorEntry = catalog.findImageForColor(config.product, config.subProduct, config.color as any, config.view);
+      const productImageUrl = colorEntry?.entry?.imageUrl ?? null;
 
       const genResult = await runGenerationPipeline(
         {
@@ -156,10 +157,19 @@ function StudioContent() {
         let mockupPath: string | null = null;
         let transparentPath: string | null = null;
 
-        const [mockupBlob, transparentBlob] = await Promise.all([
-          genResult.mockupImage ? fetch(genResult.mockupImage).then(r => r.blob()) : Promise.resolve(null),
-          genResult.transparentImage ? fetch(genResult.transparentImage).then(r => r.blob()) : Promise.resolve(null),
-        ]);
+        function base64ToBlob(dataUrl: string): Blob {
+          const [header, base64] = dataUrl.split(",");
+          const mime = header.match(/:(.*?);/)?.[1] || "image/png";
+          const binary = atob(base64);
+          const arr = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
+          return new Blob([arr], { type: mime });
+        }
+
+        const [mockupBlob, transparentBlob] = [
+          genResult.mockupImage ? base64ToBlob(genResult.mockupImage) : null,
+          genResult.transparentImage ? base64ToBlob(genResult.transparentImage) : null,
+        ];
 
         const uploads = await Promise.all([
           mockupBlob ? supabase.storage.from("designs").upload(`generations/${genId}-mockup.png`, mockupBlob, { contentType: "image/png" }) : Promise.resolve(null),
@@ -172,8 +182,12 @@ function StudioContent() {
         else if (uploads[1]?.error) console.error("[Generation] Transparent upload failed:", uploads[1].error);
 
         // Use user's typed input as prompt (Gemini's text response is typically empty for image generation)
-        const userPrompt = [state.designParams.character, state.designParams.scene]
-          .filter(Boolean).join(" • ") || null;
+        const userPrompt = [
+          state.designParams.character,
+          state.designParams.scene,
+          state.designParams.style,
+          genResult.prompt,
+        ].filter(Boolean).join(" • ") || null;
 
         const genRecord = {
           user_id: user?.id ?? null,
@@ -302,6 +316,8 @@ function StudioContent() {
               onSubProductChange={productConfig.setSubProduct}
               onColorChange={productConfig.setColor}
               onViewChange={productConfig.setView}
+              selectedSize={productConfig.config.size}
+              onSizeChange={productConfig.setSize}
             />
             <div className="border-t border-sidebar-border pt-4 space-y-4">
               <PriceDisplay breakdown={priceBreakdown} />
@@ -316,7 +332,8 @@ function StudioContent() {
                   onExternalOpenChange={setOrderDialogOpen}
                   frontMockupDataUrl={result?.mockupImage || null}
                   transparentImageDataUrl={result?.transparentImage || null}
-                  prompt={result?.prompt || null}
+                   prompt={result?.prompt || null}
+                   size={productConfig.config.size}
                 />
               )}
               <DesignStudioPanel
