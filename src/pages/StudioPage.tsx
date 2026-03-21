@@ -127,7 +127,7 @@ function StudioContent() {
       productConfig.setLocked(true);
 
       const { config } = productConfig;
-      const entry = catalog.findProduct(config.product, config.subProduct, "White" as any, config.view);
+      const entry = catalog.findProduct(config.product, config.subProduct, config.color as any, config.view);
       const productImageUrl = entry?.imageUrl ?? null;
 
       const genResult = await runGenerationPipeline(
