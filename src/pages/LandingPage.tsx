@@ -162,6 +162,34 @@ export default function LandingPage() {
               </div>
             </div>
           </a>
+
+          {/* Card 4 — Photostudio */}
+          <a
+            href="https://photostudio.maika.ge"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative flex flex-col rounded-2xl border border-white/[0.08] bg-[#1a1a1a] p-8 sm:p-10 text-left transition-all duration-300 hover:border-white/[0.15] hover:scale-[1.02] hover:shadow-xl hover:shadow-black/40 overflow-hidden"
+          >
+            {/* Bottom reflection */}
+            <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none" />
+            {/* Top shine */}
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-white/[0.06] mb-6 transition-colors group-hover:bg-[#333]">
+                <span className="text-2xl">📸</span>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">PHOTOSTUDIO</h2>
+              <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
+                პროფესიონალური ფოტოსტუდიის სერვისი თქვენთვის
+              </p>
+              <div className="flex items-center justify-end w-full">
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/50 group-hover:text-white/80 transition-colors">
+                  ფოტოსტუდია <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </div>
+          </a>
         </div>
 
         {/* Corporate Section */}
