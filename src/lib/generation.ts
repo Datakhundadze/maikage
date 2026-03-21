@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignParams } from "@/hooks/useDesign";
+import { COLORS } from "@/lib/catalog";
 
 interface GenerateDesignParams {
   designParams: DesignParams;
@@ -144,6 +145,42 @@ function imageToCanvas(img: HTMLImageElement): HTMLCanvasElement {
   return canvas;
 }
 
+// Composite transparent design onto a solid color background (used when no product photo exists)
+function compositeMockupOnColorBg(
+  designImg: HTMLImageElement,
+  colorHex: string,
+  coords: { x: number; y: number; scale: number }
+): string {
+  const SIZE = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = SIZE;
+  canvas.height = SIZE;
+  const ctx = canvas.getContext("2d")!;
+
+  // Fill background with the selected product color
+  ctx.fillStyle = colorHex;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+
+  // Place design using same coord system as compositeMockup
+  const designWidth = SIZE * coords.scale;
+  const designHeight = (designImg.naturalHeight / designImg.naturalWidth) * designWidth;
+  const designX = SIZE * coords.x - designWidth / 2;
+  const designY = SIZE * coords.y - designHeight / 2;
+  ctx.drawImage(designImg, designX, designY, designWidth, designHeight);
+
+  // Watermark
+  ctx.globalAlpha = 0.45;
+  const fontSize = Math.max(12, Math.round(SIZE * 0.025));
+  ctx.font = `600 ${fontSize}px "BPG Nino Mtavruli", "Noto Sans Georgian", "Segoe UI", sans-serif`;
+  ctx.fillStyle = colorHex === "#FFFFFF" || colorHex === "#FFFDD0" || colorHex === "#FFF8E7" || colorHex === "#FFD700" ? "#000000" : "#ffffff";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("maika.ge", SIZE - fontSize * 0.8, SIZE - fontSize * 0.6);
+  ctx.globalAlpha = 1.0;
+
+  return canvas.toDataURL("image/png");
+}
+
 // Stage 3: Composite design onto product photo with watermark (exported for re-compositing)
 export function compositeMockup(
   productImg: HTMLImageElement,
@@ -233,14 +270,19 @@ export async function runGenerationPipeline(
   // Stage 3: Mockup compositing
   onStatusChange("GENERATING_MOCKUP");
 
+  // Look up the hex color for the selected product color
+  const colorEntry = COLORS.find(c => c.name === params.color);
+  const colorHex = colorEntry?.hex ?? "#FFFFFF";
+
   let mockupImage: string;
   if (productImageUrl) {
     const productImg = await loadImage(productImageUrl);
     const transparentImg = await loadImage(transparentImage);
     mockupImage = compositeMockup(productImg, transparentImg, placementCoords);
   } else {
-    // No product image yet — use transparent design as mockup placeholder
-    mockupImage = transparentImage;
+    // No product photo for this color — composite design onto solid color background
+    const transparentImg = await loadImage(transparentImage);
+    mockupImage = compositeMockupOnColorBg(transparentImg, colorHex, placementCoords);
   }
 
   return {
