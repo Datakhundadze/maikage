@@ -186,6 +186,8 @@ function colorizeWhiteProduct(productImg: HTMLImageElement, colorHex: string): H
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
   for (let i = 0; i < data.length; i += 4) {
+    // Skip fully transparent pixels (background)
+    if (data[i + 3] === 0) continue;
     // Multiply blend: preserves shadows/highlights of the white t-shirt
     data[i]     = Math.round(data[i]     * r);
     data[i + 1] = Math.round(data[i + 1] * g);
