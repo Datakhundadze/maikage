@@ -72,7 +72,7 @@ export default function LandingPage() {
         </div>
 
         {/* Mode Cards */}
-        <div className="grid w-full max-w-4xl gap-5 sm:grid-cols-3 mb-16 sm:mb-20">
+        <div className="grid w-full max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-16 sm:mb-20">
 
           {/* Card 1 — Simple Mode */}
           <button
@@ -88,7 +88,7 @@ export default function LandingPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-white/[0.06] mb-6 transition-colors group-hover:bg-[#333]">
                 <Shirt className="h-6 w-6 text-white/80" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-3">მარტივი რეჟიმი</h2>
+              <h2 className="text-2xl font-bold text-white mb-3">MAIKA.GE მარტივი რეჟიმი</h2>
               <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
                 ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის.
               </p>
@@ -120,7 +120,7 @@ export default function LandingPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-amber-500/20 mb-6 transition-colors group-hover:border-amber-500/40" style={{ boxShadow: '0 0 20px rgba(251,146,60,0.1)' }}>
                 <Sparkles className="h-6 w-6 text-amber-400" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-3">AI სტუდიო</h2>
+              <h2 className="text-2xl font-bold text-white mb-3">MAIKA.GE AI სტუდიო</h2>
               <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
                 შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით
               </p>
@@ -158,6 +158,34 @@ export default function LandingPage() {
               <div className="flex items-center justify-end w-full">
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/50 group-hover:text-white/80 transition-colors">
                   სტიკერები <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </div>
+          </a>
+
+          {/* Card 4 — Photostudio */}
+          <a
+            href="https://photostudio.maika.ge"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative flex flex-col rounded-2xl border border-white/[0.08] bg-[#1a1a1a] p-8 sm:p-10 text-left transition-all duration-300 hover:border-white/[0.15] hover:scale-[1.02] hover:shadow-xl hover:shadow-black/40 overflow-hidden"
+          >
+            {/* Bottom reflection */}
+            <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none" />
+            {/* Top shine */}
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-white/[0.06] mb-6 transition-colors group-hover:bg-[#333]">
+                <span className="text-2xl">📸</span>
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-3">PHOTOSTUDIO</h2>
+              <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
+                პროფესიონალური ფოტოსტუდიის სერვისი თქვენთვის
+              </p>
+              <div className="flex items-center justify-end w-full">
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/50 group-hover:text-white/80 transition-colors">
+                  ფოტოსტუდია <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
             </div>
