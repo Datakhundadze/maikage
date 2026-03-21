@@ -129,7 +129,8 @@ function StudioContent() {
 
       const { config } = productConfig;
       const colorEntry = catalog.findImageForColor(config.product, config.subProduct, config.color as any, config.view);
-      const productImageUrl = colorEntry?.entry?.imageUrl ?? null;
+      // Only use product photo when it's an exact color match — otherwise use colored background
+      const productImageUrl = (colorEntry?.isExact ? colorEntry.entry.imageUrl : null) ?? null;
 
       const genResult = await runGenerationPipeline(
         {
