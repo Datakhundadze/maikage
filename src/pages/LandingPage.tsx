@@ -72,7 +72,7 @@ export default function LandingPage() {
         </div>
 
         {/* Mode Cards */}
-        <div className="grid w-full max-w-4xl gap-5 sm:grid-cols-3 mb-16 sm:mb-20">
+        <div className="grid w-full max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-16 sm:mb-20">
 
           {/* Card 1 — Simple Mode */}
           <button
