@@ -11,11 +11,11 @@ const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 /** Map internal gateway model names to real Gemini model IDs */
 function mapModel(model: string): string {
   const map: Record<string, string> = {
-    "google/gemini-2.5-flash-image": "gemini-2.0-flash-exp",
-    "google/gemini-3-pro-image-preview": "gemini-2.0-flash-exp",
-    "google/gemini-3-flash-preview": "gemini-1.5-flash",
+    "google/gemini-2.5-flash-image": "gemini-2.0-flash-preview-image-generation",
+    "google/gemini-3-pro-image-preview": "gemini-2.0-flash-preview-image-generation",
+    "google/gemini-3-flash-preview": "gemini-2.0-flash",
   };
-  return map[model] || "gemini-2.0-flash-exp";
+  return map[model] || "gemini-2.0-flash-preview-image-generation";
 }
 
 /** Convert OpenAI-style messages array to Gemini contents array */
