@@ -1,0 +1,277 @@
+import { useState, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Upload, X, Download, Shirt } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface TryOnState {
+  mockupImage: string;
+  transparentImage: string;
+  productName?: string;
+}
+
+export default function TryOnPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const state = location.state as TryOnState | null;
+
+  const [personImage, setPersonImage] = useState<string | null>(null);
+  const [resultImage, setResultImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // If navigated here without state, go back
+  if (!state?.mockupImage) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <p className="text-muted-foreground">სურათი ვერ მოიძებნა.</p>
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          ← უკან
+        </Button>
+      </div>
+    );
+  }
+
+  const loadFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "გთხოვ ატვირთეთ სურათი", variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPersonImage(e.target?.result as string);
+      setResultImage(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) loadFile(file);
+  };
+
+  const handleTryOn = async () => {
+    if (!personImage) return;
+    setLoading(true);
+    setResultImage(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("gemini-proxy", {
+        body: {
+          action: "virtual-tryon",
+          params: {
+            personImage,
+            designImage: state.mockupImage,
+          },
+        },
+      });
+
+      let errorMsg: string | null = null;
+      if (error) {
+        try {
+          if (error.context && typeof error.context.json === "function") {
+            const body = await error.context.json();
+            errorMsg = body?.error || error.message;
+          }
+        } catch {
+          errorMsg = error.message;
+        }
+        throw new Error(errorMsg || "ვირტუალური გასინჯვა ვერ მოხერხდა");
+      }
+      if (!data?.image) throw new Error("AI-მ სურათი ვერ დააბრუნა. სცადეთ ხელახლა.");
+      setResultImage(data.image);
+    } catch (err: any) {
+      toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadResult = () => {
+    if (!resultImage) return;
+    const a = document.createElement("a");
+    a.href = resultImage;
+    a.download = "tryon-result.png";
+    a.click();
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground hover:text-foreground"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          უკან
+        </Button>
+        <div className="flex items-center gap-2">
+          <Shirt className="h-5 w-5 text-amber-500" />
+          <h1 className="text-base font-semibold">ვირტუალური გასინჯვა</h1>
+        </div>
+        {state.productName && (
+          <span className="text-xs text-muted-foreground ml-1">— {state.productName}</span>
+        )}
+      </header>
+
+      {/* Main content */}
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        {resultImage ? (
+          /* ── Result view ── */
+          <div className="flex flex-col items-center gap-6">
+            <div className="relative w-full max-w-lg rounded-2xl overflow-hidden border border-border shadow-lg">
+              <img src={resultImage} alt="გასინჯვის შედეგი" className="w-full object-contain" />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold"
+                onClick={downloadResult}
+              >
+                <Download className="h-4 w-4" />
+                გადმოწერა
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => { setResultImage(null); setPersonImage(null); }}
+              >
+                ხელახლა ცდა
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* ── Upload + preview view ── */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
+
+            {/* Left: generated mockup */}
+            <div className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                დაგენერირებული დიზაინი
+              </h2>
+              <div className="rounded-2xl overflow-hidden border border-border bg-card">
+                <div className="relative">
+                  {/* blurred background */}
+                  <div className="absolute inset-0 overflow-hidden">
+                    <img
+                      src={state.mockupImage}
+                      alt=""
+                      className="w-full h-full object-cover blur-[40px] opacity-40 scale-110"
+                    />
+                  </div>
+                  <div className="relative p-6 flex justify-center">
+                    <img
+                      src={state.mockupImage}
+                      alt="დიზაინი"
+                      className="max-h-80 object-contain rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: person photo upload */}
+            <div className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                თქვენი ფოტო
+              </h2>
+
+              {/* Upload / preview area */}
+              <div
+                className={`relative border-2 border-dashed rounded-2xl transition-all cursor-pointer min-h-[200px] flex items-center justify-center ${
+                  dragging
+                    ? "border-amber-500 bg-amber-500/10"
+                    : "border-border hover:border-amber-500/50 hover:bg-muted/30"
+                }`}
+                onClick={() => !personImage && inputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+              >
+                {personImage ? (
+                  <div className="relative w-full">
+                    <img
+                      src={personImage}
+                      alt="თქვენი ფოტო"
+                      className="w-full max-h-80 object-contain rounded-xl"
+                    />
+                    <button
+                      className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 rounded-full p-1.5 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); setPersonImage(null); }}
+                    >
+                      <X className="h-4 w-4 text-white" />
+                    </button>
+                    {/* Change photo overlay */}
+                    <button
+                      className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 hover:bg-black/80 rounded-lg px-3 py-1.5 text-xs text-white transition-colors flex items-center gap-1.5"
+                      onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+                    >
+                      <Upload className="h-3 w-3" /> ფოტოს შეცვლა
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 py-12 px-6 text-center">
+                    <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
+                      <Upload className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">ატვირთეთ თქვენი ფოტო</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        გადმოიტანეთ ან დააჭირეთ ასარჩევად
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">PNG, JPG, WEBP</p>
+                  </div>
+                )}
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </div>
+
+              {/* Try-on button */}
+              <Button
+                onClick={handleTryOn}
+                disabled={!personImage || loading}
+                className="w-full h-14 text-base font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <>
+                    <span className="h-5 w-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    მუშავდება...
+                  </>
+                ) : (
+                  <>
+                    <Shirt className="h-5 w-5" />
+                    გასინჯვა
+                  </>
+                )}
+              </Button>
+
+              {!personImage && (
+                <p className="text-xs text-muted-foreground text-center">
+                  ჯერ ატვირთეთ ფოტო, შემდეგ დააჭირეთ „გასინჯვა"-ს
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

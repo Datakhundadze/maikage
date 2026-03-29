@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import type { GenerationResult } from "@/lib/generation";
 import { upscaleImage } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
@@ -6,7 +7,6 @@ import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import TryOnModal from "@/components/TryOnModal";
 
 interface ResultViewProps {
   result: GenerationResult;
@@ -23,8 +23,8 @@ interface ResultViewProps {
 export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
+  const navigate = useNavigate();
   const [upscaling, setUpscaling] = useState(false);
-  const [tryOnOpen, setTryOnOpen] = useState(false);
   const prefix = `${productName.toLowerCase().replace(/\s/g, "-")}${colorName ? `-${colorName.toLowerCase().replace(/\s/g, "-")}` : ""}`;
 
   const downloadImage = (dataUrl: string, filename: string) => {
@@ -63,6 +63,16 @@ export default function ResultView({ result, onViewImage, productName = "design"
       setUpscaling(false);
     }
   }, [result, onResultUpdate, toast]);
+
+  const handleTryOn = () => {
+    navigate("/try-on", {
+      state: {
+        mockupImage: result.mockupImage,
+        transparentImage: result.transparentImage,
+        productName,
+      },
+    });
+  };
 
   return (
     <div className="flex flex-col items-center gap-6 p-6 w-full max-w-2xl mx-auto">
@@ -104,14 +114,24 @@ export default function ResultView({ result, onViewImage, productName = "design"
 
       {/* Action Buttons */}
       <div className="w-full space-y-2">
-        {onOrder && (
+        {/* Order + Try-On side by side */}
+        <div className="flex gap-2">
+          {onOrder && (
+            <Button
+              onClick={() => onOrder()}
+              className="flex-1 h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25"
+            >
+              <ShoppingBag className="h-5 w-5" /> შეკვეთა
+            </Button>
+          )}
           <Button
-            onClick={() => onOrder()}
-            className="w-full h-14 text-lg font-bold gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl shadow-lg shadow-amber-500/25"
+            onClick={handleTryOn}
+            className="flex-1 h-14 text-lg font-bold gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-xl shadow-lg shadow-purple-500/25"
           >
-            <ShoppingBag className="h-5 w-5" /> შეკვეთა
+            <Shirt className="h-5 w-5" /> გასახდელი
           </Button>
-        )}
+        </div>
+
         {onShareToCommunity && !isShared && (
           <Button
             onClick={onShareToCommunity}
@@ -128,20 +148,7 @@ export default function ResultView({ result, onViewImage, productName = "design"
             ✓ გაზიარებულია საზოგადოებაში
           </div>
         )}
-        <Button
-          onClick={() => setTryOnOpen(true)}
-          variant="outline"
-          className="w-full h-11 gap-2 font-medium"
-        >
-          <Shirt className="h-4 w-4" /> გასინჯვა
-        </Button>
       </div>
-
-      <TryOnModal
-        open={tryOnOpen}
-        onClose={() => setTryOnOpen(false)}
-        designImage={result.transparentImage}
-      />
 
       {/* Print File Card */}
       <div className="w-full max-w-xl rounded-2xl border border-border bg-card overflow-hidden">
