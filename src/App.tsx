@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { AppStateProvider, useAppState } from "@/hooks/useAppState";
@@ -25,13 +25,13 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const { mode } = useAppState();
   useAutoLogout();
-  const location = window.location.pathname;
+  const { pathname } = useLocation();
 
   // Admin route is standalone — bypass mode checks
-  if (location === "/admin") return <Routes><Route path="/admin" element={<AdminPage />} /></Routes>;
+  if (pathname === "/admin") return <Routes><Route path="/admin" element={<AdminPage />} /></Routes>;
 
   // Try-on page is standalone — accessible from all modes
-  if (location === "/try-on") return <Routes><Route path="/try-on" element={<TryOnPage />} /></Routes>;
+  if (pathname === "/try-on") return <Routes><Route path="/try-on" element={<TryOnPage />} /></Routes>;
 
   if (mode === "landing") return <LandingPage />;
   if (mode === "simple") return <SimplePage />;
