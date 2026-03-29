@@ -170,7 +170,7 @@ async function callGemini(model: string, messages: any[], attempt: number, actio
   const contents = toGeminiContents(messages);
   const body: any = { contents };
   if (needsImage) {
-    body.generationConfig = { responseModalities: ["IMAGE", "TEXT"] };
+    body.generationConfig = { responseModalities: ["TEXT", "IMAGE"] };
   }
 
   const url = `${GEMINI_BASE}/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`;
@@ -289,7 +289,7 @@ Design to place on t-shirt: [second image]`,
         if (!response.ok) {
           const status = response.status;
           const text = await response.text();
-          console.error(`[gemini-proxy] Gemini HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 500));
+          console.error(`[gemini-proxy] Gemini HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 800));
 
           if (status === 429) {
             return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
@@ -297,21 +297,16 @@ Design to place on t-shirt: [second image]`,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          if (status === 400) {
-            return new Response(JSON.stringify({ error: `Gemini API error: ${text.slice(0, 200)}` }), {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-          }
 
-          lastError = `Gemini returned ${status}`;
+          // Surface the actual Google API error for all other failures
+          lastError = `Gemini ${status}: ${text.slice(0, 400)}`;
           if (attempt < maxAttempts - 1) {
             console.log(`[gemini-proxy] Retrying in ${(attempt + 1) * 2}s...`);
             await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
             continue;
           }
 
-          return new Response(JSON.stringify({ error: "AI generation failed. Please try again." }), {
+          return new Response(JSON.stringify({ error: lastError }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
