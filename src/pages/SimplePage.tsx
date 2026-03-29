@@ -5,7 +5,8 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, LogIn, LogOut, FolderOpen, Globe } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, LogIn, LogOut, FolderOpen, Globe, Shirt } from "lucide-react";
+import TryOnModal from "@/components/TryOnModal";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -341,6 +342,7 @@ export default function SimplePage() {
 
   // Memoized mockup data URLs for order
   const [frontMockup, setFrontMockup] = useState<string | null>(null);
+  const [tryOnOpen, setTryOnOpen] = useState(false);
   const [backMockup, setBackMockup] = useState<string | null>(null);
 
   // Generate mockups when design changes
@@ -411,9 +413,17 @@ export default function SimplePage() {
                 <Globe className="h-3.5 w-3.5" /> {publishing ? "..." : (lang === "en" ? "Publish" : "გამოქვეყნება")}
               </button>
             )}
+            {frontMockup && (
+              <button onClick={() => setTryOnOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <Shirt className="h-3.5 w-3.5" /> {lang === "en" ? "Try On" : "გასინჯვა"}
+              </button>
+            )}
           </nav>
         </header>
         <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
+        {frontMockup && (
+          <TryOnModal open={tryOnOpen} onClose={() => setTryOnOpen(false)} designImage={frontMockup} />
+        )}
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Product config */}

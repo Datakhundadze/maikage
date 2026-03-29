@@ -211,6 +211,33 @@ Return ONLY a JSON object with these fields (no markdown, no explanation):
 Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista, underwater DJ, retro-futuristic gardener, etc. Make each concept unique and memorable.`,
       }];
 
+    } else if (action === "virtual-tryon") {
+      model = "google/gemini-2.5-flash-image";
+      messages = [{
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `You are a photorealistic image compositor. The user wants to see how a custom t-shirt design looks on them.
+
+TASK: Replace the clothing on the person in the first image with a white t-shirt that has the design from the second image printed on it.
+
+RULES:
+- Keep the person's face, hair, skin, pose, and background EXACTLY the same
+- The t-shirt must look natural with realistic folds and lighting
+- Place the design centered on the chest area of the t-shirt
+- The design should be clearly visible and properly scaled
+- Do NOT change anything else in the image
+- Output a single photorealistic image
+
+Person image: [first image]
+Design to place on t-shirt: [second image]`,
+          },
+          { type: "image_url", image_url: { url: params.personImage } },
+          { type: "image_url", image_url: { url: params.designImage } },
+        ],
+      }];
+
     } else {
       return new Response(JSON.stringify({ error: "Unknown action" }), {
         status: 400,

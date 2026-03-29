@@ -4,8 +4,9 @@ import { upscaleImage } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe } from "lucide-react";
+import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import TryOnModal from "@/components/TryOnModal";
 
 interface ResultViewProps {
   result: GenerationResult;
@@ -23,6 +24,7 @@ export default function ResultView({ result, onViewImage, productName = "design"
   const { toast } = useToast();
   const { lang } = useAppState();
   const [upscaling, setUpscaling] = useState(false);
+  const [tryOnOpen, setTryOnOpen] = useState(false);
   const prefix = `${productName.toLowerCase().replace(/\s/g, "-")}${colorName ? `-${colorName.toLowerCase().replace(/\s/g, "-")}` : ""}`;
 
   const downloadImage = (dataUrl: string, filename: string) => {
@@ -126,7 +128,20 @@ export default function ResultView({ result, onViewImage, productName = "design"
             ✓ გაზიარებულია საზოგადოებაში
           </div>
         )}
+        <Button
+          onClick={() => setTryOnOpen(true)}
+          variant="outline"
+          className="w-full h-11 gap-2 font-medium"
+        >
+          <Shirt className="h-4 w-4" /> გასინჯვა
+        </Button>
       </div>
+
+      <TryOnModal
+        open={tryOnOpen}
+        onClose={() => setTryOnOpen(false)}
+        designImage={result.transparentImage}
+      />
 
       {/* Print File Card */}
       <div className="w-full max-w-xl rounded-2xl border border-border bg-card overflow-hidden">
