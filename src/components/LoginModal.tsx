@@ -39,14 +39,14 @@ export default function LoginModal({ open, onClose, message }: LoginModalProps) 
 
   const handleGoogleSignIn = async () => {
     const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: window.location.href,
     });
     if (!error) onClose();
   };
 
   const handleAppleSignIn = async () => {
     const { error } = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: window.location.origin,
+      redirect_uri: window.location.href,
     });
     if (!error) onClose();
   };
