@@ -58,26 +58,7 @@ export function useGenerationLimit() {
       return { allowed: true };
     }
 
-    // Logged-in user
-    const data = getStoredLimit();
-    const now = Date.now();
-
-    // Reset if cooldown has passed
-    if (data.count > 0 && now - data.firstGenAt >= COOLDOWN_MS) {
-      setStoredLimit({ count: 0, firstGenAt: 0 });
-      return { allowed: true };
-    }
-
-    if (data.count >= LOGGED_IN_LIMIT) {
-      const remainMs = COOLDOWN_MS - (now - data.firstGenAt);
-      const remainMin = Math.ceil(remainMs / 60000);
-      return {
-        allowed: false,
-        reason: "user_limit",
-        message: `თქვენი ლიმიტი ამოიწურა. AI სტუდიოს გამოყენება შესაძლებელი იქნება ${remainMin} წუთში`,
-      };
-    }
-
+    // Logged-in users have no generation limit
     return { allowed: true };
   }, [user]);
 
