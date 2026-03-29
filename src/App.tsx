@@ -16,6 +16,7 @@ import SimplePage from "./pages/SimplePage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import CorporatePage from "./pages/CorporatePage";
+import TryOnPage from "./pages/TryOnPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,9 @@ function AppRoutes() {
 
   // Admin route is standalone — bypass mode checks
   if (location === "/admin") return <Routes><Route path="/admin" element={<AdminPage />} /></Routes>;
+
+  // Try-on page is standalone — accessible from all modes
+  if (location === "/try-on") return <Routes><Route path="/try-on" element={<TryOnPage />} /></Routes>;
 
   if (mode === "landing") return <LandingPage />;
   if (mode === "simple") return <SimplePage />;
