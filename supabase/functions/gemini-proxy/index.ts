@@ -5,87 +5,51 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
-const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-/** Map internal gateway model names to real Gemini model IDs */
-function mapModel(model: string): string {
-  const map: Record<string, string> = {
-    "google/gemini-2.5-flash-image": "gemini-2.0-flash-preview-image-generation",
-    "google/gemini-3-pro-image-preview": "gemini-2.0-flash-preview-image-generation",
-    "google/gemini-3-flash-preview": "gemini-2.0-flash",
-  };
-  return map[model] || "gemini-2.0-flash-preview-image-generation";
-}
-
-/** Convert OpenAI-style messages array to Gemini contents array */
-function toGeminiContents(messages: any[]): any[] {
-  return messages.map((msg) => {
-    const parts: any[] = [];
-    const content = msg.content;
-
-    if (typeof content === "string") {
-      parts.push({ text: content });
-    } else if (Array.isArray(content)) {
-      for (const part of content) {
-        if (part.type === "text") {
-          parts.push({ text: part.text });
-        } else if (part.type === "image_url") {
-          const url: string = part.image_url?.url || "";
-          if (url.startsWith("data:")) {
-            const match = url.match(/^data:([^;]+);base64,(.+)$/s);
-            if (match) {
-              parts.push({ inlineData: { mimeType: match[1], data: match[2] } });
-            }
-          } else {
-            // Regular URL — pass as fileData
-            parts.push({ fileData: { mimeType: "image/jpeg", fileUri: url } });
-          }
-        }
+/** Extract base64 image from various response formats the gateway might return */
+function extractImage(data: any): string | null {
+  // Format 1: content array with image_url objects
+  const content = data?.choices?.[0]?.message?.content;
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      if (part?.type === "image_url" && part?.image_url?.url) return part.image_url.url;
+      if (part?.type === "image" && part?.image_url?.url) return part.image_url.url;
+      if (part?.inline_data?.data) {
+        const mime = part.inline_data.mime_type || "image/png";
+        return `data:${mime};base64,${part.inline_data.data}`;
       }
     }
-
-    return { role: msg.role === "assistant" ? "model" : "user", parts };
-  });
-}
-
-/** Extract base64 image from Gemini native response */
-function extractImage(data: any): string | null {
-  const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
-  for (const part of parts) {
-    if (part?.inlineData?.data) {
-      const mime = part.inlineData.mimeType || "image/png";
-      return `data:${mime};base64,${part.inlineData.data}`;
-    }
-    // Also handle snake_case variant just in case
-    if (part?.inline_data?.data) {
-      const mime = part.inline_data.mime_type || "image/png";
-      return `data:${mime};base64,${part.inline_data.data}`;
-    }
   }
+
+  // Format 2: separate images array on message
+  const images = data?.choices?.[0]?.message?.images;
+  if (Array.isArray(images) && images.length > 0) {
+    if (images[0]?.image_url?.url) return images[0].image_url.url;
+    if (images[0]?.url) return images[0].url;
+    if (typeof images[0] === "string") return images[0];
+  }
+
+  // Format 3: top-level data array (images/generations style)
+  if (Array.isArray(data?.data) && data.data[0]?.url) return data.data[0].url;
+  if (Array.isArray(data?.data) && data.data[0]?.b64_json) {
+    return `data:image/png;base64,${data.data[0].b64_json}`;
+  }
+
   return null;
 }
 
-/** Extract text from Gemini native response */
-function extractText(data: any): string {
-  const parts: any[] = data?.candidates?.[0]?.content?.parts ?? [];
-  for (const part of parts) {
-    if (typeof part?.text === "string") return part.text;
-  }
-  return "";
-}
-
-function getUserError(finishReason: string | undefined): string | null {
-  if (finishReason === "IMAGE_PROHIBITED_CONTENT" || finishReason === "PROHIBITED_CONTENT") {
+function getUserError(nativeFinishReason: string | undefined, finishReason: string | undefined): string | null {
+  if (nativeFinishReason === "IMAGE_PROHIBITED_CONTENT" || nativeFinishReason === "PROHIBITED_CONTENT") {
     return "The AI could not generate this image due to content policy restrictions. Try modifying your prompt or using different reference images.";
   }
-  if (finishReason === "MAX_TOKENS") {
+  if (nativeFinishReason === "MAX_TOKENS" || finishReason === "length") {
     return "The image was too complex to generate. Try simplifying your prompt or using smaller reference images.";
   }
-  if (finishReason === "SAFETY" || finishReason === "BLOCKLIST") {
+  if (nativeFinishReason === "SAFETY" || nativeFinishReason === "BLOCKLIST") {
     return "The request was blocked by safety filters. Please adjust your prompt.";
   }
-  if (finishReason === "RECITATION") {
+  if (nativeFinishReason === "RECITATION") {
     return "The AI could not generate an original image for this prompt. Try rephrasing.";
   }
   return null;
@@ -161,23 +125,25 @@ OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background.
   return [{ role: "user", content }];
 }
 
-async function callGemini(model: string, messages: any[], attempt: number, action: string): Promise<Response> {
+async function callGateway(model: string, messages: any[], attempt: number, action: string): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
   const needsImage = action !== "randomize-prompt";
-  const geminiModel = mapModel(model);
 
-  console.log(`[gemini-proxy] Gemini API call: model=${geminiModel}, attempt=${attempt + 1}, needsImage=${needsImage}`);
+  console.log(`[gemini-proxy] Gateway call: model=${model}, attempt=${attempt + 1}, modalities=${needsImage ? "image+text" : "text"}`);
 
-  const contents = toGeminiContents(messages);
-  const body: any = { contents };
+  const body: any = { model, messages };
   if (needsImage) {
-    body.generationConfig = { responseModalities: ["TEXT", "IMAGE"] };
+    body.modalities = ["image", "text"];
   }
 
-  const url = `${GEMINI_BASE}/${geminiModel}:generateContent?key=${GEMINI_API_KEY}`;
-
-  const response = await fetch(url, {
+  const response = await fetch(GATEWAY_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(body),
   });
 
@@ -284,12 +250,12 @@ Design to place on t-shirt: [second image]`,
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const response = await callGemini(model, messages, attempt, action);
+        const response = await callGateway(model, messages, attempt, action);
 
         if (!response.ok) {
           const status = response.status;
           const text = await response.text();
-          console.error(`[gemini-proxy] Gemini HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 800));
+          console.error(`[gemini-proxy] Gateway HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 300));
 
           if (status === 429) {
             return new Response(JSON.stringify({ error: "Rate limit exceeded. Please wait a moment and try again." }), {
@@ -297,24 +263,32 @@ Design to place on t-shirt: [second image]`,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
+          if (status === 402) {
+            return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
+              status: 402,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
 
-          // Surface the actual Google API error for all other failures
-          lastError = `Gemini ${status}: ${text.slice(0, 400)}`;
+          lastError = `Gateway returned ${status}`;
           if (attempt < maxAttempts - 1) {
             console.log(`[gemini-proxy] Retrying in ${(attempt + 1) * 2}s...`);
             await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
             continue;
           }
 
-          return new Response(JSON.stringify({ error: lastError }), {
+          return new Response(JSON.stringify({ error: "AI generation failed. Please try again." }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
         const data = await response.json();
-        const finishReason = data.candidates?.[0]?.finishReason;
-        const textContent = extractText(data);
+        const nativeFinishReason = data.choices?.[0]?.native_finish_reason;
+        const finishReason = data.choices?.[0]?.finish_reason;
+        const textContent = typeof data.choices?.[0]?.message?.content === "string"
+          ? data.choices[0].message.content
+          : "";
 
         // For randomize-prompt, just return text
         if (action === "randomize-prompt") {
@@ -326,25 +300,25 @@ Design to place on t-shirt: [second image]`,
 
         // Extract image from response
         const imageData = extractImage(data);
-        console.log(`[gemini-proxy] attempt=${attempt + 1} hasImage=${!!imageData} finishReason=${finishReason}`);
+        console.log(`[gemini-proxy] attempt=${attempt + 1} hasImage=${!!imageData} finishReason=${finishReason} native=${nativeFinishReason}`);
 
         if (!imageData) {
-          // Check for policy/safety blocks — don't retry those
-          const userError = getUserError(finishReason);
+          const userError = getUserError(nativeFinishReason, finishReason);
           if (userError) {
-            console.error(`[gemini-proxy] Blocked: ${finishReason}`);
+            console.error(`[gemini-proxy] Blocked: ${nativeFinishReason}`);
             return new Response(JSON.stringify({ error: userError, text: textContent }), {
               status: 422,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
 
-          // Log response structure for debugging
           const responseKeys = JSON.stringify({
-            hasCandidates: !!data.candidates,
-            partsCount: data.candidates?.[0]?.content?.parts?.length ?? 0,
-            partTypes: (data.candidates?.[0]?.content?.parts ?? []).map((p: any) => Object.keys(p)),
+            hasChoices: !!data.choices,
+            messageKeys: data.choices?.[0]?.message ? Object.keys(data.choices[0].message) : [],
+            contentType: typeof data.choices?.[0]?.message?.content,
+            contentIsArray: Array.isArray(data.choices?.[0]?.message?.content),
             finishReason,
+            nativeFinishReason,
           });
           console.error(`[gemini-proxy] No image extracted (attempt ${attempt + 1}). Structure: ${responseKeys}`);
 
