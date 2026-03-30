@@ -72,6 +72,7 @@ export default function TryOnPage() {
           params: {
             personImage,
             designImage: state.mockupImage,
+            productName: state.productName || "t-shirt",
           },
         },
       });
