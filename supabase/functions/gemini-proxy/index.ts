@@ -217,20 +217,20 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
         content: [
           {
             type: "text",
-            text: `You are a photorealistic image compositor. The user wants to see how a custom t-shirt design looks on them.
+            text: `You are a photorealistic image compositor. The user wants to see how a custom t-shirt looks on them.
 
-TASK: Replace the clothing on the person in the first image with a white t-shirt that has the design from the second image printed on it.
+TASK: Dress the person in the first image with the exact t-shirt shown in the second image. The second image shows a t-shirt with a specific COLOR and DESIGN — replicate both exactly on the person.
 
 RULES:
+- Keep the t-shirt COLOR exactly as shown in the second image (navy blue, black, white, red, etc.)
+- Keep the t-shirt DESIGN/PRINT exactly as shown in the second image
 - Keep the person's face, hair, skin, pose, and background EXACTLY the same
 - The t-shirt must look natural with realistic folds and lighting
-- Place the design centered on the chest area of the t-shirt
-- The design should be clearly visible and properly scaled
 - Do NOT change anything else in the image
 - Output a single photorealistic image
 
 Person image: [first image]
-Design to place on t-shirt: [second image]`,
+T-shirt to wear (exact color + design): [second image]`,
           },
           { type: "image_url", image_url: { url: params.personImage } },
           { type: "image_url", image_url: { url: params.designImage } },
