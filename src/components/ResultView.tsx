@@ -70,6 +70,7 @@ export default function ResultView({ result, onViewImage, productName = "design"
         mockupImage: result.mockupImage,
         transparentImage: result.transparentImage,
         productName,
+        colorName,
       },
     });
   };

@@ -219,22 +219,16 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
             type: "text",
             text: `You are a photorealistic image compositor.
 
-TASK: Replace the person's current clothing with the exact ${params.productName || "garment"} shown in the second image.
+TASK: Dress the person in the first photo with a ${params.colorName ? params.colorName + " " : ""}${params.productName || "t-shirt"} that has the design/print shown in the second image placed on the chest area.
 
-CRITICAL — look carefully at the second image:
-- What COLOR is the garment? (e.g. navy blue, black, dark green, red, white) → use THAT exact color
-- What DESIGN/PRINT is on the garment? → place it in the same position
-- What TYPE of garment is it? (t-shirt, hoodie, sweatshirt) → dress the person in THAT type
+EXPLICIT REQUIREMENTS:
+- Garment type: ${params.productName || "t-shirt"} (NOT a different type)
+- Garment color: ${params.colorName || "match the color shown in the second image"} (NOT white unless specified)
+- Design/print: exactly as shown in the second image, centered on chest
+- Person: face, hair, skin, pose, and background must stay EXACTLY the same
+- The garment must have realistic folds and lighting
 
-RULES:
-1. The garment on the person MUST match the second image — same color, same type, same design
-2. Do NOT default to white — if the garment in the second image is dark blue, the person must wear dark blue
-3. Keep the person's face, hair, skin, pose, and background EXACTLY unchanged
-4. The garment must look natural with realistic folds and lighting on the person's body
-5. Output a single photorealistic composite image
-
-Person photo: [first image]
-Garment to replicate (color + type + design): [second image]`,
+Output a single photorealistic image of the person wearing the ${params.colorName ? params.colorName + " " : ""}${params.productName || "t-shirt"} with the design.`,
           },
           { type: "image_url", image_url: { url: params.personImage } },
           { type: "image_url", image_url: { url: params.designImage } },
