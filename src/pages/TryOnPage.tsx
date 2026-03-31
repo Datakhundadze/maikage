@@ -6,44 +6,39 @@ import { ArrowLeft, Upload, X, Download, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COLORS } from "@/lib/catalog";
 
-/** Colorize near-white neutral pixels in the try-on result using multiply blend */
+/** Colorize near-white neutral pixels using multiply blend (shirt area) */
 function applyGarmentColor(imageDataUrl: string, hex: string): Promise<string> {
   return new Promise((resolve) => {
-    console.log("[TryOn] applyGarmentColor called, hex=", hex, "imageLength=", imageDataUrl?.length);
-    if (!hex || hex.toUpperCase() === "#FFFFFF") {
-      console.log("[TryOn] Skipping colorization (white or no color)");
-      resolve(imageDataUrl); return;
-    }
+    if (!hex || hex.toUpperCase() === "#FFFFFF") { resolve(imageDataUrl); return; }
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
-    console.log("[TryOn] Target RGB:", r, g, b);
     const img = new Image();
     img.onload = () => {
-      console.log("[TryOn] Image loaded:", img.width, "x", img.height);
       const canvas = document.createElement("canvas");
-      canvas.width = img.width; canvas.height = img.height;
-      const ctx = canvas.getContext("2d")!;
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const d = imgData.data;
-      let changed = 0;
       for (let i = 0; i < d.length; i += 4) {
         const pr = d[i], pg = d[i + 1], pb = d[i + 2];
-        const isLight = pr > 180 && pg > 180 && pb > 180;
-        const isNeutral = Math.max(pr, pg, pb) - Math.min(pr, pg, pb) < 40;
-        if (isLight && isNeutral) {
+        // Recolor light pixels (brightness > 160) that are fairly neutral (not strong skin hue)
+        const brightness = (pr + pg + pb) / 3;
+        const saturation = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
+        // Skin has warm hue (R >> G >> B). Neutral shirt: all channels similar
+        const isSkinHue = pr > pg + 30 && pg > pb + 10; // warm tone = skin
+        if (brightness > 160 && saturation < 60 && !isSkinHue) {
           d[i]     = Math.round((pr * r) / 255);
           d[i + 1] = Math.round((pg * g) / 255);
           d[i + 2] = Math.round((pb * b) / 255);
-          changed++;
         }
       }
-      console.log("[TryOn] Pixels changed:", changed, "/", d.length / 4);
       ctx.putImageData(imgData, 0, 0);
       resolve(canvas.toDataURL("image/png"));
     };
-    img.onerror = (e) => { console.error("[TryOn] Image load error:", e); resolve(imageDataUrl); };
+    img.onerror = () => resolve(imageDataUrl);
     img.src = imageDataUrl;
   });
 }
