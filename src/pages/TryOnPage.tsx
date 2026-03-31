@@ -14,29 +14,33 @@ function applyGarmentColor(imageDataUrl: string, hex: string): Promise<string> {
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-      ctx.drawImage(img, 0, 0);
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const pr = d[i], pg = d[i + 1], pb = d[i + 2];
-        // Recolor light pixels (brightness > 160) that are fairly neutral (not strong skin hue)
-        const brightness = (pr + pg + pb) / 3;
-        const saturation = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
-        // Skin has warm hue (R >> G >> B). Neutral shirt: all channels similar
-        const isSkinHue = pr > pg + 30 && pg > pb + 10; // warm tone = skin
-        if (brightness > 160 && saturation < 60 && !isSkinHue) {
-          d[i]     = Math.round((pr * r) / 255);
-          d[i + 1] = Math.round((pg * g) / 255);
-          d[i + 2] = Math.round((pb * b) / 255);
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imgData.data;
+        for (let i = 0; i < d.length; i += 4) {
+          const pr = d[i], pg = d[i + 1], pb = d[i + 2];
+          const brightness = (pr + pg + pb) / 3;
+          const saturation = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
+          const isSkinHue = pr > pg + 30 && pg > pb + 10;
+          if (brightness > 160 && saturation < 60 && !isSkinHue) {
+            d[i]     = Math.round((pr * r) / 255);
+            d[i + 1] = Math.round((pg * g) / 255);
+            d[i + 2] = Math.round((pb * b) / 255);
+          }
         }
+        ctx.putImageData(imgData, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch {
+        // CORS or other canvas error — return original
+        resolve(imageDataUrl);
       }
-      ctx.putImageData(imgData, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
     };
     img.onerror = () => resolve(imageDataUrl);
     img.src = imageDataUrl;
