@@ -72,7 +72,7 @@ export default function TryOnPage() {
           action: "virtual-tryon",
           params: {
             personImage,
-            designImage: state.mockupImage,
+            designImage: state.transparentImage || state.mockupImage,
             productName: state.productName || "t-shirt",
             colorName: state.colorName || "",
           },
