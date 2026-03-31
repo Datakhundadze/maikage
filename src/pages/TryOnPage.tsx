@@ -9,32 +9,41 @@ import { COLORS } from "@/lib/catalog";
 /** Colorize near-white neutral pixels in the try-on result using multiply blend */
 function applyGarmentColor(imageDataUrl: string, hex: string): Promise<string> {
   return new Promise((resolve) => {
-    if (!hex || hex.toUpperCase() === "#FFFFFF") { resolve(imageDataUrl); return; }
+    console.log("[TryOn] applyGarmentColor called, hex=", hex, "imageLength=", imageDataUrl?.length);
+    if (!hex || hex.toUpperCase() === "#FFFFFF") {
+      console.log("[TryOn] Skipping colorization (white or no color)");
+      resolve(imageDataUrl); return;
+    }
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
+    console.log("[TryOn] Target RGB:", r, g, b);
     const img = new Image();
     img.onload = () => {
+      console.log("[TryOn] Image loaded:", img.width, "x", img.height);
       const canvas = document.createElement("canvas");
       canvas.width = img.width; canvas.height = img.height;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const d = imgData.data;
+      let changed = 0;
       for (let i = 0; i < d.length; i += 4) {
         const pr = d[i], pg = d[i + 1], pb = d[i + 2];
-        // Only recolor light neutral pixels (white/gray shirt area, not warm skin or dark design)
         const isLight = pr > 180 && pg > 180 && pb > 180;
         const isNeutral = Math.max(pr, pg, pb) - Math.min(pr, pg, pb) < 40;
         if (isLight && isNeutral) {
           d[i]     = Math.round((pr * r) / 255);
           d[i + 1] = Math.round((pg * g) / 255);
           d[i + 2] = Math.round((pb * b) / 255);
+          changed++;
         }
       }
+      console.log("[TryOn] Pixels changed:", changed, "/", d.length / 4);
       ctx.putImageData(imgData, 0, 0);
       resolve(canvas.toDataURL("image/png"));
     };
+    img.onerror = (e) => { console.error("[TryOn] Image load error:", e); resolve(imageDataUrl); };
     img.src = imageDataUrl;
   });
 }
@@ -126,7 +135,9 @@ export default function TryOnPage() {
         throw new Error(errorMsg || "ვირტუალური გასინჯვა ვერ მოხერხდა");
       }
       if (!data?.image) throw new Error("AI-მ სურათი ვერ დააბრუნა. სცადეთ ხელახლა.");
+      console.log("[TryOn] colorName from state:", state.colorName);
       const hex = COLORS.find(c => c.name === state.colorName)?.hex || "";
+      console.log("[TryOn] hex found:", hex);
       const colored = await applyGarmentColor(data.image, hex);
       setResultImage(colored);
     } catch (err: any) {
