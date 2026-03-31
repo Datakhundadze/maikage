@@ -9,6 +9,7 @@ interface TryOnState {
   mockupImage: string;
   transparentImage: string;
   productName?: string;
+  colorName?: string;
 }
 
 export default function TryOnPage() {
@@ -73,6 +74,7 @@ export default function TryOnPage() {
             personImage,
             designImage: state.mockupImage,
             productName: state.productName || "t-shirt",
+            colorName: state.colorName || "",
           },
         },
       });
