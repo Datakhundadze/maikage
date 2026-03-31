@@ -217,18 +217,21 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
         content: [
           {
             type: "text",
-            text: `You are a photorealistic image compositor.
+            text: `You are a photorealistic fashion compositor. Create a virtual try-on image.
 
-TASK: Dress the person in the first photo with a ${params.colorName ? params.colorName + " " : ""}${params.productName || "t-shirt"} that has the design/print shown in the second image placed on the chest area.
+GARMENT SPECIFICATIONS:
+- Type: ${params.productName || "t-shirt"}
+- Color: ${params.colorName || "white"}
+- Print/design: the artwork shown in the second image, placed centered on the chest
 
-EXPLICIT REQUIREMENTS:
-- Garment type: ${params.productName || "t-shirt"} (NOT a different type)
-- Garment color: ${params.colorName || "match the color shown in the second image"} (NOT white unless specified)
-- Design/print: exactly as shown in the second image, centered on chest
-- Person: face, hair, skin, pose, and background must stay EXACTLY the same
-- The garment must have realistic folds and lighting
+INSTRUCTIONS:
+1. Keep the person (face, hair, body, pose, background) EXACTLY as in the first photo — do not alter anything about the person or setting
+2. Replace the person's top clothing with a ${params.colorName || "white"} ${params.productName || "t-shirt"}
+3. Print the design from the second image onto the chest of the ${params.colorName || "white"} ${params.productName || "t-shirt"}
+4. The ${params.productName || "t-shirt"} color MUST be ${params.colorName || "white"} — this is mandatory
+5. Lighting and fabric folds should look natural and photorealistic
 
-Output a single photorealistic image of the person wearing the ${params.colorName ? params.colorName + " " : ""}${params.productName || "t-shirt"} with the design.`,
+Output: one photorealistic composite photo.`,
           },
           { type: "image_url", image_url: { url: params.personImage } },
           { type: "image_url", image_url: { url: params.designImage } },
