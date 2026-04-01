@@ -280,6 +280,7 @@ function StudioContent() {
       result={result}
       onViewImage={setLightboxSrc}
       productName={productConfig.config.product}
+      subType={productConfig.config.subProduct}
       colorName={productConfig.config.color}
       onResultUpdate={setResult}
       onOrder={() => setOrderDialogOpen(true)}

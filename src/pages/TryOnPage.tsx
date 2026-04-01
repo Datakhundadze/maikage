@@ -107,6 +107,7 @@ interface TryOnState {
   mockupImage: string;
   transparentImage: string;
   productName?: string;
+  subType?: string;
   colorName?: string;
 }
 
@@ -164,15 +165,23 @@ export default function TryOnPage() {
     if (!personImage) return;
     setLoading(true);
     setResultImage(null);
+
+    // Products with unique color/texture (acid-wash, etc.) — send the mockup so the AI
+    // can see the actual garment style. Skip canvas colorization for these products.
+    const TEXTURED_PRODUCTS = ["Premium Hoodie"];
+    const isTextured = TEXTURED_PRODUCTS.includes(state.subType || "");
+
     try {
       const { data, error } = await supabase.functions.invoke("gemini-proxy", {
         body: {
           action: "virtual-tryon",
           params: {
             personImage,
-            designImage: state.transparentImage || state.mockupImage,
-            productName: state.productName || "t-shirt",
+            // For textured/colored products: send the full mockup so AI sees the garment style
+            designImage: isTextured ? state.mockupImage : (state.transparentImage || state.mockupImage),
+            productName: state.subType || state.productName || "t-shirt",
             colorName: state.colorName || "",
+            useMockupStyle: isTextured,
           },
         },
       });
@@ -190,11 +199,15 @@ export default function TryOnPage() {
         throw new Error(errorMsg || "ვირტუალური გასინჯვა ვერ მოხერხდა");
       }
       if (!data?.image) throw new Error("AI-მ სურათი ვერ დააბრუნა. სცადეთ ხელახლა.");
-      console.log("[TryOn] colorName from state:", state.colorName);
-      const hex = COLORS.find(c => c.name === state.colorName)?.hex || "";
-      console.log("[TryOn] hex found:", hex);
-      const colored = await applyGarmentColor(data.image, hex);
-      setResultImage(colored);
+
+      if (isTextured) {
+        // AI already generated the correct garment color/texture — no colorization needed
+        setResultImage(data.image);
+      } else {
+        const hex = COLORS.find(c => c.name === state.colorName)?.hex || "";
+        const colored = await applyGarmentColor(data.image, hex);
+        setResultImage(colored);
+      }
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
     } finally {

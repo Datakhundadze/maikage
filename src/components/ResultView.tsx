@@ -12,6 +12,7 @@ interface ResultViewProps {
   result: GenerationResult;
   onViewImage: (src: string) => void;
   productName?: string;
+  subType?: string;
   colorName?: string;
   onResultUpdate?: (result: GenerationResult) => void;
   onOrder?: () => void;
@@ -20,7 +21,7 @@ interface ResultViewProps {
   isShared?: boolean;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", subType = "", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const navigate = useNavigate();
@@ -70,6 +71,7 @@ export default function ResultView({ result, onViewImage, productName = "design"
         mockupImage: result.mockupImage,
         transparentImage: result.transparentImage,
         productName,
+        subType,
         colorName,
       },
     });

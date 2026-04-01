@@ -413,7 +413,7 @@ export default function SimplePage() {
             )}
             {frontMockup && (
               <button
-                onClick={() => navigate("/try-on", { state: { mockupImage: frontMockup, transparentImage: frontMockup, productName: productConfig.config.product, colorName: productConfig.config.color } })}
+                onClick={() => navigate("/try-on", { state: { mockupImage: frontMockup, transparentImage: frontMockup, productName: productConfig.config.product, subType: productConfig.config.subProduct, colorName: productConfig.config.color } })}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-colors"
               >
                 <Shirt className="h-3.5 w-3.5" /> {lang === "en" ? "Try On" : "გასინჯვა"}
