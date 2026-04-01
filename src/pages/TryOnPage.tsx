@@ -6,7 +6,7 @@ import { ArrowLeft, Upload, X, Download, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COLORS } from "@/lib/catalog";
 
-/** Colorize near-white neutral pixels using multiply blend (shirt area) */
+/** Colorize shirt area using multiply blend, restricted to torso region */
 function applyGarmentColor(imageDataUrl: string, hex: string): Promise<string> {
   return new Promise((resolve) => {
     if (!hex || hex.toUpperCase() === "#FFFFFF") { resolve(imageDataUrl); return; }
@@ -17,28 +17,38 @@ function applyGarmentColor(imageDataUrl: string, hex: string): Promise<string> {
     img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
+        const W = img.width, H = img.height;
         const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = W; canvas.height = H;
         const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
         ctx.drawImage(img, 0, 0);
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const imgData = ctx.getImageData(0, 0, W, H);
         const d = imgData.data;
-        for (let i = 0; i < d.length; i += 4) {
-          const pr = d[i], pg = d[i + 1], pb = d[i + 2];
-          const brightness = (pr + pg + pb) / 3;
-          const saturation = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
-          const isSkinHue = pr > pg + 30 && pg > pb + 10;
-          if (brightness > 160 && saturation < 60 && !isSkinHue) {
-            d[i]     = Math.round((pr * r) / 255);
-            d[i + 1] = Math.round((pg * g) / 255);
-            d[i + 2] = Math.round((pb * b) / 255);
+
+        // Torso region: where shirt is (center of image, roughly y 25%-85%, x 10%-90%)
+        const yMin = Math.floor(H * 0.25);
+        const yMax = Math.floor(H * 0.85);
+        const xMin = Math.floor(W * 0.10);
+        const xMax = Math.floor(W * 0.90);
+
+        for (let y = yMin; y < yMax; y++) {
+          for (let x = xMin; x < xMax; x++) {
+            const i = (y * W + x) * 4;
+            const pr = d[i], pg = d[i + 1], pb = d[i + 2];
+            const brightness = (pr + pg + pb) / 3;
+            const saturation = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
+            // Skip warm skin tone pixels (R significantly higher than B)
+            const isSkinHue = pr > pg + 25 && pg > pb + 10;
+            if (brightness > 130 && saturation < 70 && !isSkinHue) {
+              d[i]     = Math.round((pr * r) / 255);
+              d[i + 1] = Math.round((pg * g) / 255);
+              d[i + 2] = Math.round((pb * b) / 255);
+            }
           }
         }
         ctx.putImageData(imgData, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       } catch {
-        // CORS or other canvas error — return original
         resolve(imageDataUrl);
       }
     };
