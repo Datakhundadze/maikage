@@ -6,13 +6,19 @@ import { ArrowLeft, Upload, X, Download, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COLORS } from "@/lib/catalog";
 
-/** Colorize shirt area using multiply blend, restricted to torso region */
+/**
+ * Colorize the shirt region using flood-fill + multiply blend.
+ * Starting from the center of the torso, we grow outward through all connected
+ * near-white/gray pixels (the shirt fabric).  Because the shirt is a spatially
+ * connected white blob separated from the background by skin/edges, the fill
+ * naturally stays on the garment and never bleeds into the background.
+ */
 function applyGarmentColor(imageDataUrl: string, hex: string): Promise<string> {
   return new Promise((resolve) => {
     if (!hex || hex.toUpperCase() === "#FFFFFF") { resolve(imageDataUrl); return; }
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
+    const rC = parseInt(hex.slice(1, 3), 16);
+    const gC = parseInt(hex.slice(3, 5), 16);
+    const bC = parseInt(hex.slice(5, 7), 16);
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
@@ -25,27 +31,67 @@ function applyGarmentColor(imageDataUrl: string, hex: string): Promise<string> {
         const imgData = ctx.getImageData(0, 0, W, H);
         const d = imgData.data;
 
-        // Torso region: where shirt is (center of image, roughly y 25%-85%, x 10%-90%)
+        // Is this pixel shirt-fabric? (bright/gray, neutral color, not skin)
+        const isShirt = (i4: number): boolean => {
+          const pr = d[i4], pg = d[i4 + 1], pb = d[i4 + 2];
+          const brightness = (pr + pg + pb) / 3;
+          const saturation = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
+          const isSkin = pr > pg + 25 && pg > pb + 10;
+          return brightness > 130 && saturation < 65 && !isSkin;
+        };
+
+        // Torso bounding box (safety limit — flood fill stays inside)
         const yMin = Math.floor(H * 0.25);
         const yMax = Math.floor(H * 0.85);
-        const xMin = Math.floor(W * 0.10);
-        const xMax = Math.floor(W * 0.90);
+        const xMin = Math.floor(W * 0.12);
+        const xMax = Math.floor(W * 0.88);
 
-        for (let y = yMin; y < yMax; y++) {
-          for (let x = xMin; x < xMax; x++) {
-            const i = (y * W + x) * 4;
-            const pr = d[i], pg = d[i + 1], pb = d[i + 2];
-            const brightness = (pr + pg + pb) / 3;
-            const saturation = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
-            // Skip warm skin tone pixels (R significantly higher than B)
-            const isSkinHue = pr > pg + 25 && pg > pb + 10;
-            if (brightness > 130 && saturation < 70 && !isSkinHue) {
-              d[i]     = Math.round((pr * r) / 255);
-              d[i + 1] = Math.round((pg * g) / 255);
-              d[i + 2] = Math.round((pb * b) / 255);
+        // Find seed: spiral outward from upper-chest center until we hit shirt fabric
+        const cx = Math.floor(W * 0.50);
+        const cy = Math.floor(H * 0.47);
+        let seedIdx = -1;
+        const maxR = Math.floor(Math.min(W, H) * 0.18);
+
+        outer:
+        for (let radius = 0; radius <= maxR; radius += 2) {
+          if (radius === 0) {
+            if (isShirt((cy * W + cx) * 4)) { seedIdx = cy * W + cx; break; }
+          } else {
+            const steps = Math.max(8, Math.ceil(2 * Math.PI * radius / 2));
+            for (let s = 0; s < steps; s++) {
+              const a = (s / steps) * 2 * Math.PI;
+              const nx = cx + Math.round(radius * Math.cos(a));
+              const ny = cy + Math.round(radius * Math.sin(a));
+              if (nx < xMin || nx >= xMax || ny < yMin || ny >= yMax) continue;
+              if (isShirt((ny * W + nx) * 4)) { seedIdx = ny * W + nx; break outer; }
             }
           }
         }
+
+        if (seedIdx < 0) { resolve(imageDataUrl); return; }
+
+        // DFS flood fill from seed — only within torso bounds
+        const visited = new Uint8Array(W * H);
+        const stack: number[] = [seedIdx];
+        visited[seedIdx] = 1;
+
+        while (stack.length > 0) {
+          const pxIdx = stack.pop()!;
+          const px = pxIdx % W;
+          const py = Math.floor(pxIdx / W);
+          const i4 = pxIdx * 4;
+
+          // Multiply blend → white becomes targetColor, gray stays proportional
+          d[i4]     = Math.round((d[i4]     * rC) / 255);
+          d[i4 + 1] = Math.round((d[i4 + 1] * gC) / 255);
+          d[i4 + 2] = Math.round((d[i4 + 2] * bC) / 255);
+
+          if (px > xMin)    { const n = pxIdx - 1; if (!visited[n] && isShirt(n * 4)) { visited[n] = 1; stack.push(n); } }
+          if (px < xMax - 1){ const n = pxIdx + 1; if (!visited[n] && isShirt(n * 4)) { visited[n] = 1; stack.push(n); } }
+          if (py > yMin)    { const n = pxIdx - W; if (!visited[n] && isShirt(n * 4)) { visited[n] = 1; stack.push(n); } }
+          if (py < yMax - 1){ const n = pxIdx + W; if (!visited[n] && isShirt(n * 4)) { visited[n] = 1; stack.push(n); } }
+        }
+
         ctx.putImageData(imgData, 0, 0);
         resolve(canvas.toDataURL("image/png"));
       } catch {
