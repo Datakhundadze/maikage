@@ -23,9 +23,10 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("maika-theme") as "light" | "dark") || "dark";
   });
 
-  // Restore mode from localStorage, but only simple/studio (not landing/terms/etc.)
+  // Restore mode from sessionStorage (cleared on tab close → fresh visit always starts at landing)
+  // sessionStorage is preserved during OAuth redirects within the same tab/session
   const [mode, setModeState] = useState<AppMode>(() => {
-    const saved = localStorage.getItem("maika-mode") as AppMode;
+    const saved = sessionStorage.getItem("maika-mode") as AppMode;
     return (saved === "simple" || saved === "studio") ? saved : "landing";
   });
 
@@ -39,7 +40,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [lang]);
 
   useEffect(() => {
-    localStorage.setItem("maika-mode", mode);
+    sessionStorage.setItem("maika-mode", mode);
   }, [mode]);
 
   const toggleLang = useCallback(() => setLang((l) => (l === "en" ? "ge" : "en")), []);

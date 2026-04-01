@@ -212,12 +212,18 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
 
     } else if (action === "virtual-tryon") {
       model = "google/gemini-2.5-flash-image";
-      messages = [{
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `You are a photorealistic fashion compositor. Create a virtual try-on image.
+      const tryOnText = params.useMockupStyle
+        ? `You are a photorealistic fashion compositor. Create a virtual try-on image.
+
+The second image shows the EXACT garment the person should wear — including its color, texture, fabric (e.g. acid-washed, vintage-washed, distressed) and the printed design on the chest.
+
+INSTRUCTIONS:
+1. Keep the person (face, hair, body, pose, background) EXACTLY as in the first photo — do not alter anything
+2. Replace the person's top clothing with the garment from the second image, preserving its exact color, texture, fabric style, and chest print
+3. Lighting, fabric folds and shadows should look natural and photorealistic
+
+Output: one photorealistic composite photo.`
+        : `You are a photorealistic fashion compositor. Create a virtual try-on image.
 
 GARMENT SPECIFICATIONS:
 - Type: ${params.productName || "t-shirt"}
@@ -231,8 +237,11 @@ INSTRUCTIONS:
 4. The ${params.productName || "t-shirt"} color MUST be ${params.colorName || "white"} — this is mandatory
 5. Lighting and fabric folds should look natural and photorealistic
 
-Output: one photorealistic composite photo.`,
-          },
+Output: one photorealistic composite photo.`;
+      messages = [{
+        role: "user",
+        content: [
+          { type: "text", text: tryOnText },
           { type: "image_url", image_url: { url: params.personImage } },
           { type: "image_url", image_url: { url: params.designImage } },
         ],
