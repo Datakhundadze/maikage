@@ -152,12 +152,6 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
         </div>
       )}
 
-      {/* Coordinate readout */}
-      {showHandles && !hideReadout && !isRotating && (
-        <div className="absolute -top-5 left-0 text-[10px] text-primary font-mono whitespace-nowrap pointer-events-none">
-          {Math.round(coords.x * 100)}%, {Math.round(coords.y * 100)}%
-        </div>
-      )}
 
       {/* Resize handles */}
       {showHandles && (

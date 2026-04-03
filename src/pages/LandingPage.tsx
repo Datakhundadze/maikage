@@ -15,9 +15,13 @@ export default function LandingPage() {
       <div className="relative z-20 flex items-center justify-between px-4 sm:px-6 py-3">
         <button
           onClick={toggleTheme}
-          className="rounded-full p-2 text-white/40 hover:text-white/80 transition-colors"
+          className="rounded-full p-2 transition-colors hover:opacity-80"
+          title={theme === "dark" ? "Switch to Light Green" : "Switch to Dark Orange"}
         >
-          {theme === "dark" ? "☀️" : "🌙"}
+          {theme === "dark"
+            ? <span className="h-5 w-5 rounded-full bg-[#25B988] border border-white/20 inline-block" />
+            : <span className="h-5 w-5 rounded-full bg-[#F97316] border border-white/20 inline-block" />
+          }
         </button>
 
         <div className="flex items-center gap-3">
@@ -72,7 +76,7 @@ export default function LandingPage() {
         </div>
 
         {/* Mode Cards */}
-        <div className="grid w-full max-w-5xl gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-16 sm:mb-20">
+        <div className="grid w-full max-w-4xl gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-16 sm:mb-20">
 
           {/* Card 1 — Simple Mode */}
           <button
@@ -135,35 +139,7 @@ export default function LandingPage() {
             </div>
           </button>
 
-          {/* Card 3 — Stickers */}
-          <a
-            href="https://studio.maika.ge"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative flex flex-col rounded-2xl border border-white/[0.08] bg-[#1a1a1a] p-8 sm:p-10 text-left transition-all duration-300 hover:border-white/[0.15] hover:scale-[1.02] hover:shadow-xl hover:shadow-black/40 overflow-hidden"
-          >
-            {/* Bottom reflection */}
-            <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none" />
-            {/* Top shine */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent pointer-events-none" />
-
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-white/[0.06] mb-6 transition-colors group-hover:bg-[#333]">
-                <span className="text-2xl">🎉</span>
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-3">MAIKA.GE STICKERS</h2>
-              <p className="text-sm text-white/40 leading-relaxed mb-6 flex-1">
-                შეუკვეთე პერსონალური სტიკერები სწრაფად და მარტივად
-              </p>
-              <div className="flex items-center justify-end w-full">
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/50 group-hover:text-white/80 transition-colors">
-                  სტიკერები <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </span>
-              </div>
-            </div>
-          </a>
-
-          {/* Card 4 — Photostudio */}
+          {/* Card 3 — Photostudio */}
           <a
             href="https://photostudio.maika.ge"
             target="_blank"
@@ -217,9 +193,9 @@ export default function LandingPage() {
                   { icon: Users, label: "ინდივიდუალური მიდგომა" },
                   { icon: BadgeDollarSign, label: "კონკურენტული ფასები" },
                 ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex flex-col items-center gap-2 rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 text-center">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15">
-                      <Icon className="h-5 w-5 text-amber-500" />
+                  <div key={label} className="flex flex-col items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/15">
+                      <Icon className="h-8 w-8 text-amber-500" />
                     </div>
                     <span className="text-xs font-medium text-white/70">{label}</span>
                   </div>

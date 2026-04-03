@@ -95,6 +95,57 @@
     --sidebar-border: 0 0% 100% / 0.05;
     --sidebar-ring: 40 100% 50%;
   }
+
+  /* Light Green theme — white background, #25B988 green accent */
+  .green {
+    --banana-50: 162 60% 95%;
+    --banana-100: 162 58% 88%;
+    --banana-200: 162 56% 76%;
+    --banana-300: 162 60% 62%;
+    --banana-400: 162 63% 52%;
+    --banana-500: 162 64% 44%;
+    --banana-600: 162 64% 36%;
+    --banana-700: 162 64% 28%;
+    --banana-800: 162 60% 22%;
+    --banana-900: 162 56% 17%;
+
+    --background: 0 0% 100%;
+    --foreground: 220 13% 13%;
+
+    --card: 0 0% 99%;
+    --card-foreground: 220 13% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 13%;
+
+    --primary: 162 64% 44%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 160 20% 95%;
+    --secondary-foreground: 220 13% 13%;
+
+    --muted: 160 15% 94%;
+    --muted-foreground: 220 8% 46%;
+
+    --accent: 162 64% 44%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 160 20% 88%;
+    --input: 160 20% 88%;
+    --ring: 162 64% 44%;
+
+    --sidebar-background: 162 64% 44%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 162 64% 44%;
+    --sidebar-accent: 162 64% 38%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100% / 0.15;
+    --sidebar-ring: 0 0% 100%;
+  }
 }
 
 @layer base {
