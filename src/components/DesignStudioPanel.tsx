@@ -3,7 +3,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
-import { Zap, Sparkles, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { Zap, Sparkles, RefreshCw, ChevronDown, ChevronUp, Check } from "lucide-react";
 
 interface DesignStudioPanelProps {
   onViewImage?: (src: string) => void;
@@ -31,21 +31,57 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
     "გრაფიკა",
   ];
 
-  const guideLabels = ["studio.guide.character", "studio.guide.scene", "studio.guide.style", "studio.guide.generate"];
+  const guideKeys = ["studio.guide.character", "studio.guide.scene", "studio.guide.style", "studio.guide.generate"];
+
+  // Track step completion based on filled content
+  const stepDone = [
+    designParams.character.trim().length > 0 || designParams.characterImages.length > 0,
+    designParams.scene.trim().length > 0 || !!designParams.sceneImage,
+    designParams.style.trim().length > 0,
+    false, // "Generate" step is never "done", it's always the target
+  ];
+  // Active step = first incomplete step (or last)
+  const activeStep = stepDone.findIndex((d) => !d);
 
   return (
     <div className="space-y-3">
-      {/* Guide Box */}
+      {/* Step progress */}
       <div className="rounded-xl border border-border bg-card p-3">
-        <div className="grid grid-cols-4 gap-2 text-center text-[10px] text-muted-foreground">
-          {guideLabels.map((key, i) => (
-            <div key={key} className="space-y-1">
-              <div className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold">{i + 1}</div>
-              <span>{t(lang, key)}</span>
-            </div>
-          ))}
+        <div className="relative flex items-start justify-between">
+          {/* Connecting line behind the circles */}
+          <div className="absolute top-[14px] left-[calc(12.5%)] right-[calc(12.5%)] h-0.5 bg-border" />
+          <div
+            className="absolute top-[14px] left-[calc(12.5%)] h-0.5 bg-primary transition-all duration-500"
+            style={{ width: `${(Math.max(0, activeStep === -1 ? 3 : activeStep) / 3) * 75}%` }}
+          />
+
+          {guideKeys.map((key, i) => {
+            const done = stepDone[i];
+            const active = !done && i === activeStep;
+            return (
+              <div key={key} className="relative z-10 flex flex-col items-center gap-1.5 flex-1">
+                <div
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all
+                    ${done
+                      ? "bg-primary text-primary-foreground"
+                      : active
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/40 scale-110"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                >
+                  {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                </div>
+                <span className={`text-[10px] font-medium leading-tight text-center
+                  ${active ? "text-primary" : done ? "text-primary/70" : "text-muted-foreground"}`}>
+                  {t(lang, key)}
+                </span>
+              </div>
+            );
+          })}
         </div>
-        <p className="mt-2 text-center text-[10px] text-muted-foreground">{t(lang, "studio.guide.paste")}</p>
+        <p className="mt-2.5 text-center text-[10px] text-muted-foreground border-t border-border pt-2">
+          {t(lang, "studio.guide.paste")}
+        </p>
       </div>
 
 

@@ -45,13 +45,22 @@ export default function AppHeader() {
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" onClick={() => setMode("simple")} className="text-xs gap-1 px-2">
               <Image className="h-3.5 w-3.5" />
-              Simple
+              {t(lang, "nav.simple")}
             </Button>
             <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
               {lang.toUpperCase()}
             </Button>
-            <Button variant="ghost" size="sm" onClick={toggleTheme} className="px-2">
-              {theme === "dark" ? "☀️" : "🌙"}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="px-2 text-xs gap-1"
+              title={theme === "dark" ? "Switch to Light Green" : "Switch to Dark Orange"}
+            >
+              {theme === "dark"
+                ? <span className="h-4 w-4 rounded-full bg-[#25B988] border border-border inline-block" />
+                : <span className="h-4 w-4 rounded-full bg-[#F97316] border border-border inline-block" />
+              }
             </Button>
 
             {isLoggedIn ? (

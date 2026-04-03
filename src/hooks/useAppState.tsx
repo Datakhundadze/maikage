@@ -3,10 +3,12 @@ import type { Lang } from "@/lib/i18n";
 
 export type AppMode = "landing" | "simple" | "studio" | "terms" | "privacy" | "corporate";
 
+export type AppTheme = "dark" | "green";
+
 interface AppStateContextType {
   lang: Lang;
   toggleLang: () => void;
-  theme: "light" | "dark";
+  theme: AppTheme;
   toggleTheme: () => void;
   mode: AppMode;
   setMode: (mode: AppMode) => void;
@@ -19,8 +21,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     return (localStorage.getItem("maika-lang") as Lang) || "en";
   });
 
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    return (localStorage.getItem("maika-theme") as "light" | "dark") || "dark";
+  const [theme, setTheme] = useState<AppTheme>(() => {
+    return (localStorage.getItem("maika-theme") as AppTheme) || "dark";
   });
 
   // Restore mode from sessionStorage (cleared on tab close → fresh visit always starts at landing)
@@ -31,7 +33,9 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
+    const root = document.documentElement;
+    root.classList.remove("dark", "green");
+    root.classList.add(theme);
     localStorage.setItem("maika-theme", theme);
   }, [theme]);
 
@@ -44,7 +48,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [mode]);
 
   const toggleLang = useCallback(() => setLang((l) => (l === "en" ? "ge" : "en")), []);
-  const toggleTheme = useCallback(() => setTheme((t) => (t === "light" ? "dark" : "light")), []);
+  const toggleTheme = useCallback(() => setTheme((t) => (t === "dark" ? "green" : "dark")), []);
   const setMode = useCallback((m: AppMode) => setModeState(m), []);
 
   return (

@@ -21,6 +21,7 @@ const translations = {
     },
     nav: {
       studio: "Studio",
+      simple: "Simple",
       myDesigns: "My Designs",
       community: "Community",
       logout: "Logout",
@@ -35,7 +36,7 @@ const translations = {
         scene: "Scene",
         style: "Style",
         generate: "Generate",
-        paste: "⌘+V to paste images",
+        paste: "Ctrl+V to paste images",
       },
       character: {
         title: "Characters",
@@ -94,6 +95,16 @@ const translations = {
       empty: "No published designs yet",
       emptyHint: "Be the first to publish!",
     },
+    config: {
+      product: "Product",
+      brand: "Brand",
+      color: "Color",
+      view: "View",
+      size: "Size",
+      front: "Front",
+      back: "Back",
+      chooseSize: "Choose size",
+    },
   },
   ge: {
     header: {
@@ -115,6 +126,7 @@ const translations = {
     },
     nav: {
       studio: "სტუდია",
+      simple: "მარტივი",
       myDesigns: "ჩემი დიზაინები",
       community: "საზოგადოება",
       logout: "გამოსვლა",
@@ -129,7 +141,7 @@ const translations = {
         scene: "სცენა",
         style: "სტილი",
         generate: "გენერაცია",
-        paste: "⌘+V სურათის ჩასაკრავად",
+        paste: "Ctrl+V სურათის ჩასასმელად",
       },
       character: {
         title: "პერსონაჟები",
@@ -187,6 +199,16 @@ const translations = {
       subtitle: "აღმოაჩინეთ საზოგადოების მიერ გამოქვეყნებული დიზაინები.",
       empty: "გამოქვეყნებული დიზაინები ჯერ არ არის",
       emptyHint: "იყავი პირველი!",
+    },
+    config: {
+      product: "პროდუქტი",
+      brand: "ბრენდი",
+      color: "ფერი",
+      view: "ხედი",
+      size: "ზომა",
+      front: "წინა",
+      back: "უკანა",
+      chooseSize: "აირჩიე ზომა",
     },
   },
 } as const;

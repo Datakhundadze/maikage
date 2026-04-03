@@ -1,6 +1,8 @@
 import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
+import { useAppState } from "@/hooks/useAppState";
+import { t } from "@/lib/i18n";
 
 interface ProductConfigPanelProps {
   config: ProductConfig;
@@ -23,6 +25,7 @@ export default function ProductConfigPanel({
   selectedSize,
   onSizeChange,
 }: ProductConfigPanelProps) {
+  const { lang } = useAppState();
   const subProducts = SUB_PRODUCTS[config.product];
   const availableColors = catalog.getAvailableColors(config.product, config.subProduct);
   const availableSizes = BRAND_SIZES[config.subProduct] || [];
@@ -31,7 +34,7 @@ export default function ProductConfigPanel({
     <div className={`space-y-4 ${locked ? "opacity-60 pointer-events-none" : ""}`}>
       {/* Product Type Grid */}
       <div>
-        <h3 className="text-sm font-semibold text-card-foreground mb-2">Product</h3>
+        <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.product")}</h3>
         <div className="grid grid-cols-3 gap-2">
           {PRODUCTS.map((p) => (
             <button
@@ -54,7 +57,7 @@ export default function ProductConfigPanel({
       {/* Brand Pills */}
       {subProducts.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-card-foreground mb-2">Brand</h3>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.brand")}</h3>
           <div className="flex flex-wrap gap-2">
             {subProducts.map((sub) => (
               <Button
@@ -71,10 +74,10 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* Color Grid — only show colors available for the selected brand */}
+      {/* Color Grid */}
       {availableColors.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-card-foreground mb-2">Color</h3>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.color")}</h3>
           <div className="grid grid-cols-5 gap-2">
             {COLORS.filter((c) => availableColors.includes(c.name)).map((c) => {
               const selected = config.color === c.name;
@@ -101,32 +104,27 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* Size Selector */}
+      {/* Size Selector — dropdown */}
       {availableSizes.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-card-foreground mb-2">ზომა</h3>
-          <div className="flex flex-wrap gap-2">
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.size")}</h3>
+          <select
+            value={selectedSize || ""}
+            onChange={(e) => onSizeChange?.(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary cursor-pointer"
+          >
+            <option value="" disabled>{t(lang, "config.chooseSize")}</option>
             {availableSizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => onSizeChange?.(size)}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-                  selectedSize === size
-                    ? "bg-[hsl(25,95%,53%)] border-[hsl(25,95%,53%)] text-black"
-                    : "border-border bg-background text-foreground hover:border-[hsl(25,95%,48%)]"
-                }`}
-              >
-                {size}
-              </button>
+              <option key={size} value={size}>{size}</option>
             ))}
-          </div>
+          </select>
         </div>
       )}
 
       {/* View Toggle — hide for Mug */}
       {config.product !== "Mug" && (
         <div>
-          <h3 className="text-sm font-semibold text-card-foreground mb-2">View</h3>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.view")}</h3>
           <div className="flex gap-2">
             {(["front", "back"] as ProductView[]).map((v) => (
               <Button
@@ -136,7 +134,7 @@ export default function ProductConfigPanel({
                 className={config.view === v ? "bg-banana-500 text-primary-foreground hover:bg-banana-600" : ""}
                 onClick={() => onViewChange(v)}
               >
-                {v.charAt(0).toUpperCase() + v.slice(1)}
+                {v === "front" ? t(lang, "config.front") : t(lang, "config.back")}
               </Button>
             ))}
           </div>
