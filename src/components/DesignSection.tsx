@@ -2,6 +2,8 @@ import { useCallback, useRef } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Plus, X, Eye, ChevronDown, ChevronUp } from "lucide-react";
+import { useAppState } from "@/hooks/useAppState";
+import { t } from "@/lib/i18n";
 
 interface ImageSlot {
   src: string;
@@ -54,6 +56,7 @@ export default function DesignSection({
 }: DesignSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMulti = !!onAddImage;
+  const { lang } = useAppState();
 
   if (collapsible && !expanded) {
     return (
@@ -154,7 +157,7 @@ export default function DesignSection({
             className="h-16 w-16 rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground hover:border-banana-500/50 hover:text-banana-500 transition-colors gap-0.5"
           >
             <Plus className="h-4 w-4" />
-            <span className="text-[8px] font-medium leading-none">ატვირთვა</span>
+            <span className="text-[8px] font-medium leading-none">{t(lang, "upload")}</span>
           </button>
           <input
             ref={fileInputRef}

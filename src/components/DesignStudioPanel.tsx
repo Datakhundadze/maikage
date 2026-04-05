@@ -49,9 +49,9 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
       <div className="rounded-xl border border-border bg-card p-3">
         <div className="relative flex items-start justify-between">
           {/* Connecting line behind the circles */}
-          <div className="absolute top-[14px] left-[calc(12.5%)] right-[calc(12.5%)] h-0.5 bg-border" />
+          <div className="absolute top-[18px] left-[calc(12.5%)] right-[calc(12.5%)] h-0.5 bg-border" />
           <div
-            className="absolute top-[14px] left-[calc(12.5%)] h-0.5 bg-primary transition-all duration-500"
+            className="absolute top-[18px] left-[calc(12.5%)] h-0.5 bg-primary transition-all duration-500"
             style={{ width: `${(Math.max(0, activeStep === -1 ? 3 : activeStep) / 3) * 75}%` }}
           />
 
@@ -61,17 +61,17 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
             return (
               <div key={key} className="relative z-10 flex flex-col items-center gap-1.5 flex-1">
                 <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all
                     ${done
                       ? "bg-primary text-primary-foreground"
                       : active
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/40 scale-110"
-                        : "bg-muted text-muted-foreground"
+                        ? "bg-primary text-primary-foreground ring-2 ring-primary/20 shadow-lg shadow-primary/40 scale-110"
+                        : "bg-muted text-muted-foreground opacity-55"
                     }`}
                 >
                   {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </div>
-                <span className={`text-[10px] font-medium leading-tight text-center
+                <span className={`text-[11px] font-medium leading-tight text-center
                   ${active ? "text-primary" : done ? "text-primary/70" : "text-muted-foreground"}`}>
                   {t(lang, key)}
                 </span>

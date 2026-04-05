@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import AppHeader from "./AppHeader";
+import ContactBar from "./ContactBar";
 
 interface AppLayoutProps {
   sidebar: ReactNode;
@@ -11,6 +12,7 @@ export default function AppLayout({ sidebar, main }: AppLayoutProps) {
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Sidebar */}
       <aside className="w-full lg:w-[450px] lg:min-w-[450px] flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:h-screen lg:overflow-y-auto">
+        <ContactBar />
         <AppHeader />
         <div className="flex-1 overflow-y-auto p-4">
           {sidebar}

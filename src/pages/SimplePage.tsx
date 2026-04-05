@@ -18,6 +18,7 @@ import OrderDialog from "@/components/OrderDialog";
 import LoginModal from "@/components/LoginModal";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useNavigate } from "react-router-dom";
+import ContactBar from "@/components/ContactBar";
 
 const FONTS = [
   { name: "Sans Serif", family: "sans-serif" },
@@ -365,6 +366,7 @@ export default function SimplePage() {
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Sidebar */}
       <aside className="w-full lg:w-[450px] lg:min-w-[450px] flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:h-screen lg:overflow-y-auto">
+        <ContactBar />
         {/* Header */}
         <header className="flex flex-col gap-2 p-4 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
