@@ -105,6 +105,16 @@ const translations = {
       back: "Back",
       chooseSize: "Choose size",
     },
+    upload: "Upload",
+    products: {
+      "T-Shirt": "T-Shirt",
+      "Hoodie": "Hoodie",
+      "Tote Bag": "Tote Bag",
+      "Cap": "Cap",
+      "Apron": "Apron",
+      "Phone Case": "Phone Case",
+      "Mug": "Mug",
+    },
   },
   ge: {
     header: {
@@ -209,6 +219,16 @@ const translations = {
       front: "წინა",
       back: "უკანა",
       chooseSize: "აირჩიე ზომა",
+    },
+    upload: "ატვირთვა",
+    products: {
+      "T-Shirt": "მაისური",
+      "Hoodie": "ჰუდი",
+      "Tote Bag": "ჩანთა",
+      "Cap": "კეპი",
+      "Apron": "წინსაფარი",
+      "Phone Case": "ქეისი",
+      "Mug": "ჭიქა",
     },
   },
 } as const;

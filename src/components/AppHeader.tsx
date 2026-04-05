@@ -27,76 +27,96 @@ export default function AppHeader() {
 
   return (
     <>
-      <header className="flex flex-col gap-3 p-4 border-b border-sidebar-border">
-        <div className="flex items-center justify-between">
-          <button onClick={() => setMode("landing")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background text-lg font-black dark:bg-primary dark:text-primary-foreground">
-              M
-            </div>
-            <div className="text-left">
-              <h1 className="text-xl font-bold leading-tight">{t(lang, "header.title")}</h1>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>{isLoggedIn ? (user?.email || displayName) : t(lang, "header.guestMode")}</span>
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${isLoggedIn ? "bg-green-500" : "bg-primary"}`} />
-              </div>
-            </div>
-          </button>
-
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setMode("simple")} className="text-xs gap-1 px-2">
-              <Image className="h-3.5 w-3.5" />
-              {t(lang, "nav.simple")}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
-              {lang.toUpperCase()}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="px-2 text-xs gap-1"
-              title={theme === "dark" ? "Switch to Light Green" : "Switch to Dark Orange"}
-            >
-              {theme === "dark"
-                ? <span className="h-4 w-4 rounded-full bg-[#25B988] border border-border inline-block" />
-                : <span className="h-4 w-4 rounded-full bg-[#F97316] border border-border inline-block" />
-              }
-            </Button>
-
-            {isLoggedIn ? (
-              <Button variant="ghost" size="sm" onClick={() => signOut(setMode)} className="text-xs gap-1 px-2 text-destructive hover:text-destructive">
-                <LogOut className="h-3.5 w-3.5" />
-                გასვლა
-              </Button>
-            ) : (
-              <Button variant="default" size="sm" onClick={() => setShowLogin(true)} className="text-xs gap-1 px-3">
-                <LogIn className="h-3.5 w-3.5" />
-                შესვლა
-              </Button>
-            )}
+      <header className="h-14 flex items-center gap-2 px-3 border-b border-sidebar-border shrink-0">
+        {/* LEFT: logo + badge */}
+        <button onClick={() => setMode("landing")} className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background text-sm font-black dark:bg-primary dark:text-primary-foreground">
+            M
           </div>
-        </div>
+          <div className="text-left">
+            <div className="text-sm font-bold leading-tight">{t(lang, "header.title")}</div>
+            <div className="text-[10px] text-muted-foreground leading-none">
+              {isLoggedIn ? (user?.email || displayName) : t(lang, "header.guestMode")}
+            </div>
+          </div>
+        </button>
 
-        <nav className="flex gap-1">
+        {/* CENTER: nav tabs (hidden on small, flex on md+) */}
+        <nav className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
           {navItems.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
             return (
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
                   active
                     ? "bg-foreground text-background dark:bg-primary dark:text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-3 w-3" />
                 {label}
               </button>
             );
           })}
         </nav>
+
+        {/* RIGHT: controls */}
+        <div className="flex items-center gap-0.5 shrink-0 ml-auto md:ml-0">
+          <Button variant="ghost" size="sm" onClick={() => setMode("simple")} className="text-[11px] gap-1 px-2 h-7">
+            <Image className="h-3 w-3" />
+            {t(lang, "nav.simple")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={toggleLang} className="text-[11px] font-mono px-2 h-7">
+            {lang.toUpperCase()}
+          </Button>
+          {/* Two-dot theme switcher */}
+          <div className="flex items-center gap-1 px-1">
+            <button
+              onClick={() => theme !== "dark" && toggleTheme()}
+              className={`h-4 w-4 rounded-full bg-[#F97316] transition-all ${theme === "dark" ? "ring-2 ring-[#F97316]/50 scale-110" : "opacity-40"}`}
+              title="Dark Orange"
+            />
+            <button
+              onClick={() => theme !== "green" && toggleTheme()}
+              className={`h-4 w-4 rounded-full bg-[#25B988] transition-all ${theme === "green" ? "ring-2 ring-[#25B988]/50 scale-110" : "opacity-40"}`}
+              title="Light Green"
+            />
+          </div>
+          {isLoggedIn ? (
+            <Button variant="ghost" size="sm" onClick={() => signOut(setMode)} className="text-[11px] gap-1 px-2 h-7 text-destructive hover:text-destructive">
+              <LogOut className="h-3 w-3" />
+            </Button>
+          ) : (
+            <Button variant="default" size="sm" onClick={() => setShowLogin(true)} className="text-[11px] gap-1 px-2 h-7">
+              <LogIn className="h-3 w-3" />
+              შესვლა
+            </Button>
+          )}
+        </div>
       </header>
+
+      {/* Mobile nav row */}
+      <div className="flex md:hidden items-center gap-0.5 px-2 py-1.5 border-b border-sidebar-border overflow-x-auto">
+        {navItems.map(({ path, label, icon: Icon }) => {
+          const active = location.pathname === path;
+          return (
+            <button
+              key={path}
+              onClick={() => navigate(path)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-medium whitespace-nowrap transition-colors ${
+                active
+                  ? "bg-foreground text-background dark:bg-primary dark:text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <Icon className="h-3 w-3" />
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
       <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
     </>
