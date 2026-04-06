@@ -16,6 +16,8 @@ import SimplePage from "./pages/SimplePage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import CorporatePage from "./pages/CorporatePage";
+import SportPage from "./pages/SportPage";
+import AboutPage from "./pages/AboutPage";
 import TryOnPage from "./pages/TryOnPage";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +40,8 @@ function AppRoutes() {
   if (mode === "terms") return <TermsPage />;
   if (mode === "privacy") return <PrivacyPage />;
   if (mode === "corporate") return <CorporatePage />;
+  if (mode === "sport") return <SportPage />;
+  if (mode === "about") return <AboutPage />;
 
   if (loading) {
     return (

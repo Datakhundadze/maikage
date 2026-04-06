@@ -151,7 +151,7 @@ export default function ProductConfigPanel({
           <select
             value={selectedSize || ""}
             onChange={(e) => onSizeChange?.(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary cursor-pointer"
+            className="w-full rounded-lg border border-border bg-card text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary cursor-pointer"
           >
             <option value="" disabled>{t(lang, "config.chooseSize")}</option>
             {availableSizes.map((size) => (
