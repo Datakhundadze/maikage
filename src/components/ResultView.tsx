@@ -143,12 +143,12 @@ export default function ResultView({ result, onViewImage, productName = "design"
             className="w-full h-11 gap-2 font-medium"
           >
             <Globe className="h-4 w-4" />
-            {sharing ? "..." : "გაზიარება საზოგადოებაში"}
+            {sharing ? "..." : "გაზიარება მაგალითებში"}
           </Button>
         )}
         {isShared && (
           <div className="w-full text-center text-sm text-green-500 font-medium py-2">
-            ✓ გაზიარებულია საზოგადოებაში
+            ✓ გაზიარებულია მაგალითებში
           </div>
         )}
       </div>

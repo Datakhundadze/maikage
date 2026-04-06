@@ -191,7 +191,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
           }`}
         >
           <Zap className="h-3 w-3" />
-          FAST
+          {lang === "ge" ? "სწრაფი" : "FAST"}
         </button>
         <button
           onClick={() => dispatch({ type: "SET_SPEED", speed: "pro" })}
@@ -202,7 +202,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
           }`}
         >
           <Sparkles className="h-3 w-3" />
-          PRO
+          {lang === "ge" ? "პრო" : "PRO"}
         </button>
       </div>
 
