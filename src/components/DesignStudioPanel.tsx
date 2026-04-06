@@ -1,9 +1,10 @@
+import { useEffect } from "react";
 import { useDesign } from "@/hooks/useDesign";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
-import { Zap, Sparkles, RefreshCw, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp, Check } from "lucide-react";
 
 interface DesignStudioPanelProps {
   onViewImage?: (src: string) => void;
@@ -16,7 +17,12 @@ interface DesignStudioPanelProps {
 export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, onStartNew, product }: DesignStudioPanelProps) {
   const { state, dispatch } = useDesign();
   const { lang } = useAppState();
-  const { designParams, speed, expandedSections, appStatus } = state;
+  const { designParams, expandedSections, appStatus } = state;
+
+  // Always use fast mode
+  useEffect(() => {
+    dispatch({ type: "SET_SPEED", speed: "fast" });
+  }, [dispatch]);
 
   const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
 
@@ -31,7 +37,12 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
     "გრაფიკა",
   ];
 
-  const guideKeys = ["studio.guide.character", "studio.guide.scene", "studio.guide.style", "studio.guide.generate"];
+  const steps = [
+    { key: "studio.guide.character", hintKey: "studio.guide.characterHint" },
+    { key: "studio.guide.scene",     hintKey: "studio.guide.sceneHint" },
+    { key: "studio.guide.style",     hintKey: "studio.guide.styleHint" },
+    { key: "studio.guide.generate",  hintKey: "studio.guide.generateHint" },
+  ];
 
   // Track step completion based on filled content
   const stepDone = [
@@ -55,11 +66,11 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
             style={{ width: `${(Math.max(0, activeStep === -1 ? 3 : activeStep) / 3) * 75}%` }}
           />
 
-          {guideKeys.map((key, i) => {
+          {steps.map(({ key, hintKey }, i) => {
             const done = stepDone[i];
             const active = !done && i === activeStep;
             return (
-              <div key={key} className="relative z-10 flex flex-col items-center gap-1.5 flex-1">
+              <div key={key} className="relative z-10 flex flex-col items-center gap-1 flex-1">
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all
                     ${done
@@ -71,9 +82,13 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
                 >
                   {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                 </div>
-                <span className={`text-[11px] font-medium leading-tight text-center
+                <span className={`text-[11px] font-semibold leading-tight text-center
                   ${active ? "text-primary" : done ? "text-primary/70" : "text-muted-foreground"}`}>
                   {t(lang, key)}
+                </span>
+                <span className={`text-[9px] leading-tight text-center max-w-[60px] transition-all
+                  ${active ? "text-primary/70 opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
+                  {t(lang, hintKey)}
                 </span>
               </div>
             );
@@ -166,26 +181,6 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "text" })}
         onViewImage={onViewImage}
       />
-
-      {/* Speed Toggle */}
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant={speed === "fast" ? "default" : "outline"}
-          className={`flex-1 gap-1.5 ${speed === "fast" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
-          onClick={() => dispatch({ type: "SET_SPEED", speed: "fast" })}
-        >
-          <Zap className="h-3.5 w-3.5" /> {t(lang, "studio.speed.fast")}
-        </Button>
-        <Button
-          size="sm"
-          variant={speed === "quality" ? "default" : "outline"}
-          className={`flex-1 gap-1.5 ${speed === "quality" ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
-          onClick={() => dispatch({ type: "SET_SPEED", speed: "quality" })}
-        >
-          <Sparkles className="h-3.5 w-3.5" /> {t(lang, "studio.speed.pro")}
-        </Button>
-      </div>
 
       {/* Action Buttons */}
       {hasResult ? (

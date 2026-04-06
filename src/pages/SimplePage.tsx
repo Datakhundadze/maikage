@@ -21,19 +21,40 @@ import { useNavigate } from "react-router-dom";
 import ContactBar from "@/components/ContactBar";
 
 const FONTS = [
-  { name: "Sans Serif", family: "sans-serif" },
-  { name: "Serif", family: "Georgia, serif" },
-  { name: "Monospace", family: "'Courier New', monospace" },
-  { name: "Impact", family: "Impact, sans-serif" },
-  { name: "Comic Sans", family: "'Comic Sans MS', cursive" },
-  { name: "Brush Script", family: "'Brush Script MT', cursive" },
-  { name: "Palatino", family: "'Palatino Linotype', serif" },
-  { name: "Trebuchet", family: "'Trebuchet MS', sans-serif" },
-  { name: "Verdana", family: "Verdana, sans-serif" },
-  { name: "Lucida", family: "'Lucida Console', monospace" },
+  // Georgian
   { name: "Noto Sans Georgian", family: "'Noto Sans Georgian', sans-serif" },
   { name: "Noto Serif Georgian", family: "'Noto Serif Georgian', serif" },
   { name: "BPG Arial", family: "'BPG Arial', sans-serif" },
+  { name: "FiraGO", family: "'FiraGO', sans-serif" },
+  // Latin Sans-Serif
+  { name: "Sans Serif", family: "sans-serif" },
+  { name: "Arial", family: "Arial, sans-serif" },
+  { name: "Verdana", family: "Verdana, sans-serif" },
+  { name: "Trebuchet", family: "'Trebuchet MS', sans-serif" },
+  { name: "Tahoma", family: "Tahoma, sans-serif" },
+  { name: "Futura", family: "'Futura', 'Century Gothic', sans-serif" },
+  { name: "Montserrat", family: "'Montserrat', sans-serif" },
+  { name: "Poppins", family: "'Poppins', sans-serif" },
+  { name: "Oswald", family: "'Oswald', sans-serif" },
+  { name: "Raleway", family: "'Raleway', sans-serif" },
+  // Latin Serif
+  { name: "Serif", family: "Georgia, serif" },
+  { name: "Palatino", family: "'Palatino Linotype', serif" },
+  { name: "Garamond", family: "'Garamond', serif" },
+  { name: "Times New Roman", family: "'Times New Roman', serif" },
+  { name: "Playfair Display", family: "'Playfair Display', serif" },
+  // Display / Decorative
+  { name: "Impact", family: "Impact, sans-serif" },
+  { name: "Anton", family: "'Anton', Impact, sans-serif" },
+  { name: "Bebas Neue", family: "'Bebas Neue', Impact, sans-serif" },
+  // Monospace
+  { name: "Monospace", family: "'Courier New', monospace" },
+  { name: "Lucida Console", family: "'Lucida Console', monospace" },
+  // Script / Handwriting
+  { name: "Comic Sans", family: "'Comic Sans MS', cursive" },
+  { name: "Brush Script", family: "'Brush Script MT', cursive" },
+  { name: "Dancing Script", family: "'Dancing Script', cursive" },
+  { name: "Pacifico", family: "'Pacifico', cursive" },
 ];
 
 const TEXT_COLORS = [
@@ -366,7 +387,6 @@ export default function SimplePage() {
     <div className="flex min-h-screen flex-col lg:flex-row">
       {/* Sidebar */}
       <aside className="w-full lg:w-[450px] lg:min-w-[450px] flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:h-screen lg:overflow-y-auto">
-        <ContactBar />
         {/* Header */}
         <header className="flex flex-col gap-2 p-4 border-b border-sidebar-border">
           <div className="flex items-center justify-between">
@@ -617,7 +637,8 @@ export default function SimplePage() {
       </aside>
 
       {/* Main preview */}
-      <main className="flex-1 bg-background lg:h-screen lg:overflow-y-auto">
+      <main className="flex-1 bg-background lg:h-screen lg:overflow-y-auto flex flex-col">
+        <ContactBar />
         <ProductPreview
           productName={productConfig.config.product}
           subProduct={productConfig.config.subProduct}
