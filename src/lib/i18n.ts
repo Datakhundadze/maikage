@@ -58,7 +58,7 @@ const translations = {
         placeholder: "Describe the style... e.g., Synthwave 80s neon aesthetic",
       },
       typography: {
-        title: "Typography",
+        title: "Text",
         subtitle: "Text to include in the design.",
         placeholder: "Text to render on the design...",
       },
@@ -177,7 +177,7 @@ const translations = {
         placeholder: "აღწერეთ სტილი... მაგ., სინთვეივ 80-იანი ნეონი",
       },
       typography: {
-        title: "ტიპოგრაფია",
+        title: "წარწერა",
         subtitle: "ტექსტი დიზაინში ჩასართავად.",
         placeholder: "ტექსტი დიზაინზე...",
       },

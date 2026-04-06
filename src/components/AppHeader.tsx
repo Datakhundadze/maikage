@@ -10,7 +10,7 @@ import LoginModal from "@/components/LoginModal";
 
 export default function AppHeader() {
   const { user, isAnonymous, signOut, displayName } = useAuth();
-  const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
+  const { lang, toggleLang, setMode } = useAppState();
   const { isAdmin } = useAdminCheck();
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,19 +67,6 @@ export default function AppHeader() {
           <Button variant="ghost" size="sm" onClick={toggleLang} className="text-[11px] font-mono px-2 h-7">
             {lang.toUpperCase()}
           </Button>
-          {/* Two-dot theme switcher */}
-          <div className="flex items-center gap-1 px-1">
-            <button
-              onClick={() => theme !== "dark" && toggleTheme()}
-              className={`h-4 w-4 rounded-full bg-[#F97316] transition-all ${theme === "dark" ? "ring-2 ring-[#F97316]/50 scale-110" : "opacity-40"}`}
-              title="Dark Orange"
-            />
-            <button
-              onClick={() => theme !== "green" && toggleTheme()}
-              className={`h-4 w-4 rounded-full bg-[#25B988] transition-all ${theme === "green" ? "ring-2 ring-[#25B988]/50 scale-110" : "opacity-40"}`}
-              title="Light Green"
-            />
-          </div>
           {isLoggedIn ? (
             <Button variant="ghost" size="sm" onClick={() => signOut(setMode)} className="text-[11px] gap-1 px-2 h-7 text-destructive hover:text-destructive">
               <LogOut className="h-3 w-3" />
