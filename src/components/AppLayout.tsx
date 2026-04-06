@@ -25,7 +25,7 @@ export default function AppLayout({ sidebar, main }: AppLayoutProps) {
         <div className="shrink-0 border-t border-sidebar-border p-3 flex items-center gap-2">
           <button
             onClick={() => setMode("simple")}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary/10 border border-primary/30 hover:bg-primary/20 text-primary font-semibold text-sm py-2.5 transition-all hover:border-primary/50"
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-sidebar-accent border border-sidebar-border hover:opacity-90 text-sidebar-foreground font-semibold text-sm py-2.5 transition-all"
           >
             <Image className="h-4 w-4" />
             {lang === "en" ? "Simple Mode" : "მარტივი რეჟიმი"}

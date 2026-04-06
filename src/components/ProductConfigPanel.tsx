@@ -42,7 +42,7 @@ export default function ProductConfigPanel({
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <button
           onClick={() => setProductOpen((o) => !o)}
-          className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold hover:bg-muted/30 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-card-foreground hover:bg-muted/30 transition-colors"
         >
           <span>{t(lang, "config.product")}</span>
           <div className="flex items-center gap-2">
@@ -83,7 +83,7 @@ export default function ProductConfigPanel({
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           <button
             onClick={() => setBrandOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold hover:bg-muted/30 transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-card-foreground hover:bg-muted/30 transition-colors"
           >
             <span>{t(lang, "config.brand")}</span>
             <div className="flex items-center gap-2">
