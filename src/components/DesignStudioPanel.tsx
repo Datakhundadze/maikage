@@ -4,6 +4,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { RefreshCw, ChevronDown, ChevronUp, Check } from "lucide-react";
 
 interface DesignStudioPanelProps {
@@ -70,27 +71,30 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
             const done = stepDone[i];
             const active = !done && i === activeStep;
             return (
-              <div key={key} className="relative z-10 flex flex-col items-center gap-1 flex-1">
-                <div
-                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all
-                    ${done
-                      ? "bg-primary text-primary-foreground"
-                      : active
-                        ? "bg-primary text-primary-foreground ring-2 ring-primary/20 shadow-lg shadow-primary/40 scale-110"
-                        : "bg-muted text-muted-foreground opacity-55"
-                    }`}
-                >
-                  {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
-                </div>
-                <span className={`text-[11px] font-semibold leading-tight text-center
-                  ${active ? "text-primary" : done ? "text-primary/70" : "text-muted-foreground"}`}>
-                  {t(lang, key)}
-                </span>
-                <span className={`text-[9px] leading-tight text-center max-w-[60px] transition-all
-                  ${active ? "text-primary/70 opacity-100" : "opacity-0 h-0 overflow-hidden"}`}>
+              <Tooltip key={key} delayDuration={200}>
+                <TooltipTrigger asChild>
+                  <div className="relative z-10 flex flex-col items-center gap-1.5 flex-1 cursor-default">
+                    <div
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition-all
+                        ${done
+                          ? "bg-primary text-primary-foreground"
+                          : active
+                            ? "bg-primary text-primary-foreground ring-2 ring-primary/20 shadow-lg shadow-primary/40 scale-110"
+                            : "bg-muted text-muted-foreground opacity-55"
+                        }`}
+                    >
+                      {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                    </div>
+                    <span className={`text-[11px] font-semibold leading-tight text-center
+                      ${active ? "text-primary" : done ? "text-primary/70" : "text-muted-foreground"}`}>
+                      {t(lang, key)}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs max-w-[140px] text-center">
                   {t(lang, hintKey)}
-                </span>
-              </div>
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
