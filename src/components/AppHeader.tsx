@@ -72,7 +72,7 @@ export default function AppHeader() {
               <LogOut className="h-3 w-3" />
             </Button>
           ) : (
-            <Button variant="default" size="sm" onClick={() => setShowLogin(true)} className="text-[11px] gap-1 px-2 h-7">
+            <Button size="sm" onClick={() => setShowLogin(true)} className="text-[11px] gap-1 px-2 h-7 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">
               <LogIn className="h-3 w-3" />
               შესვლა
             </Button>
