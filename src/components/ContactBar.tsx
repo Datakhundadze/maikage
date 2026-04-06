@@ -6,7 +6,7 @@ export default function ContactBar() {
           📞 032 2 05 06 20
         </a>
         <span className="text-muted-foreground/30">|</span>
-        <a href="tel:+995599050807" className="flex items-center gap-1 hover:text-foreground transition-colors">
+        <a href="https://wa.me/995599050807" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-green-500 transition-colors">
           📱 599 05 08 07
         </a>
         <span className="text-muted-foreground/30">|</span>
