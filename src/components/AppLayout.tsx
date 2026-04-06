@@ -36,19 +36,21 @@ export default function AppLayout({ sidebar, main }: AppLayoutProps) {
               <TooltipTrigger asChild>
                 <button
                   onClick={() => theme !== "dark" && toggleTheme()}
-                  className={`h-5 w-5 rounded-full bg-[#F97316] transition-all ${theme === "dark" ? "ring-2 ring-[#F97316]/50 scale-110" : "opacity-40 hover:opacity-70"}`}
+                  className={`h-5 w-5 rounded-full bg-black border transition-all ${theme === "dark" ? "border-white/50 ring-2 ring-white/30 scale-110" : "border-white/20 opacity-50 hover:opacity-80"}`}
+                  title="Dark"
                 />
               </TooltipTrigger>
-              <TooltipContent side="top">Dark Orange</TooltipContent>
+              <TooltipContent side="top">Dark</TooltipContent>
             </Tooltip>
             <Tooltip delayDuration={300}>
               <TooltipTrigger asChild>
                 <button
                   onClick={() => theme !== "green" && toggleTheme()}
-                  className={`h-5 w-5 rounded-full bg-[#25B988] transition-all ${theme === "green" ? "ring-2 ring-[#25B988]/50 scale-110" : "opacity-40 hover:opacity-70"}`}
+                  className={`h-5 w-5 rounded-full bg-[#25B988] transition-all ${theme === "green" ? "ring-2 ring-[#25B988]/60 scale-110" : "opacity-50 hover:opacity-80"}`}
+                  title="Green"
                 />
               </TooltipTrigger>
-              <TooltipContent side="top">Light Green</TooltipContent>
+              <TooltipContent side="top">Green</TooltipContent>
             </Tooltip>
           </div>
         </div>
