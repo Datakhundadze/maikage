@@ -4,7 +4,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { LogOut, LogIn, Paintbrush, FolderOpen, Globe, Image, ShieldCheck } from "lucide-react";
+import { LogOut, LogIn, Paintbrush, FolderOpen, Globe, ShieldCheck } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import LoginModal from "@/components/LoginModal";
 
@@ -64,10 +64,6 @@ export default function AppHeader() {
 
         {/* RIGHT: controls */}
         <div className="flex items-center gap-0.5 shrink-0 ml-auto md:ml-0">
-          <Button variant="ghost" size="sm" onClick={() => setMode("simple")} className="text-[11px] gap-1 px-2 h-7">
-            <Image className="h-3 w-3" />
-            {t(lang, "nav.simple")}
-          </Button>
           <Button variant="ghost" size="sm" onClick={toggleLang} className="text-[11px] font-mono px-2 h-7">
             {lang.toUpperCase()}
           </Button>

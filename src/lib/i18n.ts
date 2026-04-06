@@ -23,7 +23,7 @@ const translations = {
       studio: "Studio",
       simple: "Simple",
       myDesigns: "My Designs",
-      community: "Community",
+      community: "Samples",
       logout: "Logout",
     },
     theme: {
@@ -33,9 +33,13 @@ const translations = {
     studio: {
       guide: {
         character: "Character",
+        characterHint: "Who/what is in the design?",
         scene: "Scene",
+        sceneHint: "Where & what are they doing?",
         style: "Style",
+        styleHint: "Visual look & feel",
         generate: "Generate",
+        generateHint: "Create your design!",
         paste: "Ctrl+V to paste images",
       },
       character: {
@@ -90,8 +94,8 @@ const translations = {
       deleteConfirm: "Delete this design?",
     },
     community: {
-      title: "Community",
-      subtitle: "Discover designs published by the community.",
+      title: "Samples",
+      subtitle: "Discover designs from the maika.ge community.",
       empty: "No published designs yet",
       emptyHint: "Be the first to publish!",
     },
@@ -138,7 +142,7 @@ const translations = {
       studio: "სტუდია",
       simple: "მარტივი",
       myDesigns: "ჩემი დიზაინები",
-      community: "საზოგადოება",
+      community: "მაგალითები",
       logout: "გამოსვლა",
     },
     theme: {
@@ -148,9 +152,13 @@ const translations = {
     studio: {
       guide: {
         character: "პერსონაჟი",
+        characterHint: "ვინ/რა არის დიზაინში?",
         scene: "სცენა",
+        sceneHint: "სად და რას აკეთებს?",
         style: "სტილი",
+        styleHint: "ვიზუალური მიმართულება",
         generate: "გენერაცია",
+        generateHint: "შექმენი დიზაინი!",
         paste: "Ctrl+V სურათის ჩასასმელად",
       },
       character: {
@@ -205,8 +213,8 @@ const translations = {
       deleteConfirm: "წაშალოთ ეს დიზაინი?",
     },
     community: {
-      title: "საზოგადოება",
-      subtitle: "აღმოაჩინეთ საზოგადოების მიერ გამოქვეყნებული დიზაინები.",
+      title: "მაგალითები",
+      subtitle: "აღმოაჩინეთ maika.ge-ს საზოგადოების დიზაინები.",
       empty: "გამოქვეყნებული დიზაინები ჯერ არ არის",
       emptyHint: "იყავი პირველი!",
     },
