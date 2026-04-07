@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Upload, X, Download, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COLORS } from "@/lib/catalog";
+import { useAppState } from "@/hooks/useAppState";
 
 /**
  * Colorize the shirt region using flood-fill + multiply blend.
@@ -115,6 +116,12 @@ export default function TryOnPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setMode } = useAppState();
+
+  const goBack = () => {
+    setMode("studio");
+    navigate("/");
+  };
 
   const state = location.state as TryOnState | null;
 
@@ -129,7 +136,7 @@ export default function TryOnPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">სურათი ვერ მოიძებნა.</p>
-        <Button variant="outline" onClick={() => navigate(-1)}>
+        <Button variant="outline" onClick={goBack}>
           ← უკან
         </Button>
       </div>
@@ -231,7 +238,7 @@ export default function TryOnPage() {
           variant="ghost"
           size="sm"
           className="gap-1.5 text-muted-foreground hover:text-foreground"
-          onClick={() => navigate(-1)}
+          onClick={goBack}
         >
           <ArrowLeft className="h-4 w-4" />
           უკან

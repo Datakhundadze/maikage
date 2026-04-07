@@ -167,14 +167,17 @@ export default function ProductConfigPanel({
           <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.view")}</h3>
           <div className="flex gap-2">
             {(["front", "back"] as ProductView[]).map((v) => (
-              <Button
+              <button
                 key={v}
-                size="sm"
-                variant={config.view === v ? "default" : "outline"}
                 onClick={() => onViewChange(v)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  config.view === v
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground border border-border hover:text-foreground hover:bg-muted/70"
+                }`}
               >
                 {v === "front" ? t(lang, "config.front") : t(lang, "config.back")}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
