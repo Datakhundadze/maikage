@@ -5,7 +5,7 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, LogIn, LogOut, FolderOpen, Globe, Shirt } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, FolderOpen, Globe, Shirt } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -15,10 +15,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
-import LoginModal from "@/components/LoginModal";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useNavigate } from "react-router-dom";
 import ContactBar from "@/components/ContactBar";
+import AppHeader from "@/components/AppHeader";
 
 const FONT_GROUPS = [
   {
@@ -130,13 +130,12 @@ const DEFAULT_SIDE: SideData = {
 let photoIdCounter = 0;
 
 export default function SimplePage() {
-  const { lang, toggleLang, theme, toggleTheme, setMode } = useAppState();
+  const { lang, theme, toggleTheme, setMode } = useAppState();
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
-  const { user, isAnonymous, signOut } = useAuth();
+  const { user } = useAuth();
   const { saveDesign, togglePublish } = useDesignStorage();
   const navigate = useNavigate();
-  const [showLogin, setShowLogin] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -364,7 +363,7 @@ export default function SimplePage() {
   }, [user, productConfig, savedToGenerations]);
 
   const handlePublish = useCallback(async (frontMockupUrl: string | null) => {
-    if (!user) { setShowLogin(true); return; }
+    if (!user) { return; }
     if (!frontMockupUrl) return;
     setPublishing(true);
     const id = await saveDesign({
@@ -405,68 +404,15 @@ export default function SimplePage() {
   }, [frontData, backData, productConfig.config.product, productConfig.config.subProduct, productConfig.config.color]);
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="flex flex-col h-screen">
+      <AppHeader />
+      <ContactBar />
+      {/* Sidebar + Main wrapper */}
+      <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
       {/* Sidebar */}
-      <aside className="w-full lg:w-[450px] lg:min-w-[450px] flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:h-screen lg:overflow-y-auto">
-        {/* Header */}
-        <header className="flex flex-col gap-2 p-4 border-b border-sidebar-border">
-          <div className="flex items-center justify-between">
-            <button onClick={() => setMode("landing")} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-foreground text-background text-lg font-black dark:bg-primary dark:text-primary-foreground">
-                M
-              </div>
-              <div className="text-left">
-                <h1 className="text-xl font-bold leading-tight">maika.ge</h1>
-                <div className="text-xs text-muted-foreground">{user?.email || (lang === "en" ? "Guest mode" : "სტუმრის რეჟიმი")}</div>
-              </div>
-            </button>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={toggleLang} className="text-xs font-mono px-2">
-                {lang.toUpperCase()}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={toggleTheme} className="px-2">
-                {theme === "dark" ? "☀️" : "🌙"}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setMode("studio")} className="gap-1 text-xs">
-                <Sparkles className="h-3.5 w-3.5" />
-                Studio
-              </Button>
-              {isAnonymous ? (
-                <Button variant="ghost" size="sm" onClick={() => setShowLogin(true)} className="text-xs gap-1 px-2">
-                  <LogIn className="h-3.5 w-3.5" /> შესვლა
-                </Button>
-              ) : (
-                <Button variant="ghost" size="icon" onClick={() => signOut(setMode)} className="h-8 w-8" title="გასვლა">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-          <nav className="flex gap-1">
-            <button onClick={() => navigate("/my-designs")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <FolderOpen className="h-3.5 w-3.5" /> {lang === "en" ? "My Designs" : "ჩემი დიzaინები"}
-            </button>
-            <button onClick={() => navigate("/community")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <Globe className="h-3.5 w-3.5" /> {lang === "en" ? "Community" : "საზოგადოება"}
-            </button>
-            {frontMockup && (
-              <button onClick={() => handlePublish(frontMockup)} disabled={publishing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-amber-500 border border-amber-500/30 hover:bg-amber-500/10 transition-colors disabled:opacity-50">
-                <Globe className="h-3.5 w-3.5" /> {publishing ? "..." : (lang === "en" ? "Publish" : "გამოქვეყნება")}
-              </button>
-            )}
-            {frontMockup && (
-              <button
-                onClick={() => navigate("/try-on", { state: { mockupImage: frontMockup, transparentImage: frontMockup, productName: productConfig.config.product, subType: productConfig.config.subProduct, colorName: productConfig.config.color } })}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-purple-400 border border-purple-500/30 hover:bg-purple-500/10 transition-colors"
-              >
-                <Shirt className="h-3.5 w-3.5" /> {lang === "en" ? "Try On" : "გასინჯვა"}
-              </button>
-            )}
-          </nav>
-        </header>
-        <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
+      <aside className="w-full lg:w-[450px] lg:min-w-[450px] shrink-0 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:overflow-hidden">
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="overflow-y-auto flex-1 p-4 space-y-6">
           {/* Product config */}
           <ProductConfigPanel
             config={productConfig.config}
@@ -658,15 +604,61 @@ export default function SimplePage() {
                     }
                   }}
                 />
+                {/* Quick actions */}
+                {(frontMockup || backMockup) && (
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={() => handlePublish(frontMockup!)} disabled={publishing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary border border-primary/30 hover:bg-primary/10 transition-colors disabled:opacity-50">
+                      <Globe className="h-3.5 w-3.5" /> {publishing ? "..." : (lang === "en" ? "Publish" : "გამოქვეყნება")}
+                    </button>
+                    <button
+                      onClick={() => navigate("/try-on", { state: { mockupImage: frontMockup || backMockup, transparentImage: frontMockup || backMockup, productName: productConfig.config.product, subType: productConfig.config.subProduct, colorName: productConfig.config.color } })}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-purple-500 border border-purple-500/30 hover:bg-purple-500/10 transition-colors"
+                    >
+                      <Shirt className="h-3.5 w-3.5" /> {lang === "en" ? "Try On" : "გასინჯვა"}
+                    </button>
+                  </div>
+                )}
               </>
             );
           })()}
+
+          {/* Nav links */}
+          <div className="flex gap-1 flex-wrap border-t border-sidebar-border pt-4">
+            <button onClick={() => navigate("/my-designs")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <FolderOpen className="h-3.5 w-3.5" /> {lang === "en" ? "My Designs" : "ჩემი დიzaინები"}
+            </button>
+            <button onClick={() => navigate("/community")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+              <Globe className="h-3.5 w-3.5" /> {lang === "en" ? "Community" : "საზოგადოება"}
+            </button>
+          </div>
+        </div>
+
+        {/* Footer: AI Studio + theme switcher */}
+        <div className="shrink-0 border-t border-sidebar-border p-3 flex items-center gap-2">
+          <button
+            onClick={() => setMode("studio")}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-sidebar-accent border border-sidebar-border hover:opacity-90 text-sidebar-foreground font-semibold text-sm py-2.5 transition-all"
+          >
+            <Sparkles className="h-4 w-4" />
+            {lang === "en" ? "AI Studio" : "AI სტუდია"}
+          </button>
+          <div className="flex items-center gap-1.5 px-2">
+            <button
+              onClick={() => theme !== "dark" && toggleTheme()}
+              className={`h-5 w-5 rounded-full bg-black border transition-all ${theme === "dark" ? "border-white/50 ring-2 ring-white/30 scale-110" : "border-white/20 opacity-50 hover:opacity-80"}`}
+              title="Dark"
+            />
+            <button
+              onClick={() => theme !== "green" && toggleTheme()}
+              className={`h-5 w-5 rounded-full bg-[#25B988] transition-all ${theme === "green" ? "ring-2 ring-[#25B988]/60 scale-110" : "opacity-50 hover:opacity-80"}`}
+              title="Green"
+            />
+          </div>
         </div>
       </aside>
 
       {/* Main preview */}
-      <main className="flex-1 bg-background lg:h-screen lg:overflow-y-auto flex flex-col">
-        <ContactBar />
+      <main className="flex-1 bg-background overflow-y-auto flex flex-col">
         <ProductPreview
           productName={productConfig.config.product}
           subProduct={productConfig.config.subProduct}
@@ -678,6 +670,7 @@ export default function SimplePage() {
           onBackgroundClick={() => setSelectedLayerId(null)}
         />
       </main>
+      </div>
     </div>
   );
 }

@@ -34,18 +34,13 @@ export default function AppHeader() {
   return (
     <>
       <header className="h-14 flex items-center gap-2 px-3 border-b border-sidebar-border shrink-0 bg-sidebar text-sidebar-foreground">
-        {/* LEFT: logo + badge */}
+        {/* LEFT: logo */}
         <button onClick={() => setMode("landing")} className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-sm font-black">
             M
           </div>
           <div className="text-left hidden sm:block">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold leading-tight text-sidebar-foreground">{t(lang, "header.title")}</span>
-              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-sidebar-accent text-sidebar-accent-foreground leading-none">
-                {pageBadge}
-              </span>
-            </div>
+            <div className="text-sm font-bold leading-tight text-sidebar-foreground">{t(lang, "header.title")}</div>
             <div className="text-[10px] text-sidebar-foreground/50 leading-none">
               {isLoggedIn ? (user?.email?.split("@")[0] || "სტუმარი") : (lang === "en" ? "Guest" : "სტუმარი")}
             </div>
