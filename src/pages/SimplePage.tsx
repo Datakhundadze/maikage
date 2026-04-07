@@ -20,42 +20,63 @@ import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useNavigate } from "react-router-dom";
 import ContactBar from "@/components/ContactBar";
 
-const FONTS = [
-  // Georgian
-  { name: "Noto Sans Georgian", family: "'Noto Sans Georgian', sans-serif" },
-  { name: "Noto Serif Georgian", family: "'Noto Serif Georgian', serif" },
-  { name: "BPG Arial", family: "'BPG Arial', sans-serif" },
-  { name: "FiraGO", family: "'FiraGO', sans-serif" },
-  // Latin Sans-Serif
-  { name: "Sans Serif", family: "sans-serif" },
-  { name: "Arial", family: "Arial, sans-serif" },
-  { name: "Verdana", family: "Verdana, sans-serif" },
-  { name: "Trebuchet", family: "'Trebuchet MS', sans-serif" },
-  { name: "Tahoma", family: "Tahoma, sans-serif" },
-  { name: "Futura", family: "'Futura', 'Century Gothic', sans-serif" },
-  { name: "Montserrat", family: "'Montserrat', sans-serif" },
-  { name: "Poppins", family: "'Poppins', sans-serif" },
-  { name: "Oswald", family: "'Oswald', sans-serif" },
-  { name: "Raleway", family: "'Raleway', sans-serif" },
-  // Latin Serif
-  { name: "Serif", family: "Georgia, serif" },
-  { name: "Palatino", family: "'Palatino Linotype', serif" },
-  { name: "Garamond", family: "'Garamond', serif" },
-  { name: "Times New Roman", family: "'Times New Roman', serif" },
-  { name: "Playfair Display", family: "'Playfair Display', serif" },
-  // Display / Decorative
-  { name: "Impact", family: "Impact, sans-serif" },
-  { name: "Anton", family: "'Anton', Impact, sans-serif" },
-  { name: "Bebas Neue", family: "'Bebas Neue', Impact, sans-serif" },
-  // Monospace
-  { name: "Monospace", family: "'Courier New', monospace" },
-  { name: "Lucida Console", family: "'Lucida Console', monospace" },
-  // Script / Handwriting
-  { name: "Comic Sans", family: "'Comic Sans MS', cursive" },
-  { name: "Brush Script", family: "'Brush Script MT', cursive" },
-  { name: "Dancing Script", family: "'Dancing Script', cursive" },
-  { name: "Pacifico", family: "'Pacifico', cursive" },
+const FONT_GROUPS = [
+  {
+    label: "ქართული",
+    fonts: [
+      { name: "Noto Sans Georgian", family: "'Noto Sans Georgian', sans-serif" },
+      { name: "Noto Serif Georgian", family: "'Noto Serif Georgian', serif" },
+      { name: "BPG Arial", family: "'BPG Arial', sans-serif" },
+      { name: "FiraGO", family: "'FiraGO', sans-serif" },
+    ],
+  },
+  {
+    label: "Latin Sans-Serif",
+    fonts: [
+      { name: "Sans Serif", family: "sans-serif" },
+      { name: "Arial", family: "Arial, sans-serif" },
+      { name: "Verdana", family: "Verdana, sans-serif" },
+      { name: "Trebuchet", family: "'Trebuchet MS', sans-serif" },
+      { name: "Tahoma", family: "Tahoma, sans-serif" },
+      { name: "Futura", family: "'Futura', 'Century Gothic', sans-serif" },
+      { name: "Montserrat", family: "'Montserrat', sans-serif" },
+      { name: "Poppins", family: "'Poppins', sans-serif" },
+      { name: "Oswald", family: "'Oswald', sans-serif" },
+      { name: "Raleway", family: "'Raleway', sans-serif" },
+    ],
+  },
+  {
+    label: "Latin Serif",
+    fonts: [
+      { name: "Serif", family: "Georgia, serif" },
+      { name: "Palatino", family: "'Palatino Linotype', serif" },
+      { name: "Garamond", family: "'Garamond', serif" },
+      { name: "Times New Roman", family: "'Times New Roman', serif" },
+      { name: "Playfair Display", family: "'Playfair Display', serif" },
+    ],
+  },
+  {
+    label: "Display",
+    fonts: [
+      { name: "Impact", family: "Impact, sans-serif" },
+      { name: "Anton", family: "'Anton', Impact, sans-serif" },
+      { name: "Bebas Neue", family: "'Bebas Neue', Impact, sans-serif" },
+    ],
+  },
+  {
+    label: "Mono / Script",
+    fonts: [
+      { name: "Monospace", family: "'Courier New', monospace" },
+      { name: "Lucida Console", family: "'Lucida Console', monospace" },
+      { name: "Comic Sans", family: "'Comic Sans MS', cursive" },
+      { name: "Brush Script", family: "'Brush Script MT', cursive" },
+      { name: "Dancing Script", family: "'Dancing Script', cursive" },
+      { name: "Pacifico", family: "'Pacifico', cursive" },
+    ],
+  },
 ];
+
+const FONTS = FONT_GROUPS.flatMap((g) => g.fonts);
 
 const TEXT_COLORS = [
   { name: "Black", hex: "#000000" },
@@ -552,20 +573,27 @@ export default function SimplePage() {
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${fontPickerOpen ? "rotate-180" : ""}`} />
               </button>
               {fontPickerOpen && (
-                <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-60 overflow-y-auto">
-                  {FONTS.map((font) => (
-                    <button
-                      key={font.name}
-                      onClick={() => { updateField("selectedFont", font); setFontPickerOpen(false); }}
-                      className={`w-full text-left px-3 py-2.5 text-sm hover:bg-accent transition-colors flex items-center justify-between ${
-                        sideData.selectedFont.name === font.name ? "bg-accent text-accent-foreground" : "text-popover-foreground"
-                      }`}
-                    >
-                      <span style={{ fontFamily: font.family, fontSize: "15px" }}>{font.name}</span>
-                      <span style={{ fontFamily: font.family }} className="text-muted-foreground text-xs">
-                        AaBb აბ
-                      </span>
-                    </button>
+                <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-64 overflow-y-auto">
+                  {FONT_GROUPS.map((group) => (
+                    <div key={group.label}>
+                      <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 sticky top-0">
+                        {group.label}
+                      </div>
+                      {group.fonts.map((font) => (
+                        <button
+                          key={font.name}
+                          onClick={() => { updateField("selectedFont", font); setFontPickerOpen(false); }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between ${
+                            sideData.selectedFont.name === font.name ? "bg-accent text-accent-foreground" : "text-popover-foreground"
+                          }`}
+                        >
+                          <span style={{ fontFamily: font.family, fontSize: "14px" }}>{font.name}</span>
+                          <span style={{ fontFamily: font.family }} className="text-muted-foreground text-xs">
+                            AaBb აბ
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}
