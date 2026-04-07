@@ -66,7 +66,7 @@ export default function LandingPage() {
         <div className="text-center mb-16 sm:mb-20 max-w-3xl">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.2] mb-3 text-foreground">
             შექმენი შენი სტილი{" "}
-            <span className="bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 bg-clip-text text-transparent">
+            <span className="text-primary">
               მარტივად
             </span>
           </h1>
@@ -110,18 +110,15 @@ export default function LandingPage() {
           {/* Card 2 — AI Studio (FEATURED) */}
           <button
             onClick={() => setMode("studio")}
-            className="group relative flex flex-col rounded-2xl border border-amber-500/30 bg-card p-8 sm:p-10 text-left transition-all duration-300 hover:border-amber-500/50 hover:scale-[1.03] overflow-hidden"
-            style={{ boxShadow: '0 0 40px rgba(251,146,60,0.15), 0 0 80px rgba(251,146,60,0.05)' }}
+            className="group relative flex flex-col rounded-2xl border border-primary/30 bg-card p-8 sm:p-10 text-left transition-all duration-300 hover:border-primary/50 hover:scale-[1.03] overflow-hidden"
           >
-            {/* Orange glow overlay */}
-            <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-amber-500/[0.08] via-transparent to-amber-500/[0.04] pointer-events-none transition-opacity group-hover:from-amber-500/[0.12] group-hover:to-amber-500/[0.06]" />
-            {/* Bottom reflection */}
-            <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-amber-500/[0.04] to-transparent pointer-events-none" />
+            {/* Glow overlay */}
+            <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary/[0.08] via-transparent to-primary/[0.04] pointer-events-none transition-opacity group-hover:from-primary/[0.12] group-hover:to-primary/[0.06]" />
             {/* Top shine */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400/30 to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none" />
 
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-amber-500/20 mb-6 transition-colors group-hover:border-amber-500/40" style={{ boxShadow: '0 0 20px rgba(251,146,60,0.1)' }}>
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 mb-6 transition-colors group-hover:border-primary/40">
                 <Sparkles className="h-6 w-6 text-primary" />
               </div>
               <h2 className="text-2xl font-bold text-foreground mb-3">MAIKA.GE AI სტუდიო</h2>
@@ -129,7 +126,7 @@ export default function LandingPage() {
                 შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით
               </p>
               <div className="flex items-center justify-between w-full">
-                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/20 px-3 py-1 text-xs font-medium text-primary">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 border border-primary/20 px-3 py-1 text-xs font-medium text-primary">
                   AI Powered ✨
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary/70 group-hover:text-primary transition-colors">
@@ -171,12 +168,12 @@ export default function LandingPage() {
         {/* Corporate Section */}
         <div className="w-full max-w-4xl mb-20 sm:mb-28">
           <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#141414] via-[#111] to-[#0d0d0d] p-8 sm:p-12 overflow-hidden">
-            <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-amber-500/[0.06] blur-[100px] pointer-events-none" />
-            
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-primary/[0.06] blur-[100px] pointer-events-none" />
+
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-1 w-8 rounded-full bg-primary" />
-                <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider">B2B</span>
+                <span className="text-xs font-semibold text-primary uppercase tracking-wider">B2B</span>
               </div>
               
               <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
@@ -194,8 +191,8 @@ export default function LandingPage() {
                   { icon: BadgeDollarSign, label: "კონკურენტული ფასები" },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="flex flex-col items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-500/15">
-                      <Icon className="h-8 w-8 text-amber-500" />
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/15">
+                      <Icon className="h-8 w-8 text-primary" />
                     </div>
                     <span className="text-xs font-medium text-white/70">{label}</span>
                   </div>
