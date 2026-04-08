@@ -178,6 +178,16 @@ export default function TryOnPage() {
     const TEXTURED_PRODUCTS = ["Premium Hoodie"];
     const isTextured = TEXTURED_PRODUCTS.includes(state.subType || "");
 
+    // Map product sub-types to descriptive names for better AI understanding
+    const getProductDescription = (subType?: string, productName?: string): string => {
+      const name = (subType || productName || "").toLowerCase();
+      if (name.includes("khundadze")) return "Khundadze Georgian-style t-shirt with a traditional round collar and short sleeves";
+      if (name.includes("zipper") || name.includes("zip")) return "long-sleeved zip-up hoodie with a front zipper and hood";
+      if (name.includes("hoodie") || name.includes("premium hoodie")) return "long-sleeved pullover hoodie with a hood";
+      if (name.includes("t-shirt") || name.includes("tshirt")) return "short-sleeved crew neck t-shirt";
+      return subType || productName || "t-shirt";
+    };
+
     try {
       const { data, error } = await supabase.functions.invoke("gemini-proxy", {
         body: {
@@ -186,7 +196,7 @@ export default function TryOnPage() {
             personImage,
             // For textured/colored products: send the full mockup so AI sees the garment style
             designImage: isTextured ? state.mockupImage : (state.transparentImage || state.mockupImage),
-            productName: state.subType || state.productName || "t-shirt",
+            productName: getProductDescription(state.subType, state.productName),
             colorName: state.colorName || "",
             useMockupStyle: isTextured,
           },

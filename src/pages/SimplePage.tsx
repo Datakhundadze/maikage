@@ -625,7 +625,7 @@ export default function SimplePage() {
           {/* Nav links */}
           <div className="flex gap-1 flex-wrap border-t border-sidebar-border pt-4">
             <button onClick={() => navigate("/my-designs")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <FolderOpen className="h-3.5 w-3.5" /> {lang === "en" ? "My Designs" : "ჩემი დიzaინები"}
+              <FolderOpen className="h-3.5 w-3.5" /> {lang === "en" ? "My Designs" : "ჩემი დიზაინები"}
             </button>
             <button onClick={() => navigate("/community")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
               <Globe className="h-3.5 w-3.5" /> {lang === "en" ? "Community" : "საზოგადოება"}
