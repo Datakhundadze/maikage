@@ -58,7 +58,7 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "Apron": [],
   "Phone Case": [],
   "Mug": [],
-  "Sport": ["Sport Jersey", "Sport Shorts"],
+  "Sport": ["Sport Set"],
 };
 
 // Per-brand color availability
@@ -84,8 +84,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
 
   // Sport
-  "Sport Jersey": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "Sport Shorts": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Sport Set": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
 
   // Standalone products (no sub-brands)
   "Cap": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
@@ -109,8 +108,7 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "Oversize": ["S", "M", "L", "XL", "XXL"],
   "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
   // Sport
-  "Sport Jersey": ["S", "M", "L", "XL", "XXL"],
-  "Sport Shorts": ["XS", "S", "M", "L", "XL", "XXL"],
+  "Sport Set": ["S", "M", "L", "XL", "XXL"],
   // Hoodies
   "GILDAN Hoodie": ["S", "M", "L", "XL", "XXL"],
   "Premium Washed Hoodie": ["S", "M", "L", "XL", "XXL"],
@@ -250,10 +248,8 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|Oversize|Black|back": "/products/tshirt/oversize-black-back.png",
 
   // Sport
-  "Sport|Sport Jersey|White|front": "/products/sport/sport-jersey-white-front.png",
-  "Sport|Sport Jersey|White|back": "/products/sport/sport-jersey-white-back.png",
-  "Sport|Sport Shorts|White|front": "/products/sport/sport-shorts-white-front.png",
-  "Sport|Sport Shorts|White|back": "/products/sport/sport-shorts-white-back.png",
+  "Sport|Sport Set|White|front": "/products/sport/sport-set-white-front.png",
+  "Sport|Sport Set|White|back": "/products/sport/sport-set-white-back.png",
 
   // Standalone products
   "Cap|Cap|White|front": "/products/cap/CAP.png",
@@ -332,9 +328,7 @@ function generateCatalog(): CatalogEntry[] {
                 ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
                 : product.type === "Mug"
                   ? MUG_FRONT
-                  : (product.type === "Sport" && sub === "Sport Shorts")
-                    ? (view === "front" ? SHORTS_FRONT : SHORTS_BACK)
-                    : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
+                  : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
             imageUrl: KNOWN_IMAGES[key] || null,
           });
         }

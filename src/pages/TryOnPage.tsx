@@ -185,8 +185,7 @@ export default function TryOnPage() {
       if (name.includes("zipper") || name.includes("zip")) return "long-sleeved zip-up hoodie with a front zipper and hood";
       if (name.includes("hoodie") || name.includes("premium hoodie")) return "long-sleeved pullover hoodie with a hood";
       if (name.includes("oversize")) return "oversized short-sleeved t-shirt with a relaxed dropped-shoulder fit";
-      if (name.includes("sport jersey") || name.includes("jersey")) return "athletic sport jersey with short sleeves";
-      if (name.includes("sport shorts") || name.includes("shorts")) return "athletic sport shorts";
+      if (name.includes("sport set") || name.includes("sport")) return "athletic sport jersey with short sleeves";
       if (name.includes("t-shirt") || name.includes("tshirt")) return "short-sleeved crew neck t-shirt";
       return subType || productName || "t-shirt";
     };

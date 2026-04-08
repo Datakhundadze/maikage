@@ -33,8 +33,7 @@ const PRICES: Record<string, PriceTier> = {
   "GILDAN Bomber":       { frontOnly: 70, backPhoto: 95, backText: 90 },
 
   // Sport
-  "Sport Jersey": { frontOnly: 45, backPhoto: 60, backText: 55 },
-  "Sport Shorts": { frontOnly: 35, backPhoto: 50, backText: 45 },
+  "Sport Set": { frontOnly: 65, backPhoto: 80, backText: 75 },
 
   // Other products (keyed by product type since no sub-brands)
   "Tote Bag":    { frontOnly: 35, backPhoto: 50, backText: 45 },
