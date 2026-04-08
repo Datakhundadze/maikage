@@ -33,13 +33,6 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
     "გრაფიკა",
   ];
 
-  const characterPresets = lang === "en"
-    ? ["Tiger", "Lion", "Wolf", "Eagle", "Fox", "Bear", "Dragon", "Warrior", "Samurai", "Ninja", "Astronaut", "Robot"]
-    : ["ვეფხვი", "ლომი", "მგელი", "არწივი", "მელია", "დათვი", "დრაკონი", "მხედარი", "სამურაი", "ნინჯა", "ასტრონავტი", "რობოტი"];
-
-  const scenePresets = lang === "en"
-    ? ["Space", "Forest", "City", "Battle", "Fire", "Ocean", "Mountains", "Night", "Georgia", "Ruins"]
-    : ["კოსმოსი", "ტყე", "ქალაქი", "ბრძოლა", "ცეცხლი", "ოკეანე", "მთა", "ღამე", "საქართველო", "ნანგრევები"];
 
   const steps = [
     { key: "studio.guide.character", hintKey: "studio.guide.characterHint" },
@@ -118,7 +111,6 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         onAddImage={(img) => dispatch({ type: "ADD_CHARACTER_IMAGE", image: img })}
         onRemoveImage={(i) => dispatch({ type: "REMOVE_CHARACTER_IMAGE", index: i })}
         onViewImage={onViewImage}
-        presets={characterPresets}
       />
 
       {/* Scene */}
@@ -133,7 +125,6 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         collapsible expanded={expandedSections.scene}
         onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "scene" })}
         onViewImage={onViewImage}
-        presets={scenePresets}
       />
 
       {/* Style - Pill Chips */}
