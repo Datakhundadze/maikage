@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
-  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "GILDAN KIDS"],
+  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "Oversize", "GILDAN KIDS"],
   "Hoodie": ["GILDAN Hoodie", "Premium Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
@@ -70,6 +70,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Khundadze": ["White", "Black"],
   "NIKE": ["Dark Navy", "White", "Cream"],
   "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Oversize": ["White", "Black", "Beige", "Light Gray", "Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Standard Blue", "Burgundy", "Lime", "Purple"],
   "GILDAN KIDS": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
 
   // Hoodie brands
@@ -99,6 +100,7 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "Khundadze": ["S", "M", "L", "XL", "XXL"],
   "NIKE": ["S", "M", "L", "XL", "XXL"],
   "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  "Oversize": ["S", "M", "L", "XL", "XXL"],
   "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
   // Hoodies
   "GILDAN Hoodie": ["S", "M", "L", "XL", "XXL"],
