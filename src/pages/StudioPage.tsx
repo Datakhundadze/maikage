@@ -321,6 +321,7 @@ function StudioContent() {
               onViewChange={productConfig.setView}
               selectedSize={productConfig.config.size}
               onSizeChange={productConfig.setSize}
+              excludeProducts={["Sport"]}
             />
             <div className="border-t border-sidebar-border pt-4 space-y-4">
               <PriceDisplay breakdown={priceBreakdown} />

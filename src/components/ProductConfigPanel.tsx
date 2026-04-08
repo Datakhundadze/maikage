@@ -15,6 +15,7 @@ interface ProductConfigPanelProps {
   onViewChange: (v: ProductView) => void;
   selectedSize?: string;
   onSizeChange?: (size: string) => void;
+  excludeProducts?: ProductType[];
 }
 
 export default function ProductConfigPanel({
@@ -26,6 +27,7 @@ export default function ProductConfigPanel({
   onViewChange,
   selectedSize,
   onSizeChange,
+  excludeProducts = [],
 }: ProductConfigPanelProps) {
   const { lang } = useAppState();
   const [productOpen, setProductOpen] = useState(true);
@@ -57,7 +59,7 @@ export default function ProductConfigPanel({
         {productOpen && (
           <div className="px-3 pb-3">
             <div className="grid grid-cols-3 gap-2">
-              {PRODUCTS.map((p) => (
+              {PRODUCTS.filter(p => !excludeProducts.includes(p.type)).map((p) => (
                 <button
                   key={p.type}
                   onClick={() => { onProductChange(p.type); setBrandOpen(true); }}
