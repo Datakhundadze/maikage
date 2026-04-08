@@ -198,6 +198,12 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|Oversize|Black|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-black-front.png",
   "T-Shirt|Oversize|Black|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-black-back.png",
 
+  // Sport Set
+  "Sport|Sport Set|White|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
+  "Sport|Sport Set|White|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-back.png",
+  "Sport|Sport Set|Black|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-black-front.png",
+  "Sport|Sport Set|Black|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-black-back.png",
+
   // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png.png",
   "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png.png",
