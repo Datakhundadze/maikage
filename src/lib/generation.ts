@@ -6,7 +6,7 @@ interface GenerateDesignParams {
   designParams: DesignParams;
   product: string;
   color: string;
-  speed: "fast" | "quality";
+  speed: "fast" | "quality" | "pro";
 }
 
 export interface GenerationResult {
