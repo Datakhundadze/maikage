@@ -257,7 +257,7 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Cap|Cap|White|front": "/products/cap/CAP.png",
   "Apron|Apron|White|front": "/products/apron/APRON.png",
   "Tote Bag|Tote Bag|White|front": "/products/totebag/TOTE%20BAG.png",
-  "Phone Case|Phone Case|White|front": "/products/phonecase/PHONE_CASE.png",
+  "Phone Case|Phone Case|White|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/phonecase/PHONE_CASE.png",
   "Mug|Mug|White|front": "/products/mug/MUG.png",
 };
 
