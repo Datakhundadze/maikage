@@ -50,7 +50,7 @@ export const PRODUCTS: ProductInfo[] = [
 
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
-  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "GILDAN KIDS"],
+  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "GILDAN KIDS", "Oversize"],
   "Hoodie": ["GILDAN Hoodie", "Premium Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
@@ -71,6 +71,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "NIKE": ["Dark Navy", "White", "Cream"],
   "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
   "GILDAN KIDS": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Oversize": ["White", "Black"],
 
   // Hoodie brands
   "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
@@ -100,6 +101,7 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "NIKE": ["S", "M", "L", "XL", "XXL"],
   "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
   "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
+  "Oversize": ["S", "M", "L", "XL", "XXL"],
   // Hoodies
   "GILDAN Hoodie": ["S", "M", "L", "XL", "XXL"],
   "Premium Washed Hoodie": ["S", "M", "L", "XL", "XXL"],
@@ -189,6 +191,12 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|JEL T-Shirt|Khaki|back": "/products/tshirt/jel-tshirt-khaki-back.png",
   "T-Shirt|JEL T-Shirt|Brown|front": "/products/tshirt/jel-tshirt-brown-front.png",
   "T-Shirt|JEL T-Shirt|Brown|back": "/products/tshirt/jel-tshirt-brown-back.png",
+
+  // Oversize T-Shirt
+  "T-Shirt|Oversize|White|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-white-front.png",
+  "T-Shirt|Oversize|White|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-white-back.png",
+  "T-Shirt|Oversize|Black|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-black-front.png",
+  "T-Shirt|Oversize|Black|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-black-back.png",
 
   // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png.png",
