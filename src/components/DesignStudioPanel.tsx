@@ -3,6 +3,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { RefreshCw, ChevronDown, ChevronUp, Check, Zap, Sparkles } from "lucide-react";
 
@@ -31,6 +32,14 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
     "Line Art",
     "გრაფიკა",
   ];
+
+  const characterPresets = lang === "en"
+    ? ["Tiger", "Lion", "Wolf", "Eagle", "Fox", "Bear", "Dragon", "Warrior", "Samurai", "Ninja", "Astronaut", "Robot"]
+    : ["ვეფხვი", "ლომი", "მგელი", "არწივი", "მელია", "დათვი", "დრაკონი", "მხედარი", "სამურაი", "ნინჯა", "ასტრონავტი", "რობოტი"];
+
+  const scenePresets = lang === "en"
+    ? ["Space", "Forest", "City", "Battle", "Fire", "Ocean", "Mountains", "Night", "Georgia", "Ruins"]
+    : ["კოსმოსი", "ტყე", "ქალაქი", "ბრძოლა", "ცეცხლი", "ოკეანე", "მთა", "ღამე", "საქართველო", "ნანგრევები"];
 
   const steps = [
     { key: "studio.guide.character", hintKey: "studio.guide.characterHint" },
@@ -109,6 +118,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         onAddImage={(img) => dispatch({ type: "ADD_CHARACTER_IMAGE", image: img })}
         onRemoveImage={(i) => dispatch({ type: "REMOVE_CHARACTER_IMAGE", index: i })}
         onViewImage={onViewImage}
+        presets={characterPresets}
       />
 
       {/* Scene */}
@@ -123,6 +133,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         collapsible expanded={expandedSections.scene}
         onToggle={() => dispatch({ type: "TOGGLE_SECTION", section: "scene" })}
         onViewImage={onViewImage}
+        presets={scenePresets}
       />
 
       {/* Style - Pill Chips */}
@@ -145,23 +156,31 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
               <ChevronUp className="h-4 w-4" />
             </button>
           </div>
-          <div className="p-3 grid grid-cols-4 gap-1.5">
-            {styleOptions.map((opt) => {
-              const active = designParams.style === opt;
-              return (
-                <button
-                  key={opt}
-                  onClick={() => dispatch({ type: "SET_STYLE", text: active ? "" : opt })}
-                  className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
-                    active
-                      ? "bg-amber-500 text-white"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                  }`}
-                >
-                  {opt}
-                </button>
-              );
-            })}
+          <div className="p-3 space-y-2">
+            <div className="grid grid-cols-4 gap-1.5">
+              {styleOptions.map((opt) => {
+                const active = designParams.style === opt;
+                return (
+                  <button
+                    key={opt}
+                    onClick={() => dispatch({ type: "SET_STYLE", text: active ? "" : opt })}
+                    className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+            <Input
+              value={designParams.style}
+              onChange={(e) => dispatch({ type: "SET_STYLE", text: e.target.value })}
+              placeholder={lang === "ge" ? "ან შეიყვანეთ სტილი..." : "or describe the style..."}
+              className="text-sm h-8"
+            />
           </div>
         </div>
       )}
