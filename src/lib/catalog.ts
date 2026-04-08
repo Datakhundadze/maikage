@@ -1,7 +1,7 @@
 // Product catalog types and data
 
 export type ProductType =
-  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case" | "Mug";
+  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case" | "Mug" | "Sport";
 
 export type ProductSubType = string;
 
@@ -46,6 +46,7 @@ export const PRODUCTS: ProductInfo[] = [
   { type: "Apron", icon: "👨‍🍳", description: "Creative canvas" },
   { type: "Phone Case", icon: "📱", description: "Protect in style" },
   { type: "Mug", icon: "☕", description: "Morning favorite" },
+  { type: "Sport", icon: "⚽", description: "Sport jerseys & shorts" },
 ];
 
 // Brand (sub-product) definitions per product type
@@ -57,6 +58,7 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "Apron": [],
   "Phone Case": [],
   "Mug": [],
+  "Sport": ["Sport Jersey", "Sport Shorts"],
 };
 
 // Per-brand color availability
@@ -81,6 +83,10 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Blue"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
 
+  // Sport
+  "Sport Jersey": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Sport Shorts": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+
   // Standalone products (no sub-brands)
   "Cap": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
   "Apron": ["White", "Black"],
@@ -102,6 +108,9 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
   "Oversize": ["S", "M", "L", "XL", "XXL"],
   "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
+  // Sport
+  "Sport Jersey": ["S", "M", "L", "XL", "XXL"],
+  "Sport Shorts": ["XS", "S", "M", "L", "XL", "XXL"],
   // Hoodies
   "GILDAN Hoodie": ["S", "M", "L", "XL", "XXL"],
   "Premium Washed Hoodie": ["S", "M", "L", "XL", "XXL"],
@@ -153,6 +162,10 @@ const TOTE_BAG_BACK: PlacementCoords = { ...DEFAULT_BACK, y: DEFAULT_BACK.y + 0.
 
 // Mug-specific: shift design left by 8%
 const MUG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, x: DEFAULT_FRONT.x - 0.08 };
+
+// Sport Shorts: small design centered on upper front
+const SHORTS_FRONT: PlacementCoords = { x: 0.5, y: 0.28, scale: 0.22 };
+const SHORTS_BACK: PlacementCoords = { x: 0.5, y: 0.25, scale: 0.22 };
 
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {
@@ -229,6 +242,18 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-bomber-white-back.png.png",
   "Hoodie|GILDAN Bomber|Black|front": "/products/hoodie/gildan-bomber-black-front.png.png",
   "Hoodie|GILDAN Bomber|Black|back": "/products/hoodie/gildan-bomber-black-back.png.png",
+
+  // Oversize T-Shirt
+  "T-Shirt|Oversize|White|front": "/products/tshirt/oversize-white-front.png",
+  "T-Shirt|Oversize|White|back": "/products/tshirt/oversize-white-back.png",
+  "T-Shirt|Oversize|Black|front": "/products/tshirt/oversize-black-front.png",
+  "T-Shirt|Oversize|Black|back": "/products/tshirt/oversize-black-back.png",
+
+  // Sport
+  "Sport|Sport Jersey|White|front": "/products/sport/sport-jersey-white-front.png",
+  "Sport|Sport Jersey|White|back": "/products/sport/sport-jersey-white-back.png",
+  "Sport|Sport Shorts|White|front": "/products/sport/sport-shorts-white-front.png",
+  "Sport|Sport Shorts|White|back": "/products/sport/sport-shorts-white-back.png",
 
   // Standalone products
   "Cap|Cap|White|front": "/products/cap/CAP.png",
@@ -307,7 +332,9 @@ function generateCatalog(): CatalogEntry[] {
                 ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
                 : product.type === "Mug"
                   ? MUG_FRONT
-                  : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
+                  : (product.type === "Sport" && sub === "Sport Shorts")
+                    ? (view === "front" ? SHORTS_FRONT : SHORTS_BACK)
+                    : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
             imageUrl: KNOWN_IMAGES[key] || null,
           });
         }

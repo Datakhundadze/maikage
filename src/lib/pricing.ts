@@ -32,6 +32,10 @@ const PRICES: Record<string, PriceTier> = {
   "JEL Zipper":          { frontOnly: 100, backPhoto: 115, backText: 110 },
   "GILDAN Bomber":       { frontOnly: 70, backPhoto: 95, backText: 90 },
 
+  // Sport
+  "Sport Jersey": { frontOnly: 45, backPhoto: 60, backText: 55 },
+  "Sport Shorts": { frontOnly: 35, backPhoto: 50, backText: 45 },
+
   // Other products (keyed by product type since no sub-brands)
   "Tote Bag":    { frontOnly: 35, backPhoto: 50, backText: 45 },
   "Apron":       { frontOnly: 45, backPhoto: 45, backText: 45 },
