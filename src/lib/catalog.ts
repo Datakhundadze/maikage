@@ -161,6 +161,9 @@ const TOTE_BAG_BACK: PlacementCoords = { ...DEFAULT_BACK, y: DEFAULT_BACK.y + 0.
 // Mug-specific: shift design left by 8%
 const MUG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, x: DEFAULT_FRONT.x - 0.08 };
 
+// Apron-specific: smaller zone centered on the chest/bib area
+const APRON_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.22 };
+
 // Sport Shorts: small design centered on upper front
 const SHORTS_FRONT: PlacementCoords = { x: 0.5, y: 0.28, scale: 0.22 };
 const SHORTS_BACK: PlacementCoords = { x: 0.5, y: 0.25, scale: 0.22 };
@@ -330,7 +333,9 @@ function generateCatalog(): CatalogEntry[] {
                 ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
                 : product.type === "Mug"
                   ? MUG_FRONT
-                  : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
+                  : product.type === "Apron"
+                    ? APRON_FRONT
+                    : (view === "front" ? DEFAULT_FRONT : DEFAULT_BACK),
             imageUrl: KNOWN_IMAGES[key] || null,
           });
         }

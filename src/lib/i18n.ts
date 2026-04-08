@@ -118,6 +118,7 @@ const translations = {
       "Apron": "Apron",
       "Phone Case": "Phone Case",
       "Mug": "Mug",
+      "Sport": "Sport Set",
     },
   },
   ge: {
@@ -237,6 +238,7 @@ const translations = {
       "Apron": "წინსაფარი",
       "Phone Case": "ქეისი",
       "Mug": "ჭიქა",
+      "Sport": "სპორტული ფორმა",
     },
   },
 } as const;
