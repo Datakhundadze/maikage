@@ -96,62 +96,62 @@
     --sidebar-ring: 40 100% 50%;
   }
 
-  /* Dark Green theme — deep forest green bg + white text + print patterns */
+  /* Green theme — #25B988 background + white text + print patterns */
   .green {
-    --banana-50: 162 60% 95%;
-    --banana-100: 162 58% 88%;
-    --banana-200: 162 56% 76%;
-    --banana-300: 162 60% 62%;
-    --banana-400: 162 63% 52%;
-    --banana-500: 162 64% 44%;
-    --banana-600: 162 64% 36%;
-    --banana-700: 162 64% 28%;
-    --banana-800: 162 60% 22%;
-    --banana-900: 162 56% 17%;
+    --banana-50: 160 67% 95%;
+    --banana-100: 160 67% 88%;
+    --banana-200: 160 67% 76%;
+    --banana-300: 160 67% 62%;
+    --banana-400: 160 67% 52%;
+    --banana-500: 160 67% 44%;
+    --banana-600: 160 67% 36%;
+    --banana-700: 160 67% 28%;
+    --banana-800: 160 67% 22%;
+    --banana-900: 160 67% 17%;
 
-    --background: 162 55% 16%;
-    --foreground: 0 0% 96%;
+    --background: 160 67% 44%;
+    --foreground: 0 0% 98%;
 
-    --card: 162 50% 21%;
-    --card-foreground: 0 0% 96%;
+    --card: 160 62% 38%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 162 50% 21%;
-    --popover-foreground: 0 0% 96%;
+    --popover: 160 62% 38%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 162 64% 58%;
-    --primary-foreground: 162 55% 12%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 160 67% 38%;
 
-    --secondary: 162 45% 26%;
-    --secondary-foreground: 0 0% 96%;
+    --secondary: 160 58% 50%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 162 45% 24%;
-    --muted-foreground: 0 0% 72%;
+    --muted: 160 58% 40%;
+    --muted-foreground: 0 0% 82%;
 
-    --accent: 162 64% 58%;
-    --accent-foreground: 162 55% 12%;
+    --accent: 0 0% 100%;
+    --accent-foreground: 160 67% 38%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 100% / 0.12;
-    --input: 0 0% 100% / 0.12;
-    --ring: 162 64% 58%;
+    --border: 0 0% 100% / 0.18;
+    --input: 0 0% 100% / 0.18;
+    --ring: 0 0% 100%;
 
-    --sidebar-background: 162 60% 12%;
-    --sidebar-foreground: 0 0% 96%;
-    --sidebar-primary: 162 64% 58%;
-    --sidebar-primary-foreground: 162 55% 12%;
-    --sidebar-accent: 162 55% 18%;
-    --sidebar-accent-foreground: 0 0% 96%;
-    --sidebar-border: 0 0% 100% / 0.10;
-    --sidebar-ring: 162 64% 58%;
+    --sidebar-background: 160 65% 34%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 0 0% 100%;
+    --sidebar-primary-foreground: 160 67% 38%;
+    --sidebar-accent: 160 62% 40%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 100% / 0.15;
+    --sidebar-ring: 0 0% 100%;
   }
 }
 
 /* Print-inspired halftone dot pattern for green theme */
 .green body {
-  background-image: radial-gradient(circle, hsl(162 64% 30% / 0.45) 1.2px, transparent 1.2px);
-  background-size: 22px 22px;
+  background-image: radial-gradient(circle, hsl(160 67% 36% / 0.5) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
 }
 
 @layer base {

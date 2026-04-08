@@ -5,7 +5,7 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, FolderOpen, Globe, Shirt } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, Shirt } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -22,7 +22,7 @@ import AppHeader from "@/components/AppHeader";
 
 const FONT_GROUPS = [
   {
-    label: "ქართული",
+    label: "ქართული ფონტები",
     fonts: [
       { name: "Noto Sans Georgian", family: "'Noto Sans Georgian', sans-serif" },
       { name: "Noto Serif Georgian", family: "'Noto Serif Georgian', serif" },
@@ -31,32 +31,29 @@ const FONT_GROUPS = [
     ],
   },
   {
-    label: "Latin Sans-Serif",
+    label: "ინგლისური Sans",
     fonts: [
-      { name: "Sans Serif", family: "sans-serif" },
-      { name: "Arial", family: "Arial, sans-serif" },
-      { name: "Verdana", family: "Verdana, sans-serif" },
-      { name: "Trebuchet", family: "'Trebuchet MS', sans-serif" },
-      { name: "Tahoma", family: "Tahoma, sans-serif" },
-      { name: "Futura", family: "'Futura', 'Century Gothic', sans-serif" },
+      { name: "Roboto", family: "'Roboto', sans-serif" },
+      { name: "Open Sans", family: "'Open Sans', sans-serif" },
       { name: "Montserrat", family: "'Montserrat', sans-serif" },
-      { name: "Poppins", family: "'Poppins', sans-serif" },
       { name: "Oswald", family: "'Oswald', sans-serif" },
       { name: "Raleway", family: "'Raleway', sans-serif" },
+      { name: "Arial", family: "Arial, sans-serif" },
+      { name: "Verdana", family: "Verdana, sans-serif" },
+      { name: "Tahoma", family: "Tahoma, sans-serif" },
     ],
   },
   {
-    label: "Latin Serif",
+    label: "ინგლისური Serif",
     fonts: [
-      { name: "Serif", family: "Georgia, serif" },
-      { name: "Palatino", family: "'Palatino Linotype', serif" },
+      { name: "Playfair Display", family: "'Playfair Display', serif" },
+      { name: "Merriweather", family: "'Merriweather', serif" },
       { name: "Garamond", family: "'Garamond', serif" },
       { name: "Times New Roman", family: "'Times New Roman', serif" },
-      { name: "Playfair Display", family: "'Playfair Display', serif" },
     ],
   },
   {
-    label: "Display",
+    label: "სათაური / Display",
     fonts: [
       { name: "Impact", family: "Impact, sans-serif" },
       { name: "Anton", family: "'Anton', Impact, sans-serif" },
@@ -64,14 +61,12 @@ const FONT_GROUPS = [
     ],
   },
   {
-    label: "Mono / Script",
+    label: "Script / Mono",
     fonts: [
-      { name: "Monospace", family: "'Courier New', monospace" },
-      { name: "Lucida Console", family: "'Lucida Console', monospace" },
-      { name: "Comic Sans", family: "'Comic Sans MS', cursive" },
-      { name: "Brush Script", family: "'Brush Script MT', cursive" },
       { name: "Dancing Script", family: "'Dancing Script', cursive" },
       { name: "Pacifico", family: "'Pacifico', cursive" },
+      { name: "Brush Script", family: "'Brush Script MT', cursive" },
+      { name: "Monospace", family: "'Courier New', monospace" },
     ],
   },
 ];
@@ -622,15 +617,6 @@ export default function SimplePage() {
             );
           })()}
 
-          {/* Nav links */}
-          <div className="flex gap-1 flex-wrap border-t border-sidebar-border pt-4">
-            <button onClick={() => navigate("/my-designs")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <FolderOpen className="h-3.5 w-3.5" /> {lang === "en" ? "My Designs" : "ჩემი დიზაინები"}
-            </button>
-            <button onClick={() => navigate("/community")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-              <Globe className="h-3.5 w-3.5" /> {lang === "en" ? "Community" : "საზოგადოება"}
-            </button>
-          </div>
         </div>
 
         {/* Footer: AI Studio + theme switcher */}

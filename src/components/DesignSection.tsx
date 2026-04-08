@@ -27,6 +27,8 @@ interface DesignSectionProps {
   expanded?: boolean;
   onToggle?: () => void;
   onViewImage?: (src: string) => void;
+  // Preset chips
+  presets?: string[];
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -53,6 +55,7 @@ export default function DesignSection({
   expanded,
   onToggle,
   onViewImage,
+  presets,
 }: DesignSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMulti = !!onAddImage;
@@ -167,6 +170,25 @@ export default function DesignSection({
             className="hidden"
           />
         </div>
+
+        {/* Preset chips */}
+        {presets && presets.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {presets.map((preset) => (
+              <button
+                key={preset}
+                onClick={() => onTextChange(text === preset ? "" : preset)}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  text === preset
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                }`}
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Text area */}
         <Textarea
