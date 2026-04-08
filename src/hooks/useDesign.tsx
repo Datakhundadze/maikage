@@ -12,7 +12,7 @@ export interface DesignParams {
 }
 
 export type AppStatus = "IDLE" | "GENERATING_DESIGN" | "PROCESSING_TRANSPARENCY" | "GENERATING_MOCKUP" | "COMPLETE" | "ERROR";
-export type Speed = "fast" | "quality";
+export type Speed = "fast" | "quality" | "pro";
 
 interface DesignState {
   designParams: DesignParams;

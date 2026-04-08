@@ -105,7 +105,7 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "Khundadze": ["S", "M", "L", "XL", "XXL"],
   "NIKE": ["S", "M", "L", "XL", "XXL"],
   "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
-  // Oversize: one-size — no size selector shown
+  // Oversize: one-size — no size selector shown (entry intentionally omitted)
   "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
   // Sport
   "Sport Set": ["S", "M", "L", "XL", "XXL"],
@@ -203,6 +203,18 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|JEL T-Shirt|Brown|front": "/products/tshirt/jel-tshirt-brown-front.png",
   "T-Shirt|JEL T-Shirt|Brown|back": "/products/tshirt/jel-tshirt-brown-back.png",
 
+  // Oversize T-Shirt
+  "T-Shirt|Oversize|White|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-white-front.png",
+  "T-Shirt|Oversize|White|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-white-back.png",
+  "T-Shirt|Oversize|Black|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-black-front.png",
+  "T-Shirt|Oversize|Black|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-black-back.png",
+
+  // Sport Set
+  "Sport|Sport Set|White|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
+  "Sport|Sport Set|White|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-back.png",
+  "Sport|Sport Set|Black|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-black-front.png",
+  "Sport|Sport Set|Black|back": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-black-back.png",
+
   // Hoodie brands
   "Hoodie|GILDAN Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png.png",
   "Hoodie|GILDAN Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png.png",
@@ -240,16 +252,6 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-bomber-white-back.png.png",
   "Hoodie|GILDAN Bomber|Black|front": "/products/hoodie/gildan-bomber-black-front.png.png",
   "Hoodie|GILDAN Bomber|Black|back": "/products/hoodie/gildan-bomber-black-back.png.png",
-
-  // Oversize T-Shirt
-  "T-Shirt|Oversize|White|front": "/products/tshirt/oversize-white-front.png",
-  "T-Shirt|Oversize|White|back": "/products/tshirt/oversize-white-back.png",
-  "T-Shirt|Oversize|Black|front": "/products/tshirt/oversize-black-front.png",
-  "T-Shirt|Oversize|Black|back": "/products/tshirt/oversize-black-back.png",
-
-  // Sport
-  "Sport|Sport Set|White|front": "/products/sport/sport-set-white-front.png",
-  "Sport|Sport Set|White|back": "/products/sport/sport-set-white-back.png",
 
   // Standalone products
   "Cap|Cap|White|front": "/products/cap/CAP.png",
