@@ -173,9 +173,9 @@ export default function TryOnPage() {
     setLoading(true);
     setResultImage(null);
 
-    // Products with unique color/texture (acid-wash, etc.) — send the mockup so the AI
+    // Products with unique color/texture (acid-wash, washed effect) — send the mockup so the AI
     // can see the actual garment style. Skip canvas colorization for these products.
-    const TEXTURED_PRODUCTS = ["Premium Hoodie"];
+    const TEXTURED_PRODUCTS = ["Premium Washed Hoodie", "JEL T-Shirt"];
     const isTextured = TEXTURED_PRODUCTS.includes(state.subType || "");
 
     // Map product sub-types to descriptive names for better AI understanding
@@ -184,6 +184,8 @@ export default function TryOnPage() {
       if (name.includes("khundadze")) return "Khundadze Georgian-style t-shirt with a traditional round collar and short sleeves";
       if (name.includes("zipper") || name.includes("zip")) return "long-sleeved zip-up hoodie with a front zipper and hood";
       if (name.includes("hoodie") || name.includes("premium hoodie")) return "long-sleeved pullover hoodie with a hood";
+      if (name.includes("oversize")) return "oversized short-sleeved t-shirt with a relaxed dropped-shoulder fit";
+      if (name.includes("sport set") || name.includes("sport")) return "athletic sport jersey with short sleeves";
       if (name.includes("t-shirt") || name.includes("tshirt")) return "short-sleeved crew neck t-shirt";
       return subType || productName || "t-shirt";
     };

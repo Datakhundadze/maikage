@@ -1,7 +1,7 @@
 // Product catalog types and data
 
 export type ProductType =
-  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case" | "Mug";
+  | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case" | "Mug" | "Sport";
 
 export type ProductSubType = string;
 
@@ -46,17 +46,19 @@ export const PRODUCTS: ProductInfo[] = [
   { type: "Apron", icon: "👨‍🍳", description: "Creative canvas" },
   { type: "Phone Case", icon: "📱", description: "Protect in style" },
   { type: "Mug", icon: "☕", description: "Morning favorite" },
+  { type: "Sport", icon: "⚽", description: "Sport jerseys & shorts" },
 ];
 
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
-  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "GILDAN KIDS", "Oversize"],
+  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "Oversize", "GILDAN KIDS"],
   "Hoodie": ["GILDAN Hoodie", "Premium Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
   "Phone Case": [],
   "Mug": [],
+  "Sport": ["Sport Set"],
 };
 
 // Per-brand color availability
@@ -70,8 +72,8 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Khundadze": ["White", "Black"],
   "NIKE": ["Dark Navy", "White", "Cream"],
   "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Oversize": ["White", "Black", "Beige", "Light Gray", "Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Standard Blue", "Burgundy", "Lime", "Purple"],
   "GILDAN KIDS": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "Oversize": ["White", "Black"],
 
   // Hoodie brands
   "GILDAN Hoodie": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
@@ -80,6 +82,9 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Blue"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
+
+  // Sport
+  "Sport Set": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
 
   // Standalone products (no sub-brands)
   "Cap": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
@@ -100,8 +105,10 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "Khundadze": ["S", "M", "L", "XL", "XXL"],
   "NIKE": ["S", "M", "L", "XL", "XXL"],
   "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
+  // Oversize: one-size — no size selector shown (entry intentionally omitted)
   "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
-  "Oversize": ["S", "M", "L", "XL", "XXL"],
+  // Sport
+  "Sport Set": ["S", "M", "L", "XL", "XXL"],
   // Hoodies
   "GILDAN Hoodie": ["S", "M", "L", "XL", "XXL"],
   "Premium Washed Hoodie": ["S", "M", "L", "XL", "XXL"],
@@ -153,6 +160,10 @@ const TOTE_BAG_BACK: PlacementCoords = { ...DEFAULT_BACK, y: DEFAULT_BACK.y + 0.
 
 // Mug-specific: shift design left by 8%
 const MUG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, x: DEFAULT_FRONT.x - 0.08 };
+
+// Sport Shorts: small design centered on upper front
+const SHORTS_FRONT: PlacementCoords = { x: 0.5, y: 0.28, scale: 0.22 };
+const SHORTS_BACK: PlacementCoords = { x: 0.5, y: 0.25, scale: 0.22 };
 
 // Known real image mappings: type|subType|color|view -> URL
 const KNOWN_IMAGES: Record<string, string> = {

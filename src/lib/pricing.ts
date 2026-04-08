@@ -22,7 +22,7 @@ const PRICES: Record<string, PriceTier> = {
   "Khundadze":      { frontOnly: 55, backPhoto: 70, backText: 65 },
   "Polo":           { frontOnly: 45, backPhoto: 60, backText: 55 },
   "NIKE":           { frontOnly: 100, backPhoto: 115, backText: 110 },
-  "Oversize":       { frontOnly: 55, backPhoto: 70, backText: 65 },
+  "Oversize":       { frontOnly: 65, backPhoto: 80, backText: 75 },
 
   // Hoodie brands
   "GILDAN Hoodie":       { frontOnly: 75, backPhoto: 90, backText: 85 },
@@ -31,6 +31,9 @@ const PRICES: Record<string, PriceTier> = {
   "JEL Standard Zipper": { frontOnly: 85, backPhoto: 100, backText: 95 },
   "JEL Zipper":          { frontOnly: 100, backPhoto: 115, backText: 110 },
   "GILDAN Bomber":       { frontOnly: 70, backPhoto: 95, backText: 90 },
+
+  // Sport
+  "Sport Set": { frontOnly: 65, backPhoto: 80, backText: 75 },
 
   // Other products (keyed by product type since no sub-brands)
   "Tote Bag":    { frontOnly: 35, backPhoto: 50, backText: 45 },
