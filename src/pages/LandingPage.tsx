@@ -1,9 +1,25 @@
+import { useState, useEffect } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 
+const SPORT_PHOTOS = [
+  "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
+  "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-black-front.png",
+  "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-back.png",
+  "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-black-back.png",
+];
+
 export default function LandingPage() {
   const { setMode, theme, toggleTheme } = useAppState();
+  const [sportPhotoIdx, setSportPhotoIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSportPhotoIdx((i) => (i + 1) % SPORT_PHOTOS.length);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
@@ -214,30 +230,56 @@ export default function LandingPage() {
         <div className="w-full max-w-4xl mb-12 sm:mb-16">
           <div className="relative rounded-3xl border border-[#25B988]/20 bg-gradient-to-br from-[#0a1a12] via-[#0c1a10] to-[#0a1508] p-8 sm:p-12 overflow-hidden">
             <div className="absolute top-0 right-0 w-[250px] h-[250px] rounded-full bg-[#25B988]/[0.08] blur-[80px] pointer-events-none" />
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-1 w-8 rounded-full bg-[#25B988]" />
-                <span className="text-xs font-semibold text-[#25B988] uppercase tracking-wider">SPORT</span>
+            <div className="relative z-10 flex flex-col sm:flex-row gap-8 items-center">
+              {/* Text content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-1 w-8 rounded-full bg-[#25B988]" />
+                  <span className="text-xs font-semibold text-[#25B988] uppercase tracking-wider">SPORT</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                  🏆 სპორტული ფორმები — შენი გუნდის იდენტობა
+                </h2>
+                <p className="text-sm sm:text-base text-white/70 leading-relaxed max-w-2xl mb-4">
+                  გუნდი მხოლოდ მოთამაშეები არ არის — გუნდი არის სტილი, ერთიანობა და სული. maika.ge გთავაზობთ პროფესიონალური სპორტული ფორმების დამზადებას უმაღლესი ხარისხის ქსოვილისგან, ინდივიდუალური ბრენდინგით — მოედნიდან ტრიბუნამდე.
+                </p>
+                <ul className="space-y-1.5 mb-8 text-sm text-white/60">
+                  <li>✦ უმაღლესი ხარისხის სუნთქვადი სპორტული ქსოვილი — კომფორტი ყველაზე ინტენსიური თამაშის დროსაც</li>
+                  <li>✦ რეცხვაგამძლე ბეჭდვა — ფერი და სიცხადე დიდხანს შენარჩუნებული</li>
+                  <li>✦ სრული პერსონალიზაცია — კლუბის ლოგო, მოთამაშის გვარი და ნომერი, ოფიციალური ფონტები</li>
+                  <li>✦ სპონსორის ლოგოს ბეჭდვა — პროფესიონალური განთავსება ფორმის ნებისმიერ ადგილზე</li>
+                  <li>✦ ნებისმიერი რაოდენობა — 1 ცალიდან</li>
+                </ul>
+                <button
+                  onClick={() => setMode("sport")}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors"
+                >
+                  დეტალები <ArrowRight className="h-4 w-4" />
+                </button>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-                🏆 სპორტული ფორმები — შენი გუნდის იდენტობა
-              </h2>
-              <p className="text-sm sm:text-base text-white/70 leading-relaxed max-w-2xl mb-4">
-                გუნდი მხოლოდ მოთამაშეები არ არის — გუნდი არის სტილი, ერთიანობა და სული. maika.ge გთავაზობთ პროფესიონალური სპორტული ფორმების დამზადებას უმაღლესი ხარისხის ქსოვილისგან, ინდივიდუალური ბრენდინგით — მოედნიდან ტრიბუნამდე.
-              </p>
-              <ul className="space-y-1.5 mb-8 text-sm text-white/60">
-                <li>✦ უმაღლესი ხარისხის სუნთქვადი სპორტული ქსოვილი — კომფორტი ყველაზე ინტენსიური თამაშის დროსაც</li>
-                <li>✦ რეცხვაგამძლე ბეჭდვა — ფერი და სიცხადე დიდხანს შენარჩუნებული</li>
-                <li>✦ სრული პერსონალიზაცია — კლუბის ლოგო, მოთამაშის გვარი და ნომერი, ოფიციალური ფონტები</li>
-                <li>✦ სპონსორის ლოგოს ბეჭდვა — პროფესიონალური განთავსება ფორმის ნებისმიერ ადგილზე</li>
-                <li>✦ ნებისმიერი რაოდენობა — 1 ცალიდან</li>
-              </ul>
-              <button
-                onClick={() => setMode("sport")}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors"
-              >
-                დეტალები <ArrowRight className="h-4 w-4" />
-              </button>
+
+              {/* Auto-rotating photo slideshow */}
+              <div className="relative w-48 h-56 sm:w-56 sm:h-64 flex-shrink-0">
+                {SPORT_PHOTOS.map((src, i) => (
+                  <img
+                    key={src}
+                    src={src}
+                    alt="Sport Set"
+                    className="absolute inset-0 w-full h-full object-contain rounded-2xl transition-opacity duration-700"
+                    style={{ opacity: i === sportPhotoIdx ? 1 : 0 }}
+                  />
+                ))}
+                {/* Dot indicators */}
+                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  {SPORT_PHOTOS.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSportPhotoIdx(i)}
+                      className={`w-1.5 h-1.5 rounded-full transition-all ${i === sportPhotoIdx ? "bg-[#25B988] w-3" : "bg-white/30"}`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>

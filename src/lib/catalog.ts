@@ -305,14 +305,15 @@ function generateCatalog(): CatalogEntry[] {
       if (brandColors.length === 0 && product.type === "Phone Case") {
         // Phone case has no color variants, add one default entry
         for (const view of ["front", "back"] as ProductView[]) {
+          const key = `${product.type}|${sub}|White|${view}`;
           entries.push({
             type: product.type,
             subType: sub,
-            color: "Black" as ProductColor,
+            color: "White" as ProductColor,
             view,
             filename: `phone-case-${view}.png`,
             placementZone: view === "front" ? DEFAULT_FRONT : DEFAULT_BACK,
-            imageUrl: null,
+            imageUrl: KNOWN_IMAGES[key] || null,
           });
         }
         continue;
