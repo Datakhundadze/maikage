@@ -192,6 +192,7 @@ export default function ProductPreview({
             onCoordsChange={onCoordsChange ?? (() => {})}
             disabled={disabled}
             accentClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "bg-gray-500" : undefined}
+            borderClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "border-gray-400/70" : undefined}
           >
             {designImage && (
               <img src={designImage} alt="Design" className="w-full h-full object-contain opacity-80" />

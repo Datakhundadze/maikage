@@ -9,6 +9,8 @@ interface DraggablePlacementProps {
   disabled?: boolean;
   /** Color for border/handles, defaults to primary */
   accentClass?: string;
+  /** Border color class, defaults to border-primary/60 */
+  borderClass?: string;
   /** Hide coordinate readout */
   hideReadout?: boolean;
   /** Whether this layer is selected (shows handles/border) */
@@ -19,7 +21,7 @@ interface DraggablePlacementProps {
 
 type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | "rotate" | null;
 
-export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, hideReadout, selected, onSelect }: DraggablePlacementProps) {
+export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, borderClass, hideReadout, selected, onSelect }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
   const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0, startAngle: 0, startRotation: 0 });
@@ -132,7 +134,7 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
       ref={containerRef}
       className={`absolute rounded-md transition-colors ${
         disabled ? "pointer-events-none" : "cursor-move"
-      } ${showBorder ? `border-2 border-dashed ${disabled ? "border-muted-foreground/30" : "border-primary/60"}` : "border-2 border-transparent"} ${dragMode === "move" ? "border-primary" : ""}`}
+      } ${showBorder ? `border-2 border-dashed ${disabled ? "border-muted-foreground/30" : (borderClass || "border-primary/60")}` : "border-2 border-transparent"} ${dragMode === "move" ? (borderClass ? borderClass.replace("/60", "") : "border-primary") : ""}`}
       style={{ left, top, width, height, touchAction: "none", transform: `rotate(${rotation}deg)` }}
       onPointerDown={(e) => handlePointerDown(e, "move")}
       onPointerMove={handlePointerMove}

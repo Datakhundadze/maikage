@@ -164,6 +164,9 @@ const MUG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, x: DEFAULT_FRONT.x - 0.08
 // Apron-specific: smaller zone centered on the chest/bib area
 const APRON_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.22 };
 
+// Phone Case-specific: design sits in the screen area (below camera bump)
+const PHONE_CASE_FRONT: PlacementCoords = { x: 0.5, y: 0.58, scale: 0.55 };
+
 // Sport Shorts: small design centered on upper front
 const SHORTS_FRONT: PlacementCoords = { x: 0.5, y: 0.28, scale: 0.22 };
 const SHORTS_BACK: PlacementCoords = { x: 0.5, y: 0.25, scale: 0.22 };
@@ -312,7 +315,7 @@ function generateCatalog(): CatalogEntry[] {
             color: "White" as ProductColor,
             view,
             filename: `phone-case-${view}.png`,
-            placementZone: view === "front" ? DEFAULT_FRONT : DEFAULT_BACK,
+            placementZone: view === "front" ? PHONE_CASE_FRONT : DEFAULT_BACK,
             imageUrl: KNOWN_IMAGES[key] || null,
           });
         }

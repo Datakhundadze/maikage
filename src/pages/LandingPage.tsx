@@ -240,16 +240,9 @@ export default function LandingPage() {
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
                   🏆 სპორტული ფორმები — შენი გუნდის იდენტობა
                 </h2>
-                <p className="text-sm sm:text-base text-white/70 leading-relaxed max-w-2xl mb-4">
-                  გუნდი მხოლოდ მოთამაშეები არ არის — გუნდი არის სტილი, ერთიანობა და სული. maika.ge გთავაზობთ პროფესიონალური სპორტული ფორმების დამზადებას უმაღლესი ხარისხის ქსოვილისგან, ინდივიდუალური ბრენდინგით — მოედნიდან ტრიბუნამდე.
+                <p className="text-sm sm:text-base text-white/70 leading-relaxed max-w-2xl mb-8">
+                  პროფესიონალური სპორტული ფორმები ინდივიდუალური ბრენდინგით — კლუბის ლოგო, ნომერი, სახელი. 1 ცალიდან.
                 </p>
-                <ul className="space-y-1.5 mb-8 text-sm text-white/60">
-                  <li>✦ უმაღლესი ხარისხის სუნთქვადი სპორტული ქსოვილი — კომფორტი ყველაზე ინტენსიური თამაშის დროსაც</li>
-                  <li>✦ რეცხვაგამძლე ბეჭდვა — ფერი და სიცხადე დიდხანს შენარჩუნებული</li>
-                  <li>✦ სრული პერსონალიზაცია — კლუბის ლოგო, მოთამაშის გვარი და ნომერი, ოფიციალური ფონტები</li>
-                  <li>✦ სპონსორის ლოგოს ბეჭდვა — პროფესიონალური განთავსება ფორმის ნებისმიერ ადგილზე</li>
-                  <li>✦ ნებისმიერი რაოდენობა — 1 ცალიდან</li>
-                </ul>
                 <button
                   onClick={() => setMode("sport")}
                   className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors"
