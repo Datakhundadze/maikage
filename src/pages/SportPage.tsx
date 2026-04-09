@@ -9,6 +9,10 @@ const SLIDES = [
   `${BASE}/jersey-2.png`,
   `${BASE}/jersey-3.png`,
   `${BASE}/jersey-4.png`,
+  `${BASE}/jersey-5.png`,
+  `${BASE}/jersey-6.png`,
+  `${BASE}/jersey-7.png`,
+  `${BASE}/jersey-8.png`,
 ];
 
 export default function SportPage() {
