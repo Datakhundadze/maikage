@@ -72,7 +72,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "Khundadze": ["White", "Black"],
   "NIKE": ["Dark Navy", "White", "Cream"],
   "Polo": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  "Oversize": ["White", "Black", "Beige", "Light Gray", "Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Standard Blue", "Burgundy", "Lime", "Purple"],
+  "Oversize": ["White", "Black"],
   "GILDAN KIDS": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
 
   // Hoodie brands
