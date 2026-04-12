@@ -89,37 +89,38 @@ function buildGenerateDesignMessages(params: any) {
   const content: any[] = [];
 
   if (isRealistic) {
-    // Realistic mode: photorealistic photograph, never mention garments/printing
-    // (the compositing pipeline handles placing it on the product)
+    // Realistic mode: hyperrealistic render. Do NOT mention garments/printing —
+    // the compositing pipeline handles placing it on the product.
     content.push({
       type: "text",
-      text: `Generate a photorealistic image. This must be indistinguishable from a real photograph.
+      text: `Hyperrealistic 3D render or studio photograph.
 
 SUBJECT: ${safeCharacter}
-${scene ? `SCENE / SETTING: ${scene}` : ""}
+${scene ? `SCENE: ${scene}` : ""}
 
-VISUAL REQUIREMENTS — all of these must be present:
-- Colors blend continuously with no hard edges or outlines between areas
-- Zero black outlines around any subject or element — photographic subjects never have outlines
-- Skin shows natural pores, subsurface scattering, soft highlight falloff
-- Hair strands are individually rendered with natural sheen and volume
-- Lighting casts genuine soft shadows with penumbra (not cartoon drop shadows)
-- Background: pure solid white (#FFFFFF) — seamless studio paper
-- Depth of field: subject in sharp focus, natural photographic bokeh
+STYLE: photorealistic — the output must look like a real photograph or ultra-realistic CGI render, NOT an illustration.
 
-MANDATORY — this image is a PHOTOGRAPH, not artwork:
-- NO illustration / NO drawing / NO painting / NO sketch
-- NO vector art / NO flat design / NO graphic design
-- NO cartoon / NO anime / NO comic / NO cel-shading
-- NO bold outlines around subjects (photographs have NO outlines)
-- NO poster art / NO streetwear graphic / NO promotional artwork
+REQUIRED visual properties:
+• No black outlines anywhere — real objects do not have outlines
+• Colors and tones blend naturally; no flat or cel-shaded areas
+• Surfaces show real material texture: fur, skin pores, fabric weave, metal grain, etc.
+• Soft natural shadows with gradient penumbra, not harsh cartoon shadows
+• Three-dimensional volume and depth — not flat 2D artwork
+• Background: solid pure white #FFFFFF
 
-OTHER RULES:
-- ABSOLUTELY NO Russian language, Cyrillic text, or Russian cultural references
-- ALL depicted persons must be adults (18+)
-${text ? `- Include the text "${text}" naturally integrated` : "- NO text, words, letters or numbers in the image"}
+ABSOLUTELY FORBIDDEN:
+• Illustration, drawing, painting, sketch, watercolor
+• Vector art, flat design, graphic design
+• Cartoon, anime, manga, comic book, cel-shading
+• Any bold outlines separating colored areas
+• Poster art, streetwear graphic, merchandise design
 
-OUTPUT: One photorealistic photograph on solid pure white (#FFFFFF). No frame, no border, no watermark.`,
+RULES:
+• No Russian language or Cyrillic text
+• All persons depicted must be adults (18+)
+${text ? `• Include the text "${text}" in the image` : "• No text, letters, or numbers in the image"}
+
+OUTPUT: Single image on solid white background #FFFFFF. No border.`,
     });
   } else {
     // Illustration / graphic mode
@@ -211,9 +212,12 @@ serve(async (req) => {
 
     if (action === "generate-design") {
       const speed = params.speed || "fast";
-      const isRealisticMode = /realistic|photo|\u10e0\u10d4\u10d0\u10da\u10d8\u10e1\u10e2|\u10e4\u10dd\u10e2\u10dd/i.test(params.style || "");
+      // Accept explicit flag from client (no regex needed); fallback to regex for safety
+      const isRealisticMode = params.isRealistic === true ||
+        /realistic|photo|\u10e0\u10d4\u10d0\u10da\u10d8\u10e1\u10e2|\u10e4\u10dd\u10e2\u10dd/i.test(params.style || "");
       // Realistic mode always uses the pro model — Flash is heavily biased toward illustrations
       model = (speed === "fast" && !isRealisticMode) ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image-preview";
+      console.log(`[gemini-proxy] generate-design: style="${params.style}" isRealistic=${isRealisticMode} model=${model}`);
       messages = buildGenerateDesignMessages(params);
 
     } else if (action === "convert-bg-black") {

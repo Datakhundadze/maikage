@@ -337,11 +337,15 @@ export async function runGenerationPipeline(
 ): Promise<GenerationResult> {
   // Stage 1: Generate design on white background
   onStatusChange("GENERATING_DESIGN");
+  // Compute isRealistic on the client side and send as explicit flag
+  // so the edge function doesn't need to do regex matching
+  const isRealistic = /realistic|photo|რეალ/i.test(params.designParams.style || "");
   const designResult = await callGemini("generate-design", {
     ...params.designParams,
     product: params.product,
     color: params.color,
     speed: params.speed,
+    isRealistic,
   });
 
   const designImage = designResult.image;
