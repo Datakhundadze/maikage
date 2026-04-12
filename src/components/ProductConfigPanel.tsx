@@ -32,6 +32,7 @@ export default function ProductConfigPanel({
   const { lang } = useAppState();
   const [productOpen, setProductOpen] = useState(true);
   const [brandOpen, setBrandOpen] = useState(false);
+  const [colorOpen, setColorOpen] = useState(true);
 
   const subProducts = SUB_PRODUCTS[config.product];
   const availableColors = catalog.getAvailableColors(config.product, config.subProduct);
@@ -116,33 +117,54 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* Color — always flat */}
+      {/* Color — collapsible */}
       {availableColors.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.color")}</h3>
-          <div className="grid grid-cols-5 gap-2">
-            {COLORS.filter((c) => availableColors.includes(c.name)).map((c) => {
-              const selected = config.color === c.name;
-              return (
-                <button
-                  key={c.name}
-                  onClick={() => onColorChange(c.name)}
-                  className="group flex flex-col items-center gap-1"
-                  title={c.name}
-                >
-                  <div
-                    className={`h-8 w-8 rounded-full border-2 transition-all ${
-                      selected
-                        ? "border-primary scale-110 ring-2 ring-primary/30"
-                        : "border-border group-hover:border-primary/50"
-                    } ${c.name === "White" || c.name === "Cream" ? "border-muted-foreground/30" : ""}`}
-                    style={{ backgroundColor: c.hex }}
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <button
+            onClick={() => setColorOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold text-card-foreground hover:bg-muted/30 transition-colors"
+          >
+            <span>{t(lang, "config.color")}</span>
+            <div className="flex items-center gap-2">
+              {!colorOpen && (
+                <span className="flex items-center gap-1">
+                  <span
+                    className="inline-block h-3.5 w-3.5 rounded-full border border-border"
+                    style={{ backgroundColor: COLORS.find(c => c.name === config.color)?.hex }}
                   />
-                  <span className="text-[10px] text-muted-foreground leading-tight">{c.name}</span>
-                </button>
-              );
-            })}
-          </div>
+                  <span className="text-[10px] font-normal text-muted-foreground">{config.color}</span>
+                </span>
+              )}
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${colorOpen ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+          {colorOpen && (
+            <div className="px-3 pb-3">
+              <div className="grid grid-cols-5 gap-2">
+                {COLORS.filter((c) => availableColors.includes(c.name)).map((c) => {
+                  const selected = config.color === c.name;
+                  return (
+                    <button
+                      key={c.name}
+                      onClick={() => onColorChange(c.name)}
+                      className="group flex flex-col items-center gap-1"
+                      title={c.name}
+                    >
+                      <div
+                        className={`h-8 w-8 rounded-full border-2 transition-all ${
+                          selected
+                            ? "border-primary scale-110 ring-2 ring-primary/30"
+                            : "border-border group-hover:border-primary/50"
+                        } ${c.name === "White" || c.name === "Cream" ? "border-muted-foreground/30" : ""}`}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                      <span className="text-[10px] text-muted-foreground leading-tight">{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

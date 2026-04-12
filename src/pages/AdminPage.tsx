@@ -10,7 +10,7 @@ import AdminUsers from "@/components/admin/AdminUsers";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import AdminCorporate from "@/components/admin/AdminCorporate";
 
-const ADMIN_PASSWORD = "maika2026admin";
+const ADMIN_PASSWORD = "maisuri720520";
 
 type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate";
 

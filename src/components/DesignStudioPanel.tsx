@@ -22,16 +22,9 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
 
   const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
 
-  const styleOptions = [
-    "რეალისტური",
-    "ანიმაციური",
-    "ილუსტრაცია",
-    "ოილ არტი",
-    "ანიმე",
-    "კომიქსი",
-    "Line Art",
-    "გრაფიკა",
-  ];
+  const styleOptions = lang === "en"
+    ? ["Realistic", "Animated", "Illustration", "Oil Art", "Anime", "Comics", "Line Art", "Graphic"]
+    : ["რეალისტური", "ანიმაციური", "ილუსტრაცია", "ოილ არტი", "ანიმე", "კომიქსი", "Line Art", "გრაფიკა"];
 
 
   const steps = [

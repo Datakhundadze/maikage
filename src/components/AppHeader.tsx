@@ -8,7 +8,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import LoginModal from "@/components/LoginModal";
 
 export default function AppHeader() {
-  const { lang, setMode } = useAppState();
+  const { lang, setMode, toggleLang } = useAppState();
   const { user, isAnonymous, signOut } = useAuth();
   const { isAdmin } = useAdminCheck();
   const navigate = useNavigate();
@@ -68,8 +68,15 @@ export default function AppHeader() {
           })}
         </nav>
 
-        {/* RIGHT: auth toggle button */}
-        <div className="shrink-0">
+        {/* RIGHT: lang + auth */}
+        <div className="shrink-0 flex items-center gap-1.5">
+          <button
+            onClick={toggleLang}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border"
+            title={lang === "en" ? "Switch to Georgian" : "Switch to English"}
+          >
+            {lang === "en" ? "🇬🇪 GE" : "🇬🇧 EN"}
+          </button>
           {isLoggedIn ? (
             <button
               onClick={() => signOut(setMode)}
