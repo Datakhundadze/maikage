@@ -196,7 +196,7 @@ export default function DesignSection({
           onChange={(e) => onTextChange(e.target.value)}
           onPaste={handlePaste}
           placeholder={placeholder}
-          className="min-h-[60px] text-sm resize-none overflow-hidden"
+          className="min-h-[60px] text-sm resize-none"
         />
       </div>
     </div>

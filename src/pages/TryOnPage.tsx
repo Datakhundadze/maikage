@@ -289,15 +289,6 @@ export default function TryOnPage() {
                 <Download className="h-4 w-4" />
                 გადმოწერა
               </Button>
-              {retryCount < 1 && (
-                <Button
-                  variant="outline"
-                  className="w-full gap-2 h-11"
-                  onClick={() => { setResultImage(null); setPersonImage(null); setRetryCount((c) => c + 1); }}
-                >
-                  ხელახლა ცდა
-                </Button>
-              )}
               <Button
                 variant="outline"
                 className="w-full gap-2 h-11 border-amber-500/40 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"

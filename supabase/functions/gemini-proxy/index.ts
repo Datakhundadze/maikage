@@ -84,7 +84,7 @@ function buildGenerateDesignMessages(params: any) {
   const text = (rawText || "").trim();
   const safeCharacter = sanitizeCharacter(character || "No character specified");
 
-  const isRealistic = /realistic|photo/i.test(style || "");
+  const isRealistic = /realistic|photo|\u10e0\u10d4\u10d0\u10da\u10d8\u10e1\u10e2|\u10e4\u10dd\u10e2\u10dd/i.test(style || "");
 
   const systemRole = isRealistic
     ? `You are a photorealistic image creator. Generate a photorealistic print design for a ${product} (${color} color).`
