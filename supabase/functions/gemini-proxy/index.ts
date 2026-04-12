@@ -86,26 +86,37 @@ function buildGenerateDesignMessages(params: any) {
 
   const isRealistic = /realistic|photo|\u10e0\u10d4\u10d0\u10da\u10d8\u10e1\u10e2|\u10e4\u10dd\u10e2\u10dd/i.test(style || "");
 
-  const systemRole = isRealistic
-    ? `You are a photorealistic image creator. Generate a photorealistic print design for a ${product} (${color} color).`
-    : `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).`;
-
-  const styleRules = isRealistic
-    ? `2. PHOTOREALISTIC ONLY — this MUST look like an actual photograph or photorealistic 3D render. NOT an illustration, NOT a drawing, NOT a vector graphic, NOT a cartoon, NOT a comic, NOT a streetwear graphic
-3. Natural lighting, realistic textures, lifelike proportions and photographic detail
-4. Think: high-quality studio photo or photorealistic 3D render — absolutely not artwork or illustration
-5. Suitable for printing on garments — clean composition on white background`
-    : `2. Design must be a printable silhouette/illustration suitable for garment printing
-3. High contrast, bold lines, vibrant colors`;
-
-  const outputDesc = isRealistic
-    ? "A single square PHOTOREALISTIC image (looks like a real photograph or photorealistic render — NOT an illustration) on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements."
-    : "A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.";
-
   const content: any[] = [];
-  content.push({
-    type: "text",
-    text: `${systemRole}
+
+  if (isRealistic) {
+    // Realistic mode: ask for a pure photograph — never mention garments/printing
+    // (the compositing pipeline handles placing it on the product)
+    content.push({
+      type: "text",
+      text: `You are a professional photographer and photorealistic image creator.
+
+Create a PHOTOREALISTIC STUDIO PHOTOGRAPH of the subject described below.
+
+SUBJECT: ${safeCharacter}
+${scene ? `SCENE/ACTION: ${scene}` : ""}
+
+STRICT REQUIREMENTS — read carefully:
+1. This image MUST look like a real photograph taken with a professional camera — NOT an illustration, NOT a drawing, NOT a painting, NOT vector art, NOT a cartoon, NOT a comic book panel, NOT a poster design
+2. Photographic realism: natural skin textures, realistic lighting and shadows, lifelike proportions, photographic depth
+3. Studio-style pure white background (#FFFFFF) — like a commercial product or portrait shoot
+4. Subject fills the frame naturally, well-composed
+5. NO illustration style, NO cel-shading, NO bold outlines, NO stylized rendering of any kind
+6. ABSOLUTELY NO Russian language, Cyrillic text, or Russian cultural references
+7. ALL depicted persons must be adults (18+)
+${text ? `8. Include the text "${text}" naturally integrated` : "8. NO text, words, letters or numbers in the image"}
+
+OUTPUT: A single photorealistic studio photograph on a solid pure white (#FFFFFF) background. No frame, no border, no extra elements.`,
+    });
+  } else {
+    // Illustration / graphic mode
+    content.push({
+      type: "text",
+      text: `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).
 
 DESIGN SYSTEM:
 - Character/Subject = WHO is in the design
@@ -115,18 +126,20 @@ DESIGN SYSTEM:
 
 CRITICAL RULES:
 1. Pure white background (#FFFFFF) — absolutely no gradients, shadows, or textures in background
-${styleRules}
-${isRealistic ? "6" : "4"}. No frame, no border, no mockup — just the raw design on white
-${isRealistic ? "7" : "5"}. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
-${isRealistic ? "8" : "6"}. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
+2. Design must be a printable silhouette/illustration suitable for garment printing
+3. High contrast, bold lines, vibrant colors
+4. No frame, no border, no mockup — just the raw design on white
+5. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
+6. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
 
 CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
 ${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : "DO NOT include any text, words, letters, numbers, or typography of any kind in the design. The design must be purely visual/illustrative with absolutely no written elements."}
 
-OUTPUT: ${outputDesc}`,
-  });
+OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.`,
+    });
+  }
 
   if (characterImages?.length) {
     content.push({ type: "text", text: "Character reference images:" });
