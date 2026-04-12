@@ -324,6 +324,10 @@ function StudioContent() {
               onSizeChange={productConfig.setSize}
               excludeProducts={["Sport"]}
             />
+            {/* Mobile-only inline preview — appears below view buttons, above design panel */}
+            <div className="lg:hidden rounded-xl overflow-hidden border border-border bg-background">
+              {mainContent}
+            </div>
             <div className="border-t border-sidebar-border pt-4 space-y-4">
               <PriceDisplay breakdown={priceBreakdown} />
               {result && (
