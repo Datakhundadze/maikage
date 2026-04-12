@@ -76,6 +76,19 @@ function buildGenerateDesignMessages(params: any) {
   const text = (rawText || "").trim();
   const safeCharacter = sanitizeCharacter(character || "No character specified");
 
+  const isRealistic = /რეალისტ|realistic|photo|ფოტო/i.test(style || "");
+
+  const styleRules = isRealistic
+    ? `2. Design must look like a real photograph or photorealistic render — NOT an illustration, cartoon, or graphic
+3. Natural lighting, realistic textures, lifelike proportions and details
+4. Suitable for printing on garments — clean composition on white background`
+    : `2. Design must be a printable silhouette/illustration suitable for garment printing
+3. High contrast, bold lines, vibrant colors`;
+
+  const outputDesc = isRealistic
+    ? "A single square photorealistic image on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements."
+    : "A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.";
+
   const content: any[] = [];
   content.push({
     type: "text",
@@ -89,18 +102,17 @@ DESIGN SYSTEM:
 
 CRITICAL RULES:
 1. Pure white background (#FFFFFF) — absolutely no gradients, shadows, or textures in background
-2. Design must be a printable silhouette/illustration suitable for garment printing
-3. High contrast, bold lines, vibrant colors
-4. No frame, no border, no mockup — just the raw design on white
-5. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
-6. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
+${styleRules}
+${isRealistic ? "5" : "4"}. No frame, no border, no mockup — just the raw design on white
+${isRealistic ? "6" : "5"}. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
+${isRealistic ? "7" : "6"}. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
 
 CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
 ${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : "DO NOT include any text, words, letters, numbers, or typography of any kind in the design. The design must be purely visual/illustrative with absolutely no written elements."}
 
-OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.`,
+OUTPUT: ${outputDesc}`,
   });
 
   if (characterImages?.length) {
