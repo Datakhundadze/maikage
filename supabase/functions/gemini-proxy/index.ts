@@ -93,24 +93,34 @@ function buildGenerateDesignMessages(params: any) {
     // (the compositing pipeline handles placing it on the product)
     content.push({
       type: "text",
-      text: `You are a professional photographer and photorealistic image creator.
-
-Create a PHOTOREALISTIC STUDIO PHOTOGRAPH of the subject described below.
+      text: `You are a professional commercial photographer. Produce a high-resolution studio photograph.
 
 SUBJECT: ${safeCharacter}
-${scene ? `SCENE/ACTION: ${scene}` : ""}
+${scene ? `SCENE / SETTING: ${scene}` : ""}
 
-STRICT REQUIREMENTS — read carefully:
-1. This image MUST look like a real photograph taken with a professional camera — NOT an illustration, NOT a drawing, NOT a painting, NOT vector art, NOT a cartoon, NOT a comic book panel, NOT a poster design
-2. Photographic realism: natural skin textures, realistic lighting and shadows, lifelike proportions, photographic depth
-3. Studio-style pure white background (#FFFFFF) — like a commercial product or portrait shoot
-4. Subject fills the frame naturally, well-composed
-5. NO illustration style, NO cel-shading, NO bold outlines, NO stylized rendering of any kind
-6. ABSOLUTELY NO Russian language, Cyrillic text, or Russian cultural references
-7. ALL depicted persons must be adults (18+)
-${text ? `8. Include the text "${text}" naturally integrated` : "8. NO text, words, letters or numbers in the image"}
+PHOTOGRAPHY SPECIFICATION:
+- Camera: Canon EOS R5, 85 mm f/1.4 portrait lens
+- Lighting: professional softbox studio setup, natural-looking shadows
+- Background: pure white seamless paper backdrop (#FFFFFF)
+- Style: high-end commercial / editorial photography — like a Getty Images or Shutterstock premium photo
+- Skin: realistic pores, natural texture, no airbrushing
+- Eyes and hair: photographic sharpness and detail
+- Depth of field: subject sharp, slight natural background blur
 
-OUTPUT: A single photorealistic studio photograph on a solid pure white (#FFFFFF) background. No frame, no border, no extra elements.`,
+ABSOLUTE PROHIBITIONS — the output MUST NOT be any of these:
+✗ illustration, drawing, painting, or sketch
+✗ vector art, flat design, or graphic design
+✗ cartoon, anime, or comic book style
+✗ cel-shading or bold black outlines around subjects
+✗ poster art, streetwear graphic, or promotional artwork
+✗ any artistic stylization whatsoever — ONLY photographic realism
+
+OTHER RULES:
+- ABSOLUTELY NO Russian language, Cyrillic text, or Russian cultural references
+- ALL depicted persons must be adults (18+)
+${text ? `- Include the text "${text}" naturally integrated` : "- NO text, words, letters or numbers in the image"}
+
+OUTPUT: One single photorealistic studio photograph on a solid pure white (#FFFFFF) background. No frame, no border.`,
     });
   } else {
     // Illustration / graphic mode

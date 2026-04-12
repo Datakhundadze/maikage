@@ -38,7 +38,10 @@ function StudioContent() {
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
-  
+
+  // Mobile: scroll to preview area when generation starts
+  const mobilePreviewRef = useRef<HTMLDivElement>(null);
+
   const { user } = useAuth();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
@@ -271,6 +274,13 @@ function StudioContent() {
 
   const isProcessing = state.appStatus !== "IDLE" && state.appStatus !== "COMPLETE" && state.appStatus !== "ERROR";
 
+  // Mobile: scroll into view when generation or result becomes active
+  useEffect(() => {
+    if ((isProcessing || result) && mobilePreviewRef.current) {
+      mobilePreviewRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [isProcessing, !!result]);
+
   const mainContent = isProcessing ? (
     <div className="flex h-full items-center justify-center">
       <GenerationLoader status={state.appStatus} />
@@ -325,7 +335,7 @@ function StudioContent() {
               excludeProducts={["Sport"]}
             />
             {/* Mobile-only inline preview — appears below view buttons, above design panel */}
-            <div className="lg:hidden rounded-xl overflow-hidden border border-border bg-background">
+            <div ref={mobilePreviewRef} className="lg:hidden rounded-xl overflow-hidden border border-border bg-background">
               {mainContent}
             </div>
             <div className="border-t border-sidebar-border pt-4 space-y-4">
