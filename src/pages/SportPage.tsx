@@ -1,5 +1,6 @@
 import { useAppState } from "@/hooks/useAppState";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 
 // Placeholder slots — replace src values with real Supabase URLs after upload
 const SPORT_GALLERY: { src: string; label: string }[] = [
@@ -45,12 +46,11 @@ export default function SportPage() {
             <li>✦ სპონსორის ლოგოს ბეჭდვა — პროფესიონალური განთავსება ფორმის ნებისმიერ ადგილზე</li>
             <li>✦ ნებისმიერი რაოდენობა — 1 ცალიდან</li>
           </ul>
-          <button
-            onClick={() => setMode("simple")}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors"
-          >
-            შეკვეთა <ArrowRight className="h-4 w-4" />
-          </button>
+          <CorporateInquiryModal>
+            <button className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors">
+              დაგვიკავშირდით
+            </button>
+          </CorporateInquiryModal>
         </div>
 
         {/* Photo gallery */}
