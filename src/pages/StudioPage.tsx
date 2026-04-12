@@ -83,10 +83,11 @@ function StudioContent() {
     }
   }, [result]);
 
-  // 30-minute inactivity → redirect to landing
+  // 30-minute inactivity → redirect to landing (paused while tab is hidden)
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const reset = () => {
+      if (document.hidden) return; // Don't start timer while tab is backgrounded
       clearTimeout(timer);
       timer = setTimeout(() => {
         setResult(null);
@@ -95,12 +96,23 @@ function StudioContent() {
         window.location.href = "/";
       }, SESSION_TIMEOUT_MS);
     };
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab hidden — pause the timer
+        clearTimeout(timer);
+      } else {
+        // Tab visible again — restart the timer fresh
+        reset();
+      }
+    };
     const events = ["click", "keydown", "scroll", "mousemove", "touchstart"];
     events.forEach((e) => window.addEventListener(e, reset, { passive: true }));
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     reset();
     return () => {
       clearTimeout(timer);
       events.forEach((e) => window.removeEventListener(e, reset));
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 

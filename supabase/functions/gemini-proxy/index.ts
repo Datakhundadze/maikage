@@ -89,38 +89,37 @@ function buildGenerateDesignMessages(params: any) {
   const content: any[] = [];
 
   if (isRealistic) {
-    // Realistic mode: ask for a pure photograph — never mention garments/printing
+    // Realistic mode: photorealistic photograph, never mention garments/printing
     // (the compositing pipeline handles placing it on the product)
     content.push({
       type: "text",
-      text: `You are a professional commercial photographer. Produce a high-resolution studio photograph.
+      text: `Generate a photorealistic image. This must be indistinguishable from a real photograph.
 
 SUBJECT: ${safeCharacter}
 ${scene ? `SCENE / SETTING: ${scene}` : ""}
 
-PHOTOGRAPHY SPECIFICATION:
-- Camera: Canon EOS R5, 85 mm f/1.4 portrait lens
-- Lighting: professional softbox studio setup, natural-looking shadows
-- Background: pure white seamless paper backdrop (#FFFFFF)
-- Style: high-end commercial / editorial photography — like a Getty Images or Shutterstock premium photo
-- Skin: realistic pores, natural texture, no airbrushing
-- Eyes and hair: photographic sharpness and detail
-- Depth of field: subject sharp, slight natural background blur
+VISUAL REQUIREMENTS — all of these must be present:
+- Colors blend continuously with no hard edges or outlines between areas
+- Zero black outlines around any subject or element — photographic subjects never have outlines
+- Skin shows natural pores, subsurface scattering, soft highlight falloff
+- Hair strands are individually rendered with natural sheen and volume
+- Lighting casts genuine soft shadows with penumbra (not cartoon drop shadows)
+- Background: pure solid white (#FFFFFF) — seamless studio paper
+- Depth of field: subject in sharp focus, natural photographic bokeh
 
-ABSOLUTE PROHIBITIONS — the output MUST NOT be any of these:
-✗ illustration, drawing, painting, or sketch
-✗ vector art, flat design, or graphic design
-✗ cartoon, anime, or comic book style
-✗ cel-shading or bold black outlines around subjects
-✗ poster art, streetwear graphic, or promotional artwork
-✗ any artistic stylization whatsoever — ONLY photographic realism
+MANDATORY — this image is a PHOTOGRAPH, not artwork:
+- NO illustration / NO drawing / NO painting / NO sketch
+- NO vector art / NO flat design / NO graphic design
+- NO cartoon / NO anime / NO comic / NO cel-shading
+- NO bold outlines around subjects (photographs have NO outlines)
+- NO poster art / NO streetwear graphic / NO promotional artwork
 
 OTHER RULES:
 - ABSOLUTELY NO Russian language, Cyrillic text, or Russian cultural references
 - ALL depicted persons must be adults (18+)
 ${text ? `- Include the text "${text}" naturally integrated` : "- NO text, words, letters or numbers in the image"}
 
-OUTPUT: One single photorealistic studio photograph on a solid pure white (#FFFFFF) background. No frame, no border.`,
+OUTPUT: One photorealistic photograph on solid pure white (#FFFFFF). No frame, no border, no watermark.`,
     });
   } else {
     // Illustration / graphic mode
@@ -212,7 +211,9 @@ serve(async (req) => {
 
     if (action === "generate-design") {
       const speed = params.speed || "fast";
-      model = speed === "fast" ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image-preview";
+      const isRealisticMode = /realistic|photo|\u10e0\u10d4\u10d0\u10da\u10d8\u10e1\u10e2|\u10e4\u10dd\u10e2\u10dd/i.test(params.style || "");
+      // Realistic mode always uses the pro model — Flash is heavily biased toward illustrations
+      model = (speed === "fast" && !isRealisticMode) ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image-preview";
       messages = buildGenerateDesignMessages(params);
 
     } else if (action === "convert-bg-black") {
