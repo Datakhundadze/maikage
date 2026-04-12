@@ -14,6 +14,7 @@ interface ResultViewProps {
   productName?: string;
   subType?: string;
   colorName?: string;
+  placementCoords?: { x: number; y: number; scale: number };
   onResultUpdate?: (result: GenerationResult) => void;
   onOrder?: () => void;
   onShareToCommunity?: () => void;
@@ -21,7 +22,7 @@ interface ResultViewProps {
   isShared?: boolean;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", subType = "", colorName = "", onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", subType = "", colorName = "", placementCoords, onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const navigate = useNavigate();
@@ -73,6 +74,7 @@ export default function ResultView({ result, onViewImage, productName = "design"
         productName,
         subType,
         colorName,
+        placementCoords,
       },
     });
   };

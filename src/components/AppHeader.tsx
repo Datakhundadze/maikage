@@ -75,7 +75,7 @@ export default function AppHeader() {
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border"
             title={lang === "en" ? "Switch to Georgian" : "Switch to English"}
           >
-            {lang === "en" ? "🇬🇪 GE" : "🇬🇧 EN"}
+            {lang === "en" ? "🌐 GE" : "🌐 EN"}
           </button>
           {isLoggedIn ? (
             <button

@@ -282,6 +282,7 @@ function StudioContent() {
       productName={productConfig.config.product}
       subType={productConfig.config.subProduct}
       colorName={productConfig.config.color}
+      placementCoords={productConfig.config.placementCoords}
       onResultUpdate={setResult}
       onOrder={() => setOrderDialogOpen(true)}
       onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}

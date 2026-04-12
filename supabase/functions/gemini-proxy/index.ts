@@ -71,28 +71,41 @@ function sanitizeCharacter(character: string): string {
   );
 }
 
+/** Describe print placement position from normalized coords (0–1) */
+function describePlacement(x?: number, y?: number, scale?: number): string {
+  if (x == null || scale == null) return "centered on the chest";
+  const horz = x < 0.38 ? "upper left chest" : x > 0.62 ? "upper right chest" : "center of the chest";
+  const size = scale < 0.32 ? "small" : scale > 0.6 ? "large" : "medium-sized";
+  return `${size} print on the ${horz}`;
+}
+
 function buildGenerateDesignMessages(params: any) {
   const { character, characterImages, scene, sceneImage, style, styleImage, text: rawText, textImage, product, color } = params;
   const text = (rawText || "").trim();
   const safeCharacter = sanitizeCharacter(character || "No character specified");
 
-  const isRealistic = /რეალისტ|realistic|photo|ფოტო/i.test(style || "");
+  const isRealistic = /realistic|photo/i.test(style || "");
+
+  const systemRole = isRealistic
+    ? `You are a photorealistic image creator. Generate a photorealistic print design for a ${product} (${color} color).`
+    : `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).`;
 
   const styleRules = isRealistic
-    ? `2. Design must look like a real photograph or photorealistic render — NOT an illustration, cartoon, or graphic
-3. Natural lighting, realistic textures, lifelike proportions and details
-4. Suitable for printing on garments — clean composition on white background`
+    ? `2. PHOTOREALISTIC ONLY — this MUST look like an actual photograph or photorealistic 3D render. NOT an illustration, NOT a drawing, NOT a vector graphic, NOT a cartoon, NOT a comic, NOT a streetwear graphic
+3. Natural lighting, realistic textures, lifelike proportions and photographic detail
+4. Think: high-quality studio photo or photorealistic 3D render — absolutely not artwork or illustration
+5. Suitable for printing on garments — clean composition on white background`
     : `2. Design must be a printable silhouette/illustration suitable for garment printing
 3. High contrast, bold lines, vibrant colors`;
 
   const outputDesc = isRealistic
-    ? "A single square photorealistic image on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements."
+    ? "A single square PHOTOREALISTIC image (looks like a real photograph or photorealistic render — NOT an illustration) on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements."
     : "A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.";
 
   const content: any[] = [];
   content.push({
     type: "text",
-    text: `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).
+    text: `${systemRole}
 
 DESIGN SYSTEM:
 - Character/Subject = WHO is in the design
@@ -103,9 +116,9 @@ DESIGN SYSTEM:
 CRITICAL RULES:
 1. Pure white background (#FFFFFF) — absolutely no gradients, shadows, or textures in background
 ${styleRules}
-${isRealistic ? "5" : "4"}. No frame, no border, no mockup — just the raw design on white
-${isRealistic ? "6" : "5"}. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
-${isRealistic ? "7" : "6"}. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
+${isRealistic ? "6" : "4"}. No frame, no border, no mockup — just the raw design on white
+${isRealistic ? "7" : "5"}. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
+${isRealistic ? "8" : "6"}. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
 
 CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
@@ -224,6 +237,7 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
 
     } else if (action === "virtual-tryon") {
       model = "google/gemini-2.5-flash-image";
+      const placementDesc = describePlacement(params.placementX, params.placementY, params.placementScale);
       const tryOnText = params.useMockupStyle
         ? `You are a photorealistic fashion compositor. Create a virtual try-on image.
 
@@ -240,12 +254,12 @@ Output: one photorealistic composite photo.`
 GARMENT SPECIFICATIONS:
 - Type: ${params.productName || "t-shirt"}
 - Color: ${params.colorName || "white"}
-- Print/design: the artwork shown in the second image, placed centered on the chest
+- Print/design: the artwork shown in the second image, placed as a ${placementDesc}
 
 INSTRUCTIONS:
 1. Keep the person (face, hair, body, pose, background) EXACTLY as in the first photo — do not alter anything about the person or setting
 2. Replace the person's top clothing with a ${params.colorName || "white"} ${params.productName || "t-shirt"}
-3. Print the design from the second image onto the chest of the ${params.colorName || "white"} ${params.productName || "t-shirt"}
+3. Print the design from the second image onto the garment as a ${placementDesc} — respect the exact placement position
 4. The ${params.productName || "t-shirt"} color MUST be ${params.colorName || "white"} — this is mandatory
 5. Lighting and fabric folds should look natural and photorealistic
 
