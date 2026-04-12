@@ -161,7 +161,7 @@ export default function CorporateInquiryModal({ children }: { children: React.Re
           </div>
 
           <div className="space-y-1.5">
-            <Label>ლოგოს ატვირთვა</Label>
+            <Label>ატვირთვა</Label>
             <label className="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border p-3 hover:bg-muted/50 transition-colors">
               <Upload className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">

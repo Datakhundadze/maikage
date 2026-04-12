@@ -11,8 +11,13 @@ const SPORT_PHOTOS = [
 ];
 
 export default function LandingPage() {
-  const { setMode, theme, toggleTheme } = useAppState();
+  const { setMode, theme, toggleTheme, lang, toggleLang } = useAppState();
   const [sportPhotoIdx, setSportPhotoIdx] = useState(0);
+
+  const isGreen = theme === "green";
+  // Colors used in green theme
+  const GREEN = "#25B988";
+  const GREEN_DARK = "#1a8c67";
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -29,16 +34,30 @@ export default function LandingPage() {
 
       {/* Top bar */}
       <div className="relative z-20 flex items-center justify-between px-4 sm:px-6 py-3">
-        <button
-          onClick={toggleTheme}
-          className="rounded-full p-2 transition-colors hover:opacity-80"
-          title={theme === "dark" ? "Switch to Light Green" : "Switch to Dark Orange"}
-        >
-          {theme === "dark"
-            ? <span className="h-5 w-5 rounded-full bg-[#25B988] border border-foreground/20 inline-block" />
-            : <span className="h-5 w-5 rounded-full bg-black border border-foreground/20 inline-block" />
-          }
-        </button>
+        {/* Left: theme + lang toggles */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="rounded-full p-2 transition-colors hover:opacity-80"
+            title={theme === "dark" ? "Switch to Green" : "Switch to Dark"}
+          >
+            {theme === "dark"
+              ? <span className="h-5 w-5 rounded-full bg-[#25B988] border border-foreground/20 inline-block" />
+              : <span className="h-5 w-5 rounded-full bg-black border border-foreground/20 inline-block" />
+            }
+          </button>
+          {/* Language toggle */}
+          <button
+            onClick={toggleLang}
+            className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-colors border ${
+              isGreen
+                ? "border-white/40 text-white hover:bg-white/10"
+                : "border-foreground/20 text-muted-foreground hover:text-foreground hover:border-foreground/40"
+            }`}
+          >
+            {lang === "ge" ? "🌐 ENG" : "🌐 GE"}
+          </button>
+        </div>
 
         <div className="flex items-center gap-3">
           <a href="tel:+995322050620" className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex items-center gap-1">
@@ -75,7 +94,7 @@ export default function LandingPage() {
           <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-xl font-black">
             M
           </div>
-          <span className="text-xl font-bold tracking-tight text-white/90">maika.ge</span>
+          <span className="text-xl font-bold tracking-tight" style={{ color: isGreen ? "white" : undefined }}>maika.ge</span>
         </div>
 
         {/* Hero */}
@@ -97,26 +116,27 @@ export default function LandingPage() {
           {/* Card 1 — Simple Mode */}
           <button
             onClick={() => setMode("simple")}
-            className="group relative flex flex-col rounded-2xl border border-white/[0.08] bg-card p-8 sm:p-10 text-left transition-all duration-300 hover:border-white/[0.15] hover:scale-[1.02] hover:shadow-xl hover:shadow-black/40 overflow-hidden"
+            className={`group relative flex flex-col rounded-2xl border p-8 sm:p-10 text-left transition-all duration-300 hover:scale-[1.02] overflow-hidden ${
+              isGreen
+                ? "bg-white border-white/80 shadow-lg hover:shadow-xl"
+                : "border-white/[0.08] bg-card hover:border-white/[0.15] hover:shadow-xl hover:shadow-black/40"
+            }`}
           >
-            {/* Bottom reflection */}
             <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none" />
-            {/* Top shine */}
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent pointer-events-none" />
-
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-white/[0.06] mb-6 transition-colors group-hover:bg-[#333]">
-                <Shirt className="h-6 w-6 text-white/80" />
+              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl mb-6 transition-colors ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20" : "bg-[#2a2a2a] border border-white/[0.06] group-hover:bg-[#333]"}`}>
+                <Shirt className="h-6 w-6" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.8)" }} />
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-3">MAIKA.GE მარტივი რეჟიმი</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6 flex-1">
+              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>MAIKA.GE მარტივი რეჟიმი</h2>
+              <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
                 ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის.
               </p>
               <div className="flex items-center justify-between w-full">
-                <span className="inline-flex items-center rounded-full bg-white/[0.06] border border-white/[0.08] px-3 py-1 text-xs font-medium text-white/50">
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-white/[0.06] border border-white/[0.08] text-white/50"}`}>
                   უფასო • სწრაფი
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/50 group-hover:text-white/80 transition-colors">
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.5)" }}>
                   დაწყება <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
@@ -126,26 +146,27 @@ export default function LandingPage() {
           {/* Card 2 — AI Studio (FEATURED) */}
           <button
             onClick={() => setMode("studio")}
-            className="group relative flex flex-col rounded-2xl border border-primary/30 bg-card p-8 sm:p-10 text-left transition-all duration-300 hover:border-primary/50 hover:scale-[1.03] overflow-hidden"
+            className={`group relative flex flex-col rounded-2xl border p-8 sm:p-10 text-left transition-all duration-300 hover:scale-[1.03] overflow-hidden ${
+              isGreen
+                ? "bg-white border-white/80 shadow-lg hover:shadow-xl"
+                : "border-primary/30 bg-card hover:border-primary/50"
+            }`}
           >
-            {/* Glow overlay */}
-            <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary/[0.08] via-transparent to-primary/[0.04] pointer-events-none transition-opacity group-hover:from-primary/[0.12] group-hover:to-primary/[0.06]" />
-            {/* Top shine */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none" />
-
+            {!isGreen && <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary/[0.08] via-transparent to-primary/[0.04] pointer-events-none" />}
+            {!isGreen && <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none" />}
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 mb-6 transition-colors group-hover:border-primary/40">
-                <Sparkles className="h-6 w-6 text-primary" />
+              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl mb-6 transition-colors ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20" : "bg-primary/10 border border-primary/20 group-hover:border-primary/40"}`}>
+                <Sparkles className="h-6 w-6" style={{ color: isGreen ? GREEN : undefined }} />
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-3">MAIKA.GE AI სტუდიო</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6 flex-1">
+              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>MAIKA.GE AI სტუდიო</h2>
+              <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
                 შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით
               </p>
               <div className="flex items-center justify-between w-full">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 border border-primary/20 px-3 py-1 text-xs font-medium text-primary">
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-primary/15 border border-primary/20 text-primary"}`}>
                   AI Powered ✨
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary/70 group-hover:text-primary transition-colors">
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : undefined }}>
                   სტუდიოში შესვლა <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
@@ -157,23 +178,24 @@ export default function LandingPage() {
             href="https://photostudio.maika.ge"
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative flex flex-col rounded-2xl border border-white/[0.08] bg-card p-8 sm:p-10 text-left transition-all duration-300 hover:border-white/[0.15] hover:scale-[1.02] hover:shadow-xl hover:shadow-black/40 overflow-hidden"
+            className={`group relative flex flex-col rounded-2xl border p-8 sm:p-10 text-left transition-all duration-300 hover:scale-[1.02] overflow-hidden ${
+              isGreen
+                ? "bg-white border-white/80 shadow-lg hover:shadow-xl"
+                : "border-white/[0.08] bg-card hover:border-white/[0.15] hover:shadow-xl hover:shadow-black/40"
+            }`}
           >
-            {/* Bottom reflection */}
             <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none" />
-            {/* Top shine */}
             <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent pointer-events-none" />
-
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2a2a2a] border border-white/[0.06] mb-6 transition-colors group-hover:bg-[#333]">
+              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl mb-6 transition-colors ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20" : "bg-[#2a2a2a] border border-white/[0.06] group-hover:bg-[#333]"}`}>
                 <span className="text-2xl">📸</span>
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-3">PHOTOSTUDIO</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-6 flex-1">
+              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>PHOTOSTUDIO</h2>
+              <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
                 პროფესიონალური ფოტოსტუდიის სერვისი თქვენთვის
               </p>
               <div className="flex items-center justify-end w-full">
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/50 group-hover:text-white/80 transition-colors">
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.5)" }}>
                   ფოტოსტუდია <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
@@ -183,19 +205,23 @@ export default function LandingPage() {
 
         {/* Corporate Section */}
         <div className="w-full max-w-4xl mb-20 sm:mb-28">
-          <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-br from-[#141414] via-[#111] to-[#0d0d0d] p-8 sm:p-12 overflow-hidden">
-            <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-primary/[0.06] blur-[100px] pointer-events-none" />
+          <div className={`relative rounded-3xl border p-8 sm:p-12 overflow-hidden ${
+            isGreen
+              ? "bg-white border-white/80 shadow-lg"
+              : "border-white/[0.08] bg-gradient-to-br from-[#141414] via-[#111] to-[#0d0d0d]"
+          }`}>
+            {!isGreen && <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-primary/[0.06] blur-[100px] pointer-events-none" />}
 
             <div className="relative z-10">
               <div className="flex items-center gap-2 mb-3">
-                <div className="h-1 w-8 rounded-full bg-primary" />
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider">B2B</span>
+                <div className="h-1 w-8 rounded-full" style={{ backgroundColor: isGreen ? GREEN : undefined, background: !isGreen ? "var(--color-primary)" : undefined }} />
+                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: isGreen ? GREEN : undefined }}>B2B</span>
               </div>
-              
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
+
+              <h2 className="text-2xl sm:text-3xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>
                 კორპორატიული განყოფილება
               </h2>
-              <p className="text-sm sm:text-base text-white/50 leading-relaxed max-w-2xl mb-8">
+              <p className="text-sm sm:text-base leading-relaxed max-w-2xl mb-8" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.5)" }}>
                 გთავაზობთ კორპორატიულ მომსახურებას — ბრენდირებული ტანსაცმელი, აქსესუარები და სარეკლამო პროდუქცია თქვენი კომპანიისთვის. ინდივიდუალური მიდგომა ყველა პროექტისთვის.
               </p>
 
@@ -206,19 +232,23 @@ export default function LandingPage() {
                   { icon: Users, label: "ინდივიდუალური მიდგომა" },
                   { icon: BadgeDollarSign, label: "კონკურენტული ფასები" },
                 ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex flex-col items-center gap-3 rounded-xl bg-white/[0.04] border border-white/[0.06] p-4 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/15">
-                      <Icon className="h-8 w-8 text-primary" />
+                  <div key={label} className={`flex flex-col items-center gap-3 rounded-xl p-4 text-center border ${
+                    isGreen ? "bg-[#25B988]/5 border-[#25B988]/20" : "bg-white/[0.04] border-white/[0.06]"
+                  }`}>
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${isGreen ? "bg-[#25B988]/10" : "bg-primary/15"}`}>
+                      <Icon className="h-8 w-8" style={{ color: isGreen ? GREEN : undefined }} />
                     </div>
-                    <span className="text-xs font-medium text-white/70">{label}</span>
+                    <span className="text-xs font-medium" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.7)" }}>{label}</span>
                   </div>
                 ))}
               </div>
 
               <CorporateInquiryModal>
-                <button
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-3 text-sm transition-colors"
-                >
+                <button className={`inline-flex items-center gap-2 rounded-xl font-semibold px-6 py-3 text-sm transition-colors ${
+                  isGreen
+                    ? "bg-[#25B988] hover:bg-[#1ea876] text-white"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                }`}>
                   დაგვიკავშირდი <ArrowRight className="h-4 w-4" />
                 </button>
               </CorporateInquiryModal>
@@ -228,8 +258,12 @@ export default function LandingPage() {
 
         {/* Sports Section */}
         <div className="w-full max-w-4xl mb-12 sm:mb-16">
-          <div className="relative rounded-3xl border border-[#25B988]/20 bg-gradient-to-br from-[#0a1a12] via-[#0c1a10] to-[#0a1508] p-8 sm:p-12 overflow-hidden">
-            <div className="absolute top-0 right-0 w-[250px] h-[250px] rounded-full bg-[#25B988]/[0.08] blur-[80px] pointer-events-none" />
+          <div className={`relative rounded-3xl border p-8 sm:p-12 overflow-hidden ${
+            isGreen
+              ? "bg-white border-white/80 shadow-lg"
+              : "border-[#25B988]/20 bg-gradient-to-br from-[#0a1a12] via-[#0c1a10] to-[#0a1508]"
+          }`}>
+            {!isGreen && <div className="absolute top-0 right-0 w-[250px] h-[250px] rounded-full bg-[#25B988]/[0.08] blur-[80px] pointer-events-none" />}
             <div className="relative z-10 flex flex-col sm:flex-row gap-8 items-center">
               {/* Text content */}
               <div className="flex-1 min-w-0">
@@ -237,10 +271,10 @@ export default function LandingPage() {
                   <div className="h-1 w-8 rounded-full bg-[#25B988]" />
                   <span className="text-xs font-semibold text-[#25B988] uppercase tracking-wider">SPORT</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-3" style={{ color: isGreen ? GREEN : "white" }}>
                   🏆 სპორტული ფორმები — შენი გუნდის იდენტობა
                 </h2>
-                <p className="text-sm sm:text-base text-white/70 leading-relaxed max-w-2xl mb-8">
+                <p className="text-sm sm:text-base leading-relaxed max-w-2xl mb-8" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.7)" }}>
                   პროფესიონალური სპორტული ფორმები ინდივიდუალური ბრენდინგით — კლუბის ლოგო, ნომერი, სახელი. 1 ცალიდან.
                 </p>
                 <button

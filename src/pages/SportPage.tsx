@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAppState } from "@/hooks/useAppState";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 
 const BASE = "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport";
 
@@ -42,7 +43,6 @@ export default function SportPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-12">
-        {/* Hero text */}
         <div className="max-w-2xl mb-10">
           <h1 className="text-3xl sm:text-4xl font-bold mb-4">
             🏆 სპორტული ფორმები — შენი გუნდის იდენტობა
@@ -83,12 +83,11 @@ export default function SportPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => setMode("simple")}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors"
-          >
-            შეკვეთა <ArrowRight className="h-4 w-4" />
-          </button>
+          <CorporateInquiryModal>
+            <button className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors">
+              დაგვიკავშირდით
+            </button>
+          </CorporateInquiryModal>
         </div>
       </div>
     </div>
