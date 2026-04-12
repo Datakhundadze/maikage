@@ -110,6 +110,7 @@ interface TryOnState {
   productName?: string;
   subType?: string;
   colorName?: string;
+  placementCoords?: { x: number; y: number; scale: number };
 }
 
 export default function TryOnPage() {
@@ -119,8 +120,12 @@ export default function TryOnPage() {
   const { setMode } = useAppState();
 
   const goBack = () => {
-    setMode("studio");
-    navigate("/");
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      setMode("studio");
+      navigate("/");
+    }
   };
 
   const state = location.state as TryOnState | null;
@@ -129,6 +134,7 @@ export default function TryOnPage() {
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // If navigated here without state, go back
@@ -201,6 +207,9 @@ export default function TryOnPage() {
             productName: getProductDescription(state.subType, state.productName),
             colorName: state.colorName || "",
             useMockupStyle: isTextured,
+            placementX: state.placementCoords?.x,
+            placementY: state.placementCoords?.y,
+            placementScale: state.placementCoords?.scale,
           },
         },
       });
@@ -272,20 +281,29 @@ export default function TryOnPage() {
             <div className="relative w-full max-w-lg rounded-2xl overflow-hidden border border-border shadow-lg">
               <img src={resultImage} alt="გასინჯვის შედეგი" className="w-full object-contain" />
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col items-center gap-3 w-full max-w-sm">
               <Button
-                className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold"
+                className="w-full gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold h-12"
                 onClick={downloadResult}
               >
                 <Download className="h-4 w-4" />
                 გადმოწერა
               </Button>
+              {retryCount < 1 && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 h-11"
+                  onClick={() => { setResultImage(null); setPersonImage(null); setRetryCount((c) => c + 1); }}
+                >
+                  ხელახლა ცდა
+                </Button>
+              )}
               <Button
                 variant="outline"
-                className="gap-2"
-                onClick={() => { setResultImage(null); setPersonImage(null); }}
+                className="w-full gap-2 h-11 border-amber-500/40 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
+                onClick={goBack}
               >
-                ხელახლა ცდა
+                შეკვეთა
               </Button>
             </div>
           </div>
