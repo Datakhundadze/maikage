@@ -45,17 +45,17 @@ const translations = {
       character: {
         title: "Characters",
         subtitle: "The Subject/Actor. Defines WHO is in the shot.",
-        placeholder: "e.g., cyberpunk samurai · angry gorilla in suit · armored warrior · fire dragon · astronaut cat · vintage boxer · neon tiger · viking with axe · stone gargoyle · wolf skull",
+        placeholder: "e.g., cyberpunk samurai · angry gorilla · fire dragon · neon tiger · wolf skull",
       },
       scene: {
         title: "Scene / Action",
         subtitle: "The SET. Defines the environment and pose.",
-        placeholder: "e.g., rooftop at sunset · running through fire · meditating in space · holding a sword · surfing a giant wave · dark forest · city in ruins · lightning storm",
+        placeholder: "e.g., rooftop at sunset · running through fire · dark forest · lightning storm",
       },
       style: {
         title: "Artistic Style",
         subtitle: "The LENS. Defines the visual art direction.",
-        placeholder: "e.g., synthwave 80s · watercolor · graffiti · oil painting · pixel art · black & white engraving · flat vector · manga · tattoo flash · stained glass",
+        placeholder: "e.g., synthwave · watercolor · pixel art · manga · tattoo flash",
       },
       typography: {
         title: "Text",
@@ -165,17 +165,17 @@ const translations = {
       character: {
         title: "პერსონაჟები",
         subtitle: "სუბიექტი/აქტორი. განსაზღვრავს ვინ არის კადრში.",
-        placeholder: "მაგ., კიბერპანკ სამურაი · განრისხებული გორილა კოსტიუმში · ჯავშნოსანი მეომარი · ნეონის ვეფხვი · ვიკინგი ცულით · ოცოფა თავია · ჯადოქარი · ნახევარ ჩრდილ მგელი",
+        placeholder: "მაგ., კიბერ სამურაი · გორილა კოსტიუმში · ცეცხლოვანი დრაკონი · ნეონის ვეფხვი",
       },
       scene: {
         title: "სცენა / მოქმედება",
         subtitle: "გარემო. განსაზღვრავს პოზას და ადგილს.",
-        placeholder: "მაგ., სახურავზე მზის ჩასვლისას · ცეცხლში გარბის · კოსმოსში მედიტაციაში · მახვილი ხელში · ქარიშხლის ფონზე · ნანგრევებში · ტყეში ღამე",
+        placeholder: "მაგ., სახურავზე · ცეცხლში გარბის · ქარიშხლის ფონზე · ტყეში ღამე",
       },
       style: {
         title: "მხატვრული სტილი",
         subtitle: "ვიზუალური მიმართულება.",
-        placeholder: "მაგ., სინთვეივ 80-იანი · აქვარელი · გრაფიტი · ზეთის ფერწერა · პიქსელ არტი · შავ-თეთრი გრავიურა · ბრტყელი ვექტორი · მანგა · ტატუ ფლეში",
+        placeholder: "მაგ., სინთვეივი · აქვარელი · პიქსელ არტი · ანიმე · ტატუ",
       },
       typography: {
         title: "წარწერა",
