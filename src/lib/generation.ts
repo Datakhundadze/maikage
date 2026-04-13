@@ -337,14 +337,22 @@ export async function runGenerationPipeline(
 ): Promise<GenerationResult> {
   // Stage 1: Generate design on white background
   onStatusChange("GENERATING_DESIGN");
-  // Compute isRealistic on the client side and send as explicit flag
-  // so the edge function doesn't need to do regex matching
   const isRealistic = /realistic|photo|რეალ/i.test(params.designParams.style || "");
-  const designResult = await callGemini("generate-design", {
+
+  // For realistic mode: override style with explicit photorealism descriptors,
+  // and force speed="pro" so the deployed edge function selects gemini-3-pro-image-preview.
+  // NOTE: The deployed edge function (main branch) uses speed to pick the model,
+  // and injects the style string as "ARTISTIC STYLE:" directly into the prompt.
+  const adjustedDesignParams = isRealistic ? {
     ...params.designParams,
+    style: "realistic hyperrealistic photographic render — ultra-detailed surface textures, NO black outlines, smooth natural color gradients, photographic lighting and shadows, NOT illustration NOT drawing NOT cartoon NOT graphic art",
+  } : params.designParams;
+
+  const designResult = await callGemini("generate-design", {
+    ...adjustedDesignParams,
     product: params.product,
     color: params.color,
-    speed: params.speed,
+    speed: isRealistic ? "pro" : params.speed, // Force pro model for realistic
     isRealistic,
   });
 
