@@ -420,6 +420,20 @@ export default function SimplePage() {
             onSizeChange={productConfig.setSize}
           />
 
+          {/* Mobile-only inline preview — below view buttons, same as Studio mode */}
+          <div className="lg:hidden rounded-xl overflow-hidden border border-border bg-background">
+            <ProductPreview
+              productName={productConfig.config.product}
+              subProduct={productConfig.config.subProduct}
+              colorName={productConfig.config.color}
+              view={productConfig.config.view}
+              placementCoords={productConfig.config.placementCoords}
+              onCoordsChange={productConfig.setPlacementCoords}
+              layers={layers.length > 0 ? layers : undefined}
+              onBackgroundClick={() => setSelectedLayerId(null)}
+            />
+          </div>
+
           {/* Side indicator */}
           <div className="text-xs text-muted-foreground text-center">
             {lang === "en"
@@ -643,8 +657,8 @@ export default function SimplePage() {
         </div>
       </aside>
 
-      {/* Main preview */}
-      <main className="flex-1 bg-background overflow-y-auto flex flex-col">
+      {/* Main preview — desktop only; mobile uses inline preview in sidebar */}
+      <main className="hidden lg:flex flex-1 bg-background overflow-y-auto flex-col">
         <ProductPreview
           productName={productConfig.config.product}
           subProduct={productConfig.config.subProduct}
