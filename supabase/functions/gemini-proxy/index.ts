@@ -93,34 +93,38 @@ function buildGenerateDesignMessages(params: any) {
     // the compositing pipeline handles placing it on the product.
     content.push({
       type: "text",
-      text: `Hyperrealistic 3D render or studio photograph.
+      text: `⚠️ CRITICAL INSTRUCTION — READ THIS FIRST:
+THIS MUST BE A REAL PHOTOGRAPH OR PHOTOREALISTIC IMAGE.
+DO NOT generate: illustration, cartoon, anime, drawing, painting, comic book art, cel-shading, vector art, flat design, digital art, graphic design, or ANY form of stylized artwork.
+If the output looks like artwork rather than a photograph, it is COMPLETELY WRONG.
+
+---
+
+Generate a photorealistic studio photograph shot with a professional DSLR camera.
 
 SUBJECT: ${safeCharacter}
-${scene ? `SCENE: ${scene}` : ""}
+${scene ? `SETTING/SCENE: ${scene}` : ""}
 
-STYLE: photorealistic — the output must look like a real photograph or ultra-realistic CGI render, NOT an illustration.
+MANDATORY PHOTOGRAPHIC PROPERTIES:
+• Must look IDENTICAL to a photo taken with a Canon 5D Mark IV or Sony A7R — not digital art
+• Natural photographic lighting with soft shadows, realistic penumbra, and proper light falloff
+• Real surface textures visible: skin pores, individual hair strands, fabric thread weave, material grain
+• Natural depth of field — foreground sharp, background may have lens bokeh
+• Realistic color temperature (no hyper-saturated cartoon colors)
+• Zero black outlines — real objects in photographs never have cartoon outlines
+• Three-dimensional volume, weight, and physical presence
+• Photographic imperfections: subtle lens vignette, natural grain, real-world light behavior
+• Background: solid pure white studio backdrop #FFFFFF
 
-REQUIRED visual properties:
-• No black outlines anywhere — real objects do not have outlines
-• Colors and tones blend naturally; no flat or cel-shaded areas
-• Surfaces show real material texture: fur, skin pores, fabric weave, metal grain, etc.
-• Soft natural shadows with gradient penumbra, not harsh cartoon shadows
-• Three-dimensional volume and depth — not flat 2D artwork
-• Background: solid pure white #FFFFFF
+${text ? `TEXT: Render the text "${text}" as physical text on a real surface (printed, painted, engraved, or signage) — must look photographic` : "• No text, letters, numbers, or written characters anywhere in the image"}
 
-ABSOLUTELY FORBIDDEN:
-• Illustration, drawing, painting, sketch, watercolor
-• Vector art, flat design, graphic design
-• Cartoon, anime, manga, comic book, cel-shading
-• Any bold outlines separating colored areas
-• Poster art, streetwear graphic, merchandise design
+NON-NEGOTIABLE RULES:
+• Every element MUST look photographically real — no artistic stylization of any kind
+• No Russian language, Cyrillic text, or Russian cultural references
+• All persons must be clearly adults (18+)
 
-RULES:
-• No Russian language or Cyrillic text
-• All persons depicted must be adults (18+)
-${text ? `• Include the text "${text}" in the image` : "• No text, letters, or numbers in the image"}
-
-OUTPUT: Single image on solid white background #FFFFFF. No border.`,
+OUTPUT: A single photorealistic image on a solid white studio background #FFFFFF.
+The result must be INDISTINGUISHABLE from a real professional photograph.`,
     });
   } else {
     // Illustration / graphic mode
