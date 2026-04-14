@@ -132,7 +132,7 @@ export default function ProductConfigPanel({
                     className="inline-block h-3.5 w-3.5 rounded-full border border-border"
                     style={{ backgroundColor: COLORS.find(c => c.name === config.color)?.hex }}
                   />
-                  <span className="text-[10px] font-normal text-muted-foreground">{config.color}</span>
+                  <span className="text-[10px] font-normal text-muted-foreground">{t(lang, `colors.${config.color}`)}</span>
                 </span>
               )}
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${colorOpen ? "rotate-180" : ""}`} />
@@ -158,7 +158,7 @@ export default function ProductConfigPanel({
                         } ${c.name === "White" || c.name === "Cream" ? "border-muted-foreground/30" : ""}`}
                         style={{ backgroundColor: c.hex }}
                       />
-                      <span className="text-[10px] text-muted-foreground leading-tight">{c.name}</span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">{t(lang, `colors.${c.name}`)}</span>
                     </button>
                   );
                 })}
@@ -185,8 +185,8 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* View — always flat, hide for Mug */}
-      {config.product !== "Mug" && (
+      {/* View — always flat, hide for Mug and Phone Case */}
+      {config.product !== "Mug" && config.product !== "Phone Case" && (
         <div>
           <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.view")}</h3>
           <div className="flex gap-2">

@@ -79,7 +79,12 @@ export default function AdminAnalytics() {
     // Conversion: designs → orders (from actual generations count)
     const designToOrderRate = generationsCount > 0 ? ((orders.length / generationsCount) * 100).toFixed(1) : "0";
 
-    return { popularProducts, popularColors, paymentStats, conversionRate, designToOrderRate, totalVisits: visits.length, totalDesigns: generationsCount };
+    const totalRevenue = paidOrders.reduce((sum, o) => sum + (o.total_price || 0), 0);
+    const pendingRevenue = orders
+      .filter(o => o.payment_status === "unpaid")
+      .reduce((sum, o) => sum + (o.total_price || 0), 0);
+
+    return { popularProducts, popularColors, paymentStats, conversionRate, designToOrderRate, totalVisits: visits.length, totalDesigns: generationsCount, totalRevenue, pendingRevenue, totalOrders: orders.length, paidOrders: paidOrders.length };
   }, [orders, events, generationsCount]);
 
   if (loading) {
@@ -95,6 +100,46 @@ export default function AdminAnalytics() {
 
   return (
     <div className="space-y-6">
+      {/* Revenue Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">სულ შემოსავალი (გადახდილი)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">{analytics.totalRevenue.toFixed(2)} ₾</div>
+            <p className="text-xs text-muted-foreground">{analytics.paidOrders} შეკვეთა</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">მოლოდინში (გადაუხდელი)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-500">{analytics.pendingRevenue.toFixed(2)} ₾</div>
+            <p className="text-xs text-muted-foreground">{analytics.totalOrders - analytics.paidOrders} შეკვეთა</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">სულ შეკვეთები</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics.totalOrders}</div>
+            <p className="text-xs text-muted-foreground">ყველა სტატუსი</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">საშუალო შეკვეთა</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{analytics.paidOrders > 0 ? (analytics.totalRevenue / analytics.paidOrders).toFixed(2) : "0.00"} ₾</div>
+            <p className="text-xs text-muted-foreground">გადახდილი შეკვ.</p>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Conversion Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>

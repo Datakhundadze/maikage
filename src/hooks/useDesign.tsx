@@ -49,7 +49,7 @@ const initialState: DesignState = {
     text: "",
     textImage: null,
   },
-  speed: "quality",
+  speed: "pro",
   appStatus: "IDLE",
   error: null,
   expandedSections: { scene: false, style: false, text: false },

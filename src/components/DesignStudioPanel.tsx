@@ -5,7 +5,7 @@ import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { RefreshCw, ChevronDown, ChevronUp, Check, Zap, Sparkles } from "lucide-react";
+import { RefreshCw, ChevronDown, ChevronUp, Check } from "lucide-react";
 
 interface DesignStudioPanelProps {
   onViewImage?: (src: string) => void;
@@ -18,7 +18,7 @@ interface DesignStudioPanelProps {
 export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, onStartNew, product }: DesignStudioPanelProps) {
   const { state, dispatch } = useDesign();
   const { lang } = useAppState();
-  const { designParams, speed, expandedSections, appStatus } = state;
+  const { designParams, expandedSections, appStatus } = state;
 
   const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
 
@@ -183,31 +183,6 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
         onViewImage={onViewImage}
       />
 
-      {/* Speed toggle */}
-      <div className="flex gap-1.5 rounded-xl border border-border bg-card p-1.5">
-        <button
-          onClick={() => dispatch({ type: "SET_SPEED", speed: "fast" })}
-          className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all ${
-            speed === "fast"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Zap className="h-3 w-3" />
-          {lang === "ge" ? "სწრაფი" : "FAST"}
-        </button>
-        <button
-          onClick={() => dispatch({ type: "SET_SPEED", speed: "pro" })}
-          className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-semibold transition-all ${
-            speed === "pro"
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Sparkles className="h-3 w-3" />
-          {lang === "ge" ? "პრო" : "PRO"}
-        </button>
-      </div>
 
       {/* Action Buttons */}
       {hasResult ? (
