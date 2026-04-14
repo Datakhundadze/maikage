@@ -5,7 +5,7 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, Shirt } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -16,7 +16,6 @@ import { getGuestSessionId } from "@/lib/guestSession";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
-import { useNavigate } from "react-router-dom";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 
@@ -130,7 +129,7 @@ export default function SimplePage() {
   const { trackEvent } = useAnalytics();
   const { user } = useAuth();
   const { saveDesign, togglePublish } = useDesignStorage();
-  const navigate = useNavigate();
+
   const [publishing, setPublishing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -618,12 +617,6 @@ export default function SimplePage() {
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={() => handlePublish(frontMockup!)} disabled={publishing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary border border-primary/30 hover:bg-primary/10 transition-colors disabled:opacity-50">
                       <Globe className="h-3.5 w-3.5" /> {publishing ? "..." : (lang === "en" ? "Publish" : "გამოქვეყნება")}
-                    </button>
-                    <button
-                      onClick={() => navigate("/try-on", { state: { mockupImage: frontMockup || backMockup, transparentImage: frontMockup || backMockup, productName: productConfig.config.product, subType: productConfig.config.subProduct, colorName: productConfig.config.color } })}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-purple-500 border border-purple-500/30 hover:bg-purple-500/10 transition-colors"
-                    >
-                      <Shirt className="h-3.5 w-3.5" /> {lang === "en" ? "Try On" : "გასინჯვა"}
                     </button>
                   </div>
                 )}
