@@ -32,6 +32,7 @@ interface Order {
   back_mockup_url: string | null;
   transparent_image_url: string | null;
   prompt: string | null;
+  size: string | null;
 }
 
 const STATUS_OPTIONS = ["pending", "confirmed", "in_production", "shipped", "delivered", "cancelled"];
@@ -165,7 +166,7 @@ export default function AdminOrders() {
                   <div className="font-medium text-sm">{order.first_name} {order.last_name}</div>
                   <div className="text-xs text-muted-foreground">{order.product} {order.sub_product ? `• ${order.sub_product}` : ""} • {order.color || "—"}</div>
                 </div>
-                <div className="text-sm font-semibold">{(order.total_price / 100).toFixed(0)} ₾</div>
+                <div className="text-sm font-semibold">{order.total_price} ₾</div>
                 <Badge variant={paymentBadgeVariant(order.payment_status) as any} className="text-[10px]">
                   {PAYMENT_LABELS[order.payment_status] || order.payment_status}
                 </Badge>
@@ -230,6 +231,14 @@ export default function AdminOrders() {
                         <span className="text-muted-foreground">რეჟიმი:</span>
                         <p className="font-medium">{order.is_studio ? "Studio" : "Simple"}</p>
                       </div>
+                      {order.size && (
+                        <div>
+                          <span className="text-muted-foreground">
+                            {order.product === "Phone Case" ? "მოდელი:" : "ზომა:"}
+                          </span>
+                          <p className="font-medium">{order.size}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -304,15 +313,15 @@ export default function AdminOrders() {
                     <div className="text-sm space-y-1 bg-background rounded-lg p-3 border border-border max-w-xs">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">პროდუქტი:</span>
-                        <span>{(order.product_price / 100).toFixed(0)} ₾</span>
+                        <span>{order.product_price} ₾</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">მიწოდება:</span>
-                        <span>{order.delivery_price === 0 ? "უფასო" : `${(order.delivery_price / 100).toFixed(0)} ₾`}</span>
+                        <span>{order.delivery_price === 0 ? "უფასო" : `${order.delivery_price} ₾`}</span>
                       </div>
                       <div className="flex justify-between border-t border-border pt-1 font-bold">
                         <span>სულ:</span>
-                        <span>{(order.total_price / 100).toFixed(0)} ₾</span>
+                        <span>{order.total_price} ₾</span>
                       </div>
                     </div>
                   </div>
