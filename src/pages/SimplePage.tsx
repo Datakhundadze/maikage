@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
-import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { catalog, COLORS, COLOR_FILTERS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice, type BackType } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
@@ -261,13 +261,14 @@ export default function SimplePage() {
     const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
     const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, view);
     const baseImageUrl = imageResult?.entry.imageUrl ?? null;
+    const needsColorFilter = imageResult ? !imageResult.isExact : false;
 
     const canvas = document.createElement("canvas");
     canvas.width = 800;
     canvas.height = 800;
     const ctx = canvas.getContext("2d")!;
 
-    // Draw product base
+    // Draw product base (apply color filter if using a white base for a non-white color)
     if (baseImageUrl) {
       try {
         const img = new Image();
@@ -277,7 +278,12 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = baseImageUrl;
         });
+        if (needsColorFilter) {
+          const colorFilter = COLOR_FILTERS[config.color as ProductColor];
+          if (colorFilter) ctx.filter = colorFilter;
+        }
         ctx.drawImage(img, 0, 0, 800, 800);
+        ctx.filter = "none";
       } catch {
         ctx.fillStyle = "#f0f0f0";
         ctx.fillRect(0, 0, 800, 800);
@@ -605,6 +611,7 @@ export default function SimplePage() {
                   isStudio={false}
                   frontMockupDataUrl={frontMockup}
                   backMockupDataUrl={backMockup}
+                  transparentImageDataUrl={frontData.photos[0]?.image || backData.photos[0]?.image || null}
                   size={productConfig.config.size}
                   onBeforeOpen={() => {
                     if (frontMockup || backMockup) {

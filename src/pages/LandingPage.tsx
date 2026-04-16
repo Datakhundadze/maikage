@@ -233,9 +233,9 @@ export default function LandingPage() {
           <div className={`relative rounded-3xl border p-8 sm:p-12 overflow-hidden ${
             isGreen
               ? "bg-white border-white/80 shadow-lg"
-              : "border-[#25B988]/20 bg-gradient-to-br from-[#0a1a12] via-[#0c1a10] to-[#0a1508]"
+              : "border-white/[0.08] bg-gradient-to-br from-[#141414] via-[#111] to-[#0d0d0d]"
           }`}>
-            {!isGreen && <div className="absolute top-0 right-0 w-[250px] h-[250px] rounded-full bg-[#25B988]/[0.08] blur-[80px] pointer-events-none" />}
+            {!isGreen && <div className="absolute top-0 right-0 w-[300px] h-[300px] rounded-full bg-primary/[0.06] blur-[100px] pointer-events-none" />}
             <div className="relative z-10 flex flex-col sm:flex-row gap-8 items-center">
               {/* Text content */}
               <div className="flex-1 min-w-0">

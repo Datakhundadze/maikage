@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_MODELS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { useAppState } from "@/hooks/useAppState";
@@ -180,6 +180,27 @@ export default function ProductConfigPanel({
             <option value="" disabled>{t(lang, "config.chooseSize")}</option>
             {availableSizes.map((size) => (
               <option key={size} value={size}>{size}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Phone Case Model — dropdown */}
+      {config.product === "Phone Case" && (
+        <div>
+          <h3 className="text-sm font-semibold text-card-foreground mb-2">
+            {lang === "en" ? "Phone Model" : "ტელეფონის მოდელი"}
+          </h3>
+          <select
+            value={selectedSize || ""}
+            onChange={(e) => onSizeChange?.(e.target.value)}
+            className="w-full rounded-lg border border-border bg-card text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary cursor-pointer"
+          >
+            <option value="" disabled>
+              {lang === "en" ? "Choose phone model" : "აირჩიეთ ტელეფონის მოდელი"}
+            </option>
+            {PHONE_CASE_MODELS.map((model) => (
+              <option key={model} value={model}>{model}</option>
             ))}
           </select>
         </div>
