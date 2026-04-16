@@ -164,7 +164,10 @@ export default function AdminOrders() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm">{order.first_name} {order.last_name}</div>
-                  <div className="text-xs text-muted-foreground">{order.product} {order.sub_product ? `• ${order.sub_product}` : ""} • {order.color || "—"}{order.size ? ` • ${order.size}` : ""}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {order.product} {order.sub_product ? `• ${order.sub_product}` : ""} • {order.color || "—"}
+                    {order.size ? ` • ${order.size}` : <span className="text-destructive"> • ზომა არ არის არჩეული</span>}
+                  </div>
                 </div>
                 <div className="text-sm font-semibold">{order.total_price} ₾</div>
                 <Badge variant={paymentBadgeVariant(order.payment_status) as any} className="text-[10px]">
@@ -231,14 +234,14 @@ export default function AdminOrders() {
                         <span className="text-muted-foreground">რეჟიმი:</span>
                         <p className="font-medium">{order.is_studio ? "Studio" : "Simple"}</p>
                       </div>
-                      {order.size && (
-                        <div>
-                          <span className="text-muted-foreground">
-                            {order.product === "Phone Case" ? "მოდელი:" : "ზომა:"}
-                          </span>
-                          <p className="font-medium">{order.size}</p>
-                        </div>
-                      )}
+                      <div>
+                        <span className="text-muted-foreground">
+                          {order.product === "Phone Case" ? "მოდელი:" : "ზომა:"}
+                        </span>
+                        <p className={`font-medium ${!order.size ? "text-destructive" : ""}`}>
+                          {order.size || "არ არის არჩეული"}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
