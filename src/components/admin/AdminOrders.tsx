@@ -164,7 +164,7 @@ export default function AdminOrders() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm">{order.first_name} {order.last_name}</div>
-                  <div className="text-xs text-muted-foreground">{order.product} {order.sub_product ? `• ${order.sub_product}` : ""} • {order.color || "—"}</div>
+                  <div className="text-xs text-muted-foreground">{order.product} {order.sub_product ? `• ${order.sub_product}` : ""} • {order.color || "—"}{order.size ? ` • ${order.size}` : ""}</div>
                 </div>
                 <div className="text-sm font-semibold">{order.total_price} ₾</div>
                 <Badge variant={paymentBadgeVariant(order.payment_status) as any} className="text-[10px]">

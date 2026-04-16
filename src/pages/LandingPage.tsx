@@ -100,13 +100,13 @@ export default function LandingPage() {
         {/* Hero */}
         <div className="text-center mb-16 sm:mb-20 max-w-3xl">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.2] mb-3 text-foreground">
-            შექმენი შენი სტილი{" "}
+            {lang === "en" ? "Create your style " : "შექმენი შენი სტილი "}
             <span className="text-primary">
-              მარტივად
+              {lang === "en" ? "easily" : "მარტივად"}
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground font-light tracking-wide">
-            Create your unique design easily
+            {lang === "en" ? "Design your unique products with ease" : "Create your unique design easily"}
           </p>
         </div>
 
@@ -128,16 +128,20 @@ export default function LandingPage() {
               <div className={`flex h-14 w-14 items-center justify-center rounded-2xl mb-6 transition-colors ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20" : "bg-[#2a2a2a] border border-white/[0.06] group-hover:bg-[#333]"}`}>
                 <Shirt className="h-6 w-6" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.8)" }} />
               </div>
-              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>MAIKA.GE მარტივი რეჟიმი</h2>
+              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>
+                {lang === "en" ? "MAIKA.GE Simple Mode" : "MAIKA.GE მარტივი რეჟიმი"}
+              </h2>
               <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
-                ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის.
+                {lang === "en"
+                  ? "Upload a photo or write text. No registration required."
+                  : "ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის."}
               </p>
               <div className="flex items-center justify-between w-full">
                 <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-white/[0.06] border border-white/[0.08] text-white/50"}`}>
-                  უფასო • სწრაფი
+                  {lang === "en" ? "Free • Fast" : "უფასო • სწრაფი"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.5)" }}>
-                  დაწყება <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  {lang === "en" ? "Start" : "დაწყება"} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
             </div>
@@ -158,16 +162,20 @@ export default function LandingPage() {
               <div className={`flex h-14 w-14 items-center justify-center rounded-2xl mb-6 transition-colors ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20" : "bg-primary/10 border border-primary/20 group-hover:border-primary/40"}`}>
                 <Sparkles className="h-6 w-6" style={{ color: isGreen ? GREEN : undefined }} />
               </div>
-              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>MAIKA.GE AI სტუდიო</h2>
+              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>
+                {lang === "en" ? "MAIKA.GE AI Studio" : "MAIKA.GE AI სტუდიო"}
+              </h2>
               <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
-                შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით
+                {lang === "en"
+                  ? "Create professional designs with the help of artificial intelligence"
+                  : "შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით"}
               </p>
               <div className="flex items-center justify-between w-full">
                 <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-primary/15 border border-primary/20 text-primary"}`}>
                   AI Powered ✨
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : undefined }}>
-                  სტუდიოში შესვლა <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  {lang === "en" ? "Enter Studio" : "სტუდიოში შესვლა"} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
             </div>
@@ -191,18 +199,20 @@ export default function LandingPage() {
               </div>
 
               <h2 className="text-2xl sm:text-3xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>
-                კორპორატიული განყოფილება
+                {lang === "en" ? "Corporate Division" : "კორპორატიული განყოფილება"}
               </h2>
               <p className="text-sm sm:text-base leading-relaxed max-w-2xl mb-8" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.5)" }}>
-                გთავაზობთ კორპორატიულ მომსახურებას — ბრენდირებული ტანსაცმელი, აქსესუარები და სარეკლამო პროდუქცია თქვენი კომპანიისთვის. ინდივიდუალური მიდგომა ყველა პროექტისთვის.
+                {lang === "en"
+                  ? "We offer corporate services — branded clothing, accessories and promotional products for your company. Individual approach for every project."
+                  : "გთავაზობთ კორპორატიულ მომსახურებას — ბრენდირებული ტანსაცმელი, აქსესუარები და სარეკლამო პროდუქცია თქვენი კომპანიისთვის. ინდივიდუალური მიდგომა ყველა პროექტისთვის."}
               </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                 {[
-                  { icon: Shield, label: "ხარისხი" },
-                  { icon: Zap, label: "სისწრაფე" },
-                  { icon: Users, label: "ინდივიდუალური მიდგომა" },
-                  { icon: BadgeDollarSign, label: "კონკურენტული ფასები" },
+                  { icon: Shield, label: lang === "en" ? "Quality" : "ხარისხი" },
+                  { icon: Zap, label: lang === "en" ? "Speed" : "სისწრაფე" },
+                  { icon: Users, label: lang === "en" ? "Individual Approach" : "ინდივიდუალური მიდგომა" },
+                  { icon: BadgeDollarSign, label: lang === "en" ? "Competitive Prices" : "კონკურენტული ფასები" },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className={`flex flex-col items-center gap-3 rounded-xl p-4 text-center border ${
                     isGreen ? "bg-[#25B988]/5 border-[#25B988]/20" : "bg-white/[0.04] border-white/[0.06]"
@@ -221,7 +231,7 @@ export default function LandingPage() {
                     ? "bg-[#25B988] hover:bg-[#1ea876] text-white"
                     : "bg-primary hover:bg-primary/90 text-primary-foreground"
                 }`}>
-                  დაგვიკავშირდი <ArrowRight className="h-4 w-4" />
+                  {lang === "en" ? "Contact Us" : "დაგვიკავშირდი"} <ArrowRight className="h-4 w-4" />
                 </button>
               </CorporateInquiryModal>
             </div>
@@ -244,16 +254,20 @@ export default function LandingPage() {
                   <span className="text-xs font-semibold text-[#25B988] uppercase tracking-wider">SPORT</span>
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold mb-3" style={{ color: isGreen ? GREEN : "white" }}>
-                  🏆 სპორტული ფორმები — შენი გუნდის იდენტობა
+                  {lang === "en"
+                    ? "Sport Uniforms — Your Team's Identity"
+                    : "🏆 სპორტული ფორმები — შენი გუნდის იდენტობა"}
                 </h2>
                 <p className="text-sm sm:text-base leading-relaxed max-w-2xl mb-8" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.7)" }}>
-                  პროფესიონალური სპორტული ფორმები ინდივიდუალური ბრენდინგით — კლუბის ლოგო, ნომერი, სახელი. 1 ცალიდან.
+                  {lang === "en"
+                    ? "Professional sport uniforms with custom branding — club logo, number, name. Starting from 1 piece."
+                    : "პროფესიონალური სპორტული ფორმები ინდივიდუალური ბრენდინგით — კლუბის ლოგო, ნომერი, სახელი. 1 ცალიდან."}
                 </p>
                 <button
                   onClick={() => setMode("sport")}
                   className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors"
                 >
-                  დეტალები <ArrowRight className="h-4 w-4" />
+                  {lang === "en" ? "Details" : "დეტალები"} <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
 
@@ -287,15 +301,15 @@ export default function LandingPage() {
         <div className="mt-auto flex flex-col items-center gap-3 text-sm">
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
             <button onClick={() => setMode("about")} className="text-muted-foreground hover:text-foreground transition-colors text-xs">
-              ჩვენი შესახებ
+              {lang === "en" ? "About Us" : "ჩვენი შესახებ"}
             </button>
             <span className="text-muted-foreground/30">•</span>
             <button onClick={() => setMode("terms")} className="text-muted-foreground hover:text-foreground transition-colors text-xs">
-              წესები და პირობები
+              {lang === "en" ? "Terms & Conditions" : "წესები და პირობები"}
             </button>
             <span className="text-muted-foreground/30">•</span>
             <button onClick={() => setMode("privacy")} className="text-muted-foreground hover:text-foreground transition-colors text-xs">
-              კონფიდენციალურობა
+              {lang === "en" ? "Privacy Policy" : "კონფიდენციალურობა"}
             </button>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 maika.ge</p>
