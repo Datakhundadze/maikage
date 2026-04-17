@@ -18,7 +18,7 @@ const AppStateContext = createContext<AppStateContextType | null>(null);
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => {
-    return (localStorage.getItem("maika-lang") as Lang) || "en";
+    return (localStorage.getItem("maika-lang") as Lang) || "ge";
   });
 
   const [theme, setTheme] = useState<AppTheme>(() => {
