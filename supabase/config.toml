@@ -9,5 +9,8 @@ verify_jwt = false
 [functions.payment-callback]
 verify_jwt = false
 
+[functions.check-payment]
+verify_jwt = false
+
 [functions.process-email-queue]
 verify_jwt = true

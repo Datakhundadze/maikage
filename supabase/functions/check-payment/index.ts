@@ -1,0 +1,132 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    const { orderId } = await req.json();
+    if (!orderId) throw new Error("Missing orderId");
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    const { data: order, error: fetchErr } = await supabase
+      .from("orders")
+      .select("id, bog_order_id, payment_status, total_price")
+      .eq("id", orderId)
+      .single();
+
+    if (fetchErr || !order) {
+      throw new Error("Order not found");
+    }
+
+    if (order.payment_status === "paid") {
+      return new Response(JSON.stringify({ status: "paid", already: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!order.bog_order_id) {
+      return new Response(JSON.stringify({ status: order.payment_status, error: "No BOG order ID" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const bogClientId = Deno.env.get("BOG_CLIENT_ID");
+    const bogClientSecret = Deno.env.get("BOG_CLIENT_SECRET");
+    if (!bogClientId || !bogClientSecret) throw new Error("Missing BOG credentials");
+
+    const credentials = btoa(`${bogClientId}:${bogClientSecret}`);
+    const tokenRes = await fetch(
+      "https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${credentials}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "grant_type=client_credentials",
+      },
+    );
+
+    if (!tokenRes.ok) {
+      const err = await tokenRes.text();
+      throw new Error(`BOG auth failed (${tokenRes.status}): ${err}`);
+    }
+
+    const { access_token } = await tokenRes.json();
+
+    const detailRes = await fetch(
+      `https://api.bog.ge/payments/v1/ecommerce/orders/${order.bog_order_id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${access_token}`,
+          "Accept-Language": "ka",
+        },
+      },
+    );
+
+    if (!detailRes.ok) {
+      const err = await detailRes.text();
+      console.error("[check-payment] BOG detail fetch failed:", err);
+      throw new Error(`BOG order detail failed (${detailRes.status})`);
+    }
+
+    const bogOrder = await detailRes.json();
+    console.log("[check-payment] BOG order detail:", JSON.stringify(bogOrder));
+
+    const bogStatus =
+      (typeof bogOrder.order_status === "object"
+        ? bogOrder.order_status?.key
+        : bogOrder.order_status) ||
+      bogOrder.status;
+
+    if (bogStatus === "completed" || bogStatus === "approved" || bogStatus === "success") {
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          payment_status: "paid",
+          status: "confirmed",
+          paid_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+      if (updateErr) console.error("[check-payment] Update failed:", updateErr);
+
+      return new Response(JSON.stringify({ status: "paid", bog_status: bogStatus }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error") {
+      await supabase
+        .from("orders")
+        .update({ payment_status: "failed" })
+        .eq("id", orderId);
+
+      return new Response(JSON.stringify({ status: "failed", bog_status: bogStatus }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ status: order.payment_status, bog_status: bogStatus }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("[check-payment] error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+});
