@@ -31,6 +31,7 @@ interface Order {
   front_mockup_url: string | null;
   back_mockup_url: string | null;
   transparent_image_url: string | null;
+  back_transparent_image_url: string | null;
   prompt: string | null;
   size: string | null;
 }
@@ -286,17 +287,34 @@ export default function AdminOrders() {
                     ) : (
                       <p className="text-sm text-muted-foreground">პრევიუ არ არის</p>
                     )}
-                    {order.transparent_image_url && (
+                    {(order.transparent_image_url || order.back_transparent_image_url) && (
                       <div className="mt-3 pt-3 border-t border-border">
                         <p className="text-xs text-muted-foreground mb-1.5">ორიგინალი დიზაინი (პრინტ ფაილი)</p>
-                        <div className="flex items-center gap-3">
-                          <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
-                            <img src={order.transparent_image_url} alt="ორიგინალი" className="w-full h-full object-contain" />
-                          </div>
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                            onClick={() => downloadImage(order.transparent_image_url!, `order-${order.id}-print.png`)}>
-                            <Download className="h-3 w-3" /> პრინტ ფაილი
-                          </Button>
+                        <div className="flex gap-4 flex-wrap">
+                          {order.transparent_image_url && (
+                            <div className="space-y-1.5">
+                              <p className="text-xs text-muted-foreground">წინა მხარე</p>
+                              <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
+                                <img src={order.transparent_image_url} alt="წინა პრინტი" className="w-full h-full object-contain" />
+                              </div>
+                              <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                onClick={() => downloadImage(order.transparent_image_url!, `order-${order.id}-print-front.png`)}>
+                                <Download className="h-3 w-3" /> პრინტ ფაილი
+                              </Button>
+                            </div>
+                          )}
+                          {order.back_transparent_image_url && (
+                            <div className="space-y-1.5">
+                              <p className="text-xs text-muted-foreground">უკანა მხარე</p>
+                              <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
+                                <img src={order.back_transparent_image_url} alt="უკანა პრინტი" className="w-full h-full object-contain" />
+                              </div>
+                              <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                onClick={() => downloadImage(order.back_transparent_image_url!, `order-${order.id}-print-back.png`)}>
+                                <Download className="h-3 w-3" /> პრინტ ფაილი
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

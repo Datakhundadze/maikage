@@ -5,9 +5,9 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingBag } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
-import { catalog, COLORS, COLOR_FILTERS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { catalog, COLORS, COLOR_FILTERS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice, type BackType } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
@@ -131,6 +131,8 @@ export default function SimplePage() {
   const { saveDesign, togglePublish } = useDesignStorage();
 
   const [publishing, setPublishing] = useState(false);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [sizeError, setSizeError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -417,12 +419,13 @@ export default function SimplePage() {
           <ProductConfigPanel
             config={productConfig.config}
             locked={false}
-            onProductChange={productConfig.setProduct}
-            onSubProductChange={productConfig.setSubProduct}
+            onProductChange={(p) => { productConfig.setProduct(p); setSizeError(false); }}
+            onSubProductChange={(s) => { productConfig.setSubProduct(s); setSizeError(false); }}
             onColorChange={productConfig.setColor}
             onViewChange={productConfig.setView}
             selectedSize={productConfig.config.size}
-            onSizeChange={productConfig.setSize}
+            onSizeChange={(s) => { productConfig.setSize(s); setSizeError(false); }}
+            sizeError={sizeError}
           />
 
           {/* Mobile-only inline preview — below view buttons, same as Studio mode */}
@@ -603,22 +606,46 @@ export default function SimplePage() {
             return (
               <>
                 <PriceDisplay breakdown={breakdown} />
-                <OrderDialog
-                  breakdown={breakdown}
-                  product={productConfig.config.product}
-                  subProduct={productConfig.config.subProduct}
-                  color={productConfig.config.color}
-                  isStudio={false}
-                  frontMockupDataUrl={frontMockup}
-                  backMockupDataUrl={backMockup}
-                  transparentImageDataUrl={frontData.photos[0]?.image || backData.photos[0]?.image || null}
-                  size={productConfig.config.size}
-                  onBeforeOpen={() => {
-                    if (frontMockup || backMockup) {
-                      saveToGenerations(frontMockup, backMockup);
+                {(() => {
+                  const needsSize = (BRAND_SIZES[productConfig.config.subProduct]?.length > 0) || productConfig.config.product === "Phone Case";
+                  const handleOrderClick = () => {
+                    if (needsSize && !productConfig.config.size) {
+                      setSizeError(true);
+                      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      return;
                     }
-                  }}
-                />
+                    setSizeError(false);
+                    if (frontMockup || backMockup) saveToGenerations(frontMockup, backMockup);
+                    setOrderDialogOpen(true);
+                  };
+                  return (
+                    <>
+                      <Button
+                        className="w-full h-12 gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold text-base"
+                        onClick={handleOrderClick}
+                      >
+                        <ShoppingBag className="h-5 w-5" />
+                        შეკვეთა
+                      </Button>
+                      <OrderDialog
+                        breakdown={breakdown}
+                        product={productConfig.config.product}
+                        subProduct={productConfig.config.subProduct}
+                        color={productConfig.config.color}
+                        isStudio={false}
+                        externalOpen={orderDialogOpen}
+                        onExternalOpenChange={setOrderDialogOpen}
+                        frontMockupDataUrl={frontMockup}
+                        backMockupDataUrl={backMockup}
+                        transparentImageDataUrl={frontData.photos[0]?.image || null}
+                        backTransparentImageDataUrl={backData.photos[0]?.image || null}
+                        size={productConfig.config.size}
+                      >
+                        <span className="hidden" />
+                      </OrderDialog>
+                    </>
+                  );
+                })()}
                 {/* Quick actions */}
                 {(frontMockup || backMockup) && (
                   <div className="flex gap-2 flex-wrap">
