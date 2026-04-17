@@ -16,6 +16,7 @@ interface ProductConfigPanelProps {
   selectedSize?: string;
   onSizeChange?: (size: string) => void;
   excludeProducts?: ProductType[];
+  sizeError?: boolean;
 }
 
 export default function ProductConfigPanel({
@@ -28,6 +29,7 @@ export default function ProductConfigPanel({
   selectedSize,
   onSizeChange,
   excludeProducts = [],
+  sizeError = false,
 }: ProductConfigPanelProps) {
   const { lang } = useAppState();
   const [productOpen, setProductOpen] = useState(true);
@@ -170,31 +172,42 @@ export default function ProductConfigPanel({
 
       {/* Size — always flat */}
       {availableSizes.length > 0 && (
-        <div>
+        <div id="size-selector">
           <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.size")}</h3>
           <select
             value={selectedSize || ""}
             onChange={(e) => onSizeChange?.(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary cursor-pointer"
+            className={`w-full rounded-lg border bg-card text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 cursor-pointer ${
+              sizeError && !selectedSize
+                ? "border-destructive ring-2 ring-destructive/30 focus:ring-destructive/40 focus:border-destructive"
+                : "border-border focus:ring-primary/40 focus:border-primary"
+            }`}
           >
             <option value="" disabled>{t(lang, "config.chooseSize")}</option>
             {availableSizes.map((size) => (
               <option key={size} value={size}>{size}</option>
             ))}
           </select>
+          {sizeError && !selectedSize && (
+            <p className="text-destructive text-xs mt-1">{lang === "en" ? "Please select a size" : "გთხოვთ აირჩიოთ ზომა"}</p>
+          )}
         </div>
       )}
 
       {/* Phone Case Model — dropdown */}
       {config.product === "Phone Case" && (
-        <div>
+        <div id="size-selector">
           <h3 className="text-sm font-semibold text-card-foreground mb-2">
             {lang === "en" ? "Phone Model" : "ტელეფონის მოდელი"}
           </h3>
           <select
             value={selectedSize || ""}
             onChange={(e) => onSizeChange?.(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary cursor-pointer"
+            className={`w-full rounded-lg border bg-card text-foreground text-sm px-3 py-2 focus:outline-none focus:ring-2 cursor-pointer ${
+              sizeError && !selectedSize
+                ? "border-destructive ring-2 ring-destructive/30 focus:ring-destructive/40 focus:border-destructive"
+                : "border-border focus:ring-primary/40 focus:border-primary"
+            }`}
           >
             <option value="" disabled>
               {lang === "en" ? "Choose phone model" : "აირჩიეთ ტელეფონის მოდელი"}
@@ -203,6 +216,9 @@ export default function ProductConfigPanel({
               <option key={model} value={model}>{model}</option>
             ))}
           </select>
+          {sizeError && !selectedSize && (
+            <p className="text-destructive text-xs mt-1">{lang === "en" ? "Please select a phone model" : "გთხოვთ აირჩიოთ ტელეფონის მოდელი"}</p>
+          )}
         </div>
       )}
 

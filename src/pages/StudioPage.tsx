@@ -11,7 +11,7 @@ import Lightbox from "@/components/Lightbox";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { DesignProvider, useDesign } from "@/hooks/useDesign";
 import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
-import { catalog } from "@/lib/catalog";
+import { catalog, BRAND_SIZES } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -38,6 +38,7 @@ function StudioContent() {
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [sizeError, setSizeError] = useState(false);
 
   // Mobile: scroll to preview area when generation starts
   const mobilePreviewRef = useRef<HTMLDivElement>(null);
@@ -286,6 +287,17 @@ function StudioContent() {
 
   const isProcessing = state.appStatus !== "IDLE" && state.appStatus !== "COMPLETE" && state.appStatus !== "ERROR";
 
+  const handleOrderClick = () => {
+    const needsSize = (BRAND_SIZES[productConfig.config.subProduct]?.length > 0) || productConfig.config.product === "Phone Case";
+    if (needsSize && !productConfig.config.size) {
+      setSizeError(true);
+      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setSizeError(false);
+    setOrderDialogOpen(true);
+  };
+
   // Mobile: scroll into view when generation or result becomes active
   useEffect(() => {
     if ((isProcessing || result) && mobilePreviewRef.current) {
@@ -306,7 +318,7 @@ function StudioContent() {
       colorName={productConfig.config.color}
       placementCoords={productConfig.config.placementCoords}
       onResultUpdate={setResult}
-      onOrder={() => setOrderDialogOpen(true)}
+      onOrder={handleOrderClick}
       onShareToCommunity={savedDesignId ? handleShareToCommunity : undefined}
       sharing={sharing}
       isShared={isShared}
@@ -343,8 +355,9 @@ function StudioContent() {
               onColorChange={productConfig.setColor}
               onViewChange={productConfig.setView}
               selectedSize={productConfig.config.size}
-              onSizeChange={productConfig.setSize}
+              onSizeChange={(s) => { productConfig.setSize(s); setSizeError(false); }}
               excludeProducts={["Sport"]}
+              sizeError={sizeError}
             />
             {/* Mobile-only inline preview — appears below view buttons, above design panel */}
             <div ref={mobilePreviewRef} className="lg:hidden rounded-xl overflow-hidden border border-border bg-background">
