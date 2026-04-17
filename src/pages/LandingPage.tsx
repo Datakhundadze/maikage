@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAppState } from "@/hooks/useAppState";
-import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
+import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign, CheckCircle, XCircle } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
+import { supabase } from "@/integrations/supabase/client";
 
 const SPORT_PHOTOS = [
   "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
@@ -13,6 +14,7 @@ const SPORT_PHOTOS = [
 export default function LandingPage() {
   const { setMode, theme, toggleTheme, lang, toggleLang } = useAppState();
   const [sportPhotoIdx, setSportPhotoIdx] = useState(0);
+  const [paymentBanner, setPaymentBanner] = useState<"success" | "fail" | null>(null);
 
   const isGreen = theme === "green";
   // Colors used in green theme
@@ -26,8 +28,46 @@ export default function LandingPage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentResult = params.get("payment");
+    if (!paymentResult) return;
+
+    if (paymentResult === "success") {
+      setPaymentBanner("success");
+      const pendingOrderId = localStorage.getItem("maika_pending_order_id");
+      if (pendingOrderId) {
+        localStorage.removeItem("maika_pending_order_id");
+        supabase.functions.invoke("check-payment", { body: { orderId: pendingOrderId } })
+          .then((res) => console.log("[LandingPage] check-payment result:", res.data))
+          .catch((err) => console.error("[LandingPage] check-payment error:", err));
+      }
+    } else if (paymentResult === "fail") {
+      setPaymentBanner("fail");
+    }
+
+    window.history.replaceState({}, "", window.location.pathname);
+    const hideTimer = setTimeout(() => setPaymentBanner(null), 8000);
+    return () => clearTimeout(hideTimer);
+  }, []);
+
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      {/* Payment result banner */}
+      {paymentBanner && (
+        <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium shadow-lg transition-all ${
+          paymentBanner === "success"
+            ? "bg-emerald-600 text-white"
+            : "bg-red-600 text-white"
+        }`}>
+          {paymentBanner === "success" ? (
+            <><CheckCircle className="h-5 w-5" /> {lang === "en" ? "Payment successful! Your order is being processed." : "გადახდა წარმატებით შესრულდა! შეკვეთა მუშავდება."}</>
+          ) : (
+            <><XCircle className="h-5 w-5" /> {lang === "en" ? "Payment failed. Please try again." : "გადახდა ვერ განხორციელდა. სცადეთ თავიდან."}</>
+          )}
+          <button onClick={() => setPaymentBanner(null)} className="ml-4 text-white/70 hover:text-white">✕</button>
+        </div>
+      )}
       {/* Background radial glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full bg-white/[0.02] blur-[150px] pointer-events-none" />
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[200px] bg-amber-500/[0.03] blur-[100px] pointer-events-none" />

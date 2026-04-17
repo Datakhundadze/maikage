@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Download, ChevronDown, ChevronUp } from "lucide-react";
+import { Download, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 
 interface Order {
   id: string;
@@ -34,6 +34,7 @@ interface Order {
   back_transparent_image_url: string | null;
   prompt: string | null;
   size: string | null;
+  paid_at: string | null;
 }
 
 const STATUS_OPTIONS = ["pending", "confirmed", "in_production", "shipped", "delivered", "cancelled"];
@@ -98,6 +99,30 @@ export default function AdminOrders() {
     setOrders((data as any as Order[]) || []);
     setLoading(false);
     setLastRefresh(new Date());
+  }
+
+  const [checkingPayment, setCheckingPayment] = useState<string | null>(null);
+
+  async function checkPayment(orderId: string) {
+    setCheckingPayment(orderId);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-payment", {
+        body: { orderId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.status === "paid") {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: "paid", status: "confirmed", paid_at: new Date().toISOString() } : o));
+        toast({ title: "გადახდა დადასტურდა ✓" });
+      } else if (data?.status === "failed") {
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: "failed" } : o));
+        toast({ title: "გადახდა ვერ განხორციელდა", variant: "destructive" });
+      } else {
+        toast({ title: "სტატუსი", description: `BOG: ${data?.bog_status || data?.status || "unknown"}` });
+      }
+    } catch (err: any) {
+      toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
+    }
+    setCheckingPayment(null);
   }
 
   async function updateOrder(id: string, field: string, value: string) {
@@ -355,7 +380,7 @@ export default function AdminOrders() {
                   )}
 
                   {/* Status controls */}
-                  <div className="flex gap-3 items-end pt-2 border-t border-border">
+                  <div className="flex gap-3 items-end flex-wrap pt-2 border-t border-border">
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">გადახდა</span>
                       <Select value={order.payment_status} onValueChange={v => updateOrder(order.id, "payment_status", v)}>
@@ -374,6 +399,23 @@ export default function AdminOrders() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {order.payment_status !== "paid" && order.bog_order_id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 gap-1.5 text-xs"
+                        disabled={checkingPayment === order.id}
+                        onClick={() => checkPayment(order.id)}
+                      >
+                        <RefreshCw className={`h-3 w-3 ${checkingPayment === order.id ? "animate-spin" : ""}`} />
+                        გადახდის შემოწმება
+                      </Button>
+                    )}
+                    {order.paid_at && (
+                      <span className="text-xs text-emerald-500 self-end pb-1.5">
+                        გადახდილია: {format(new Date(order.paid_at), "dd.MM.yy HH:mm")}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}

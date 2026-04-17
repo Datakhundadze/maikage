@@ -156,7 +156,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       const { redirect_url } = paymentRes.data as { redirect_url: string };
 
       if (redirect_url) {
-        // 3. Redirect to BOG payment page
+        localStorage.setItem("maika_pending_order_id", orderData.id);
         window.location.href = redirect_url;
       } else {
         throw new Error("No redirect URL received from payment provider");
