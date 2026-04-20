@@ -5,6 +5,7 @@ import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingBag } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, COLOR_FILTERS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -96,6 +97,35 @@ const LAYER_COLORS = [
 ];
 
 const MAX_PHOTOS = 5;
+
+function drawMultilineText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  cy: number,
+  maxWidth: number,
+  fontFamily: string,
+  color: string,
+  maxFontSize: number,
+) {
+  const lines = text.split("\n").filter((l) => l.trim());
+  if (lines.length === 0) return;
+
+  const longestLine = lines.reduce((a, b) => (a.length > b.length ? a : b), "");
+  const fontSize = Math.min(maxFontSize, maxWidth / (longestLine.length * 0.55));
+  const lineHeight = fontSize * 1.25;
+  const totalHeight = lineHeight * lines.length;
+
+  ctx.fillStyle = color;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `bold ${fontSize}px ${fontFamily}`;
+
+  const startY = cy - totalHeight / 2 + lineHeight / 2;
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], cx, startY + i * lineHeight, maxWidth);
+  }
+}
 
 interface PhotoLayer {
   id: string;
@@ -200,7 +230,7 @@ export default function SimplePage() {
     }));
   };
 
-  // Generate text as a transparent canvas image
+  // Generate text as a transparent canvas image (supports multiline via \n)
   const [textImage, setTextImage] = useState<string | null>(null);
   useEffect(() => {
     if (!sideData.designText.trim()) {
@@ -208,18 +238,16 @@ export default function SimplePage() {
       return;
     }
     document.fonts.ready.then(() => {
+      const lines = sideData.designText.split("\n").filter((l) => l.trim());
+      const lineCount = Math.max(lines.length, 1);
+      const canvasH = Math.max(200, lineCount * 120);
       const canvas = document.createElement("canvas");
       canvas.width = 800;
-      canvas.height = 200;
+      canvas.height = canvasH;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.clearRect(0, 0, 800, 200);
-      ctx.fillStyle = sideData.textColor;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      const fontSize = Math.min(120, 760 / (sideData.designText.length * 0.55));
-      ctx.font = `bold ${fontSize}px ${sideData.selectedFont.family}`;
-      ctx.fillText(sideData.designText, 400, 100, 760);
+      ctx.clearRect(0, 0, 800, canvasH);
+      drawMultilineText(ctx, sideData.designText, 400, canvasH / 2, 760, sideData.selectedFont.family, sideData.textColor, 120);
       setTextImage(canvas.toDataURL("image/png"));
     });
   }, [sideData.designText, sideData.selectedFont, sideData.textColor]);
@@ -332,18 +360,13 @@ export default function SimplePage() {
       } catch { /* skip */ }
     }
 
-    // Draw text (constrained to zone width)
+    // Draw text (multiline, constrained to zone width)
     if (side.designText.trim()) {
       const tc = side.textCoords;
       const maxTextWidth = zoneW * 0.95;
-      const fontSize = Math.min(80, maxTextWidth / (side.designText.length * 0.55));
-      ctx.fillStyle = side.textColor;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = `bold ${fontSize}px ${side.selectedFont.family}`;
       const tx = zoneX + zoneW * tc.x;
       const ty = zoneY + zoneH * tc.y;
-      ctx.fillText(side.designText, tx, ty, maxTextWidth);
+      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
     }
 
     ctx.restore();
@@ -400,14 +423,9 @@ export default function SimplePage() {
     if (side.designText.trim()) {
       const tc = side.textCoords;
       const maxTextWidth = zoneW * 0.95;
-      const fontSize = Math.min(80, maxTextWidth / (side.designText.length * 0.55));
-      ctx.fillStyle = side.textColor;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.font = `bold ${fontSize}px ${side.selectedFont.family}`;
       const tx = zoneX + zoneW * tc.x;
       const ty = zoneY + zoneH * tc.y;
-      ctx.fillText(side.designText, tx, ty, maxTextWidth);
+      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
     }
 
     ctx.restore();
@@ -619,11 +637,12 @@ export default function SimplePage() {
               {lang === "en" ? "Text" : "ტექსტი"}
               {sideData.designText.trim() && <span className="ml-auto text-[10px] font-normal text-emerald-500">● {lang === "en" ? "Green handles" : "მწვანე"}</span>}
             </h3>
-            <Input
+            <Textarea
               value={sideData.designText}
               onChange={(e) => updateField("designText", e.target.value)}
               placeholder={lang === "en" ? "Enter your text..." : "შეიყვანეთ ტექსტი..."}
-              className="bg-card"
+              className="bg-card resize-none"
+              rows={2}
             />
 
             {/* Font picker */}
