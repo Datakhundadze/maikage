@@ -635,7 +635,6 @@ export default function SimplePage() {
             <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <Type className="h-3.5 w-3.5" />
               {lang === "en" ? "Text" : "ტექსტი"}
-              {sideData.designText.trim() && <span className="ml-auto text-[10px] font-normal text-emerald-500">● {lang === "en" ? "Green handles" : "მწვანე"}</span>}
             </h3>
             <Textarea
               value={sideData.designText}
