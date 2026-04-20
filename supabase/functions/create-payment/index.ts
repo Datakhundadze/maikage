@@ -104,6 +104,12 @@ ${orderRow.back_mockup_url ? `<p><a href="${orderRow.back_mockup_url}">უკა
           },
         });
         console.log("[create-payment] Order notification email enqueued for orderId:", orderId);
+
+        // Immediately trigger the queue processor so the email is sent without waiting
+        // for a cron tick. Fire-and-forget: don't block the payment flow on email send.
+        supabase.functions.invoke("process-email-queue", { body: {} })
+          .then(res => console.log("[create-payment] process-email-queue result:", res.data || res.error))
+          .catch(err => console.error("[create-payment] process-email-queue invoke failed:", err));
       }
     } catch (emailErr) {
       console.error("[create-payment] Failed to enqueue order notification email:", emailErr);
