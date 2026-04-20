@@ -53,6 +53,11 @@ serve(async (req) => {
 
     console.log("[Corporate Inquiry] Email enqueued for", companyName);
 
+    // Immediately trigger the email queue processor (fire-and-forget)
+    supabase.functions.invoke("process-email-queue", { body: {} })
+      .then(res => console.log("[Corporate Inquiry] process-email-queue result:", res.data || res.error))
+      .catch(err => console.error("[Corporate Inquiry] process-email-queue invoke failed:", err));
+
     return new Response(
       JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

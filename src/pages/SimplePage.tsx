@@ -264,6 +264,7 @@ export default function SimplePage() {
     const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, view);
     const baseImageUrl = imageResult?.entry.imageUrl ?? null;
     const needsColorFilter = imageResult ? !imageResult.isExact : false;
+    const zone = imageResult?.entry.placementZone;
 
     const canvas = document.createElement("canvas");
     canvas.width = 800;
@@ -295,7 +296,20 @@ export default function SimplePage() {
       ctx.fillRect(0, 0, 800, 800);
     }
 
-    // Draw photo layers
+    // Clip drawing to the placement zone so design never overflows the product
+    const zoneW = zone ? 800 * zone.scale : 800;
+    const zoneH = zone ? 800 * (zone.scaleY ?? zone.scale) : 800;
+    const zoneX = zone ? 800 * zone.x - zoneW / 2 : 0;
+    const zoneY = zone ? 800 * zone.y - zoneH / 2 : 0;
+
+    ctx.save();
+    if (zone) {
+      ctx.beginPath();
+      ctx.rect(zoneX, zoneY, zoneW, zoneH);
+      ctx.clip();
+    }
+
+    // Draw photo layers (constrained within placement zone)
     for (const photo of side.photos) {
       try {
         const img = new Image();
@@ -305,45 +319,125 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        const w = 800 * photo.coords.scale;
-        const h = photo.coords.scaleY ? 800 * photo.coords.scaleY : (img.naturalHeight / img.naturalWidth) * w;
-        const x = 800 * photo.coords.x - w / 2;
-        const y = 800 * photo.coords.y - h / 2;
+        // Scale photo relative to the placement zone instead of full canvas
+        const pw = zoneW * photo.coords.scale;
+        const ph = photo.coords.scaleY
+          ? zoneH * photo.coords.scaleY
+          : (img.naturalHeight / img.naturalWidth) * pw;
+        const px = zoneX + zoneW * photo.coords.x - pw / 2;
+        const py = zoneY + zoneH * photo.coords.y - ph / 2;
         ctx.globalAlpha = 0.8;
-        ctx.drawImage(img, x, y, w, h);
+        ctx.drawImage(img, px, py, pw, ph);
         ctx.globalAlpha = 1;
       } catch { /* skip */ }
     }
 
-    // Draw text
+    // Draw text (constrained to zone width)
     if (side.designText.trim()) {
       const tc = side.textCoords;
-      const fontSize = Math.min(80, 600 / (side.designText.length * 0.55));
+      const maxTextWidth = zoneW * 0.95;
+      const fontSize = Math.min(80, maxTextWidth / (side.designText.length * 0.55));
       ctx.fillStyle = side.textColor;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.font = `bold ${fontSize}px ${side.selectedFont.family}`;
-      ctx.fillText(side.designText, 800 * tc.x, 800 * tc.y, 600);
+      const tx = zoneX + zoneW * tc.x;
+      const ty = zoneY + zoneH * tc.y;
+      ctx.fillText(side.designText, tx, ty, maxTextWidth);
     }
+
+    ctx.restore();
 
     return canvas.toDataURL("image/png");
   }, [productConfig]);
 
+  // Composite design-only (photos + text on transparent background, no product)
+  // Used as the "print file" saved alongside the full mockup.
+  const compositeDesignOnly = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
+    if (side.photos.length === 0 && !side.designText.trim()) return null;
+
+    const { config } = productConfig;
+    const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
+    const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, view);
+    const zone = imageResult?.entry.placementZone;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 800;
+    const ctx = canvas.getContext("2d")!;
+
+    const zoneW = zone ? 800 * zone.scale : 800;
+    const zoneH = zone ? 800 * (zone.scaleY ?? zone.scale) : 800;
+    const zoneX = zone ? 800 * zone.x - zoneW / 2 : 0;
+    const zoneY = zone ? 800 * zone.y - zoneH / 2 : 0;
+
+    ctx.save();
+    if (zone) {
+      ctx.beginPath();
+      ctx.rect(zoneX, zoneY, zoneW, zoneH);
+      ctx.clip();
+    }
+
+    for (const photo of side.photos) {
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = photo.image;
+        });
+        const pw = zoneW * photo.coords.scale;
+        const ph = photo.coords.scaleY
+          ? zoneH * photo.coords.scaleY
+          : (img.naturalHeight / img.naturalWidth) * pw;
+        const px = zoneX + zoneW * photo.coords.x - pw / 2;
+        const py = zoneY + zoneH * photo.coords.y - ph / 2;
+        ctx.drawImage(img, px, py, pw, ph);
+      } catch { /* skip */ }
+    }
+
+    if (side.designText.trim()) {
+      const tc = side.textCoords;
+      const maxTextWidth = zoneW * 0.95;
+      const fontSize = Math.min(80, maxTextWidth / (side.designText.length * 0.55));
+      ctx.fillStyle = side.textColor;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `bold ${fontSize}px ${side.selectedFont.family}`;
+      const tx = zoneX + zoneW * tc.x;
+      const ty = zoneY + zoneH * tc.y;
+      ctx.fillText(side.designText, tx, ty, maxTextWidth);
+    }
+
+    ctx.restore();
+    return canvas.toDataURL("image/png");
+  }, [productConfig]);
+
   // Save Simple mode design to generations table
-  const saveToGenerations = useCallback(async (frontMockup: string | null, backMockup: string | null) => {
+  const saveToGenerations = useCallback(async (frontMockup: string | null, backMockup: string | null, designOnly: string | null) => {
     if (savedToGenerations) return;
     try {
       const { config } = productConfig;
       const genId = crypto.randomUUID();
       const imageData = frontMockup || backMockup;
 
-      // Upload image to storage (avoid storing large base64 in DB)
+      // Upload mockup image
       let mockupPath: string | null = null;
       if (imageData) {
         const blob = await fetch(imageData).then(r => r.blob());
         const path = `generations/${genId}-mockup.png`;
         const { error: upErr } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png" });
         if (!upErr) mockupPath = path;
+      }
+
+      // Upload design-only (transparent) image — this is the print file
+      let transparentPath: string | null = null;
+      if (designOnly) {
+        const blob = await fetch(designOnly).then(r => r.blob());
+        const path = `generations/${genId}-transparent.png`;
+        const { error: upErr } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png" });
+        if (!upErr) transparentPath = path;
       }
 
       const record = {
@@ -355,7 +449,7 @@ export default function SimplePage() {
         style: "simple",
         prompt: null,
         mockup_image_path: mockupPath,
-        transparent_image_path: null,
+        transparent_image_path: transparentPath,
       };
       await supabase.from("generations" as any).insert(record);
       setSavedToGenerations(true);
@@ -386,6 +480,8 @@ export default function SimplePage() {
   // Memoized mockup data URLs for order
   const [frontMockup, setFrontMockup] = useState<string | null>(null);
   const [backMockup, setBackMockup] = useState<string | null>(null);
+  const [frontDesignOnly, setFrontDesignOnly] = useState<string | null>(null);
+  const [backDesignOnly, setBackDesignOnly] = useState<string | null>(null);
 
   // Generate mockups when design changes
   useEffect(() => {
@@ -394,13 +490,17 @@ export default function SimplePage() {
 
     if (hasFrontDesign) {
       compositeSide(frontData, "front").then(setFrontMockup);
+      compositeDesignOnly(frontData, "front").then(setFrontDesignOnly);
     } else {
       setFrontMockup(null);
+      setFrontDesignOnly(null);
     }
     if (hasBackDesign) {
       compositeSide(backData, "back").then(setBackMockup);
+      compositeDesignOnly(backData, "back").then(setBackDesignOnly);
     } else {
       setBackMockup(null);
+      setBackDesignOnly(null);
     }
     setSavedToGenerations(false);
   }, [frontData, backData, productConfig.config.product, productConfig.config.subProduct, productConfig.config.color]);
@@ -615,7 +715,7 @@ export default function SimplePage() {
                       return;
                     }
                     setSizeError(false);
-                    if (frontMockup || backMockup) saveToGenerations(frontMockup, backMockup);
+                    if (frontMockup || backMockup) saveToGenerations(frontMockup, backMockup, frontDesignOnly || backDesignOnly);
                     setOrderDialogOpen(true);
                   };
                   return (
@@ -637,8 +737,8 @@ export default function SimplePage() {
                         onExternalOpenChange={setOrderDialogOpen}
                         frontMockupDataUrl={frontMockup}
                         backMockupDataUrl={backMockup}
-                        transparentImageDataUrl={frontData.photos[0]?.image || null}
-                        backTransparentImageDataUrl={backData.photos[0]?.image || null}
+                        transparentImageDataUrl={frontDesignOnly}
+                        backTransparentImageDataUrl={backDesignOnly}
                         size={productConfig.config.size}
                       >
                         <span className="hidden" />
