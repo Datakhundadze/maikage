@@ -6,6 +6,8 @@ import { ArrowLeft, Upload, X, Download, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COLORS } from "@/lib/catalog";
 import { useAppState } from "@/hooks/useAppState";
+import { useAuth } from "@/hooks/useAuth";
+import { getGuestSessionId } from "@/lib/guestSession";
 
 /**
  * Colorize the shirt region using flood-fill + multiply blend.
@@ -118,6 +120,7 @@ export default function TryOnPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { setMode } = useAppState();
+  const { user } = useAuth();
 
   const goBack = () => {
     if (window.history.length > 1) {
@@ -193,6 +196,8 @@ export default function TryOnPage() {
       if (name.includes("oversize")) return "oversized short-sleeved t-shirt with a relaxed dropped-shoulder fit";
       if (name.includes("sport set") || name.includes("sport")) return "athletic sport jersey with short sleeves";
       if (name.includes("t-shirt") || name.includes("tshirt")) return "short-sleeved crew neck t-shirt";
+      if (productName?.toLowerCase().includes("t-shirt")) return "short-sleeved crew neck t-shirt";
+      if (productName?.toLowerCase().includes("hoodie")) return "long-sleeved pullover hoodie with a hood";
       return subType || productName || "t-shirt";
     };
 
@@ -228,13 +233,41 @@ export default function TryOnPage() {
       }
       if (!data?.image) throw new Error("AI-მ სურათი ვერ დააბრუნა. სცადეთ ხელახლა.");
 
+      let finalImage: string;
       if (isTextured) {
-        // AI already generated the correct garment color/texture — no colorization needed
-        setResultImage(data.image);
+        finalImage = data.image;
       } else {
         const hex = COLORS.find(c => c.name === state.colorName)?.hex || "";
-        const colored = await applyGarmentColor(data.image, hex);
-        setResultImage(colored);
+        finalImage = await applyGarmentColor(data.image, hex);
+      }
+      setResultImage(finalImage);
+
+      // Save try-on result to generations so it's visible in admin
+      try {
+        const genId = crypto.randomUUID();
+        const [mockupBlob, tryOnBlob] = await Promise.all([
+          fetch(state.mockupImage).then(r => r.blob()),
+          fetch(finalImage).then(r => r.blob()),
+        ]);
+        const [mockupUpload, tryOnUpload] = await Promise.all([
+          supabase.storage.from("designs").upload(`generations/${genId}-mockup.png`, mockupBlob, { contentType: "image/png" }),
+          supabase.storage.from("designs").upload(`generations/${genId}-tryon.png`, tryOnBlob, { contentType: "image/png" }),
+        ]);
+        const mockupPath = mockupUpload.error ? null : `generations/${genId}-mockup.png`;
+        const tryOnPath = tryOnUpload.error ? null : `generations/${genId}-tryon.png`;
+        await supabase.from("generations" as any).insert({
+          user_id: user?.id ?? null,
+          session_id: !user ? getGuestSessionId() : null,
+          is_guest: !user,
+          product: state.productName || "T-Shirt",
+          color: state.colorName || "White",
+          style: "try-on",
+          prompt: null,
+          mockup_image_path: tryOnPath,
+          transparent_image_path: mockupPath,
+        });
+      } catch (e) {
+        console.error("[TryOn] Failed to save generation:", e);
       }
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
