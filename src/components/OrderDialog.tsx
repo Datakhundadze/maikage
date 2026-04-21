@@ -133,12 +133,22 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         front_mockup_url: frontUrl,
         back_mockup_url: backUrl,
         transparent_image_url: transparentUrl,
-        back_transparent_image_url: backTransparentUrl,
         prompt: prompt || null,
         size: size || null,
       } as any).select("id").single();
 
       if (error) throw error;
+
+      // Best-effort: populate back_transparent_image_url if the column exists in the
+      // schema. If the migration hasn't been applied yet, silently ignore — the core
+      // order data is already saved.
+      if (backTransparentUrl) {
+        const { error: backErr } = await supabase
+          .from("orders")
+          .update({ back_transparent_image_url: backTransparentUrl } as any)
+          .eq("id", orderData.id);
+        if (backErr) console.warn("[OrderDialog] back_transparent_image_url update skipped:", backErr.message);
+      }
 
       // 2. Call create-payment edge function
       const paymentRes = await supabase.functions.invoke("create-payment", {
