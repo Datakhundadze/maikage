@@ -757,6 +757,8 @@ export default function SimplePage() {
                         backMockupDataUrl={backMockup}
                         transparentImageDataUrl={frontDesignOnly}
                         backTransparentImageDataUrl={backDesignOnly}
+                        frontOriginalPhotos={frontData.photos.map(p => p.image)}
+                        backOriginalPhotos={backData.photos.map(p => p.image)}
                         size={productConfig.config.size}
                       >
                         <span className="hidden" />

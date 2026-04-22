@@ -39,6 +39,8 @@ interface OrderDialogProps {
   backMockupDataUrl?: string | null;
   transparentImageDataUrl?: string | null;
   backTransparentImageDataUrl?: string | null;
+  frontOriginalPhotos?: string[];
+  backOriginalPhotos?: string[];
   prompt?: string | null;
   onBeforeOpen?: () => void;
   size?: string;
@@ -68,7 +70,24 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
   }
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, backTransparentImageDataUrl, prompt, onBeforeOpen, size }: OrderDialogProps) {
+// Upload full-resolution originals so admin can download the user's raw photos
+// (not the shrunken composite). Stored at a predictable path so admin can list them.
+async function uploadOriginalPhotos(photos: string[], orderId: string, side: "front" | "back"): Promise<void> {
+  await Promise.all(photos.map(async (dataUrl, i) => {
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const ext = blob.type === "image/jpeg" ? "jpg" : blob.type === "image/webp" ? "webp" : "png";
+      const path = `order-originals/${orderId}/${side}-${i}.${ext}`;
+      const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: blob.type, upsert: true });
+      if (error) console.error(`[OrderDialog] Upload original ${side}-${i} failed:`, error);
+    } catch (e) {
+      console.error(`[OrderDialog] Upload original ${side}-${i} error:`, e);
+    }
+  }));
+}
+
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, backTransparentImageDataUrl, frontOriginalPhotos, backOriginalPhotos, prompt, onBeforeOpen, size }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -103,12 +122,14 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
     try {
       const orderId = crypto.randomUUID();
 
-      // Upload mockup images in parallel if provided
+      // Upload mockup images and full-resolution originals in parallel
       const [frontUrl, backUrl, transparentUrl, backTransparentUrl] = await Promise.all([
         frontMockupDataUrl ? uploadMockupImage(frontMockupDataUrl, orderId, "front") : Promise.resolve(null),
         backMockupDataUrl ? uploadMockupImage(backMockupDataUrl, orderId, "back") : Promise.resolve(null),
         transparentImageDataUrl ? uploadMockupImage(transparentImageDataUrl, orderId, "transparent") : Promise.resolve(null),
         backTransparentImageDataUrl ? uploadMockupImage(backTransparentImageDataUrl, orderId, "transparent-back") : Promise.resolve(null),
+        frontOriginalPhotos?.length ? uploadOriginalPhotos(frontOriginalPhotos, orderId, "front") : Promise.resolve(),
+        backOriginalPhotos?.length ? uploadOriginalPhotos(backOriginalPhotos, orderId, "back") : Promise.resolve(),
       ]);
 
       // 1. Insert order into database
