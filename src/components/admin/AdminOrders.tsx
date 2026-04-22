@@ -81,8 +81,35 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [originalPhotos, setOriginalPhotos] = useState<Record<string, { name: string; url: string }[]>>({});
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+
+  // Load full-resolution originals uploaded to order-originals/{orderId}/ when a row expands
+  useEffect(() => {
+    if (!expandedId || originalPhotos[expandedId]) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.storage
+        .from("designs")
+        .list(`order-originals/${expandedId}`, { limit: 50 });
+      if (cancelled) return;
+      if (error || !data) {
+        setOriginalPhotos((prev) => ({ ...prev, [expandedId]: [] }));
+        return;
+      }
+      const files = data
+        .filter((f) => f.name && !f.name.startsWith("."))
+        .map((f) => {
+          const { data: pub } = supabase.storage
+            .from("designs")
+            .getPublicUrl(`order-originals/${expandedId}/${f.name}`);
+          return { name: f.name, url: pub.publicUrl };
+        });
+      setOriginalPhotos((prev) => ({ ...prev, [expandedId]: files }));
+    })();
+    return () => { cancelled = true; };
+  }, [expandedId, originalPhotos]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -340,6 +367,25 @@ export default function AdminOrders() {
                               </Button>
                             </div>
                           )}
+                        </div>
+                      </div>
+                    )}
+                    {originalPhotos[order.id] && originalPhotos[order.id].length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-xs text-muted-foreground mb-1.5">ორიგინალი ფოტოები (სრული რეზოლუცია)</p>
+                        <div className="flex gap-3 flex-wrap">
+                          {originalPhotos[order.id].map((photo, i) => (
+                            <div key={photo.name} className="space-y-1.5">
+                              <p className="text-xs text-muted-foreground">{photo.name.startsWith("back") ? "უკანა" : "წინა"} #{i + 1}</p>
+                              <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
+                                <img src={photo.url} alt={photo.name} className="w-full h-full object-contain" />
+                              </div>
+                              <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                onClick={() => downloadImage(photo.url, `order-${order.id}-${photo.name}`)}>
+                                <Download className="h-3 w-3" /> ორიგინალი
+                              </Button>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
