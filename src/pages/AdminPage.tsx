@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,22 @@ export default function AdminPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+
+  const tabRef = useRef(activeTab);
+  tabRef.current = activeTab;
+
+  useEffect(() => {
+    if (!authenticated) return;
+    window.history.pushState(null, "", window.location.href);
+    const onPop = () => {
+      window.history.pushState(null, "", window.location.href);
+      if (tabRef.current !== "dashboard") {
+        setActiveTab("dashboard");
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [authenticated]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();

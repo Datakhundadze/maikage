@@ -9,53 +9,81 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   try {
-    let body: Record<string, any> = {};
+    // Merge query params (for GET callbacks) with body params
+    const url = new URL(req.url);
+    const query: Record<string, any> = {};
+    for (const [k, v] of url.searchParams) {
+      try { query[k] = JSON.parse(v); } catch { query[k] = v; }
+    }
 
-    const contentType = req.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      body = await req.json();
-    } else if (contentType.includes("application/x-www-form-urlencoded")) {
-      const text = await req.text();
-      const params = new URLSearchParams(text);
-      for (const [k, v] of params) {
-        try { body[k] = JSON.parse(v); } catch { body[k] = v; }
-      }
-    } else {
-      const text = await req.text();
-      try {
-        body = JSON.parse(text);
-      } catch {
+    let body: Record<string, any> = {};
+    if (req.method !== "GET") {
+      const contentType = req.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        body = await req.json();
+      } else if (contentType.includes("application/x-www-form-urlencoded")) {
+        const text = await req.text();
         const params = new URLSearchParams(text);
         for (const [k, v] of params) {
           try { body[k] = JSON.parse(v); } catch { body[k] = v; }
         }
+      } else {
+        const text = await req.text();
+        try {
+          body = JSON.parse(text);
+        } catch {
+          const params = new URLSearchParams(text);
+          for (const [k, v] of params) {
+            try { body[k] = JSON.parse(v); } catch { body[k] = v; }
+          }
+        }
       }
     }
 
-    console.log("[payment-callback] Received body:", JSON.stringify(body));
-    console.log("[payment-callback] Content-Type:", contentType);
-    console.log("[payment-callback] Method:", req.method);
+    // Body takes precedence, query fills in gaps
+    const merged = { ...query, ...body };
 
-    const externalOrderId = body.external_order_id || body.externalOrderId || body.order_external_id;
+    console.log("[payment-callback] Method:", req.method, "Query:", JSON.stringify(query), "Body:", JSON.stringify(body));
+
+    const externalOrderId =
+      merged.external_order_id || merged.externalOrderId || merged.order_external_id || merged.order_id;
+
     const statusKey =
-      (typeof body.order_status === "object" ? body.order_status?.key : body.order_status) ||
-      body.status ||
-      body.payment_status;
+      (typeof merged.order_status === "object" ? merged.order_status?.key : merged.order_status) ||
+      merged.status ||
+      merged.payment_status ||
+      (typeof merged.payment_detail === "object" ? merged.payment_detail?.status : undefined);
 
     console.log("[payment-callback] Resolved externalOrderId:", externalOrderId, "statusKey:", statusKey);
 
-    if (!externalOrderId) {
-      console.error("[payment-callback] No external_order_id found in body");
-      return new Response(JSON.stringify({ error: "Missing external_order_id" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
-    if (statusKey === "completed" || statusKey === "approved" || statusKey === "success" || statusKey === "paid") {
+
+    // Try by external_order_id (our order.id) first, fall back to bog_order_id
+    let orderId = externalOrderId;
+    if (!orderId && merged.id) {
+      const { data } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("bog_order_id", merged.id)
+        .single();
+      if (data) orderId = data.id;
+    }
+
+    if (!orderId) {
+      console.error("[payment-callback] Could not resolve order. Merged payload:", JSON.stringify(merged));
+      return new Response(JSON.stringify({ error: "Cannot resolve order" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const PAID = ["completed", "approved", "success", "paid"];
+    const FAILED = ["rejected", "failed", "error"];
+
+    if (statusKey && PAID.includes(statusKey.toLowerCase())) {
       const { error } = await supabase
         .from("orders")
         .update({
@@ -63,16 +91,16 @@ serve(async (req) => {
           status: "confirmed",
           paid_at: new Date().toISOString(),
         })
-        .eq("id", externalOrderId);
+        .eq("id", orderId);
       if (error) console.error("[payment-callback] Failed to update order as paid:", error);
-      else console.log("[payment-callback] Order marked as paid:", externalOrderId);
-    } else if (statusKey === "rejected" || statusKey === "failed" || statusKey === "error") {
+      else console.log("[payment-callback] Order marked as paid:", orderId);
+    } else if (statusKey && FAILED.includes(statusKey.toLowerCase())) {
       const { error } = await supabase
         .from("orders")
         .update({ payment_status: "failed" })
-        .eq("id", externalOrderId);
+        .eq("id", orderId);
       if (error) console.error("[payment-callback] Failed to update order as failed:", error);
-      else console.log("[payment-callback] Order marked as failed:", externalOrderId);
+      else console.log("[payment-callback] Order marked as failed:", orderId);
     } else {
       console.log("[payment-callback] Unhandled status key:", statusKey);
     }
