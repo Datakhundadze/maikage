@@ -123,9 +123,42 @@ export default function AdminOrders() {
       console.error("[AdminOrders] fetch error:", error);
       toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
     }
-    setOrders((data as any as Order[]) || []);
+    const rows = (data as any as Order[]) || [];
+    setOrders(rows);
     setLoading(false);
     setLastRefresh(new Date());
+
+    // Auto-sync any non-paid orders that have a BOG order id — catches cases where
+    // the BOG webhook didn't update our DB but payment actually succeeded.
+    const unsynced = rows.filter(
+      (o) => o.bog_order_id && o.payment_status !== "paid" && o.payment_status !== "refunded"
+    );
+    if (unsynced.length > 0) {
+      const updates = await Promise.allSettled(
+        unsynced.map(async (o) => {
+          const { data: res } = await supabase.functions.invoke("check-payment", { body: { orderId: o.id } });
+          return { id: o.id, res };
+        })
+      );
+      let paidCount = 0;
+      setOrders((prev) =>
+        prev.map((o) => {
+          const match = updates.find(
+            (u) => u.status === "fulfilled" && (u.value as any)?.id === o.id
+          ) as PromiseFulfilledResult<{ id: string; res: any }> | undefined;
+          if (!match) return o;
+          if (match.value.res?.status === "paid") {
+            paidCount += 1;
+            return { ...o, payment_status: "paid", status: "confirmed", paid_at: o.paid_at || new Date().toISOString() };
+          }
+          if (match.value.res?.status === "failed") {
+            return { ...o, payment_status: "failed" };
+          }
+          return o;
+        })
+      );
+      if (paidCount > 0) toast({ title: `გადახდა სინქრონიზდა ${paidCount} შეკვეთისთვის ✓` });
+    }
   }
 
   const [checkingPayment, setCheckingPayment] = useState<string | null>(null);

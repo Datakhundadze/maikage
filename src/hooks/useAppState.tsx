@@ -16,6 +16,9 @@ interface AppStateContextType {
 
 const AppStateContext = createContext<AppStateContextType | null>(null);
 
+// Sub-pages that should be reachable via browser back (return to landing)
+const SUBPAGES: AppMode[] = ["about", "terms", "privacy", "corporate", "sport"];
+
 export function AppStateProvider({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>(() => {
     return (localStorage.getItem("maika-lang") as Lang) || "ge";
@@ -49,7 +52,28 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const toggleLang = useCallback(() => setLang((l) => (l === "en" ? "ge" : "en")), []);
   const toggleTheme = useCallback(() => setTheme((t) => (t === "dark" ? "green" : "dark")), []);
-  const setMode = useCallback((m: AppMode) => setModeState(m), []);
+
+  const setMode = useCallback((m: AppMode) => {
+    setModeState((prev) => {
+      if (m !== prev && SUBPAGES.includes(m) && !SUBPAGES.includes(prev)) {
+        window.history.pushState({ maikaMode: prev }, "", window.location.pathname + window.location.search);
+      }
+      return m;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handlePop = (e: PopStateEvent) => {
+      const st = e.state as { maikaMode?: AppMode } | null;
+      if (st?.maikaMode) {
+        setModeState(st.maikaMode);
+        return;
+      }
+      setModeState((prev) => (SUBPAGES.includes(prev) ? "landing" : prev));
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
 
   return (
     <AppStateContext.Provider value={{ lang, toggleLang, theme, toggleTheme, mode, setMode }}>
