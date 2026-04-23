@@ -4,8 +4,9 @@ import { useAuth } from "./useAuth";
 const STORAGE_KEY = "maika_gen_limit";
 const LOGGED_IN_LIMIT = 3;
 const COOLDOWN_MS = 2 * 60 * 60 * 1000; // 2 hours
-const GUEST_LIMIT = 1;
-const GUEST_STORAGE_KEY = "maika_guest_gen_count";
+const GUEST_LIMIT = 5;
+const GUEST_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const GUEST_STORAGE_KEY = "maika_guest_gen_limit";
 
 interface GenLimitData {
   count: number;
@@ -24,16 +25,16 @@ function setStoredLimit(data: GenLimitData) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-function getGuestCount(): number {
+function getGuestLimit(): GenLimitData {
   try {
-    return parseInt(localStorage.getItem(GUEST_STORAGE_KEY) || "0", 10);
-  } catch {
-    return 0;
-  }
+    const raw = localStorage.getItem(GUEST_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { count: 0, firstGenAt: 0 };
 }
 
-function setGuestCount(n: number) {
-  localStorage.setItem(GUEST_STORAGE_KEY, String(n));
+function setGuestLimit(data: GenLimitData) {
+  localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(data));
 }
 
 export type LimitCheckResult =
@@ -45,14 +46,20 @@ export function useGenerationLimit() {
   const { user } = useAuth();
 
   const checkLimit = useCallback((): LimitCheckResult => {
-    // Guest user
+    // Guest user — 5 per 24h, then login required
     if (!user) {
-      const count = getGuestCount();
-      if (count >= GUEST_LIMIT) {
+      const data = getGuestLimit();
+      const now = Date.now();
+      // Reset if 24h window has passed
+      if (data.count > 0 && now - data.firstGenAt >= GUEST_COOLDOWN_MS) {
+        setGuestLimit({ count: 0, firstGenAt: 0 });
+        return { allowed: true };
+      }
+      if (data.count >= GUEST_LIMIT) {
         return {
           allowed: false,
           reason: "guest_limit",
-          message: "გასაგრძელებლად გთხოვთ დარეგისტრირდეთ",
+          message: "სტუმრის ლიმიტი ამოიწურა (5 გენერაცია 24 საათში). გასაგრძელებლად გთხოვთ დარეგისტრირდეთ.",
         };
       }
       return { allowed: true };
@@ -64,7 +71,16 @@ export function useGenerationLimit() {
 
   const recordGeneration = useCallback(() => {
     if (!user) {
-      setGuestCount(getGuestCount() + 1);
+      const data = getGuestLimit();
+      const now = Date.now();
+      if (data.count > 0 && now - data.firstGenAt >= GUEST_COOLDOWN_MS) {
+        setGuestLimit({ count: 1, firstGenAt: now });
+        return;
+      }
+      setGuestLimit({
+        count: data.count + 1,
+        firstGenAt: data.firstGenAt || now,
+      });
       return;
     }
 
