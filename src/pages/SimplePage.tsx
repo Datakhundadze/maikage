@@ -141,6 +141,24 @@ interface SideData {
   textCoords: PlacementCoords;
 }
 
+// Build a human-readable, copyable summary of the user's text so the admin
+// can see the exact text, font, and color without reading it off the mockup.
+function buildTextPrompt(front: SideData, back: SideData): string | null {
+  const parts: string[] = [];
+  const fmt = (label: string, s: SideData) => {
+    if (!s.designText.trim()) return;
+    parts.push(
+      `${label}:\n` +
+        `  ტექსტი: ${s.designText}\n` +
+        `  ფონტი: ${s.selectedFont.family}\n` +
+        `  ფერი: ${s.textColor}`
+    );
+  };
+  fmt("წინა მხარე", front);
+  fmt("უკანა მხარე", back);
+  return parts.length ? parts.join("\n\n") : null;
+}
+
 const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.38, scale: 0.35, scaleY: 0.35 };
 
 const DEFAULT_SIDE: SideData = {
@@ -376,6 +394,9 @@ export default function SimplePage() {
 
   // Composite design-only (photos + text on transparent background, no product)
   // Used as the "print file" saved alongside the full mockup.
+  // Output is cropped to the placement zone and rendered at high resolution
+  // so admin downloads are print-quality regardless of how small the zone is
+  // relative to the mockup canvas.
   const compositeDesignOnly = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
     if (side.photos.length === 0 && !side.designText.trim()) return null;
 
@@ -384,22 +405,16 @@ export default function SimplePage() {
     const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, view);
     const zone = imageResult?.entry.placementZone;
 
+    // Canvas represents just the printable zone (cropped), scaled up for print quality.
+    const PRINT_SIZE = 3000;
+    const aspect = zone ? (zone.scaleY ?? zone.scale) / zone.scale : 1;
+    const canvasW = PRINT_SIZE;
+    const canvasH = Math.round(PRINT_SIZE * aspect);
+
     const canvas = document.createElement("canvas");
-    canvas.width = 800;
-    canvas.height = 800;
+    canvas.width = canvasW;
+    canvas.height = canvasH;
     const ctx = canvas.getContext("2d")!;
-
-    const zoneW = zone ? 800 * zone.scale : 800;
-    const zoneH = zone ? 800 * (zone.scaleY ?? zone.scale) : 800;
-    const zoneX = zone ? 800 * zone.x - zoneW / 2 : 0;
-    const zoneY = zone ? 800 * zone.y - zoneH / 2 : 0;
-
-    ctx.save();
-    if (zone) {
-      ctx.beginPath();
-      ctx.rect(zoneX, zoneY, zoneW, zoneH);
-      ctx.clip();
-    }
 
     for (const photo of side.photos) {
       try {
@@ -410,25 +425,26 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        const pw = zoneW * photo.coords.scale;
+        const pw = canvasW * photo.coords.scale;
         const ph = photo.coords.scaleY
-          ? zoneH * photo.coords.scaleY
+          ? canvasH * photo.coords.scaleY
           : (img.naturalHeight / img.naturalWidth) * pw;
-        const px = zoneX + zoneW * photo.coords.x - pw / 2;
-        const py = zoneY + zoneH * photo.coords.y - ph / 2;
+        const px = canvasW * photo.coords.x - pw / 2;
+        const py = canvasH * photo.coords.y - ph / 2;
         ctx.drawImage(img, px, py, pw, ph);
       } catch { /* skip */ }
     }
 
     if (side.designText.trim()) {
       const tc = side.textCoords;
-      const maxTextWidth = zoneW * 0.95;
-      const tx = zoneX + zoneW * tc.x;
-      const ty = zoneY + zoneH * tc.y;
-      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+      const maxTextWidth = canvasW * 0.95;
+      const tx = canvasW * tc.x;
+      const ty = canvasH * tc.y;
+      // Scale the text font size proportionally (was 80px on 800px = 10% of canvas width)
+      const fontPx = Math.round(canvasW * 0.1);
+      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
     }
 
-    ctx.restore();
     return canvas.toDataURL("image/png");
   }, [productConfig]);
 
@@ -760,6 +776,7 @@ export default function SimplePage() {
                         frontOriginalPhotos={frontData.photos.map(p => p.image)}
                         backOriginalPhotos={backData.photos.map(p => p.image)}
                         size={productConfig.config.size}
+                        prompt={buildTextPrompt(frontData, backData)}
                       >
                         <span className="hidden" />
                       </OrderDialog>
