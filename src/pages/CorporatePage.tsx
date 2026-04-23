@@ -1,9 +1,17 @@
+import { useEffect } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import { ArrowLeft, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 
 export default function CorporatePage() {
   const { setMode } = useAppState();
+
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    const onPop = () => setMode("landing");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [setMode]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">

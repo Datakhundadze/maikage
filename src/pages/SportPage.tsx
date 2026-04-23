@@ -21,6 +21,13 @@ export default function SportPage() {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    const onPop = () => setMode("landing");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [setMode]);
+
+  useEffect(() => {
     const id = setInterval(() => setCurrent((c) => (c + 1) % SLIDES.length), 2500);
     return () => clearInterval(id);
   }, []);
