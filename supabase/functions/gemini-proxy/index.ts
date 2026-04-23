@@ -130,7 +130,7 @@ The result must be INDISTINGUISHABLE from a real professional photograph.`,
     // Illustration / graphic mode
     content.push({
       type: "text",
-      text: `You are an expert concept artist for a streetwear merchandise brand. Generate a design for printing on a ${product} (${color} color).
+      text: `You are an expert concept artist. Generate a standalone illustration/artwork on a pure white background.
 
 DESIGN SYSTEM:
 - Character/Subject = WHO is in the design
@@ -138,20 +138,21 @@ DESIGN SYSTEM:
 - Style = Art direction, visual aesthetic
 - Typography = Text to include
 
-CRITICAL RULES:
-1. Pure white background (#FFFFFF) — absolutely no gradients, shadows, or textures in background
-2. Design must be a printable silhouette/illustration suitable for garment printing
-3. High contrast, bold lines, vibrant colors
-4. No frame, no border, no mockup — just the raw design on white
-5. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
-6. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
+⚠️ ABSOLUTE RULES — VIOLATING ANY OF THESE MAKES THE OUTPUT WRONG:
+1. DO NOT draw a t-shirt, shirt, hoodie, garment, clothing silhouette, apparel mockup, or any piece of wearable clothing in the image. The output is the ARTWORK ONLY — never a garment containing the artwork.
+2. DO NOT draw a rectangular frame, border, box, panel, or any container around the artwork.
+3. DO NOT draw a mockup, template, product preview, or any representation of the design being placed on something.
+4. Pure white background (#FFFFFF) — absolutely no gradients, shadows, or textures in background.
+5. High contrast, bold lines, vibrant colors.
+6. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
+7. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
 
 CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
 ${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : "DO NOT include any text, words, letters, numbers, or typography of any kind in the design. The design must be purely visual/illustrative with absolutely no written elements."}
 
-OUTPUT: A single square illustration on a solid pure white (#FFFFFF) background. No shadows, no frame, no extra elements.`,
+OUTPUT: A single standalone illustration on a solid pure white (#FFFFFF) background. NO garments, NO t-shirt shapes, NO frames, NO borders, NO mockups — just the raw artwork floating on white.`,
     });
   }
 
