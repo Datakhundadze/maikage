@@ -190,13 +190,26 @@ export default function AdminOrders() {
     if (field === "payment_status" && value === "paid") {
       updateData.paid_at = new Date().toISOString();
     }
-    const { error } = await supabase.from("orders").update(updateData).eq("id", id);
+    const { data, error } = await supabase
+      .from("orders")
+      .update(updateData)
+      .eq("id", id)
+      .select()
+      .single();
     if (error) {
       toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
-    } else {
-      setOrders(prev => prev.map(o => o.id === id ? { ...o, ...updateData } : o));
-      toast({ title: "განახლდა" });
+      return;
     }
+    if (!data) {
+      toast({
+        title: "განახლება ვერ შესრულდა",
+        description: "დარწმუნდით რომ RLS პოლიტიკა უშვებს UPDATE-ს.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...(data as any) } : o));
+    toast({ title: "განახლდა" });
   }
 
   const paymentBadgeVariant = (s: string) => {
@@ -331,11 +344,28 @@ export default function AdminOrders() {
                     </div>
                   </div>
 
-                  {/* Prompt */}
+                  {/* Prompt / design text */}
                   {order.prompt && (
                     <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">პრომპტი</h4>
-                      <p className="text-sm bg-background rounded-lg p-3 border border-border">{order.prompt}</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">{order.is_studio ? "პრომპტი" : "დიზაინის ტექსტი"}</h4>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(order.prompt || "");
+                              toast({ title: "დაკოპირდა" });
+                            } catch {
+                              toast({ title: "ვერ დაკოპირდა", variant: "destructive" });
+                            }
+                          }}
+                        >
+                          დაკოპირება
+                        </Button>
+                      </div>
+                      <pre className="text-sm bg-background rounded-lg p-3 border border-border whitespace-pre-wrap font-sans">{order.prompt}</pre>
                     </div>
                   )}
 
@@ -379,7 +409,7 @@ export default function AdminOrders() {
                           {order.transparent_image_url && (
                             <div className="space-y-1.5">
                               <p className="text-xs text-muted-foreground">წინა მხარე</p>
-                              <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
+                              <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
                                 <img src={order.transparent_image_url} alt="წინა პრინტი" className="w-full h-full object-contain" />
                               </div>
                               <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
@@ -391,7 +421,7 @@ export default function AdminOrders() {
                           {order.back_transparent_image_url && (
                             <div className="space-y-1.5">
                               <p className="text-xs text-muted-foreground">უკანა მხარე</p>
-                              <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
+                              <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
                                 <img src={order.back_transparent_image_url} alt="უკანა პრინტი" className="w-full h-full object-contain" />
                               </div>
                               <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
@@ -410,7 +440,7 @@ export default function AdminOrders() {
                           {originalPhotos[order.id].map((photo, i) => (
                             <div key={photo.name} className="space-y-1.5">
                               <p className="text-xs text-muted-foreground">{photo.name.startsWith("back") ? "უკანა" : "წინა"} #{i + 1}</p>
-                              <div className="w-20 h-20 rounded-lg border border-border bg-background overflow-hidden">
+                              <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
                                 <img src={photo.url} alt={photo.name} className="w-full h-full object-contain" />
                               </div>
                               <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
