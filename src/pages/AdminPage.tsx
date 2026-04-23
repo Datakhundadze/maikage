@@ -79,9 +79,11 @@ export default function AdminPage() {
       <header className="border-b border-border sticky top-0 bg-background/95 backdrop-blur z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex items-center gap-4 h-14">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            {activeTab !== "dashboard" && (
+              <Button variant="ghost" size="icon" onClick={() => setActiveTab("dashboard")}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-amber-500 flex items-center justify-center text-black text-sm font-black">
                 M
