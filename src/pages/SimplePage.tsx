@@ -159,7 +159,7 @@ function buildTextPrompt(front: SideData, back: SideData): string | null {
   return parts.length ? parts.join("\n\n") : null;
 }
 
-const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.38, scale: 0.35, scaleY: 0.35 };
+const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.5, scale: 0.9 };
 
 const DEFAULT_SIDE: SideData = {
   photos: [],
