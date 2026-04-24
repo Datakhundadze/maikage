@@ -42,7 +42,7 @@ serve(async (req) => {
     const appUrl = Deno.env.get("APP_URL") || "https://maika.ge";
     const callbackUrl = `${supabaseUrl}/functions/v1/tbc-callback`;
 
-    const methods = installment ? [7] : [5, 8, 9]; // 5=card, 8=ApplePay, 9=GooglePay, 7=installment
+    const methods = installment ? [8] : [5, 9, 14]; // 5=card, 9=ApplePay, 14=GooglePay, 8=installment
 
     const paymentPayload: Record<string, unknown> = {
       amount: {

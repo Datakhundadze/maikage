@@ -4,9 +4,9 @@ import { Label } from "@/components/ui/label";
 export type PaymentMethod = "bog" | "tbc" | "tbc_credit";
 
 const METHODS: { value: PaymentMethod; label: string; desc: string }[] = [
-  { value: "bog", label: "BOG", desc: "საქართველოს ბანკი" },
-  { value: "tbc", label: "TBC", desc: "თიბისი ბანკი / Google Pay / Apple Pay" },
-  { value: "tbc_credit", label: "TBC განვადება", desc: "თიბისი კრედიტით გადახდა" },
+  { value: "bog", label: "საქართველოს ბანკი", desc: "ბარათით გადახდა" },
+  { value: "tbc", label: "TBC", desc: "ბარათი / Apple Pay / Google Pay" },
+  { value: "tbc_credit", label: "TBC განვადება", desc: "კრედიტით / განვადებით გადახდა" },
 ];
 
 interface Props {
