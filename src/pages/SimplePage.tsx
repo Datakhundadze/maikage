@@ -17,6 +17,8 @@ import { getGuestSessionId } from "@/lib/guestSession";
 import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
+import { useCart } from "@/hooks/useCart";
+import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 
@@ -177,6 +179,8 @@ export default function SimplePage() {
   const { trackEvent } = useAnalytics();
   const { user } = useAuth();
   const { saveDesign, togglePublish } = useDesignStorage();
+  const { addItem: addToCart, adding: addingToCart } = useCart();
+  const { toast } = useToast();
 
   const [publishing, setPublishing] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
@@ -752,6 +756,38 @@ export default function SimplePage() {
                     if (frontMockup || backMockup) saveToGenerations(frontMockup, backMockup, frontDesignOnly || backDesignOnly);
                     setOrderDialogOpen(true);
                   };
+                  const handleAddToCart = async () => {
+                    if (needsSize && !productConfig.config.size) {
+                      setSizeError(true);
+                      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      return;
+                    }
+                    setSizeError(false);
+                    if (!frontMockup && !backMockup) {
+                      toast({ title: "ჯერ შექმენი დიზაინი", variant: "destructive" });
+                      return;
+                    }
+                    try {
+                      await addToCart({
+                        product: productConfig.config.product,
+                        subProduct: productConfig.config.subProduct,
+                        color: productConfig.config.color,
+                        size: productConfig.config.size || null,
+                        isStudio: false,
+                        frontMockupDataUrl: frontMockup,
+                        backMockupDataUrl: backMockup,
+                        transparentImageDataUrl: frontDesignOnly,
+                        backTransparentImageDataUrl: backDesignOnly,
+                        frontOriginalPhotos: frontData.photos.map(p => p.image),
+                        backOriginalPhotos: backData.photos.map(p => p.image),
+                        prompt: buildTextPrompt(frontData, backData),
+                        productPrice: breakdown.total,
+                      });
+                      toast({ title: "კალათაში დაემატა ✓" });
+                    } catch (e: any) {
+                      toast({ title: "შეცდომა", description: e.message, variant: "destructive" });
+                    }
+                  };
                   return (
                     <>
                       <Button
@@ -760,6 +796,15 @@ export default function SimplePage() {
                       >
                         <ShoppingBag className="h-5 w-5" />
                         შეკვეთა
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full h-11 gap-2 font-semibold text-sm"
+                        onClick={handleAddToCart}
+                        disabled={addingToCart}
+                      >
+                        <ShoppingBag className="h-4 w-4" />
+                        {addingToCart ? "ემატება..." : "კალათაში დამატება"}
                       </Button>
                       <OrderDialog
                         breakdown={breakdown}

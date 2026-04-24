@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 import type { PriceBreakdown } from "@/lib/pricing";
+import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
 
@@ -107,6 +108,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const [comment, setComment] = useState("");
   const [delivery, setDelivery] = useState<DeliveryType>("pickup");
   const [address, setAddress] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bog");
 
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = breakdown.total + deliveryPrice;
@@ -151,6 +153,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         color,
         is_studio: isStudio,
         payment_status: "unpaid",
+        payment_provider: paymentMethod,
         front_mockup_url: frontUrl,
         back_mockup_url: backUrl,
         transparent_image_url: transparentUrl,
@@ -171,12 +174,14 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         if (backErr) console.warn("[OrderDialog] back_transparent_image_url update skipped:", backErr.message);
       }
 
-      // 2. Call create-payment edge function
-      const paymentRes = await supabase.functions.invoke("create-payment", {
+      // 2. Call create-payment edge function (route to TBC or BOG)
+      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-tbc";
+      const paymentRes = await supabase.functions.invoke(payFn, {
         body: {
           orderId: orderData.id,
           amount: totalWithDelivery,
           description: `${product} - ${subProduct} (${color})`,
+          ...(paymentMethod === "tbc_credit" ? { installment: true } : {}),
         },
       });
 
@@ -267,6 +272,9 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
               <Input id="address" value={address} onChange={e => setAddress(e.target.value)} required maxLength={500} placeholder="მიწოდების მისამართი" />
             </div>
           )}
+
+          {/* Payment method */}
+          <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />
 
           {/* Price summary */}
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-1.5">

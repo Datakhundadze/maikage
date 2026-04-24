@@ -22,7 +22,7 @@ serve(async (req) => {
 
     const { data: order, error: fetchErr } = await supabase
       .from("orders")
-      .select("id, bog_order_id, payment_status, total_price")
+      .select("id, bog_order_id, payment_status, total_price, cart_id")
       .eq("id", orderId)
       .single();
 
@@ -85,21 +85,26 @@ serve(async (req) => {
     const bogOrder = await detailRes.json();
     console.log("[check-payment] BOG order detail:", JSON.stringify(bogOrder));
 
-    const bogStatus =
+    const rawStatus =
       (typeof bogOrder.order_status === "object"
         ? bogOrder.order_status?.key
         : bogOrder.order_status) ||
       bogOrder.status;
+    const bogStatus = typeof rawStatus === "string" ? rawStatus.toLowerCase() : rawStatus;
+
+    // Cart checkouts share one bog_order_id across multiple rows; update the whole cart
+    // if cart_id is set so a single payment confirmation flips every line item.
+    const applyUpdate = (patch: Record<string, unknown>) => {
+      const q = supabase.from("orders").update(patch);
+      return order.cart_id ? q.eq("cart_id", order.cart_id) : q.eq("id", orderId);
+    };
 
     if (bogStatus === "completed" || bogStatus === "approved" || bogStatus === "success") {
-      const { error: updateErr } = await supabase
-        .from("orders")
-        .update({
-          payment_status: "paid",
-          status: "confirmed",
-          paid_at: new Date().toISOString(),
-        })
-        .eq("id", orderId);
+      const { error: updateErr } = await applyUpdate({
+        payment_status: "paid",
+        status: "confirmed",
+        paid_at: new Date().toISOString(),
+      });
 
       if (updateErr) console.error("[check-payment] Update failed:", updateErr);
 
@@ -108,11 +113,8 @@ serve(async (req) => {
       });
     }
 
-    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error") {
-      await supabase
-        .from("orders")
-        .update({ payment_status: "failed" })
-        .eq("id", orderId);
+    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error" || bogStatus === "declined") {
+      await applyUpdate({ payment_status: "failed" });
 
       return new Response(JSON.stringify({ status: "failed", bog_status: bogStatus }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

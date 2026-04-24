@@ -3,12 +3,14 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { Paintbrush, FolderOpen, Globe, ShieldCheck, LogIn, LogOut } from "lucide-react";
+import { Paintbrush, FolderOpen, Globe, ShieldCheck, LogIn, LogOut, ShoppingCart } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import LoginModal from "@/components/LoginModal";
+import { useCart } from "@/hooks/useCart";
 
 export default function AppHeader() {
   const { lang, setMode, toggleLang } = useAppState();
+  const { itemCount } = useCart();
   const { user, isAnonymous, signOut } = useAuth();
   const { isAdmin } = useAdminCheck();
   const navigate = useNavigate();
@@ -68,8 +70,20 @@ export default function AppHeader() {
           })}
         </nav>
 
-        {/* RIGHT: lang + auth */}
+        {/* RIGHT: cart + lang + auth */}
         <div className="shrink-0 flex items-center gap-1.5">
+          <button
+            onClick={() => setMode("cart")}
+            className="relative flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border"
+            title={lang === "en" ? "Cart" : "კალათა"}
+          >
+            <ShoppingCart className="h-3.5 w-3.5" />
+            {itemCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+                {itemCount}
+              </span>
+            )}
+          </button>
           <button
             onClick={toggleLang}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border"
