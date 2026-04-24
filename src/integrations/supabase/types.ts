@@ -299,6 +299,7 @@ export type Database = {
         Row: {
           back_mockup_url: string | null
           bog_order_id: string | null
+          cart_id: string | null
           color: string | null
           comment: string | null
           created_at: string
@@ -312,6 +313,7 @@ export type Database = {
           is_studio: boolean
           last_name: string
           paid_at: string | null
+          payment_provider: string
           payment_status: string
           phone: string
           product: string
@@ -327,6 +329,7 @@ export type Database = {
         Insert: {
           back_mockup_url?: string | null
           bog_order_id?: string | null
+          cart_id?: string | null
           color?: string | null
           comment?: string | null
           created_at?: string
@@ -340,6 +343,7 @@ export type Database = {
           is_studio?: boolean
           last_name: string
           paid_at?: string | null
+          payment_provider?: string
           payment_status?: string
           phone?: string
           product: string
@@ -355,6 +359,7 @@ export type Database = {
         Update: {
           back_mockup_url?: string | null
           bog_order_id?: string | null
+          cart_id?: string | null
           color?: string | null
           comment?: string | null
           created_at?: string
@@ -368,6 +373,7 @@ export type Database = {
           is_studio?: boolean
           last_name?: string
           paid_at?: string | null
+          payment_provider?: string
           payment_status?: string
           phone?: string
           product?: string
