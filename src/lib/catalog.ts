@@ -147,64 +147,105 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
 ];
 
 // Phone case model list (stored in the `size` field of orders)
-export const PHONE_CASE_MODELS: string[] = [
-  // iPhone standard
-  "iPhone 7", "iPhone 7+", "iPhone X", "iPhone XR",
-  "iPhone 11", "iPhone 11 PRO",
-  "iPhone 12/12PRO", "iPhone 12 PRO MAX",
-  "iPhone 13/12 Mini", "iPhone 13", "iPhone 13 PRO", "iPhone 13 Pro Max",
-  "iPhone 14", "iPhone 14 Pro", "iPhone 14 Pro Max",
-  "iPhone 15", "iPhone 15PRO", "iPhone 15 PRO MAX",
-  "iPhone 16E", "iPhone 16+", "iPhone 16", "iPhone 16 PRO", "iPhone 16 PRO MAX",
-  "iPhone 17", "iPhone 17 PRO", "iPhone 17 PRO MAX",
-  "iPhone 8",
-  // iPhone CLEAR
-  "iPhone 7 CLEAR", "iPhone 7+ CLEAR", "iPhone X CLEAR",
-  "iPhone 11 CLEAR", "iPhone 12 CLEAR", "iPhone 12 PRO MAX CLEAR",
-  "iPhone 13 CLEAR", "iPhone 13 Pro CLEAR", "iPhone 13 Pro Max CLEAR", "iPhone 13 MINI CLEAR",
-  "iPhone 14 CLEAR", "iPhone 14 Pro CLEAR", "iPhone 14 Pro Max CLEAR",
-  "iPhone 15 CLEAR", "iPhone 15 PRO CLEAR", "iPhone 15 PRO MAX CLEAR",
-  // iPhone OLD
-  "iPhone 7 OLD", "iPhone 7+ OLD", "iPhone X OLD", "iPhone X+ OLD",
-  "iPhone XS Max OLD", "iPhone 11 Pro OLD", "iPhone 11 Pro Max OLD", "iPhone 12 MAX OLD",
-  // Samsung S-series
-  "Samsung S21", "Samsung S21 Ultra",
-  "Samsung S22", "Samsung S22+", "Samsung S22 Ultra",
-  "Samsung S23 new", "Samsung S23+", "Samsung S23 Ultra",
-  "Samsung S24", "Samsung S24+", "Samsung S24 Ultra",
-  "Samsung S25", "Samsung S25+", "Samsung S25 Ultra",
-  // Samsung Galaxy A-series
-  "Samsung galaxy A02", "Samsung galaxy A025", "Samsung galaxy A035",
-  "Samsung galaxy A03", "Samsung galaxy A04", "Samsung galaxy A04E",
-  "Samsung galaxy a045-13 5G", "Samsung galaxy A05", "Samsung galaxy A055",
-  "Samsung galaxy A06", "Samsung galaxy A07",
-  "Samsung galaxy A12", "Samsung galaxy A13", "Samsung galaxy A14", "Samsung galaxy A15", "Samsung galaxy A16",
-  "Samsung galaxy A22", "Samsung galaxy A23", "Samsung galaxy A24", "Samsung galaxy A25", "Samsung galaxy A26",
-  "Samsung galaxy A17", "Samsung galaxy A27",
-  "Samsung galaxy A32 4G", "Samsung galaxy A32 5G", "Samsung galaxy A33", "Samsung galaxy A34", "Samsung galaxy A35", "Samsung galaxy A36",
-  "Samsung galaxy A52", "Samsung galaxy A53", "Samsung galaxy A54", "Samsung galaxy A55", "Samsung galaxy A56",
-  "Samsung galaxy A72", "Samsung galaxy A73",
-  // Samsung Galaxy S/FE
-  "Samsung galaxy S8", "Samsung galaxy S9", "Samsung galaxy S10",
-  "Samsung galaxy S20", "Samsung galaxy S20FE", "Samsung galaxy S21FE",
-  "Samsung galaxy S23FE", "Samsung galaxy S24FE", "Samsung galaxy S25FE",
-  // Samsung Galaxy other
-  "Samsung galaxy A21 S", "Samsung galaxy A51", "Samsung galaxy A40",
-  // Redmi
-  "REDMI 8", "REDMI NOTE 8T", "REDMI NOTE 8", "REDMI NOTE 8 PRO",
-  "REDMI NOTE 9", "REDMI NOTE 9 PRO",
-  "REDMI NOTE10/10S", "REDMI NOTE 11-12 PRO",
-  "REDMI NOTE 12 4G", "REDMI NOTE 12S",
-  "REDMI NOTE 13C", "REDMI NOTE 13", "REDMI NOTE 13 PRO", "REDMI NOTE 13 PRO+",
-  "REDMI NOTE 14 PRO",
-  // Xiaomi
-  "Xiaomi Redmi 10C", "Xiaomi Redmi 12 note", "Xiaomi Redmi 13C", "Xiaomi Redmi 14C",
-  "Xiaomi Redmi 9S note",
-  "Xiaomi Poco X6", "Xiaomi Poco X7",
-  "Xiaomi Realme C61", "Xiaomi Realme C51", "Xiaomi Realme C55",
-  // Honor
-  "Honor X8A", "Honor X9C",
+export interface PhoneCaseGroup {
+  brand: string;
+  models: string[];
+}
+
+export const PHONE_CASE_GROUPS: PhoneCaseGroup[] = [
+  {
+    brand: "iPhone",
+    models: [
+      "iPhone 7", "iPhone 7+", "iPhone 8", "iPhone X", "iPhone XR",
+      "iPhone 11", "iPhone 11 PRO",
+      "iPhone 12/12PRO", "iPhone 12 PRO MAX",
+      "iPhone 13/12 Mini", "iPhone 13", "iPhone 13 PRO", "iPhone 13 Pro Max",
+      "iPhone 14", "iPhone 14 Pro", "iPhone 14 Pro Max",
+      "iPhone 15", "iPhone 15PRO", "iPhone 15 PRO MAX",
+      "iPhone 16E", "iPhone 16", "iPhone 16+", "iPhone 16 PRO", "iPhone 16 PRO MAX",
+      "iPhone 17", "iPhone 17 PRO", "iPhone 17 PRO MAX",
+    ],
+  },
+  {
+    brand: "iPhone CLEAR",
+    models: [
+      "iPhone 7 CLEAR", "iPhone 7+ CLEAR", "iPhone X CLEAR",
+      "iPhone 11 CLEAR", "iPhone 12 CLEAR", "iPhone 12 PRO MAX CLEAR",
+      "iPhone 13 CLEAR", "iPhone 13 Pro CLEAR", "iPhone 13 Pro Max CLEAR", "iPhone 13 MINI CLEAR",
+      "iPhone 14 CLEAR", "iPhone 14 Pro CLEAR", "iPhone 14 Pro Max CLEAR",
+      "iPhone 15 CLEAR", "iPhone 15 PRO CLEAR", "iPhone 15 PRO MAX CLEAR",
+    ],
+  },
+  {
+    brand: "iPhone OLD",
+    models: [
+      "iPhone 7 OLD", "iPhone 7+ OLD", "iPhone X OLD", "iPhone X+ OLD",
+      "iPhone XS Max OLD", "iPhone 11 Pro OLD", "iPhone 11 Pro Max OLD", "iPhone 12 MAX OLD",
+    ],
+  },
+  {
+    brand: "Samsung S",
+    models: [
+      "Samsung S21", "Samsung S21 Ultra",
+      "Samsung S22", "Samsung S22+", "Samsung S22 Ultra",
+      "Samsung S23 new", "Samsung S23+", "Samsung S23 Ultra",
+      "Samsung S24", "Samsung S24+", "Samsung S24 Ultra",
+      "Samsung S25", "Samsung S25+", "Samsung S25 Ultra",
+    ],
+  },
+  {
+    brand: "Samsung Galaxy A",
+    models: [
+      "Samsung galaxy A02", "Samsung galaxy A025", "Samsung galaxy A035",
+      "Samsung galaxy A03", "Samsung galaxy A04", "Samsung galaxy A04E",
+      "Samsung galaxy a045-13 5G", "Samsung galaxy A05", "Samsung galaxy A055",
+      "Samsung galaxy A06", "Samsung galaxy A07",
+      "Samsung galaxy A12", "Samsung galaxy A13", "Samsung galaxy A14", "Samsung galaxy A15", "Samsung galaxy A16",
+      "Samsung galaxy A17",
+      "Samsung galaxy A21 S",
+      "Samsung galaxy A22", "Samsung galaxy A23", "Samsung galaxy A24", "Samsung galaxy A25", "Samsung galaxy A26",
+      "Samsung galaxy A27",
+      "Samsung galaxy A32 4G", "Samsung galaxy A32 5G", "Samsung galaxy A33", "Samsung galaxy A34", "Samsung galaxy A35", "Samsung galaxy A36",
+      "Samsung galaxy A40",
+      "Samsung galaxy A51", "Samsung galaxy A52", "Samsung galaxy A53", "Samsung galaxy A54", "Samsung galaxy A55", "Samsung galaxy A56",
+      "Samsung galaxy A72", "Samsung galaxy A73",
+    ],
+  },
+  {
+    brand: "Samsung Galaxy S / FE",
+    models: [
+      "Samsung galaxy S8", "Samsung galaxy S9", "Samsung galaxy S10",
+      "Samsung galaxy S20", "Samsung galaxy S20FE", "Samsung galaxy S21FE",
+      "Samsung galaxy S23FE", "Samsung galaxy S24FE", "Samsung galaxy S25FE",
+    ],
+  },
+  {
+    brand: "Redmi",
+    models: [
+      "REDMI 8", "REDMI NOTE 8T", "REDMI NOTE 8", "REDMI NOTE 8 PRO",
+      "REDMI NOTE 9", "REDMI NOTE 9 PRO",
+      "REDMI NOTE10/10S", "REDMI NOTE 11-12 PRO",
+      "REDMI NOTE 12 4G", "REDMI NOTE 12S",
+      "REDMI NOTE 13C", "REDMI NOTE 13", "REDMI NOTE 13 PRO", "REDMI NOTE 13 PRO+",
+      "REDMI NOTE 14 PRO",
+    ],
+  },
+  {
+    brand: "Xiaomi / Poco / Realme",
+    models: [
+      "Xiaomi Redmi 9S note",
+      "Xiaomi Redmi 10C", "Xiaomi Redmi 12 note", "Xiaomi Redmi 13C", "Xiaomi Redmi 14C",
+      "Xiaomi Poco X6", "Xiaomi Poco X7",
+      "Xiaomi Realme C51", "Xiaomi Realme C55", "Xiaomi Realme C61",
+    ],
+  },
+  {
+    brand: "Honor",
+    models: ["Honor X8A", "Honor X9C"],
+  },
 ];
+
+export const PHONE_CASE_MODELS: string[] = PHONE_CASE_GROUPS.flatMap(g => g.models);
 
 // Default placement zones
 const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.38 };
