@@ -144,7 +144,6 @@ export default function CartPage() {
           front_mockup_url: item.frontMockupUrl,
           back_mockup_url: item.backMockupUrl,
           transparent_image_url: item.transparentImageUrl,
-          back_transparent_image_url: item.backTransparentImageUrl,
           prompt: item.prompt,
           size: item.size,
           cart_id: cartId,
@@ -163,6 +162,21 @@ export default function CartPage() {
 
       const { error } = await supabase.from("orders").insert(rows as any);
       if (error) throw error;
+
+      // Best-effort: populate back_transparent_image_url for rows that have it.
+      // If the column hasn't been added via migration yet, silently skip.
+      for (const item of items) {
+        if (item.backTransparentImageUrl) {
+          const matchingIds = rows
+            .filter(r => r.front_mockup_url === item.frontMockupUrl)
+            .map(r => r.id);
+          await supabase
+            .from("orders")
+            .update({ back_transparent_image_url: item.backTransparentImageUrl } as any)
+            .in("id", matchingIds)
+            .then(({ error: e }) => { if (e) console.warn("[Cart] back_transparent_image_url skipped:", e.message); });
+        }
+      }
 
       const firstOrderId = rows[0].id;
       const description =
