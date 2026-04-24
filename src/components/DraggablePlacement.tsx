@@ -7,33 +7,54 @@ interface DraggablePlacementProps {
   onCoordsChange: (coords: PlacementCoords) => void;
   children?: ReactNode;
   disabled?: boolean;
-  /** Color for border/handles, defaults to primary */
   accentClass?: string;
-  /** Border color class, defaults to border-primary/60 */
   borderClass?: string;
-  /** Hide coordinate readout */
   hideReadout?: boolean;
-  /** Whether this layer is selected (shows handles/border) */
   selected?: boolean;
-  /** Called when the layer is clicked to select it */
   onSelect?: () => void;
+  /**
+   * Printable zone this layer lives inside (in parent-container coordinates).
+   * When set, `coords.x/y/scale` are interpreted relative to this zone, matching
+   * the composite canvas. Without a zone, coords are relative to the full parent.
+   */
+  zone?: PlacementCoords;
 }
 
 type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | "rotate" | null;
 
-export default function DraggablePlacement({ coords, onCoordsChange, children, disabled, accentClass, borderClass, hideReadout, selected, onSelect }: DraggablePlacementProps) {
+export default function DraggablePlacement({
+  coords,
+  onCoordsChange,
+  children,
+  disabled,
+  accentClass,
+  borderClass,
+  hideReadout,
+  selected,
+  onSelect,
+  zone,
+}: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
   const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0, startAngle: 0, startRotation: 0 });
+
+  // Zone geometry in parent coordinates (fractions 0-1)
+  const zoneW = zone?.scale ?? 1;
+  const zoneH = zone?.scaleY ?? zone?.scale ?? 1;
+  const zoneCx = zone?.x ?? 0.5;
+  const zoneCy = zone?.y ?? 0.5;
+  const zoneLeft = zoneCx - zoneW / 2;
+  const zoneTop = zoneCy - zoneH / 2;
 
   const getCenterPoint = useCallback(() => {
     const parent = containerRef.current?.parentElement;
     if (!parent) return { cx: 0, cy: 0 };
     const rect = parent.getBoundingClientRect();
-    const cx = rect.left + coords.x * rect.width;
-    const cy = rect.top + coords.y * rect.height;
-    return { cx, cy };
-  }, [coords.x, coords.y]);
+    // Photo center in parent coords = zone origin + coords * zone size
+    const cxFrac = zoneLeft + coords.x * zoneW;
+    const cyFrac = zoneTop + coords.y * zoneH;
+    return { cx: rect.left + cxFrac * rect.width, cy: rect.top + cyFrac * rect.height };
+  }, [coords.x, coords.y, zoneLeft, zoneTop, zoneW, zoneH]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent, mode: DragMode) => {
     if (disabled) return;
@@ -61,7 +82,7 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
         startAngle: 0, startRotation: 0,
       };
     }
-  }, [disabled, coords, getCenterPoint]);
+  }, [disabled, coords, getCenterPoint, onSelect]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragMode || !containerRef.current) return;
@@ -74,33 +95,33 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
       const currentAngle = Math.atan2(e.clientY - center.cy, e.clientX - center.cx);
       const deltaAngle = (currentAngle - startRef.current.startAngle) * (180 / Math.PI);
       let newRotation = startRef.current.startRotation + deltaAngle;
-      // Normalize to -180..180
       while (newRotation > 180) newRotation -= 360;
       while (newRotation < -180) newRotation += 360;
       onCoordsChange({ ...coords, rotation: Math.round(newRotation) });
       return;
     }
 
-    const dx = (e.clientX - startRef.current.mx) / rect.width;
-    const dy = (e.clientY - startRef.current.my) / rect.height;
+    // Convert pointer delta to ZONE-relative fractions so drag feels consistent
+    // regardless of how small the print area is on the product.
+    const dx = (e.clientX - startRef.current.mx) / (rect.width * zoneW);
+    const dy = (e.clientY - startRef.current.my) / (rect.height * zoneH);
 
     if (dragMode === "move") {
       onCoordsChange({
         ...coords,
-        x: Math.max(0.05, Math.min(0.95, startRef.current.cx + dx)),
-        y: Math.max(0.05, Math.min(0.95, startRef.current.cy + dy)),
+        x: Math.max(0, Math.min(1, startRef.current.cx + dx)),
+        y: Math.max(0, Math.min(1, startRef.current.cy + dy)),
       });
     } else {
       const isLeft = dragMode.includes("l");
       const isTop = dragMode.includes("t");
       const sdx = isLeft ? -dx : dx;
       const sdy = isTop ? -dy : dy;
-      const newScaleX = Math.max(0.05, Math.min(0.9, startRef.current.cs + sdx));
-      const startScaleY = startRef.current.csY;
-      const newScaleY = Math.max(0.05, Math.min(0.9, startScaleY + sdy));
+      const newScaleX = Math.max(0.1, Math.min(1, startRef.current.cs + sdx * 2));
+      const newScaleY = Math.max(0.1, Math.min(1, startRef.current.csY + sdy * 2));
       onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
     }
-  }, [dragMode, coords, onCoordsChange, getCenterPoint]);
+  }, [dragMode, coords, onCoordsChange, getCenterPoint, zoneW, zoneH]);
 
   const handlePointerUp = useCallback(() => {
     setDragMode(null);
@@ -109,15 +130,23 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
   const scaleX = coords.scale;
   const scaleY = coords.scaleY ?? coords.scale;
   const rotation = coords.rotation ?? 0;
-  const left = `${(coords.x - scaleX / 2) * 100}%`;
-  const top = `${(coords.y - scaleY / 2) * 100}%`;
-  const width = `${scaleX * 100}%`;
-  const height = `${scaleY * 100}%`;
+
+  // Photo box in parent container coords (fractions 0-1)
+  const photoW = scaleX * zoneW;
+  const photoH = scaleY * zoneH;
+  const photoCx = zoneLeft + coords.x * zoneW;
+  const photoCy = zoneTop + coords.y * zoneH;
+  const photoLeft = photoCx - photoW / 2;
+  const photoTop = photoCy - photoH / 2;
+
+  const left = `${photoLeft * 100}%`;
+  const top = `${photoTop * 100}%`;
+  const width = `${photoW * 100}%`;
+  const height = `${photoH * 100}%`;
 
   const handleClass = `absolute w-3 h-3 rounded-full border-2 border-primary-foreground z-10 ${accentClass ? accentClass : "bg-primary"}`;
   const isRotating = dragMode === "rotate";
 
-  // When `selected` prop is provided, use it to control visibility of handles/border
   const isManaged = selected !== undefined;
   const showHandles = isManaged ? selected && !disabled : !disabled;
   const showBorder = isManaged ? selected : true;
@@ -133,22 +162,18 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
     >
-      {/* Design content */}
       {children && (
         <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-md pointer-events-none">
           {children}
         </div>
       )}
 
-      {/* Rotation readout */}
       {showHandles && isRotating && (
         <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-mono whitespace-nowrap pointer-events-none px-1.5 py-0.5 rounded bg-foreground text-background">
           {rotation}°
         </div>
       )}
 
-
-      {/* Resize handles */}
       {showHandles && (
         <>
           <div className={`${handleClass} -top-1.5 -left-1.5 cursor-nw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tl")} />
@@ -156,7 +181,6 @@ export default function DraggablePlacement({ coords, onCoordsChange, children, d
           <div className={`${handleClass} -bottom-1.5 -left-1.5 cursor-sw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-bl")} />
           <div className={`${handleClass} -bottom-1.5 -right-1.5 cursor-se-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-br")} />
 
-          {/* Rotation handle */}
           <div
             className="absolute -bottom-8 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing z-10"
             onPointerDown={(e) => handlePointerDown(e, "rotate")}

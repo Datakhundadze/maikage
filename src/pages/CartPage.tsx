@@ -93,13 +93,6 @@ export default function CartPage() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    window.history.pushState(null, "", window.location.href);
-    const onPop = () => setMode("landing");
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, [setMode]);
-
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState(user?.email || "");
