@@ -161,7 +161,32 @@ function buildTextPrompt(front: SideData, back: SideData): string | null {
   return parts.length ? parts.join("\n\n") : null;
 }
 
-const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.5, scale: 0.9 };
+const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.5, scale: 1, scaleY: 1 };
+
+// Compute initial photo coords so the image fits exactly inside the zone
+// (no letterbox, no overflow) — preview matches export.
+function fitCoordsToZone(
+  imgW: number,
+  imgH: number,
+  zoneW: number,
+  zoneH: number,
+): PlacementCoords {
+  if (imgW <= 0 || imgH <= 0 || zoneW <= 0 || zoneH <= 0) {
+    return { ...DEFAULT_PHOTO_COORDS };
+  }
+  const imgAspect = imgW / imgH;
+  const zoneAspect = zoneW / zoneH;
+  let scale: number;
+  let scaleY: number;
+  if (imgAspect >= zoneAspect) {
+    scale = 1;
+    scaleY = zoneAspect / imgAspect;
+  } else {
+    scaleY = 1;
+    scale = imgAspect / zoneAspect;
+  }
+  return { x: 0.5, y: 0.5, scale, scaleY };
+}
 
 const DEFAULT_SIDE: SideData = {
   photos: [],
@@ -216,19 +241,41 @@ export default function SimplePage() {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      setSideData(prev => {
-        if (prev.photos.length >= MAX_PHOTOS) return prev;
-        const newPhoto: PhotoLayer = {
-          id: `photo-${++photoIdCounter}`,
-          image: result,
-          coords: { ...DEFAULT_PHOTO_COORDS },
-        };
-        return { ...prev, photos: [...prev.photos, newPhoto] };
-      });
+      const probe = new Image();
+      probe.onload = () => {
+        const { config } = productConfig;
+        const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
+        const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, config.view);
+        const zone = imageResult?.entry.placementZone;
+        const zoneW = zone?.scale ?? 1;
+        const zoneH = zone?.scaleY ?? zone?.scale ?? 1;
+        const coords = fitCoordsToZone(probe.naturalWidth, probe.naturalHeight, zoneW, zoneH);
+        setSideData(prev => {
+          if (prev.photos.length >= MAX_PHOTOS) return prev;
+          const newPhoto: PhotoLayer = {
+            id: `photo-${++photoIdCounter}`,
+            image: result,
+            coords,
+          };
+          return { ...prev, photos: [...prev.photos, newPhoto] };
+        });
+      };
+      probe.onerror = () => {
+        setSideData(prev => {
+          if (prev.photos.length >= MAX_PHOTOS) return prev;
+          const newPhoto: PhotoLayer = {
+            id: `photo-${++photoIdCounter}`,
+            image: result,
+            coords: { ...DEFAULT_PHOTO_COORDS },
+          };
+          return { ...prev, photos: [...prev.photos, newPhoto] };
+        });
+      };
+      probe.src = result;
     };
     reader.readAsDataURL(file);
     e.target.value = "";
-  }, [setSideData]);
+  }, [setSideData, productConfig]);
 
   const removePhoto = (id: string) => {
     setSideData(prev => ({
@@ -369,13 +416,24 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        // Scale photo relative to the placement zone instead of full canvas
-        const pw = zoneW * photo.coords.scale;
-        const ph = photo.coords.scaleY
-          ? zoneH * photo.coords.scaleY
-          : (img.naturalHeight / img.naturalWidth) * pw;
-        const px = zoneX + zoneW * photo.coords.x - pw / 2;
-        const py = zoneY + zoneH * photo.coords.y - ph / 2;
+        // Photo box: the bounding box the user sees/drags in the preview
+        const boxW = zoneW * photo.coords.scale;
+        const boxH = zoneH * (photo.coords.scaleY ?? photo.coords.scale);
+        const boxX = zoneX + zoneW * photo.coords.x - boxW / 2;
+        const boxY = zoneY + zoneH * photo.coords.y - boxH / 2;
+        // object-contain: fit image inside box, preserve aspect ratio
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const boxAspect = boxW / boxH;
+        let pw: number, ph: number;
+        if (imgAspect > boxAspect) {
+          pw = boxW;
+          ph = boxW / imgAspect;
+        } else {
+          ph = boxH;
+          pw = boxH * imgAspect;
+        }
+        const px = boxX + (boxW - pw) / 2;
+        const py = boxY + (boxH - ph) / 2;
         ctx.globalAlpha = 0.8;
         ctx.drawImage(img, px, py, pw, ph);
         ctx.globalAlpha = 1;
@@ -429,12 +487,22 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        const pw = canvasW * photo.coords.scale;
-        const ph = photo.coords.scaleY
-          ? canvasH * photo.coords.scaleY
-          : (img.naturalHeight / img.naturalWidth) * pw;
-        const px = canvasW * photo.coords.x - pw / 2;
-        const py = canvasH * photo.coords.y - ph / 2;
+        const boxW = canvasW * photo.coords.scale;
+        const boxH = canvasH * (photo.coords.scaleY ?? photo.coords.scale);
+        const boxX = canvasW * photo.coords.x - boxW / 2;
+        const boxY = canvasH * photo.coords.y - boxH / 2;
+        const imgAspect = img.naturalWidth / img.naturalHeight;
+        const boxAspect = boxW / boxH;
+        let pw: number, ph: number;
+        if (imgAspect > boxAspect) {
+          pw = boxW;
+          ph = boxW / imgAspect;
+        } else {
+          ph = boxH;
+          pw = boxH * imgAspect;
+        }
+        const px = boxX + (boxW - pw) / 2;
+        const py = boxY + (boxH - ph) / 2;
         ctx.drawImage(img, px, py, pw, ph);
       } catch { /* skip */ }
     }
