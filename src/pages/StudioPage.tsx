@@ -21,6 +21,9 @@ import PriceDisplay from "@/components/PriceDisplay";
 import OrderDialog from "@/components/OrderDialog";
 import LoginModal from "@/components/LoginModal";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
+import { useCart } from "@/hooks/useCart";
+import { Button } from "@/components/ui/button";
+import { ShoppingBag } from "lucide-react";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
 const RESULT_TS_KEY = "maika_last_generation_ts";
@@ -48,6 +51,7 @@ function StudioContent() {
   const { toast } = useToast();
   const { saveDesign, togglePublish } = useDesignStorage();
   const { trackEvent } = useAnalytics();
+  const { addItem: addToCart, adding: addingToCart } = useCart();
 
   // Restore last generation from localStorage on mount (only if < 30 min old)
   useEffect(() => {
@@ -366,19 +370,51 @@ function StudioContent() {
             <div className="border-t border-sidebar-border pt-4 space-y-4">
               <PriceDisplay breakdown={priceBreakdown} />
               {result && (
-                <OrderDialog
-                  breakdown={priceBreakdown}
-                  product={productConfig.config.product}
-                  subProduct={productConfig.config.subProduct}
-                  color={productConfig.config.color}
-                  isStudio={true}
-                  externalOpen={orderDialogOpen}
-                  onExternalOpenChange={setOrderDialogOpen}
-                  frontMockupDataUrl={result?.mockupImage || null}
-                  transparentImageDataUrl={result?.transparentImage || null}
-                   prompt={result?.prompt || null}
-                   size={productConfig.config.size}
-                />
+                <>
+                  <OrderDialog
+                    breakdown={priceBreakdown}
+                    product={productConfig.config.product}
+                    subProduct={productConfig.config.subProduct}
+                    color={productConfig.config.color}
+                    isStudio={true}
+                    externalOpen={orderDialogOpen}
+                    onExternalOpenChange={setOrderDialogOpen}
+                    frontMockupDataUrl={result?.mockupImage || null}
+                    transparentImageDataUrl={result?.transparentImage || null}
+                     prompt={result?.prompt || null}
+                     size={productConfig.config.size}
+                  />
+                  <Button
+                    variant="outline"
+                    className="w-full h-11 gap-2 font-semibold text-sm"
+                    disabled={addingToCart}
+                    onClick={async () => {
+                      try {
+                        await addToCart({
+                          product: productConfig.config.product,
+                          subProduct: productConfig.config.subProduct,
+                          color: productConfig.config.color,
+                          size: productConfig.config.size || null,
+                          isStudio: true,
+                          frontMockupDataUrl: result?.mockupImage || null,
+                          backMockupDataUrl: null,
+                          transparentImageDataUrl: result?.transparentImage || null,
+                          backTransparentImageDataUrl: null,
+                          frontOriginalPhotos: [],
+                          backOriginalPhotos: [],
+                          prompt: result?.prompt || null,
+                          productPrice: priceBreakdown.total,
+                        });
+                        toast({ title: "კალათაში დაემატა ✓" });
+                      } catch (e: any) {
+                        toast({ title: "შეცდომა", description: e.message, variant: "destructive" });
+                      }
+                    }}
+                  >
+                    <ShoppingBag className="h-4 w-4" />
+                    {addingToCart ? "ემატება..." : "კალათაში დამატება"}
+                  </Button>
+                </>
               )}
               <DesignStudioPanel
                 onViewImage={setLightboxSrc}

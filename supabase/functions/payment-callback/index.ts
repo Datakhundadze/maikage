@@ -63,13 +63,25 @@ serve(async (req) => {
 
     // Try by external_order_id (our order.id) first, fall back to bog_order_id
     let orderId = externalOrderId;
+    let cartId: string | null = null;
     if (!orderId && merged.id) {
       const { data } = await supabase
         .from("orders")
-        .select("id")
+        .select("id, cart_id")
         .eq("bog_order_id", merged.id)
-        .single();
-      if (data) orderId = data.id;
+        .limit(1)
+        .maybeSingle();
+      if (data) {
+        orderId = data.id;
+        cartId = data.cart_id;
+      }
+    } else if (orderId) {
+      const { data } = await supabase
+        .from("orders")
+        .select("cart_id")
+        .eq("id", orderId)
+        .maybeSingle();
+      if (data?.cart_id) cartId = data.cart_id;
     }
 
     if (!orderId) {
@@ -83,24 +95,24 @@ serve(async (req) => {
     const PAID = ["completed", "approved", "success", "paid"];
     const FAILED = ["rejected", "failed", "error", "declined"];
 
+    // Build the update scope: if this order is part of a cart, flip the whole cart
+    const applyUpdate = async (patch: Record<string, unknown>) => {
+      const q = supabase.from("orders").update(patch);
+      return cartId ? q.eq("cart_id", cartId) : q.eq("id", orderId);
+    };
+
     if (statusKey && PAID.includes(statusKey.toLowerCase())) {
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          payment_status: "paid",
-          status: "confirmed",
-          paid_at: new Date().toISOString(),
-        })
-        .eq("id", orderId);
+      const { error } = await applyUpdate({
+        payment_status: "paid",
+        status: "confirmed",
+        paid_at: new Date().toISOString(),
+      });
       if (error) console.error("[payment-callback] Failed to update order as paid:", error);
-      else console.log("[payment-callback] Order marked as paid:", orderId);
+      else console.log("[payment-callback] Order(s) marked as paid:", cartId ? `cart=${cartId}` : orderId);
     } else if (statusKey && FAILED.includes(statusKey.toLowerCase())) {
-      const { error } = await supabase
-        .from("orders")
-        .update({ payment_status: "failed" })
-        .eq("id", orderId);
+      const { error } = await applyUpdate({ payment_status: "failed" });
       if (error) console.error("[payment-callback] Failed to update order as failed:", error);
-      else console.log("[payment-callback] Order marked as failed:", orderId);
+      else console.log("[payment-callback] Order(s) marked as failed:", cartId ? `cart=${cartId}` : orderId);
     } else {
       console.log("[payment-callback] Unhandled status key:", statusKey);
     }

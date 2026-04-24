@@ -9,7 +9,7 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   try {
-    const { orderId, amount, description } = await req.json();
+    const { orderId, amount, description, cartId } = await req.json();
     if (!orderId || !amount) throw new Error("Missing orderId or amount");
     const bogClientId = Deno.env.get("BOG_CLIENT_ID");
     const bogClientSecret = Deno.env.get("BOG_CLIENT_SECRET");
@@ -64,11 +64,22 @@ serve(async (req) => {
       throw new Error(`BOG order creation failed (${orderRes.status}): ${err}`);
     }
     const bogOrder = await orderRes.json();
-    const { error: updateError } = await supabase
-      .from("orders")
-      .update({ payment_status: "pending", bog_order_id: bogOrder.order_id || bogOrder.id })
-      .eq("id", orderId);
-    if (updateError) console.error("Failed to update order:", updateError);
+    const bogOrderId = bogOrder.order_id || bogOrder.id;
+    // If this is a cart checkout, stamp the bog_order_id on every order in the cart
+    // so the payment callback (which only knows bog_order_id) can flip the whole batch.
+    if (cartId) {
+      const { error: cartErr } = await supabase
+        .from("orders")
+        .update({ payment_status: "pending", bog_order_id: bogOrderId })
+        .eq("cart_id", cartId);
+      if (cartErr) console.error("Failed to update cart orders:", cartErr);
+    } else {
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({ payment_status: "pending", bog_order_id: bogOrderId })
+        .eq("id", orderId);
+      if (updateError) console.error("Failed to update order:", updateError);
+    }
 
     // Fetch full order details to send email notification
     try {

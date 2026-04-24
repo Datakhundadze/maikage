@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { AppStateProvider, useAppState } from "@/hooks/useAppState";
+import { CartProvider } from "@/hooks/useCart";
+import CartPage from "./pages/CartPage";
 import LoginPage from "./pages/LoginPage";
 import StudioPage from "./pages/StudioPage";
 import MyDesignsPage from "./pages/MyDesignsPage";
@@ -42,6 +44,7 @@ function AppRoutes() {
   if (mode === "corporate") return <CorporatePage />;
   if (mode === "sport") return <SportPage />;
   if (mode === "about") return <AboutPage />;
+  if (mode === "cart") return <CartPage />;
 
   if (loading) {
     return (
@@ -66,13 +69,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AppStateProvider>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </TooltipProvider>
+        <CartProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </TooltipProvider>
+        </CartProvider>
       </AuthProvider>
     </AppStateProvider>
   </QueryClientProvider>

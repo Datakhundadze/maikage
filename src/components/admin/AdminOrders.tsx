@@ -35,6 +35,7 @@ interface Order {
   prompt: string | null;
   size: string | null;
   paid_at: string | null;
+  cart_id: string | null;
 }
 
 const STATUS_OPTIONS = ["pending", "confirmed", "in_production", "shipped", "delivered", "cancelled"];
@@ -253,7 +254,14 @@ export default function AdminOrders() {
                   <div className="w-10 h-10 rounded border border-border bg-muted flex-shrink-0" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm">{order.first_name} {order.last_name}</div>
+                  <div className="font-medium text-sm flex items-center gap-1.5">
+                    {order.first_name} {order.last_name}
+                    {order.cart_id && (
+                      <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded" title={`Cart: ${order.cart_id}`}>
+                        კალათა
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {order.product} {order.sub_product ? `• ${order.sub_product}` : ""} • {order.color || "—"}
                     {order.size ? ` • ${order.size}` : <span className="text-destructive"> • ზომა არ არის არჩეული</span>}
