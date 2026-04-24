@@ -191,7 +191,6 @@ export default function CartPage() {
           amount: totalWithDelivery,
           description,
           cartId,
-          ...(paymentMethod === "tbc_credit" ? { installment: true } : {}),
         },
       });
 
