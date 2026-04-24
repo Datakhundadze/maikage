@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import AppHeader from "@/components/AppHeader";
+import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
@@ -108,6 +109,7 @@ export default function CartPage() {
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bog");
 
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = totalPrice + deliveryPrice;
@@ -145,6 +147,7 @@ export default function CartPage() {
           color: item.color,
           is_studio: item.isStudio,
           payment_status: "unpaid" as const,
+          payment_provider: paymentMethod,
           front_mockup_url: item.frontMockupUrl,
           back_mockup_url: item.backMockupUrl,
           transparent_image_url: item.transparentImageUrl,
@@ -174,12 +177,14 @@ export default function CartPage() {
           ? `${items[0].product} - ${items[0].subProduct || ""} (${items[0].color})`
           : `Cart: ${rows.length} items`;
 
-      const paymentRes = await supabase.functions.invoke("create-payment", {
+      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-tbc";
+      const paymentRes = await supabase.functions.invoke(payFn, {
         body: {
           orderId: firstOrderId,
           amount: totalWithDelivery,
           description,
           cartId,
+          ...(paymentMethod === "tbc_credit" ? { installment: true } : {}),
         },
       });
 
@@ -308,6 +313,8 @@ export default function CartPage() {
                   <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} required maxLength={500} />
                 </div>
               )}
+
+              <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />
 
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-1.5">
                 <div className="flex justify-between text-sm text-muted-foreground">

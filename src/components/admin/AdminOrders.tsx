@@ -36,6 +36,7 @@ interface Order {
   size: string | null;
   paid_at: string | null;
   cart_id: string | null;
+  payment_provider: string;
 }
 
 const STATUS_OPTIONS = ["pending", "confirmed", "in_production", "shipped", "delivered", "cancelled"];
@@ -129,15 +130,17 @@ export default function AdminOrders() {
     setLoading(false);
     setLastRefresh(new Date());
 
-    // Auto-sync any non-paid orders that have a BOG order id — catches cases where
-    // the BOG webhook didn't update our DB but payment actually succeeded.
+    // Auto-sync any non-paid orders that have a payment provider order id
     const unsynced = rows.filter(
       (o) => o.bog_order_id && o.payment_status !== "paid" && o.payment_status !== "refunded"
     );
     if (unsynced.length > 0) {
       const updates = await Promise.allSettled(
         unsynced.map(async (o) => {
-          const { data: res } = await supabase.functions.invoke("check-payment", { body: { orderId: o.id } });
+          const fn = (o.payment_provider === "tbc" || o.payment_provider === "tbc_credit")
+            ? "check-payment-tbc"
+            : "check-payment";
+          const { data: res } = await supabase.functions.invoke(fn, { body: { orderId: o.id } });
           return { id: o.id, res };
         })
       );
@@ -164,10 +167,13 @@ export default function AdminOrders() {
 
   const [checkingPayment, setCheckingPayment] = useState<string | null>(null);
 
-  async function checkPayment(orderId: string) {
+  async function checkPayment(orderId: string, provider?: string) {
     setCheckingPayment(orderId);
     try {
-      const { data, error } = await supabase.functions.invoke("check-payment", {
+      const fn = (provider === "tbc" || provider === "tbc_credit")
+        ? "check-payment-tbc"
+        : "check-payment";
+      const { data, error } = await supabase.functions.invoke(fn, {
         body: { orderId },
       });
       if (error) throw new Error(error.message);
@@ -178,7 +184,7 @@ export default function AdminOrders() {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: "failed" } : o));
         toast({ title: "გადახდა ვერ განხორციელდა", variant: "destructive" });
       } else {
-        toast({ title: "სტატუსი", description: `BOG: ${data?.bog_status || data?.status || "unknown"}` });
+        toast({ title: "სტატუსი", description: `${data?.bog_status || data?.tbc_status || data?.status || "unknown"}` });
       }
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
@@ -480,12 +486,13 @@ export default function AdminOrders() {
                     </div>
                   </div>
 
-                  {/* BOG ID */}
-                  {order.bog_order_id && (
-                    <div className="text-xs text-muted-foreground">
-                      BOG Order ID: <span className="font-mono">{order.bog_order_id}</span>
-                    </div>
-                  )}
+                  {/* Payment provider & ID */}
+                  <div className="text-xs text-muted-foreground flex items-center gap-3">
+                    <span className="font-semibold uppercase">{order.payment_provider === "tbc" ? "TBC" : order.payment_provider === "tbc_credit" ? "TBC Credit" : "BOG"}</span>
+                    {order.bog_order_id && (
+                      <span>Order ID: <span className="font-mono">{order.bog_order_id}</span></span>
+                    )}
+                  </div>
 
                   {/* Status controls */}
                   <div className="flex gap-3 items-end flex-wrap pt-2 border-t border-border">
@@ -513,7 +520,7 @@ export default function AdminOrders() {
                         variant="outline"
                         className="h-8 gap-1.5 text-xs"
                         disabled={checkingPayment === order.id}
-                        onClick={() => checkPayment(order.id)}
+                        onClick={() => checkPayment(order.id, order.payment_provider)}
                       >
                         <RefreshCw className={`h-3 w-3 ${checkingPayment === order.id ? "animate-spin" : ""}`} />
                         გადახდის შემოწმება
