@@ -85,11 +85,12 @@ serve(async (req) => {
     const bogOrder = await detailRes.json();
     console.log("[check-payment] BOG order detail:", JSON.stringify(bogOrder));
 
-    const bogStatus =
+    const rawStatus =
       (typeof bogOrder.order_status === "object"
         ? bogOrder.order_status?.key
         : bogOrder.order_status) ||
       bogOrder.status;
+    const bogStatus = typeof rawStatus === "string" ? rawStatus.toLowerCase() : rawStatus;
 
     if (bogStatus === "completed" || bogStatus === "approved" || bogStatus === "success") {
       const { error: updateErr } = await supabase
@@ -108,7 +109,7 @@ serve(async (req) => {
       });
     }
 
-    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error") {
+    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error" || bogStatus === "declined") {
       await supabase
         .from("orders")
         .update({ payment_status: "failed" })

@@ -186,26 +186,17 @@ export default function AdminOrders() {
   }
 
   async function updateOrder(id: string, field: string, value: string) {
-    const updateData: Record<string, string> = { [field]: value };
-    if (field === "payment_status" && value === "paid") {
-      updateData.paid_at = new Date().toISOString();
-    }
-    const { data, error } = await supabase
-      .from("orders")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc("admin_update_order", {
+      p_order_id: id,
+      p_field: field,
+      p_value: value,
+    });
     if (error) {
       toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
       return;
     }
     if (!data) {
-      toast({
-        title: "განახლება ვერ შესრულდა",
-        description: "დარწმუნდით რომ RLS პოლიტიკა უშვებს UPDATE-ს.",
-        variant: "destructive",
-      });
+      toast({ title: "შეკვეთა ვერ მოიძებნა", variant: "destructive" });
       return;
     }
     setOrders(prev => prev.map(o => o.id === id ? { ...o, ...(data as any) } : o));

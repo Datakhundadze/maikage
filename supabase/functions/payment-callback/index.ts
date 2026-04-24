@@ -81,7 +81,7 @@ serve(async (req) => {
     }
 
     const PAID = ["completed", "approved", "success", "paid"];
-    const FAILED = ["rejected", "failed", "error"];
+    const FAILED = ["rejected", "failed", "error", "declined"];
 
     if (statusKey && PAID.includes(statusKey.toLowerCase())) {
       const { error } = await supabase
