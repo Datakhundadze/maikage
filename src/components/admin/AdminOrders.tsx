@@ -193,7 +193,7 @@ export default function AdminOrders() {
   }
 
   async function updateOrder(id: string, field: string, value: string) {
-    const { data, error } = await supabase.rpc("admin_update_order", {
+    const { data, error } = await (supabase.rpc as any)("admin_update_order", {
       p_order_id: id,
       p_field: field,
       p_value: value,

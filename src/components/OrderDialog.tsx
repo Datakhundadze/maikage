@@ -181,7 +181,6 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           orderId: orderData.id,
           amount: totalWithDelivery,
           description: `${product} - ${subProduct} (${color})`,
-          ...(paymentMethod === "tbc_credit" ? { installment: true } : {}),
         },
       });
 
