@@ -194,7 +194,10 @@ export default function CartPage() {
         },
       });
 
-      if (paymentRes.error) throw new Error(paymentRes.error.message || "Payment creation failed");
+      if (paymentRes.error) {
+        const detail = paymentRes.data?.error || paymentRes.error.message || "Payment creation failed";
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+      }
 
       const { redirect_url } = paymentRes.data as { redirect_url: string };
       if (!redirect_url) throw new Error("No redirect URL received from payment provider");

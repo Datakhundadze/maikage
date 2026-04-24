@@ -185,7 +185,8 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       });
 
       if (paymentRes.error) {
-        throw new Error(paymentRes.error.message || "Payment creation failed");
+        const detail = paymentRes.data?.error || paymentRes.error.message || "Payment creation failed";
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
       }
 
       const { redirect_url } = paymentRes.data as { redirect_url: string };

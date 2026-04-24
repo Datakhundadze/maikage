@@ -16,10 +16,13 @@ serve(async (req) => {
     const { orderId, amount, description, cartId, installment } = await req.json();
     if (!orderId || !amount) throw new Error("Missing orderId or amount");
 
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) throw new Error("Invalid amount");
+
     const apiKey = installment
       ? Deno.env.get("TBC_CREDIT_API_KEY")
       : Deno.env.get("TBC_API_KEY");
-    if (!apiKey) throw new Error("Missing TBC API key");
+    if (!apiKey) throw new Error(`Missing TBC API key (installment=${!!installment})`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -47,8 +50,8 @@ serve(async (req) => {
     const paymentPayload: Record<string, unknown> = {
       amount: {
         currency: "GEL",
-        total: amount,
-        subTotal: amount,
+        total: numericAmount,
+        subTotal: numericAmount,
         tax: 0,
         shipping: 0,
       },
@@ -66,7 +69,7 @@ serve(async (req) => {
       paymentPayload.installmentProducts = [
         {
           name: description || "Maika.ge შეკვეთა",
-          price: amount,
+          price: numericAmount,
           quantity: 1,
         },
       ];
