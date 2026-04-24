@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_MODELS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_GROUPS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { useAppState } from "@/hooks/useAppState";
@@ -212,8 +212,12 @@ export default function ProductConfigPanel({
             <option value="" disabled>
               {lang === "en" ? "Choose phone model" : "აირჩიეთ ტელეფონის მოდელი"}
             </option>
-            {PHONE_CASE_MODELS.map((model) => (
-              <option key={model} value={model}>{model}</option>
+            {PHONE_CASE_GROUPS.map((group) => (
+              <optgroup key={group.brand} label={group.brand}>
+                {group.models.map((model) => (
+                  <option key={model} value={model}>{model}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
           {sizeError && !selectedSize && (
