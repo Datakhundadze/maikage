@@ -114,7 +114,20 @@ export default function ProductPreview({
   const imageResult = catalog.findImageForColor(productName as ProductType, resolvedSub, colorName as ProductColor, view as ProductView);
   const baseImageUrl = imageResult?.entry.imageUrl ?? null;
   const isExactImage = imageResult?.isExact ?? false;
+  const zone = imageResult?.entry.placementZone;
   const colorHex = COLORS.find(c => c.name === colorName)?.hex ?? "#FFFFFF";
+
+  // Zone outline (so user sees the print area)
+  const zoneW = zone?.scale ?? 1;
+  const zoneH = zone?.scaleY ?? zone?.scale ?? 1;
+  const zoneCx = zone?.x ?? 0.5;
+  const zoneCy = zone?.y ?? 0.5;
+  const zoneStyle = {
+    left: `${(zoneCx - zoneW / 2) * 100}%`,
+    top: `${(zoneCy - zoneH / 2) * 100}%`,
+    width: `${zoneW * 100}%`,
+    height: `${zoneH * 100}%`,
+  };
 
   useEffect(() => {
     setImgLoaded(false);
@@ -169,6 +182,14 @@ export default function ProductPreview({
           </div>
         )}
 
+        {/* Placement zone outline: shows the printable area */}
+        {zone && (hasLayers || designImage) && (
+          <div
+            className="absolute border-2 border-dashed border-muted-foreground/30 rounded-md pointer-events-none"
+            style={zoneStyle}
+          />
+        )}
+
         {/* Multi-layer mode */}
         {hasLayers && layers!.map((layer) => (
           <DraggablePlacement
@@ -180,6 +201,7 @@ export default function ProductPreview({
             hideReadout
             selected={layer.selected}
             onSelect={layer.onSelect}
+            zone={zone}
           >
             <img src={layer.image} alt="Design" className="w-full h-full object-contain opacity-80" />
           </DraggablePlacement>
@@ -193,6 +215,7 @@ export default function ProductPreview({
             disabled={disabled}
             accentClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "bg-gray-500" : undefined}
             borderClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "border-gray-400/70" : undefined}
+            zone={zone}
           >
             {designImage && (
               <img src={designImage} alt="Design" className="w-full h-full object-contain opacity-80" />

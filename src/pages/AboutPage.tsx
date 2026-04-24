@@ -1,16 +1,8 @@
-import { useEffect } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import { ArrowLeft } from "lucide-react";
 
 export default function AboutPage() {
   const { setMode } = useAppState();
-
-  useEffect(() => {
-    window.history.pushState(null, "", window.location.href);
-    const onPop = () => setMode("landing");
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, [setMode]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">

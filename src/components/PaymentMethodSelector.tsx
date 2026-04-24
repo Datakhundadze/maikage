@@ -1,12 +1,11 @@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
-export type PaymentMethod = "bog" | "tbc" | "tbc_credit";
+export type PaymentMethod = "bog" | "tbc";
 
 const METHODS: { value: PaymentMethod; label: string; desc: string }[] = [
   { value: "bog", label: "საქართველოს ბანკი", desc: "ბარათით გადახდა" },
   { value: "tbc", label: "TBC", desc: "ბარათი / Apple Pay / Google Pay" },
-  { value: "tbc_credit", label: "TBC განვადება", desc: "კრედიტით / განვადებით გადახდა" },
 ];
 
 interface Props {
