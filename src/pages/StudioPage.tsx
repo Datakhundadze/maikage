@@ -339,10 +339,12 @@ function StudioContent() {
     />
   );
 
+  // AI Studio is always front-only; +15 surcharge applies only when both sides have content.
   const priceBreakdown = calculatePrice(
     productConfig.config.product,
     productConfig.config.subProduct,
-    "none",
+    true,
+    false,
     true,
   );
 

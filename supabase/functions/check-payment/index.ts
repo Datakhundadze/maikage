@@ -92,6 +92,15 @@ serve(async (req) => {
       bogOrder.status;
     const bogStatus = typeof rawStatus === "string" ? rawStatus.toLowerCase() : rawStatus;
 
+    // Some BOG responses report the actual money-transfer result here even when
+    // order_status is still "in_progress". Treat a successful transfer as paid.
+    const transferRaw =
+      (typeof bogOrder.payment_detail?.transfer_status === "object"
+        ? bogOrder.payment_detail.transfer_status?.key
+        : bogOrder.payment_detail?.transfer_status) ||
+      bogOrder.payment_detail?.code_description;
+    const transferStatus = typeof transferRaw === "string" ? transferRaw.toLowerCase() : "";
+
     // Cart checkouts share one bog_order_id across multiple rows; update the whole cart
     // if cart_id is set so a single payment confirmation flips every line item.
     const applyUpdate = (patch: Record<string, unknown>) => {
@@ -99,7 +108,15 @@ serve(async (req) => {
       return order.cart_id ? q.eq("cart_id", order.cart_id) : q.eq("id", orderId);
     };
 
-    if (bogStatus === "completed" || bogStatus === "approved" || bogStatus === "success") {
+    const isPaid =
+      bogStatus === "completed" ||
+      bogStatus === "approved" ||
+      bogStatus === "success" ||
+      transferStatus === "success" ||
+      transferStatus === "successful" ||
+      transferStatus === "completed";
+
+    if (isPaid) {
       const { error: updateErr } = await applyUpdate({
         payment_status: "paid",
         status: "confirmed",

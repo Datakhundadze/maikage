@@ -78,6 +78,55 @@ async function downloadImage(url: string, filename: string) {
   }
 }
 
+// Extract just the user's typed text from the saved prompt metadata.
+// SimplePage stores prompt in this format:
+//   "წინა მხარე:\n  ტექსტი: <text>\n  ფონტი: ...\n  ფერი: #..."
+// We pull the value after "ტექსტი:" so the printed PNG shows clean text only.
+function extractDesignText(prompt: string): string {
+  const lines = prompt.split("\n");
+  const out: string[] = [];
+  for (const line of lines) {
+    const m = line.match(/^\s*ტექსტი:\s*(.*)$/);
+    if (m && m[1].trim()) out.push(m[1]);
+  }
+  return out.length ? out.join("\n") : prompt;
+}
+
+// Render order text to a high-res transparent PNG so the print shop can use it
+// even if the saved transparent_image_url is missing or low-res.
+function downloadTextAsPng(rawPrompt: string, filename: string) {
+  const text = extractDesignText(rawPrompt);
+  const lines = text.split("\n").filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return;
+  const W = 3000;
+  const fontPx = 240;
+  const lineH = Math.round(fontPx * 1.2);
+  const H = Math.max(800, lines.length * lineH + lineH);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#000000";
+  ctx.font = `bold ${fontPx}px "Noto Sans Georgian", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const startY = H / 2 - ((lines.length - 1) * lineH) / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, W / 2, startY + i * lineH);
+  });
+
+  canvas.toBlob((blob) => {
+    if (!blob) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, "image/png");
+}
+
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -354,21 +403,33 @@ export default function AdminOrders() {
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase">{order.is_studio ? "პრომპტი" : "დიზაინის ტექსტი"}</h4>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs gap-1"
-                          onClick={async () => {
-                            try {
-                              await navigator.clipboard.writeText(order.prompt || "");
-                              toast({ title: "დაკოპირდა" });
-                            } catch {
-                              toast({ title: "ვერ დაკოპირდა", variant: "destructive" });
-                            }
-                          }}
-                        >
-                          დაკოპირება
-                        </Button>
+                        <div className="flex gap-2">
+                          {!order.is_studio && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs gap-1"
+                              onClick={() => downloadTextAsPng(order.prompt || "", `order-${order.id}-text.png`)}
+                            >
+                              <Download className="h-3 w-3" /> ტექსტი PNG
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs gap-1"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(order.prompt || "");
+                                toast({ title: "დაკოპირდა" });
+                              } catch {
+                                toast({ title: "ვერ დაკოპირდა", variant: "destructive" });
+                              }
+                            }}
+                          >
+                            დაკოპირება
+                          </Button>
+                        </div>
                       </div>
                       <pre className="text-sm bg-background rounded-lg p-3 border border-border whitespace-pre-wrap font-sans">{order.prompt}</pre>
                     </div>
