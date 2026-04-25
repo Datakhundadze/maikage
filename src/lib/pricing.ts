@@ -50,14 +50,16 @@ export interface PriceBreakdown {
   backExtra: number;
   aiSurcharge: number;
   total: number;
-  backType: BackType;
+  hasFront: boolean;
+  hasBack: boolean;
   isStudio: boolean;
 }
 
 export function calculatePrice(
   product: ProductType,
   subProduct: string,
-  backType: BackType,
+  hasFront: boolean,
+  hasBack: boolean,
   isStudio: boolean,
 ): PriceBreakdown {
   // For standalone products (no sub-brands), key is the product type
@@ -65,19 +67,18 @@ export function calculatePrice(
   const tier = PRICES[key] || { frontOnly: 0, backPhoto: 0, backText: 0 };
 
   const basePrice = tier.frontOnly;
-  let totalWithBack = basePrice;
-  if (backType === "photo") totalWithBack = tier.backPhoto;
-  else if (backType === "text") totalWithBack = tier.backText;
-
-  const backExtra = totalWithBack - basePrice;
+  // Charge the second-side surcharge only when BOTH sides have content.
+  // Back-only or front-only orders pay just the base price.
+  const backExtra = hasFront && hasBack ? tier.backPhoto - tier.frontOnly : 0;
   const aiSurcharge = isStudio ? AI_SURCHARGE : 0;
 
   return {
     basePrice,
     backExtra,
     aiSurcharge,
-    total: totalWithBack + aiSurcharge,
-    backType,
+    total: basePrice + backExtra + aiSurcharge,
+    hasFront,
+    hasBack,
     isStudio,
   };
 }

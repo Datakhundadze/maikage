@@ -10,7 +10,7 @@ import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingB
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, COLOR_FILTERS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
-import { calculatePrice, type BackType } from "@/lib/pricing";
+import { calculatePrice } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
@@ -798,15 +798,13 @@ export default function SimplePage() {
 
           {/* Price Display & Order */}
           {(() => {
-            const backType: BackType = backData.photos.length > 0
-              ? "photo"
-              : backData.designText.trim()
-                ? "text"
-                : "none";
+            const hasFront = frontData.photos.length > 0 || !!frontData.designText.trim();
+            const hasBack = backData.photos.length > 0 || !!backData.designText.trim();
             const breakdown = calculatePrice(
               productConfig.config.product,
               productConfig.config.subProduct,
-              backType,
+              hasFront,
+              hasBack,
               false,
             );
             return (

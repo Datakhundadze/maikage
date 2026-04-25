@@ -18,11 +18,10 @@ export default function PriceDisplay({ breakdown }: PriceDisplayProps) {
   });
 
   if (backExtra > 0) {
-    const backLabel =
-      breakdown.backType === "photo"
-        ? lang === "en" ? "Back photo" : "უკანა ფოტო"
-        : lang === "en" ? "Back text" : "უკანა ტექსტი";
-    lines.push({ label: `+ ${backLabel}`, amount: backExtra });
+    lines.push({
+      label: `+ ${lang === "en" ? "Back side" : "უკანა მხარე"}`,
+      amount: backExtra,
+    });
   }
 
   if (aiSurcharge > 0) {
@@ -42,6 +41,9 @@ export default function PriceDisplay({ breakdown }: PriceDisplayProps) {
           {total} {gel}
         </span>
       </div>
+      <p className="mt-1.5 text-[11px] text-muted-foreground">
+        {lang === "en" ? "Price includes A4 print size" : "თანხაში გათვალისწინებულია A4 ზომა"}
+      </p>
     </div>
   );
 }
