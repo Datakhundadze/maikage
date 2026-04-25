@@ -5,7 +5,8 @@ export type PaymentMethod = "bog" | "tbc";
 
 const METHODS: { value: PaymentMethod; label: string; desc: string }[] = [
   { value: "bog", label: "საქართველოს ბანკი", desc: "ბარათით გადახდა" },
-  { value: "tbc", label: "TBC", desc: "ბარათი / Apple Pay / Google Pay" },
+  // TBC temporarily hidden until new API key arrives
+  // { value: "tbc", label: "TBC", desc: "ბარათი / Apple Pay / Google Pay" },
 ];
 
 interface Props {
