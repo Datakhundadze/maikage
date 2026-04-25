@@ -203,7 +203,7 @@ export default function ProductPreview({
             onSelect={layer.onSelect}
             zone={zone}
           >
-            <img src={layer.image} alt="Design" className="w-full h-full object-contain opacity-80" />
+            <img src={layer.image} alt="Design" className="w-full h-full object-cover opacity-80" />
           </DraggablePlacement>
         ))}
 
@@ -218,7 +218,7 @@ export default function ProductPreview({
             zone={zone}
           >
             {designImage && (
-              <img src={designImage} alt="Design" className="w-full h-full object-contain opacity-80" />
+              <img src={designImage} alt="Design" className="w-full h-full object-cover opacity-80" />
             )}
           </DraggablePlacement>
         )}

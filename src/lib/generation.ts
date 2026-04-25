@@ -256,7 +256,7 @@ function colorizeWhiteProduct(productImg: HTMLImageElement, colorHex: string): H
 function compositeMockupOnColorBg(
   designImg: HTMLImageElement,
   colorHex: string,
-  coords: { x: number; y: number; scale: number }
+  coords: { x: number; y: number; scale: number; scaleY?: number }
 ): string {
   const SIZE = 1024;
   const canvas = document.createElement("canvas");
@@ -268,12 +268,23 @@ function compositeMockupOnColorBg(
   ctx.fillStyle = colorHex;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  // Place design using same coord system as compositeMockup
-  const designWidth = SIZE * coords.scale;
-  const designHeight = (designImg.naturalHeight / designImg.naturalWidth) * designWidth;
-  const designX = SIZE * coords.x - designWidth / 2;
-  const designY = SIZE * coords.y - designHeight / 2;
-  ctx.drawImage(designImg, designX, designY, designWidth, designHeight);
+  // Box matches the placement zone exactly (no overflow). Image inside uses
+  // cover-fit (center-crop) to fill the box.
+  const boxW = SIZE * coords.scale;
+  const boxH = SIZE * (coords.scaleY ?? coords.scale);
+  const boxX = SIZE * coords.x - boxW / 2;
+  const boxY = SIZE * coords.y - boxH / 2;
+  const imgAspect = designImg.naturalWidth / designImg.naturalHeight;
+  const boxAspect = boxW / boxH;
+  let srcX = 0, srcY = 0, srcW = designImg.naturalWidth, srcH = designImg.naturalHeight;
+  if (imgAspect > boxAspect) {
+    srcW = designImg.naturalHeight * boxAspect;
+    srcX = (designImg.naturalWidth - srcW) / 2;
+  } else {
+    srcH = designImg.naturalWidth / boxAspect;
+    srcY = (designImg.naturalHeight - srcH) / 2;
+  }
+  ctx.drawImage(designImg, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
 
   // Watermark
   ctx.globalAlpha = 0.45;
@@ -292,7 +303,7 @@ function compositeMockupOnColorBg(
 export function compositeMockup(
   productImg: HTMLImageElement,
   designImg: HTMLImageElement,
-  coords: { x: number; y: number; scale: number }
+  coords: { x: number; y: number; scale: number; scaleY?: number }
 ): string {
   const canvas = document.createElement("canvas");
   canvas.width = productImg.naturalWidth;
@@ -301,13 +312,25 @@ export function compositeMockup(
 
   ctx.drawImage(productImg, 0, 0);
 
-  const designWidth = canvas.width * coords.scale;
-  const designHeight = (designImg.naturalHeight / designImg.naturalWidth) * designWidth;
-  const designX = canvas.width * coords.x - designWidth / 2;
-  const designY = canvas.height * coords.y - designHeight / 2;
+  // Box matches the placement zone exactly so the design can never overflow
+  // the product. Image inside uses cover-fit (center-crop) to fill the box.
+  const boxW = canvas.width * coords.scale;
+  const boxH = canvas.height * (coords.scaleY ?? coords.scale);
+  const boxX = canvas.width * coords.x - boxW / 2;
+  const boxY = canvas.height * coords.y - boxH / 2;
+  const imgAspect = designImg.naturalWidth / designImg.naturalHeight;
+  const boxAspect = boxW / boxH;
+  let srcX = 0, srcY = 0, srcW = designImg.naturalWidth, srcH = designImg.naturalHeight;
+  if (imgAspect > boxAspect) {
+    srcW = designImg.naturalHeight * boxAspect;
+    srcX = (designImg.naturalWidth - srcW) / 2;
+  } else {
+    srcH = designImg.naturalWidth / boxAspect;
+    srcY = (designImg.naturalHeight - srcH) / 2;
+  }
 
   ctx.globalAlpha = 1.0;
-  ctx.drawImage(designImg, designX, designY, designWidth, designHeight);
+  ctx.drawImage(designImg, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
 
   // Watermark
   ctx.globalAlpha = 0.45;

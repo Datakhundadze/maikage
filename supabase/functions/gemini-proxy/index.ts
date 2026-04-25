@@ -122,8 +122,9 @@ NON-NEGOTIABLE RULES:
 • Every element MUST look photographically real — no artistic stylization of any kind
 • No Russian language, Cyrillic text, or Russian cultural references
 • All persons must be clearly adults (18+)
+• ASPECT RATIO: square 1:1 — the subject must be fully framed inside a square composition with even margins on all four sides. Do NOT crop the subject. Do NOT use vertical (portrait) or horizontal (landscape) framing.
 
-OUTPUT: A single photorealistic image on a solid white studio background #FFFFFF.
+OUTPUT: A single square (1:1 aspect ratio) photorealistic image on a solid white studio background #FFFFFF.
 The result must be INDISTINGUISHABLE from a real professional photograph.`,
     });
   } else {
@@ -146,13 +147,14 @@ DESIGN SYSTEM:
 5. High contrast, bold lines, vibrant colors.
 6. ABSOLUTELY NO Russian language, Cyrillic script, Russian words, or Russian cultural references. Use English or other non-Russian languages only.
 7. ALL characters must be depicted as ADULTS (18+). Never depict minors or children.
+8. ASPECT RATIO: square 1:1 — compose the artwork to fit a square frame with even spacing on all sides. Do NOT use portrait or landscape framing. The subject must fit fully inside the square.
 
 CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
 ${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : "DO NOT include any text, words, letters, numbers, or typography of any kind in the design. The design must be purely visual/illustrative with absolutely no written elements."}
 
-OUTPUT: A single standalone illustration on a solid pure white (#FFFFFF) background. NO garments, NO t-shirt shapes, NO frames, NO borders, NO mockups — just the raw artwork floating on white.`,
+OUTPUT: A single standalone illustration with square (1:1) aspect ratio on a solid pure white (#FFFFFF) background. NO garments, NO t-shirt shapes, NO frames, NO borders, NO mockups — just the raw artwork floating on white.`,
     });
   }
 
