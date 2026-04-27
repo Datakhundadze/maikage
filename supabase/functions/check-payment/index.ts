@@ -112,9 +112,12 @@ serve(async (req) => {
       bogStatus === "completed" ||
       bogStatus === "approved" ||
       bogStatus === "success" ||
+      bogStatus === "paid" ||
+      bogStatus === "successful" ||
       transferStatus === "success" ||
       transferStatus === "successful" ||
-      transferStatus === "completed";
+      transferStatus === "completed" ||
+      transferStatus === "paid";
 
     if (isPaid) {
       const { error: updateErr } = await applyUpdate({
@@ -130,7 +133,7 @@ serve(async (req) => {
       });
     }
 
-    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error" || bogStatus === "declined") {
+    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error" || bogStatus === "declined" || bogStatus === "expired" || bogStatus === "cancelled") {
       await applyUpdate({ payment_status: "failed" });
 
       return new Response(JSON.stringify({ status: "failed", bog_status: bogStatus }), {
