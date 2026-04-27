@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppState } from "@/hooks/useAppState";
-import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign, CheckCircle, XCircle } from "lucide-react";
+import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,7 +14,8 @@ const SPORT_PHOTOS = [
 export default function LandingPage() {
   const { setMode, theme, toggleTheme, lang, toggleLang } = useAppState();
   const [sportPhotoIdx, setSportPhotoIdx] = useState(0);
-  const [paymentBanner, setPaymentBanner] = useState<"success" | "fail" | null>(null);
+  const [paymentBanner, setPaymentBanner] = useState<"success" | "fail" | "checking" | null>(null);
+  const pollingRef = useRef(false);
 
   const isGreen = theme === "green";
   // Colors used in green theme
@@ -33,22 +34,62 @@ export default function LandingPage() {
     const paymentResult = params.get("payment");
     if (!paymentResult) return;
 
-    if (paymentResult === "success") {
-      setPaymentBanner("success");
-      const pendingOrderId = localStorage.getItem("maika_pending_order_id");
-      if (pendingOrderId) {
-        localStorage.removeItem("maika_pending_order_id");
-        supabase.functions.invoke("check-payment", { body: { orderId: pendingOrderId } })
-          .then((res) => console.log("[LandingPage] check-payment result:", res.data))
-          .catch((err) => console.error("[LandingPage] check-payment error:", err));
-      }
-    } else if (paymentResult === "fail") {
+    window.history.replaceState({}, "", window.location.pathname);
+
+    if (paymentResult === "fail") {
       setPaymentBanner("fail");
+      const hideTimer = setTimeout(() => setPaymentBanner(null), 8000);
+      return () => clearTimeout(hideTimer);
     }
 
-    window.history.replaceState({}, "", window.location.pathname);
-    const hideTimer = setTimeout(() => setPaymentBanner(null), 8000);
-    return () => clearTimeout(hideTimer);
+    if (paymentResult !== "success") return;
+
+    const pendingOrderId = localStorage.getItem("maika_pending_order_id");
+    localStorage.removeItem("maika_pending_order_id");
+
+    if (!pendingOrderId) {
+      setPaymentBanner("success");
+      const hideTimer = setTimeout(() => setPaymentBanner(null), 8000);
+      return () => clearTimeout(hideTimer);
+    }
+
+    setPaymentBanner("checking");
+    pollingRef.current = true;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 20;
+    const INTERVAL_MS = 3000;
+
+    const poll = async () => {
+      while (pollingRef.current && attempts < MAX_ATTEMPTS) {
+        attempts++;
+        try {
+          const { data, error } = await supabase.functions.invoke("check-payment", {
+            body: { orderId: pendingOrderId },
+          });
+          console.log(`[LandingPage] check-payment attempt ${attempts}:`, data, error);
+
+          if (data?.status === "paid") {
+            setPaymentBanner("success");
+            setTimeout(() => setPaymentBanner(null), 8000);
+            return;
+          }
+          if (data?.status === "failed") {
+            setPaymentBanner("fail");
+            setTimeout(() => setPaymentBanner(null), 8000);
+            return;
+          }
+        } catch (err) {
+          console.error(`[LandingPage] check-payment attempt ${attempts} error:`, err);
+        }
+        await new Promise((r) => setTimeout(r, INTERVAL_MS));
+      }
+      setPaymentBanner("success");
+      setTimeout(() => setPaymentBanner(null), 8000);
+    };
+
+    poll();
+    return () => { pollingRef.current = false; };
   }, []);
 
   return (
@@ -58,14 +99,20 @@ export default function LandingPage() {
         <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium shadow-lg transition-all ${
           paymentBanner === "success"
             ? "bg-emerald-600 text-white"
+            : paymentBanner === "checking"
+            ? "bg-amber-600 text-white"
             : "bg-red-600 text-white"
         }`}>
           {paymentBanner === "success" ? (
             <><CheckCircle className="h-5 w-5" /> {lang === "en" ? "Payment successful! Your order is being processed." : "გადახდა წარმატებით შესრულდა! შეკვეთა მუშავდება."}</>
+          ) : paymentBanner === "checking" ? (
+            <><Loader2 className="h-5 w-5 animate-spin" /> {lang === "en" ? "Verifying payment..." : "გადახდა მოწმდება..."}</>
           ) : (
             <><XCircle className="h-5 w-5" /> {lang === "en" ? "Payment failed. Please try again." : "გადახდა ვერ განხორციელდა. სცადეთ თავიდან."}</>
           )}
-          <button onClick={() => setPaymentBanner(null)} className="ml-4 text-white/70 hover:text-white">✕</button>
+          {paymentBanner !== "checking" && (
+            <button onClick={() => setPaymentBanner(null)} className="ml-4 text-white/70 hover:text-white">✕</button>
+          )}
         </div>
       )}
       {/* Background radial glow */}
