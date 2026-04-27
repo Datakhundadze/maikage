@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingBag } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
-import { catalog, COLORS, COLOR_FILTERS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
@@ -324,30 +324,49 @@ export default function SimplePage() {
     canvas.height = 800;
     const ctx = canvas.getContext("2d")!;
 
-    // Draw product base (apply color filter if using a white base for a non-white color)
-    if (baseImageUrl) {
-      try {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve();
-          img.onerror = () => reject();
-          img.src = baseImageUrl;
-        });
-        if (needsColorFilter) {
-          const colorFilter = COLOR_FILTERS[config.color as ProductColor];
-          if (colorFilter) ctx.filter = colorFilter;
-        }
-        ctx.drawImage(img, 0, 0, 800, 800);
-        ctx.filter = "none";
-      } catch {
-        ctx.fillStyle = "#f0f0f0";
-        ctx.fillRect(0, 0, 800, 800);
-      }
-    } else {
-      ctx.fillStyle = "#f0f0f0";
-      ctx.fillRect(0, 0, 800, 800);
-    }
+    // Draw product base. For non-exact colors (e.g. GIORDANO Black uses the
+     // White base image), tint with luminance-based RGB multiplication so the
+     // composited mockup matches the live preview. Canvas CSS filters are
+     // unreliable across browsers / image origins, so we manipulate pixels
+     // directly — same logic as ProductPreview's colorizeImage().
+     if (baseImageUrl) {
+       try {
+         const img = new Image();
+         img.crossOrigin = "anonymous";
+         await new Promise<void>((resolve, reject) => {
+           img.onload = () => resolve();
+           img.onerror = () => reject();
+           img.src = baseImageUrl;
+         });
+         ctx.drawImage(img, 0, 0, 800, 800);
+         if (needsColorFilter) {
+           const colorEntry = COLORS.find((c) => c.name === config.color);
+           const baseHex = colorEntry?.hex ?? "#FFFFFF";
+           // Pure black would zero out shadow detail; #1a1a1a preserves texture.
+           const targetHex = config.color === "Black" ? "#1a1a1a" : baseHex;
+           const r = parseInt(targetHex.slice(1, 3), 16);
+           const g = parseInt(targetHex.slice(3, 5), 16);
+           const b = parseInt(targetHex.slice(5, 7), 16);
+           const imageData = ctx.getImageData(0, 0, 800, 800);
+           const data = imageData.data;
+           for (let i = 0; i < data.length; i += 4) {
+             if (data[i + 3] === 0) continue;
+             const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+             const t = lum / 255;
+             data[i] = Math.round(r * t);
+             data[i + 1] = Math.round(g * t);
+             data[i + 2] = Math.round(b * t);
+           }
+           ctx.putImageData(imageData, 0, 0);
+         }
+       } catch {
+         ctx.fillStyle = "#f0f0f0";
+         ctx.fillRect(0, 0, 800, 800);
+       }
+     } else {
+       ctx.fillStyle = "#f0f0f0";
+       ctx.fillRect(0, 0, 800, 800);
+     }
 
     // Clip drawing to the placement zone so design never overflows the product
     const zoneW = zone ? 800 * zone.scale : 800;
