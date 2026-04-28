@@ -46,8 +46,8 @@ serve(async (req) => {
         }],
       },
       redirect_urls: {
-        success: `${appUrl}/?payment=success`,
-        fail: `${appUrl}/?payment=fail`,
+        success: `${appUrl}/?payment=success&orderId=${orderId}`,
+        fail: `${appUrl}/?payment=fail&orderId=${orderId}`,
       },
     };
     const orderRes = await fetch("https://api.bog.ge/payments/v1/ecommerce/orders", {

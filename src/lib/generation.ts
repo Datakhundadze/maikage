@@ -268,8 +268,6 @@ function compositeMockupOnColorBg(
   ctx.fillStyle = colorHex;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  // Box matches the placement zone exactly (no overflow). Image inside uses
-  // cover-fit (center-crop) to fill the box.
   const boxW = SIZE * coords.scale;
   const boxH = SIZE * (coords.scaleY ?? coords.scale);
   const boxX = SIZE * coords.x - boxW / 2;
@@ -284,7 +282,12 @@ function compositeMockupOnColorBg(
     srcH = designImg.naturalWidth / boxAspect;
     srcY = (designImg.naturalHeight - srcH) / 2;
   }
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(boxX, boxY, boxW, boxH);
+  ctx.clip();
   ctx.drawImage(designImg, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+  ctx.restore();
 
   // Watermark
   ctx.globalAlpha = 0.45;
@@ -312,8 +315,6 @@ export function compositeMockup(
 
   ctx.drawImage(productImg, 0, 0);
 
-  // Box matches the placement zone exactly so the design can never overflow
-  // the product. Image inside uses cover-fit (center-crop) to fill the box.
   const boxW = canvas.width * coords.scale;
   const boxH = canvas.height * (coords.scaleY ?? coords.scale);
   const boxX = canvas.width * coords.x - boxW / 2;
@@ -329,8 +330,13 @@ export function compositeMockup(
     srcY = (designImg.naturalHeight - srcH) / 2;
   }
 
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(boxX, boxY, boxW, boxH);
+  ctx.clip();
   ctx.globalAlpha = 1.0;
   ctx.drawImage(designImg, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+  ctx.restore();
 
   // Watermark
   ctx.globalAlpha = 0.45;

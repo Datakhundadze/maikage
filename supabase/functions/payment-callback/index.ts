@@ -183,7 +183,11 @@ serve(async (req) => {
       }
     }
 
-    const isPaid = PAID.includes(finalStatus) || PAID.includes(finalTransfer);
+    // Also check result_code from callback or BOG detail
+    const resultCodeRaw = merged.payment_detail?.result_code || merged.result_code;
+    const resultCode = typeof resultCodeRaw === "string" ? resultCodeRaw.toLowerCase() : String(resultCodeRaw ?? "");
+
+    const isPaid = PAID.includes(finalStatus) || PAID.includes(finalTransfer) || resultCode === "100";
     const isFailed = FAILED.includes(finalStatus) || FAILED.includes(finalTransfer);
 
     const applyUpdate = (patch: Record<string, unknown>) => {
