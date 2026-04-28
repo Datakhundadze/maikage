@@ -37,10 +37,13 @@ serve(async (req) => {
     }
 
     if (!order.bog_order_id) {
+      console.log("[check-payment] No bog_order_id for order:", orderId, "payment_status:", order.payment_status);
       return new Response(JSON.stringify({ status: order.payment_status, error: "No BOG order ID" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log("[check-payment] Checking BOG order:", order.bog_order_id, "for order:", orderId);
 
     const bogClientId = Deno.env.get("BOG_CLIENT_ID");
     const bogClientSecret = Deno.env.get("BOG_CLIENT_SECRET");
@@ -90,10 +93,8 @@ serve(async (req) => {
         ? bogOrder.order_status?.key
         : bogOrder.order_status) ||
       bogOrder.status;
-    const bogStatus = typeof rawStatus === "string" ? rawStatus.toLowerCase() : rawStatus;
+    const bogStatus = typeof rawStatus === "string" ? rawStatus.toLowerCase() : String(rawStatus ?? "");
 
-    // Some BOG responses report the actual money-transfer result here even when
-    // order_status is still "in_progress". Treat a successful transfer as paid.
     const transferRaw =
       (typeof bogOrder.payment_detail?.transfer_status === "object"
         ? bogOrder.payment_detail.transfer_status?.key
@@ -101,23 +102,25 @@ serve(async (req) => {
       bogOrder.payment_detail?.code_description;
     const transferStatus = typeof transferRaw === "string" ? transferRaw.toLowerCase() : "";
 
-    // Cart checkouts share one bog_order_id across multiple rows; update the whole cart
-    // if cart_id is set so a single payment confirmation flips every line item.
+    // Also check payment_detail.state / result_code for additional signals
+    const resultCode = typeof bogOrder.payment_detail?.result_code === "string"
+      ? bogOrder.payment_detail.result_code.toLowerCase() : "";
+
+    console.log("[check-payment] Resolved: bogStatus=", bogStatus, "transferStatus=", transferStatus, "resultCode=", resultCode);
+
     const applyUpdate = (patch: Record<string, unknown>) => {
       const q = supabase.from("orders").update(patch);
       return order.cart_id ? q.eq("cart_id", order.cart_id) : q.eq("id", orderId);
     };
 
+    const PAID_STATUSES = ["completed", "approved", "success", "paid", "successful"];
+    const FAILED_STATUSES = ["rejected", "failed", "error", "declined", "expired", "cancelled"];
+
     const isPaid =
-      bogStatus === "completed" ||
-      bogStatus === "approved" ||
-      bogStatus === "success" ||
-      bogStatus === "paid" ||
-      bogStatus === "successful" ||
-      transferStatus === "success" ||
-      transferStatus === "successful" ||
-      transferStatus === "completed" ||
-      transferStatus === "paid";
+      PAID_STATUSES.includes(bogStatus) ||
+      PAID_STATUSES.includes(transferStatus) ||
+      PAID_STATUSES.includes(resultCode) ||
+      resultCode === "100";  // BOG result_code 100 = success
 
     if (isPaid) {
       const { error: updateErr } = await applyUpdate({
@@ -126,22 +129,27 @@ serve(async (req) => {
         paid_at: new Date().toISOString(),
       });
 
-      if (updateErr) console.error("[check-payment] Update failed:", updateErr);
+      if (updateErr) console.error("[check-payment] DB update failed:", updateErr);
+      else console.log("[check-payment] Order marked as paid:", orderId);
 
-      return new Response(JSON.stringify({ status: "paid", bog_status: bogStatus }), {
+      return new Response(JSON.stringify({ status: "paid", bog_status: bogStatus, transfer_status: transferStatus }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (bogStatus === "rejected" || bogStatus === "failed" || bogStatus === "error" || bogStatus === "declined" || bogStatus === "expired" || bogStatus === "cancelled") {
+    const isFailed = FAILED_STATUSES.includes(bogStatus) || FAILED_STATUSES.includes(transferStatus);
+
+    if (isFailed) {
       await applyUpdate({ payment_status: "failed" });
+      console.log("[check-payment] Order marked as failed:", orderId);
 
       return new Response(JSON.stringify({ status: "failed", bog_status: bogStatus }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ status: order.payment_status, bog_status: bogStatus }), {
+    console.log("[check-payment] Status still pending:", bogStatus, "transfer:", transferStatus);
+    return new Response(JSON.stringify({ status: order.payment_status, bog_status: bogStatus, transfer_status: transferStatus }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

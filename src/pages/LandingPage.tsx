@@ -44,7 +44,8 @@ export default function LandingPage() {
 
     if (paymentResult !== "success") return;
 
-    const pendingOrderId = localStorage.getItem("maika_pending_order_id");
+    // Read orderId from URL (set by create-payment redirect) or localStorage (legacy)
+    const pendingOrderId = params.get("orderId") || localStorage.getItem("maika_pending_order_id");
     localStorage.removeItem("maika_pending_order_id");
 
     if (!pendingOrderId) {
@@ -53,6 +54,7 @@ export default function LandingPage() {
       return () => clearTimeout(hideTimer);
     }
 
+    console.log("[LandingPage] Starting payment verification for order:", pendingOrderId);
     setPaymentBanner("checking");
     pollingRef.current = true;
 
@@ -60,30 +62,49 @@ export default function LandingPage() {
     const MAX_ATTEMPTS = 20;
     const INTERVAL_MS = 3000;
 
+    const checkPayment = async (): Promise<{ status?: string; error?: string } | null> => {
+      try {
+        const { data, error } = await supabase.functions.invoke("check-payment", {
+          body: { orderId: pendingOrderId },
+        });
+        if (error) {
+          console.error("[LandingPage] check-payment invoke error:", error);
+          // Try to extract data from error context (Supabase wraps non-2xx responses)
+          try {
+            const ctx = (error as any).context;
+            if (ctx && typeof ctx.json === "function") {
+              return await ctx.json();
+            }
+          } catch {}
+          return null;
+        }
+        return data;
+      } catch (err) {
+        console.error("[LandingPage] check-payment fetch error:", err);
+        return null;
+      }
+    };
+
     const poll = async () => {
       while (pollingRef.current && attempts < MAX_ATTEMPTS) {
         attempts++;
-        try {
-          const { data, error } = await supabase.functions.invoke("check-payment", {
-            body: { orderId: pendingOrderId },
-          });
-          console.log(`[LandingPage] check-payment attempt ${attempts}:`, data, error);
+        const data = await checkPayment();
+        console.log(`[LandingPage] check-payment attempt ${attempts}/${MAX_ATTEMPTS}:`, data);
 
-          if (data?.status === "paid") {
-            setPaymentBanner("success");
-            setTimeout(() => setPaymentBanner(null), 8000);
-            return;
-          }
-          if (data?.status === "failed") {
-            setPaymentBanner("fail");
-            setTimeout(() => setPaymentBanner(null), 8000);
-            return;
-          }
-        } catch (err) {
-          console.error(`[LandingPage] check-payment attempt ${attempts} error:`, err);
+        if (data?.status === "paid") {
+          setPaymentBanner("success");
+          setTimeout(() => setPaymentBanner(null), 8000);
+          return;
+        }
+        if (data?.status === "failed") {
+          setPaymentBanner("fail");
+          setTimeout(() => setPaymentBanner(null), 8000);
+          return;
         }
         await new Promise((r) => setTimeout(r, INTERVAL_MS));
       }
+      // BOG confirmed redirect as success; trust it even if our DB hasn't caught up
+      console.log("[LandingPage] Polling exhausted — showing success based on BOG redirect");
       setPaymentBanner("success");
       setTimeout(() => setPaymentBanner(null), 8000);
     };
