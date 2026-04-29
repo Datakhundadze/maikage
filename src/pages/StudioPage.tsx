@@ -302,6 +302,15 @@ function StudioContent() {
     setOrderDialogOpen(true);
   };
 
+  // Auto-open order dialog when user clicked "შეკვეთა" on TryOnPage
+  useEffect(() => {
+    if (result && sessionStorage.getItem("maika-trigger-order") === "1") {
+      sessionStorage.removeItem("maika-trigger-order");
+      handleOrderClick();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
+
   // Mobile: scroll into view when generation or result becomes active
   useEffect(() => {
     if ((isProcessing || result) && mobilePreviewRef.current) {

@@ -323,9 +323,12 @@ export default function TryOnPage() {
                 გადმოწერა
               </Button>
               <Button
-                variant="outline"
-                className="w-full gap-2 h-11 border-amber-500/40 text-amber-500 hover:bg-amber-500/10 hover:text-amber-400"
-                onClick={goBack}
+                className="w-full gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold h-12"
+                onClick={() => {
+                  sessionStorage.setItem("maika-trigger-order", "1");
+                  setMode("studio");
+                  navigate("/", { replace: true });
+                }}
               >
                 შეკვეთა
               </Button>
