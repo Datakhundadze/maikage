@@ -70,7 +70,7 @@ serve(async (req) => {
     const { access_token } = await tokenRes.json();
 
     const detailRes = await fetch(
-      `https://api.bog.ge/payments/v1/ecommerce/orders/${order.bog_order_id}`,
+      `https://api.bog.ge/payments/v1/receipt/${order.bog_order_id}`,
       {
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -81,8 +81,8 @@ serve(async (req) => {
 
     if (!detailRes.ok) {
       const err = await detailRes.text();
-      console.error("[check-payment] BOG detail fetch failed:", err);
-      throw new Error(`BOG order detail failed (${detailRes.status})`);
+      console.error("[check-payment] BOG receipt fetch failed:", detailRes.status, err);
+      throw new Error(`BOG order detail failed (${detailRes.status}): ${err.slice(0, 200)}`);
     }
 
     const bogOrder = await detailRes.json();

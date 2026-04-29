@@ -187,7 +187,7 @@ export default function AdminOrders() {
       const updates = await Promise.allSettled(
         unsynced.map(async (o) => {
           const fn = (o.payment_provider === "tbc" || o.payment_provider === "tbc_credit")
-            ? "check-payment-tbc"
+            ? "check-payment-flitt"
             : "check-payment";
           const { data: res } = await supabase.functions.invoke(fn, { body: { orderId: o.id } });
           return { id: o.id, res };
@@ -220,7 +220,7 @@ export default function AdminOrders() {
     setCheckingPayment(orderId);
     try {
       const fn = (provider === "tbc" || provider === "tbc_credit")
-        ? "check-payment-tbc"
+        ? "check-payment-flitt"
         : "check-payment";
       const { data, error } = await supabase.functions.invoke(fn, {
         body: { orderId },

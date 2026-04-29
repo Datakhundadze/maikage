@@ -35,11 +35,12 @@ async function fetchBogStatus(bogOrderId: string): Promise<{ status: string; tra
     }
     const { access_token } = await tokenRes.json();
     const detailRes = await fetch(
-      `https://api.bog.ge/payments/v1/ecommerce/orders/${bogOrderId}`,
+      `https://api.bog.ge/payments/v1/receipt/${bogOrderId}`,
       { headers: { Authorization: `Bearer ${access_token}`, "Accept-Language": "ka" } },
     );
     if (!detailRes.ok) {
-      console.error("[payment-callback] BOG order fetch failed:", detailRes.status);
+      const errBody = await detailRes.text();
+      console.error("[payment-callback] BOG receipt fetch failed:", detailRes.status, errBody);
       return null;
     }
     const data = await detailRes.json();

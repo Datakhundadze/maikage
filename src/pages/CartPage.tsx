@@ -184,7 +184,7 @@ export default function CartPage() {
           ? `${items[0].product} - ${items[0].subProduct || ""} (${items[0].color})`
           : `Cart: ${rows.length} items`;
 
-      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-tbc";
+      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-flitt";
       const paymentRes = await supabase.functions.invoke(payFn, {
         body: {
           orderId: firstOrderId,
