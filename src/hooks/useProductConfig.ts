@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { ProductType, ProductColor, ProductView, PlacementCoords } from "@/lib/catalog";
 import { catalog } from "@/lib/catalog";
 
@@ -11,15 +11,36 @@ export interface ProductConfig {
   size: string;
 }
 
+const STORAGE_KEY = "maika-product-config";
+
+const DEFAULT_CONFIG: ProductConfig = {
+  product: "T-Shirt",
+  subProduct: catalog.getDefaultSubProduct("T-Shirt"),
+  color: "White",
+  view: "front",
+  placementCoords: { x: 0.5, y: 0.42, scale: 0.38 },
+  size: "",
+};
+
+function loadStoredConfig(): ProductConfig {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return DEFAULT_CONFIG;
+    const parsed = JSON.parse(raw) as Partial<ProductConfig>;
+    return { ...DEFAULT_CONFIG, ...parsed };
+  } catch {
+    return DEFAULT_CONFIG;
+  }
+}
+
 export function useProductConfig() {
-  const [config, setConfig] = useState<ProductConfig>({
-    product: "T-Shirt",
-    subProduct: catalog.getDefaultSubProduct("T-Shirt"),
-    color: "White",
-    view: "front",
-    placementCoords: { x: 0.5, y: 0.42, scale: 0.38 },
-    size: "",
-  });
+  const [config, setConfig] = useState<ProductConfig>(loadStoredConfig);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+    } catch {}
+  }, [config]);
 
   const [locked, setLocked] = useState(false);
 
