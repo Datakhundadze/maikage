@@ -225,15 +225,29 @@ export default function AdminOrders() {
       const { data, error } = await supabase.functions.invoke(fn, {
         body: { orderId },
       });
-      if (error) throw new Error(error.message);
-      if (data?.status === "paid") {
+
+      let payload: any = data;
+      if (error) {
+        console.error("[AdminOrders] check-payment invoke error:", error);
+        try {
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === "function") {
+            payload = await ctx.json();
+          }
+        } catch {}
+        const msg = payload?.error || error.message || "Edge Function returned a non-2xx status code";
+        toast({ title: "შეცდომა", description: msg, variant: "destructive" });
+        return;
+      }
+
+      if (payload?.status === "paid") {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: "paid", status: "confirmed", paid_at: new Date().toISOString() } : o));
         toast({ title: "გადახდა დადასტურდა ✓" });
-      } else if (data?.status === "failed") {
+      } else if (payload?.status === "failed") {
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: "failed" } : o));
         toast({ title: "გადახდა ვერ განხორციელდა", variant: "destructive" });
       } else {
-        toast({ title: "სტატუსი", description: `${data?.bog_status || data?.tbc_status || data?.status || "unknown"}` });
+        toast({ title: "სტატუსი", description: `${payload?.bog_status || payload?.tbc_status || payload?.status || "unknown"}` });
       }
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
