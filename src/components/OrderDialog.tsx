@@ -175,7 +175,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       }
 
       // 2. Call create-payment edge function (route to TBC or BOG)
-      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-tbc";
+      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-flitt";
       const paymentRes = await supabase.functions.invoke(payFn, {
         body: {
           orderId: orderData.id,
