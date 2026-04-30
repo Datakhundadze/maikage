@@ -113,14 +113,13 @@ serve(async (req) => {
       return order.cart_id ? q.eq("cart_id", order.cart_id) : q.eq("id", orderId);
     };
 
-    const PAID_STATUSES = ["completed", "approved", "success", "paid", "successful"];
-    const FAILED_STATUSES = ["rejected", "failed", "error", "declined", "expired", "cancelled"];
-
-    const isPaid =
-      PAID_STATUSES.includes(bogStatus) ||
-      PAID_STATUSES.includes(transferStatus) ||
-      PAID_STATUSES.includes(resultCode) ||
-      resultCode === "100";  // BOG result_code 100 = success
+    // BOG's only canonical "paid" signal is order_status.key === "completed".
+    // transfer_status / code_description / result_code can read "approved"
+    // during 3DS authorization without funds actually transferring, so trusting
+    // them produces false positives.
+    const isPaid = bogStatus === "completed";
+    const FAILED_STATUSES = ["rejected", "failed", "declined", "expired", "cancelled"];
+    const isFailed = FAILED_STATUSES.includes(bogStatus);
 
     if (isPaid) {
       const { error: updateErr } = await applyUpdate({
@@ -136,8 +135,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const isFailed = FAILED_STATUSES.includes(bogStatus) || FAILED_STATUSES.includes(transferStatus);
 
     if (isFailed) {
       await applyUpdate({ payment_status: "failed" });
