@@ -6,8 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PAID = ["completed", "approved", "success", "paid", "successful"];
-const FAILED = ["rejected", "failed", "error", "declined", "expired", "cancelled"];
+const FAILED = ["rejected", "failed", "declined", "expired", "cancelled"];
 
 async function fetchBogStatus(bogOrderId: string): Promise<{ status: string; transfer: string } | null> {
   const clientId = Deno.env.get("BOG_CLIENT_ID");
@@ -184,12 +183,12 @@ serve(async (req) => {
       }
     }
 
-    // Also check result_code from callback or BOG detail
-    const resultCodeRaw = merged.payment_detail?.result_code || merged.result_code;
-    const resultCode = typeof resultCodeRaw === "string" ? resultCodeRaw.toLowerCase() : String(resultCodeRaw ?? "");
-
-    const isPaid = PAID.includes(finalStatus) || PAID.includes(finalTransfer) || resultCode === "100";
-    const isFailed = FAILED.includes(finalStatus) || FAILED.includes(finalTransfer);
+    // BOG's only canonical "paid" signal is order_status.key === "completed".
+    // transfer_status / code_description / result_code can read "approved" during
+    // 3DS authorization without funds transferring — trusting them produced false
+    // positives where unpaid orders showed as confirmed in admin.
+    const isPaid = finalStatus === "completed";
+    const isFailed = FAILED.includes(finalStatus);
 
     const applyUpdate = (patch: Record<string, unknown>) => {
       const q = supabase.from("orders").update(patch);
