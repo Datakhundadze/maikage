@@ -88,6 +88,31 @@ async function uploadOriginalPhotos(photos: string[], orderId: string, side: "fr
   }));
 }
 
+// Upload try-on assets (person photo + result) so admin can see who placed
+// the order and what the try-on looked like. Stored under a `tryon-*` name
+// so they sort separately from regular originals in the admin list.
+async function uploadTryOnAssets(orderId: string): Promise<void> {
+  const stash = [
+    { key: "maika-tryon-person", filename: "tryon-person" },
+    { key: "maika-tryon-result", filename: "tryon-result" },
+  ];
+  await Promise.all(stash.map(async ({ key, filename }) => {
+    try {
+      const dataUrl = sessionStorage.getItem(key);
+      if (!dataUrl) return;
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const ext = blob.type === "image/jpeg" ? "jpg" : blob.type === "image/webp" ? "webp" : "png";
+      const path = `order-originals/${orderId}/${filename}.${ext}`;
+      const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: blob.type, upsert: true });
+      if (error) console.error(`[OrderDialog] Upload ${filename} failed:`, error);
+      else sessionStorage.removeItem(key);
+    } catch (e) {
+      console.error(`[OrderDialog] Upload ${filename} error:`, e);
+    }
+  }));
+}
+
 export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, backTransparentImageDataUrl, frontOriginalPhotos, backOriginalPhotos, prompt, onBeforeOpen, size }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -145,6 +170,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         backTransparentImageDataUrl ? uploadMockupImage(backTransparentImageDataUrl, orderId, "transparent-back") : Promise.resolve(null),
         frontOriginalPhotos?.length ? uploadOriginalPhotos(frontOriginalPhotos, orderId, "front") : Promise.resolve(),
         backOriginalPhotos?.length ? uploadOriginalPhotos(backOriginalPhotos, orderId, "back") : Promise.resolve(),
+        uploadTryOnAssets(orderId),
       ]);
 
       // 1. Insert order into database
