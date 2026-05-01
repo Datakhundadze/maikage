@@ -94,10 +94,10 @@ function extractDesignText(prompt: string): string {
 
 // Render order text to a high-res transparent PNG so the print shop can use it
 // even if the saved transparent_image_url is missing or low-res.
-function downloadTextAsPng(rawPrompt: string, filename: string) {
+function renderTextToCanvas(rawPrompt: string): HTMLCanvasElement | null {
   const text = extractDesignText(rawPrompt);
   const lines = text.split("\n").filter((l) => l.trim().length > 0);
-  if (lines.length === 0) return;
+  if (lines.length === 0) return null;
   const W = 3000;
   const fontPx = 240;
   const lineH = Math.round(fontPx * 1.2);
@@ -117,6 +117,12 @@ function downloadTextAsPng(rawPrompt: string, filename: string) {
     ctx.fillText(line, W / 2, startY + i * lineH);
   });
 
+  return canvas;
+}
+
+function downloadTextAsPng(rawPrompt: string, filename: string) {
+  const canvas = renderTextToCanvas(rawPrompt);
+  if (!canvas) return;
   canvas.toBlob((blob) => {
     if (!blob) return;
     const a = document.createElement("a");
@@ -125,6 +131,11 @@ function downloadTextAsPng(rawPrompt: string, filename: string) {
     a.click();
     URL.revokeObjectURL(a.href);
   }, "image/png");
+}
+
+function renderTextDataUrl(rawPrompt: string): string | null {
+  const canvas = renderTextToCanvas(rawPrompt);
+  return canvas ? canvas.toDataURL("image/png") : null;
 }
 
 export default function AdminOrders() {
@@ -482,9 +493,26 @@ export default function AdminOrders() {
                     ) : (
                       <p className="text-sm text-muted-foreground">პრევიუ არ არის</p>
                     )}
+                    {!order.is_studio && order.prompt && (() => {
+                      const dataUrl = renderTextDataUrl(order.prompt);
+                      return dataUrl ? (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <p className="text-xs text-muted-foreground mb-1.5">სრული წარწერა (ცალკე ფაილი)</p>
+                          <div className="space-y-1.5 inline-block">
+                            <div className="w-64 h-40 rounded-lg border border-border bg-white overflow-hidden flex items-center justify-center">
+                              <img src={dataUrl} alt="სრული წარწერა" className="max-w-full max-h-full object-contain" />
+                            </div>
+                            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                              onClick={() => downloadTextAsPng(order.prompt || "", `order-${order.id}-text.png`)}>
+                              <Download className="h-3 w-3" /> წარწერა PNG
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
                     {(order.transparent_image_url || order.back_transparent_image_url) && (
                       <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs text-muted-foreground mb-1.5">ორიგინალი დიზაინი (პრინტ ფაილი)</p>
+                        <p className="text-xs text-muted-foreground mb-1.5">პრინტ ფაილი (placement zone-ით cropped)</p>
                         <div className="flex gap-4 flex-wrap">
                           {order.transparent_image_url && (
                             <div className="space-y-1.5">

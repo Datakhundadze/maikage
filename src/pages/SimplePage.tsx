@@ -417,9 +417,13 @@ export default function SimplePage() {
     // Draw text (multiline, constrained to zone width)
     if (side.designText.trim()) {
       const tc = side.textCoords;
-      const maxTextWidth = zoneW * 0.95;
       const tx = zoneX + zoneW * tc.x;
       const ty = zoneY + zoneH * tc.y;
+      // Center-aligned text: width must fit within the canvas/zone given its
+      // position, otherwise the side closer to the edge gets cropped.
+      const fromLeft = (tx - zoneX) * 2;
+      const fromRight = (zoneX + zoneW - tx) * 2;
+      const maxTextWidth = Math.min(zoneW * 0.95, fromLeft, fromRight);
       drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
     }
 
@@ -482,9 +486,11 @@ export default function SimplePage() {
 
     if (side.designText.trim()) {
       const tc = side.textCoords;
-      const maxTextWidth = canvasW * 0.95;
       const tx = canvasW * tc.x;
       const ty = canvasH * tc.y;
+      // Center-aligned text: width must fit within canvas given its position,
+      // otherwise the side closer to the edge gets cropped on the print file.
+      const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
       // Scale the text font size proportionally (was 80px on 800px = 10% of canvas width)
       const fontPx = Math.round(canvasW * 0.1);
       drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
