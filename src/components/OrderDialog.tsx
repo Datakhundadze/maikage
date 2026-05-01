@@ -113,12 +113,25 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = breakdown.total + deliveryPrice;
 
-  const canSubmit = firstName.trim() && lastName.trim() && email.trim() && phone.trim() &&
-    (delivery === "pickup" || address.trim());
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
+    // Inline validation with focus + toast so the user sees exactly what's
+    // missing instead of a silently-disabled button (which read as "the
+    // order button disappeared" once a courier option was selected).
+    const focusField = (id: string) => {
+      const el = document.getElementById(id) as HTMLInputElement | null;
+      el?.focus();
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    if (!firstName.trim()) { toast({ title: "შეიყვანე სახელი", variant: "destructive" }); focusField("firstName"); return; }
+    if (!lastName.trim()) { toast({ title: "შეიყვანე გვარი", variant: "destructive" }); focusField("lastName"); return; }
+    if (!email.trim()) { toast({ title: "შეიყვანე ელფოსტა", variant: "destructive" }); focusField("email"); return; }
+    if (!phone.trim()) { toast({ title: "შეიყვანე ტელეფონი", variant: "destructive" }); focusField("phone"); return; }
+    if (delivery !== "pickup" && !address.trim()) {
+      toast({ title: "შეიყვანე მიწოდების მისამართი", variant: "destructive" });
+      focusField("address");
+      return;
+    }
     setSubmitting(true);
 
     try {
@@ -307,7 +320,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
             </div>
           </div>
 
-          <Button type="submit" disabled={!canSubmit || submitting} className="w-full h-12 font-semibold text-base">
+          <Button type="submit" disabled={submitting} className="w-full h-12 font-semibold text-base">
             {submitting ? "იგზავნება..." : "გადახდა და შეკვეთა"}
           </Button>
         </form>

@@ -107,16 +107,23 @@ export default function CartPage() {
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = totalPrice + deliveryPrice;
 
-  const canSubmit =
-    firstName.trim() &&
-    lastName.trim() &&
-    email.trim() &&
-    phone.trim() &&
-    (delivery === "pickup" || address.trim());
-
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || items.length === 0) return;
+    if (items.length === 0) return;
+    const focusField = (id: string) => {
+      const el = document.getElementById(id) as HTMLInputElement | null;
+      el?.focus();
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    if (!firstName.trim()) { toast({ title: "შეიყვანე სახელი", variant: "destructive" }); focusField("firstName"); return; }
+    if (!lastName.trim()) { toast({ title: "შეიყვანე გვარი", variant: "destructive" }); focusField("lastName"); return; }
+    if (!email.trim()) { toast({ title: "შეიყვანე ელფოსტა", variant: "destructive" }); focusField("email"); return; }
+    if (!phone.trim()) { toast({ title: "შეიყვანე ტელეფონი", variant: "destructive" }); focusField("phone"); return; }
+    if (delivery !== "pickup" && !address.trim()) {
+      toast({ title: "შეიყვანე მიწოდების მისამართი", variant: "destructive" });
+      focusField("address");
+      return;
+    }
     setSubmitting(true);
 
     try {
@@ -352,7 +359,7 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <Button type="submit" disabled={!canSubmit || submitting} className="w-full h-12 font-semibold text-base">
+              <Button type="submit" disabled={submitting} className="w-full h-12 font-semibold text-base">
                 {submitting ? "იგზავნება..." : "გადახდა და შეკვეთა"}
               </Button>
             </form>
