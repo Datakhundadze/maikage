@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendLovableEmail } from "npm:@lovable.dev/email-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,16 +123,26 @@ serve(async (req) => {
   <tr style="background:#f0f9f0;"><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">სულ</td><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">${orderRow.total_price} ₾</td></tr>
 </table>`.trim();
 
-        await supabase.rpc("enqueue_email", {
-          queue_name: "transactional_emails",
-          payload: {
-            to: "maika@maika.ge",
-            subject: `ახალი შეკვეთა (Flitt): ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
-            html: htmlBody,
-            template_name: "order_notification",
-          },
-        });
-        supabase.functions.invoke("process-email-queue", { body: {} }).catch(() => {});
+        // Direct synchronous send via Lovable email-js — same approach as
+        // create-payment, see comment there.
+        const apiKey = Deno.env.get("LOVABLE_API_KEY");
+        if (!apiKey) {
+          console.error("[create-payment-flitt] LOVABLE_API_KEY not set — order notification email NOT sent");
+        } else {
+          try {
+            await sendLovableEmail(
+              {
+                to: "maika@maika.ge",
+                subject: `ახალი შეკვეთა (Flitt): ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
+                html: htmlBody,
+              } as any,
+              { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
+            );
+            console.log("[create-payment-flitt] Order notification email sent for orderId:", orderId);
+          } catch (sendErr) {
+            console.error("[create-payment-flitt] Email send threw:", sendErr);
+          }
+        }
       }
     } catch (emailErr) {
       console.error("[create-payment-flitt] Email error:", emailErr);

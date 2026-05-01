@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendLovableEmail } from "npm:@lovable.dev/email-js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -105,22 +106,29 @@ ${orderRow.front_mockup_url ? `<p><a href="${orderRow.front_mockup_url}">წი�
 ${orderRow.back_mockup_url ? `<p><a href="${orderRow.back_mockup_url}">უკანა მოქაპი ნახვა</a></p>` : ""}
         `.trim();
 
-        await supabase.rpc("enqueue_email", {
-          queue_name: "transactional_emails",
-          payload: {
-            to: "maika@maika.ge",
-            subject: `ახალი შეკვეთა: ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
-            html: htmlBody,
-            template_name: "order_notification",
-          },
-        });
-        console.log("[create-payment] Order notification email enqueued for orderId:", orderId);
-
-        // Immediately trigger the queue processor so the email is sent without waiting
-        // for a cron tick. Fire-and-forget: don't block the payment flow on email send.
-        supabase.functions.invoke("process-email-queue", { body: {} })
-          .then(res => console.log("[create-payment] process-email-queue result:", res.data || res.error))
-          .catch(err => console.error("[create-payment] process-email-queue invoke failed:", err));
+        // Send notification email DIRECTLY via Lovable email-js (synchronous,
+        // not via the queue). The previous queue-based path required pg_cron
+        // and process-email-queue to be working, and silent failures meant
+        // admins never received order emails. Direct send fails loudly with
+        // a visible log line so we can debug.
+        const apiKey = Deno.env.get("LOVABLE_API_KEY");
+        if (!apiKey) {
+          console.error("[create-payment] LOVABLE_API_KEY not set — order notification email NOT sent");
+        } else {
+          try {
+            await sendLovableEmail(
+              {
+                to: "maika@maika.ge",
+                subject: `ახალი შეკვეთა: ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
+                html: htmlBody,
+              } as any,
+              { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
+            );
+            console.log("[create-payment] Order notification email sent for orderId:", orderId);
+          } catch (sendErr) {
+            console.error("[create-payment] Email send threw:", sendErr);
+          }
+        }
       }
     } catch (emailErr) {
       console.error("[create-payment] Failed to enqueue order notification email:", emailErr);

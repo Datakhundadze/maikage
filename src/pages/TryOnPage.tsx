@@ -182,10 +182,13 @@ export default function TryOnPage() {
     setLoading(true);
     setResultImage(null);
 
-    // Products with unique color/texture (acid-wash, washed effect) — send the mockup so the AI
-    // can see the actual garment style. Skip canvas colorization for these products.
-    const TEXTURED_PRODUCTS = ["Premium Washed Hoodie", "JEL T-Shirt"];
-    const isTextured = TEXTURED_PRODUCTS.includes(state.subType || "");
+    // Always send the rendered mockup (which already shows the correct
+    // garment color) and tell Gemini to replicate exactly what it sees.
+    // Relying on a text-only color hint + post-processing flood-fill was
+    // unreliable: Gemini often returned a white t-shirt and the flood fill
+    // could miss large areas, leaving the colour wrong (e.g. TH Black coming
+    // back as white in try-on).
+    const isTextured = true;
 
     // Map product sub-types to descriptive names for better AI understanding
     const getProductDescription = (subType?: string, productName?: string): string => {
@@ -326,6 +329,15 @@ export default function TryOnPage() {
                 className="w-full gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold h-12"
                 onClick={() => {
                   sessionStorage.setItem("maika-trigger-order", "1");
+                  // Stash the original person photo + try-on result so the
+                  // OrderDialog can upload them as part of the order's
+                  // originals (admin then sees who's wearing it).
+                  if (personImage) {
+                    try { sessionStorage.setItem("maika-tryon-person", personImage); } catch {}
+                  }
+                  if (resultImage) {
+                    try { sessionStorage.setItem("maika-tryon-result", resultImage); } catch {}
+                  }
                   setMode("studio");
                   navigate("/", { replace: true });
                 }}
