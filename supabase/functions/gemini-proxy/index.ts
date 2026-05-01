@@ -276,12 +276,13 @@ Be wildly creative. Mix unexpected aesthetics: cyberpunk samurai, cosmic barista
       const tryOnText = params.useMockupStyle
         ? `You are a photorealistic fashion compositor. Create a virtual try-on image.
 
-The second image shows the EXACT garment the person should wear — including its color, texture, fabric (e.g. acid-washed, vintage-washed, distressed) and the printed design on the chest.
+The second image shows the EXACT garment the person should wear — including its COLOR (this is the most important attribute), texture, fabric (e.g. acid-washed, vintage-washed, distressed) and the printed design on the chest.
 
 INSTRUCTIONS:
 1. Keep the person (face, hair, body, pose, background) EXACTLY as in the first photo — do not alter anything
-2. Replace the person's top clothing with the garment from the second image, preserving its exact color, texture, fabric style, and chest print
-3. Lighting, fabric folds and shadows should look natural and photorealistic
+2. Replace the person's top clothing with the garment from the second image, preserving its EXACT color (if the garment in the second image is black, the result MUST be black; if white, MUST be white; etc.), texture, fabric style, and chest print
+3. Do NOT change the garment colour under any circumstance — colour is mandatory
+4. Lighting, fabric folds and shadows should look natural and photorealistic
 
 Output: one photorealistic composite photo.`
         : `You are a photorealistic fashion compositor. Create a virtual try-on image.
