@@ -163,6 +163,7 @@ function StudioContent() {
         productImageUrl,
         (status) => dispatch({ type: "SET_STATUS", status: status as any }),
         isExactColor,
+        colorEntry?.entry?.placementZone,
       );
 
       setResult(genResult);

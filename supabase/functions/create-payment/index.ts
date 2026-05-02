@@ -106,27 +106,28 @@ ${orderRow.front_mockup_url ? `<p><a href="${orderRow.front_mockup_url}">წი�
 ${orderRow.back_mockup_url ? `<p><a href="${orderRow.back_mockup_url}">უკანა მოქაპი ნახვა</a></p>` : ""}
         `.trim();
 
-        // Send notification email DIRECTLY via Lovable email-js (synchronous,
-        // not via the queue). The previous queue-based path required pg_cron
-        // and process-email-queue to be working, and silent failures meant
-        // admins never received order emails. Direct send fails loudly with
-        // a visible log line so we can debug.
+        // Send notification email via Lovable email-js. Run in background
+        // via EdgeRuntime.waitUntil so the create-payment response isn't
+        // blocked on the email API (was making "go to payment" feel slow).
+        // Errors still log clearly so silent failures stay debuggable.
         const apiKey = Deno.env.get("LOVABLE_API_KEY");
         if (!apiKey) {
           console.error("[create-payment] LOVABLE_API_KEY not set — order notification email NOT sent");
         } else {
-          try {
-            await sendLovableEmail(
-              {
-                to: "maika@maika.ge",
-                subject: `ახალი შეკვეთა: ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
-                html: htmlBody,
-              } as any,
-              { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
-            );
-            console.log("[create-payment] Order notification email sent for orderId:", orderId);
-          } catch (sendErr) {
-            console.error("[create-payment] Email send threw:", sendErr);
+          const sendPromise = sendLovableEmail(
+            {
+              to: "maika@maika.ge",
+              subject: `ახალი შეკვეთა: ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
+              html: htmlBody,
+            } as any,
+            { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
+          )
+            .then(() => console.log("[create-payment] Order notification email sent for orderId:", orderId))
+            .catch((sendErr) => console.error("[create-payment] Email send threw:", sendErr));
+          // @ts-ignore — EdgeRuntime is provided by the Supabase Edge runtime
+          if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
+            // @ts-ignore
+            EdgeRuntime.waitUntil(sendPromise);
           }
         }
       }
