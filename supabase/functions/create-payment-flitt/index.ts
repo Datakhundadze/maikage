@@ -123,24 +123,26 @@ serve(async (req) => {
   <tr style="background:#f0f9f0;"><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">სულ</td><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">${orderRow.total_price} ₾</td></tr>
 </table>`.trim();
 
-        // Direct synchronous send via Lovable email-js — same approach as
-        // create-payment, see comment there.
+        // Background send via EdgeRuntime.waitUntil — same approach as
+        // create-payment, keeps "go to payment" responsive.
         const apiKey = Deno.env.get("LOVABLE_API_KEY");
         if (!apiKey) {
           console.error("[create-payment-flitt] LOVABLE_API_KEY not set — order notification email NOT sent");
         } else {
-          try {
-            await sendLovableEmail(
-              {
-                to: "maika@maika.ge",
-                subject: `ახალი შეკვეთა (Flitt): ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
-                html: htmlBody,
-              } as any,
-              { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
-            );
-            console.log("[create-payment-flitt] Order notification email sent for orderId:", orderId);
-          } catch (sendErr) {
-            console.error("[create-payment-flitt] Email send threw:", sendErr);
+          const sendPromise = sendLovableEmail(
+            {
+              to: "maika@maika.ge",
+              subject: `ახალი შეკვეთა (Flitt): ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
+              html: htmlBody,
+            } as any,
+            { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
+          )
+            .then(() => console.log("[create-payment-flitt] Order notification email sent for orderId:", orderId))
+            .catch((sendErr) => console.error("[create-payment-flitt] Email send threw:", sendErr));
+          // @ts-ignore — EdgeRuntime is provided by the Supabase Edge runtime
+          if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
+            // @ts-ignore
+            EdgeRuntime.waitUntil(sendPromise);
           }
         }
       }
