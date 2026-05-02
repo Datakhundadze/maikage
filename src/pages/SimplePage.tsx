@@ -198,6 +198,14 @@ export default function SimplePage() {
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
+  // Where the next uploaded photo will land (zone-relative). Defaults to
+  // zone-fill, centred. The empty placement frame is wired to this so the
+  // user can pre-position the upload by dragging the dashed box, and the
+  // first uploaded photo lands exactly where they put it.
+  const [nextPhotoCoords, setNextPhotoCoords] = useState<PlacementCoords>({
+    x: 0.5, y: 0.5, scale: 1, scaleY: 1,
+  });
+
   // Per-side state
   const [frontData, setFrontData] = useState<SideData>({ ...DEFAULT_SIDE });
   const [backData, setBackData] = useState<SideData>({ ...DEFAULT_SIDE });
@@ -223,21 +231,49 @@ export default function SimplePage() {
         const newPhoto: PhotoLayer = {
           id: `photo-${++photoIdCounter}`,
           image: result,
-          coords: { ...DEFAULT_PHOTO_COORDS },
+          // Land at wherever the user dragged the empty placement frame
+          // (or zone-fill default if they never moved it).
+          coords: prev.photos.length === 0 ? { ...nextPhotoCoords } : { ...DEFAULT_PHOTO_COORDS },
         };
         return { ...prev, photos: [...prev.photos, newPhoto] };
       });
+      // Auto-select the newly uploaded photo so the keyboard delete handler
+      // can target it without extra clicks.
+      setSelectedLayerId(`photo-${photoIdCounter}`);
     };
     reader.readAsDataURL(file);
     e.target.value = "";
-  }, [setSideData]);
+  }, [setSideData, nextPhotoCoords]);
 
   const removePhoto = (id: string) => {
     setSideData(prev => ({
       ...prev,
       photos: prev.photos.filter(p => p.id !== id),
     }));
+    if (selectedLayerId === id) setSelectedLayerId(null);
   };
+
+  // Pressing Delete or Backspace on a selected layer removes it. Skipped
+  // when the focus is in a text input/textarea so the user can still edit
+  // their text content normally.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Delete" && e.key !== "Backspace") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName.toLowerCase();
+      if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
+      if (!selectedLayerId) return;
+      if (selectedLayerId === "text") {
+        setSideData(prev => ({ ...prev, designText: "" }));
+      } else {
+        removePhoto(selectedLayerId);
+      }
+      setSelectedLayerId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLayerId]);
 
   const updatePhotoCoords = useCallback((id: string, coords: PlacementCoords) => {
     setSideData(prev => ({
@@ -630,8 +666,8 @@ export default function SimplePage() {
               subProduct={productConfig.config.subProduct}
               colorName={productConfig.config.color}
               view={productConfig.config.view}
-              placementCoords={productConfig.config.placementCoords}
-              onCoordsChange={productConfig.setPlacementCoords}
+              placementCoords={hasPhotos || textImage ? productConfig.config.placementCoords : nextPhotoCoords}
+              onCoordsChange={hasPhotos || textImage ? productConfig.setPlacementCoords : setNextPhotoCoords}
               layers={layers.length > 0 ? layers : undefined}
               onBackgroundClick={() => setSelectedLayerId(null)}
             />
@@ -670,7 +706,8 @@ export default function SimplePage() {
                     />
                     <button
                       onClick={() => removePhoto(photo.id)}
-                      className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center hover:scale-110 transition-transform"
+                      aria-label="წაშლა"
                     >
                       <X className="h-3 w-3" />
                     </button>
