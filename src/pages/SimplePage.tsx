@@ -584,7 +584,6 @@ export default function SimplePage() {
       setBackMockup(null);
       setBackDesignOnly(null);
     }
-    setSavedToGenerations(false);
   }, [frontData, backData, productConfig.config.product, productConfig.config.subProduct, productConfig.config.color]);
 
   return (
