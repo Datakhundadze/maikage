@@ -195,7 +195,6 @@ export default function SimplePage() {
   }, [trackEvent]);
 
   // Track if generation was saved for current design session
-  const [savedToGenerations, setSavedToGenerations] = useState(false);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
@@ -501,7 +500,6 @@ export default function SimplePage() {
 
   // Save Simple mode design to generations table
   const saveToGenerations = useCallback(async (frontMockup: string | null, backMockup: string | null, designOnly: string | null) => {
-    if (savedToGenerations) return;
     try {
       const { config } = productConfig;
       const genId = crypto.randomUUID();
@@ -537,11 +535,10 @@ export default function SimplePage() {
         transparent_image_path: transparentPath,
       };
       await supabase.from("generations" as any).insert(record);
-      setSavedToGenerations(true);
     } catch (e) {
       console.error("[Simple] Failed to save generation:", e);
     }
-  }, [user, productConfig, savedToGenerations]);
+  }, [user, productConfig]);
 
   const handlePublish = useCallback(async (frontMockupUrl: string | null) => {
     if (!user) { return; }
