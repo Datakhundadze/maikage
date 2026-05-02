@@ -256,7 +256,8 @@ function colorizeWhiteProduct(productImg: HTMLImageElement, colorHex: string): H
 function compositeMockupOnColorBg(
   designImg: HTMLImageElement,
   colorHex: string,
-  coords: { x: number; y: number; scale: number; scaleY?: number }
+  coords: { x: number; y: number; scale: number; scaleY?: number },
+  zone?: { x: number; y: number; scale: number; scaleY?: number },
 ): string {
   const SIZE = 1024;
   const canvas = document.createElement("canvas");
@@ -268,10 +269,17 @@ function compositeMockupOnColorBg(
   ctx.fillStyle = colorHex;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
-  const boxW = SIZE * coords.scale;
-  const boxH = SIZE * (coords.scaleY ?? coords.scale);
-  const boxX = SIZE * coords.x - boxW / 2;
-  const boxY = SIZE * coords.y - boxH / 2;
+  // coords are interpreted relative to `zone` (if provided), matching how
+  // DraggablePlacement renders the live preview. Falling back to canvas-
+  // relative when no zone is passed keeps older callers working.
+  const zoneW = zone ? SIZE * zone.scale : SIZE;
+  const zoneH = zone ? SIZE * (zone.scaleY ?? zone.scale) : SIZE;
+  const zoneLeft = zone ? SIZE * zone.x - zoneW / 2 : 0;
+  const zoneTop = zone ? SIZE * zone.y - zoneH / 2 : 0;
+  const boxW = zoneW * coords.scale;
+  const boxH = zoneH * (coords.scaleY ?? coords.scale);
+  const boxX = zoneLeft + zoneW * coords.x - boxW / 2;
+  const boxY = zoneTop + zoneH * coords.y - boxH / 2;
   const imgAspect = designImg.naturalWidth / designImg.naturalHeight;
   const boxAspect = boxW / boxH;
   let srcX = 0, srcY = 0, srcW = designImg.naturalWidth, srcH = designImg.naturalHeight;
@@ -306,7 +314,8 @@ function compositeMockupOnColorBg(
 export function compositeMockup(
   productImg: HTMLImageElement,
   designImg: HTMLImageElement,
-  coords: { x: number; y: number; scale: number; scaleY?: number }
+  coords: { x: number; y: number; scale: number; scaleY?: number },
+  zone?: { x: number; y: number; scale: number; scaleY?: number },
 ): string {
   const canvas = document.createElement("canvas");
   canvas.width = productImg.naturalWidth;
@@ -315,10 +324,19 @@ export function compositeMockup(
 
   ctx.drawImage(productImg, 0, 0);
 
-  const boxW = canvas.width * coords.scale;
-  const boxH = canvas.height * (coords.scaleY ?? coords.scale);
-  const boxX = canvas.width * coords.x - boxW / 2;
-  const boxY = canvas.height * coords.y - boxH / 2;
+  // coords are interpreted relative to `zone` (if provided), matching how
+  // DraggablePlacement renders the live preview. Without this alignment
+  // the same coords {0.5, 0.42, 0.38} placed the design at 14% of preview
+  // (zone-relative × zone size) but at 38% of canvas (canvas-relative) —
+  // the generated mockup looked 2-3× bigger than the preview promised.
+  const zoneW = zone ? canvas.width * zone.scale : canvas.width;
+  const zoneH = zone ? canvas.height * (zone.scaleY ?? zone.scale) : canvas.height;
+  const zoneLeft = zone ? canvas.width * zone.x - zoneW / 2 : 0;
+  const zoneTop = zone ? canvas.height * zone.y - zoneH / 2 : 0;
+  const boxW = zoneW * coords.scale;
+  const boxH = zoneH * (coords.scaleY ?? coords.scale);
+  const boxX = zoneLeft + zoneW * coords.x - boxW / 2;
+  const boxY = zoneTop + zoneH * coords.y - boxH / 2;
   const imgAspect = designImg.naturalWidth / designImg.naturalHeight;
   const boxAspect = boxW / boxH;
   let srcX = 0, srcY = 0, srcW = designImg.naturalWidth, srcH = designImg.naturalHeight;
@@ -359,10 +377,11 @@ export function compositeMockup(
 
 export async function runGenerationPipeline(
   params: GenerateDesignParams,
-  placementCoords: { x: number; y: number; scale: number },
+  placementCoords: { x: number; y: number; scale: number; scaleY?: number },
   productImageUrl: string | null,
   onStatusChange: (status: string) => void,
-  isExactColor: boolean = true
+  isExactColor: boolean = true,
+  placementZone?: { x: number; y: number; scale: number; scaleY?: number },
 ): Promise<GenerationResult> {
   // Stage 1: Generate design on white background
   onStatusChange("GENERATING_DESIGN");
@@ -430,17 +449,17 @@ export async function runGenerationPipeline(
     const productImg = await loadImage(productImageUrl);
     const transparentImg = await loadImage(transparentImage);
     if (isExactColor) {
-      mockupImage = compositeMockup(productImg, transparentImg, placementCoords);
+      mockupImage = compositeMockup(productImg, transparentImg, placementCoords, placementZone);
     } else {
       // Colorize the white t-shirt base image to match the selected color
       const colorizedCanvas = colorizeWhiteProduct(productImg, colorHex);
       const colorizedImg = await loadImage(colorizedCanvas.toDataURL("image/png"));
-      mockupImage = compositeMockup(colorizedImg, transparentImg, placementCoords);
+      mockupImage = compositeMockup(colorizedImg, transparentImg, placementCoords, placementZone);
     }
   } else {
     // No product photo at all — composite design onto solid color background
     const transparentImg = await loadImage(transparentImage);
-    mockupImage = compositeMockupOnColorBg(transparentImg, colorHex, placementCoords);
+    mockupImage = compositeMockupOnColorBg(transparentImg, colorHex, placementCoords, placementZone);
   }
 
   return {
