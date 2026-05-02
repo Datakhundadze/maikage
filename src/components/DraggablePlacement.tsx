@@ -107,10 +107,15 @@ export default function DraggablePlacement({
     const dy = (e.clientY - startRef.current.my) / (rect.height * zoneH);
 
     if (dragMode === "move") {
+      // Allow positioning beyond the zone bounds (clamp ±1 zone-width on
+      // each side) so the user can drag the design across the whole product
+      // even when the catalog's printable zone is small. The composite
+      // canvas still ctx.clip()s to the zone, so anything dragged out of
+      // the dashed box simply won't print.
       onCoordsChange({
         ...coords,
-        x: Math.max(0, Math.min(1, startRef.current.cx + dx)),
-        y: Math.max(0, Math.min(1, startRef.current.cy + dy)),
+        x: Math.max(-1, Math.min(2, startRef.current.cx + dx)),
+        y: Math.max(-1, Math.min(2, startRef.current.cy + dy)),
       });
     } else {
       const isLeft = dragMode.includes("l");
