@@ -190,71 +190,37 @@ export default function ProductPreview({
           />
         )}
 
-        {/* Clipping wrapper: design layers rendered inside are visually clipped
-            to the printable zone, matching what compositeMockup will produce.
-            Without this, dragging/scaling shows design overflowing the t-shirt. */}
-        {zone ? (
-          <div className="absolute overflow-hidden" style={zoneStyle}>
-            {hasLayers && layers!.map((layer) => (
-              <DraggablePlacement
-                key={layer.id}
-                coords={layer.coords}
-                onCoordsChange={layer.onCoordsChange}
-                disabled={disabled}
-                accentClass={layer.accentClass}
-                hideReadout
-                selected={layer.selected}
-                onSelect={layer.onSelect}
-              >
-                <img src={layer.image} alt="Design" className="w-full h-full object-cover opacity-80" />
-              </DraggablePlacement>
-            ))}
+        {/* Multi-layer mode */}
+        {hasLayers && layers!.map((layer) => (
+          <DraggablePlacement
+            key={layer.id}
+            coords={layer.coords}
+            onCoordsChange={layer.onCoordsChange}
+            disabled={disabled}
+            accentClass={layer.accentClass}
+            hideReadout
+            selected={layer.selected}
+            onSelect={layer.onSelect}
+            zone={zone}
+          >
+            <img src={layer.image} alt="Design" className="w-full h-full object-cover opacity-80" />
+          </DraggablePlacement>
+        ))}
 
-            {!hasLayers && (
-              <DraggablePlacement
-                coords={placementCoords}
-                onCoordsChange={onCoordsChange ?? (() => {})}
-                disabled={disabled}
-                accentClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "bg-gray-500" : undefined}
-                borderClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "border-gray-400/70" : undefined}
-              >
-                {designImage && (
-                  <img src={designImage} alt="Design" className="w-full h-full object-cover opacity-80" />
-                )}
-              </DraggablePlacement>
+        {/* Single-layer fallback */}
+        {!hasLayers && (
+          <DraggablePlacement
+            coords={placementCoords}
+            onCoordsChange={onCoordsChange ?? (() => {})}
+            disabled={disabled}
+            accentClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "bg-gray-500" : undefined}
+            borderClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "border-gray-400/70" : undefined}
+            zone={zone}
+          >
+            {designImage && (
+              <img src={designImage} alt="Design" className="w-full h-full object-cover opacity-80" />
             )}
-          </div>
-        ) : (
-          <>
-            {hasLayers && layers!.map((layer) => (
-              <DraggablePlacement
-                key={layer.id}
-                coords={layer.coords}
-                onCoordsChange={layer.onCoordsChange}
-                disabled={disabled}
-                accentClass={layer.accentClass}
-                hideReadout
-                selected={layer.selected}
-                onSelect={layer.onSelect}
-              >
-                <img src={layer.image} alt="Design" className="w-full h-full object-cover opacity-80" />
-              </DraggablePlacement>
-            ))}
-
-            {!hasLayers && (
-              <DraggablePlacement
-                coords={placementCoords}
-                onCoordsChange={onCoordsChange ?? (() => {})}
-                disabled={disabled}
-                accentClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "bg-gray-500" : undefined}
-                borderClass={["White", "Cream", "Light Cream", "Beige", "Light Gray", "Light Gray Melange"].includes(colorName) ? "border-gray-400/70" : undefined}
-              >
-                {designImage && (
-                  <img src={designImage} alt="Design" className="w-full h-full object-cover opacity-80" />
-                )}
-              </DraggablePlacement>
-            )}
-          </>
+          </DraggablePlacement>
         )}
       </div>
     </div>
