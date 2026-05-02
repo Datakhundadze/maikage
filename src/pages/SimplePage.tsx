@@ -565,25 +565,39 @@ export default function SimplePage() {
   const [frontDesignOnly, setFrontDesignOnly] = useState<string | null>(null);
   const [backDesignOnly, setBackDesignOnly] = useState<string | null>(null);
 
-  // Generate mockups when design changes
+  // Generate mockups when design changes — debounced so dragging stays
+  // smooth. Each composite call rebuilds 800-3000 px canvases and emits
+  // toDataURL strings, which is heavy enough to stutter every drag tick.
+  // The live preview (DraggablePlacement layers) updates in real time
+  // anyway, so the heavyweight composite only needs to run once the user
+  // stops moving.
   useEffect(() => {
     const hasFrontDesign = frontData.photos.length > 0 || frontData.designText.trim();
     const hasBackDesign = backData.photos.length > 0 || backData.designText.trim();
 
-    if (hasFrontDesign) {
-      compositeSide(frontData, "front").then(setFrontMockup);
-      compositeDesignOnly(frontData, "front").then(setFrontDesignOnly);
-    } else {
+    if (!hasFrontDesign) {
       setFrontMockup(null);
       setFrontDesignOnly(null);
     }
-    if (hasBackDesign) {
-      compositeSide(backData, "back").then(setBackMockup);
-      compositeDesignOnly(backData, "back").then(setBackDesignOnly);
-    } else {
+    if (!hasBackDesign) {
       setBackMockup(null);
       setBackDesignOnly(null);
     }
+
+    if (!hasFrontDesign && !hasBackDesign) return;
+
+    const timer = setTimeout(() => {
+      if (hasFrontDesign) {
+        compositeSide(frontData, "front").then(setFrontMockup);
+        compositeDesignOnly(frontData, "front").then(setFrontDesignOnly);
+      }
+      if (hasBackDesign) {
+        compositeSide(backData, "back").then(setBackMockup);
+        compositeDesignOnly(backData, "back").then(setBackDesignOnly);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
   }, [frontData, backData, productConfig.config.product, productConfig.config.subProduct, productConfig.config.color]);
 
   return (
