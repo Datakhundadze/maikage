@@ -107,15 +107,17 @@ export default function DraggablePlacement({
     const dy = (e.clientY - startRef.current.my) / (rect.height * zoneH);
 
     if (dragMode === "move") {
-      // Allow positioning beyond the zone bounds (clamp ±1 zone-width on
-      // each side) so the user can drag the design across the whole product
-      // even when the catalog's printable zone is small. The composite
-      // canvas still ctx.clip()s to the zone, so anything dragged out of
-      // the dashed box simply won't print.
+      // No clamp on move: the design centre can go anywhere on the preview
+      // (or even slightly off it). The outer preview container is
+      // overflow-hidden so off-canvas movement is harmless visually, and
+      // the composite still ctx.clip()s to the printable zone — anything
+      // dragged outside the dashed box simply won't print. Clamping made
+      // it impossible to position designs lower on the t-shirt when the
+      // catalog zone was small.
       onCoordsChange({
         ...coords,
-        x: Math.max(-1, Math.min(2, startRef.current.cx + dx)),
-        y: Math.max(-1, Math.min(2, startRef.current.cy + dy)),
+        x: startRef.current.cx + dx,
+        y: startRef.current.cy + dy,
       });
     } else {
       const isLeft = dragMode.includes("l");
