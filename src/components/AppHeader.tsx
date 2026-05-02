@@ -56,7 +56,14 @@ export default function AppHeader() {
             return (
               <button
                 key={path}
-                onClick={() => navigate(path)}
+                onClick={() => {
+                  // Modes "cart"/"simple"/"landing" hijack rendering before
+                  // the Routes block in App.tsx, so navigate() alone doesn't
+                  // leave them. Reset mode to "studio" (the default Routes
+                  // mode) before navigating.
+                  setMode("studio");
+                  navigate(path);
+                }}
                 className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap ${
                   active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"

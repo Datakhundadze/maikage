@@ -27,7 +27,22 @@ function loadStoredConfig(): ProductConfig {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
     const parsed = JSON.parse(raw) as Partial<ProductConfig>;
-    return { ...DEFAULT_CONFIG, ...parsed };
+    // Always use the catalog's placement zone for the stored product —
+    // never restore a stale placementCoords value, otherwise a previous
+    // user drag stays even when the design changes.
+    const product = (parsed.product || DEFAULT_CONFIG.product) as ProductType;
+    const subProduct = parsed.subProduct || catalog.getDefaultSubProduct(product);
+    const view = (parsed.view || DEFAULT_CONFIG.view) as ProductView;
+    const color = (parsed.color || DEFAULT_CONFIG.color) as ProductColor;
+    const entry = catalog.findProduct(product, subProduct, color, view);
+    return {
+      product,
+      subProduct,
+      color,
+      view,
+      placementCoords: entry?.placementZone || DEFAULT_CONFIG.placementCoords,
+      size: parsed.size || "",
+    };
   } catch {
     return DEFAULT_CONFIG;
   }
