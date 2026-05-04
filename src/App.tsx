@@ -22,6 +22,7 @@ import SportPage from "./pages/SportPage";
 import AboutPage from "./pages/AboutPage";
 import TryOnPage from "./pages/TryOnPage";
 import NotFound from "./pages/NotFound";
+import { RouteChangeTracker } from "@/components/RouteChangeTracker";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <RouteChangeTracker />
               <AppRoutes />
             </BrowserRouter>
           </TooltipProvider>
