@@ -2,36 +2,64 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2 } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package } from "lucide-react";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminDesigns from "@/components/admin/AdminDesigns";
 import AdminUsers from "@/components/admin/AdminUsers";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import AdminCorporate from "@/components/admin/AdminCorporate";
+import AdminCatalog from "@/components/admin/AdminCatalog";
 
 const ADMIN_PASSWORD = "maisuri720520";
 
-type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate";
+type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate" | "catalog";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "დეშბორდი", icon: LayoutDashboard },
   { id: "orders", label: "შეკვეთები", icon: ShoppingCart },
   { id: "users", label: "მომხმარებლები", icon: Users },
   { id: "designs", label: "დიზაინები", icon: Image },
+  { id: "catalog", label: "📦 კატალოგი", icon: Package },
   { id: "analytics", label: "ანალიტიკა", icon: BarChart3 },
   { id: "corporate", label: "კორპორატიული", icon: Building2 },
 ];
+
+function readTabFromUrl(): Tab {
+  const params = new URLSearchParams(window.location.search);
+  const v = params.get("tab");
+  if (v === "orders" || v === "designs" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog") return v;
+  return "dashboard";
+}
+
+function writeTabToUrl(tab: Tab) {
+  const params = new URLSearchParams(window.location.search);
+  if (tab === "dashboard") {
+    params.delete("tab");
+    params.delete("subtab");
+  } else {
+    params.set("tab", tab);
+    if (tab !== "catalog") params.delete("subtab");
+  }
+  const qs = params.toString();
+  const next = `${window.location.pathname}${qs ? "?" + qs : ""}`;
+  window.history.replaceState(null, "", next);
+}
 
 export default function AdminPage() {
   const navigate = useNavigate();
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
-  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [activeTab, setActiveTab] = useState<Tab>(() => readTabFromUrl());
 
   const tabRef = useRef(activeTab);
   tabRef.current = activeTab;
+
+  // Keep ?tab=... in sync with state so admins can deep-link / share URLs.
+  useEffect(() => {
+    if (authenticated) writeTabToUrl(activeTab);
+  }, [authenticated, activeTab]);
 
   useEffect(() => {
     if (!authenticated) return;
@@ -138,6 +166,7 @@ export default function AdminPage() {
         {activeTab === "orders" && <AdminOrders />}
         {activeTab === "designs" && <AdminDesigns />}
         {activeTab === "users" && <AdminUsers />}
+        {activeTab === "catalog" && <AdminCatalog />}
         {activeTab === "analytics" && <AdminAnalytics />}
         {activeTab === "corporate" && <AdminCorporate />}
       </div>
