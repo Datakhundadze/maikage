@@ -65,6 +65,7 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
 export const BRAND_COLORS: Record<string, ProductColor[]> = {
   // T-Shirt brands
   "GILDAN": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Sol's": ["White", "Black"],
   "GILDAN HUMMER": ["White", "Black", "Electric Blue", "Light Gray Melange"],
   "TH": ["White", "Black"],
   "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki", "Brown"],
