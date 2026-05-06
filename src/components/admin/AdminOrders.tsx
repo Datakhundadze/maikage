@@ -468,7 +468,7 @@ export default function AdminOrders() {
                         {order.front_mockup_url && (
                           <div className="space-y-1.5">
                             <p className="text-xs text-muted-foreground">წინა მხარე</p>
-                            <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
+                            <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
                               <img src={order.front_mockup_url} alt="წინა მხარე" className="w-full h-full object-contain" />
                             </div>
                             <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
@@ -480,7 +480,7 @@ export default function AdminOrders() {
                         {order.back_mockup_url && (
                           <div className="space-y-1.5">
                             <p className="text-xs text-muted-foreground">უკანა მხარე</p>
-                            <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
+                            <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
                               <img src={order.back_mockup_url} alt="უკანა მხარე" className="w-full h-full object-contain" />
                             </div>
                             <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
@@ -517,7 +517,7 @@ export default function AdminOrders() {
                           {order.transparent_image_url && (
                             <div className="space-y-1.5">
                               <p className="text-xs text-muted-foreground">წინა მხარე</p>
-                              <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
+                              <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
                                 <img src={order.transparent_image_url} alt="წინა პრინტი" className="w-full h-full object-contain" />
                               </div>
                               <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
@@ -529,7 +529,7 @@ export default function AdminOrders() {
                           {order.back_transparent_image_url && (
                             <div className="space-y-1.5">
                               <p className="text-xs text-muted-foreground">უკანა მხარე</p>
-                              <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
+                              <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
                                 <img src={order.back_transparent_image_url} alt="უკანა პრინტი" className="w-full h-full object-contain" />
                               </div>
                               <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"

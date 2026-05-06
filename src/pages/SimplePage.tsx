@@ -343,9 +343,25 @@ export default function SimplePage() {
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
 
+  // Wait for the user-selected font to actually be loaded before drawing
+  // text on canvas. Without this the browser silently falls back to a system
+  // font when canvas runs faster than the network request to fonts.googleapis,
+  // which produced order mockups where the text either looked wrong or was so
+  // small at fallback metrics that it was invisible at admin thumbnail size.
+  const ensureFontReady = async (fontFamily: string) => {
+    if (typeof document === "undefined" || !document.fonts) return;
+    try {
+      // Pull just the first family ("'Playfair Display', serif" → "Playfair Display").
+      const first = fontFamily.split(",")[0].replace(/['"]/g, "").trim();
+      if (first) await (document as any).fonts.load(`bold 80px "${first}"`);
+      await document.fonts.ready;
+    } catch { /* fonts API best-effort */ }
+  };
+
   // Composite layers onto product image for a given side
   const compositeSide = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
     if (side.photos.length === 0 && !side.designText.trim()) return null;
+    if (side.designText.trim()) await ensureFontReady(side.selectedFont.family);
 
     const { config } = productConfig;
     const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
@@ -474,6 +490,7 @@ export default function SimplePage() {
   // relative to the mockup canvas.
   const compositeDesignOnly = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
     if (side.photos.length === 0 && !side.designText.trim()) return null;
+    if (side.designText.trim()) await ensureFontReady(side.selectedFont.family);
 
     const { config } = productConfig;
     const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
