@@ -99,6 +99,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
 export const BRAND_SIZES: Record<string, string[]> = {
   // T-Shirts
   "GILDAN": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"],
+  "Sol's": ["S", "M", "L", "XL", "XXL"],
   "GILDAN HUMMER": ["S", "M", "L", "XL", "XXL"],
   "TH": ["S", "M", "L", "XL", "XXL"],
   "JEL T-Shirt": ["S", "M", "L", "XL", "XXL", "XXXL"],
