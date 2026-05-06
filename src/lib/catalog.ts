@@ -315,10 +315,10 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|JEL T-Shirt|Brown|back": "/products/tshirt/jel-tshirt-brown-back.png",
 
   // Sol's T-Shirt
-  "T-Shirt|Sol's|White|front": "/products/sols-tshirt-white-front.png",
-  "T-Shirt|Sol's|White|back": "/products/sols-tshirt-white-back.png",
-  "T-Shirt|Sol's|Black|front": "/products/sols-tshirt-black-front.png",
-  "T-Shirt|Sol's|Black|back": "/products/sols-tshirt-black-back.png",
+  "T-Shirt|Sol's|White|front": "/products/tshirt/sols-white-front.png",
+  "T-Shirt|Sol's|White|back": "/products/tshirt/sols-white-back.png",
+  "T-Shirt|Sol's|Black|front": "/products/tshirt/sols-black-front.png",
+  "T-Shirt|Sol's|Black|back": "/products/tshirt/sols-black-back.png",
 
   // Oversize T-Shirt
   "T-Shirt|Oversize|White|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-white-front.png",
