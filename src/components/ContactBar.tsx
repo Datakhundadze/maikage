@@ -1,5 +1,5 @@
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Phone, Smartphone, Mail } from "lucide-react";
+import { Phone, Smartphone, Mail, MapPin } from "lucide-react";
 
 export default function ContactBar() {
   return (
@@ -38,7 +38,26 @@ export default function ContactBar() {
         </TooltipContent>
       </Tooltip>
 
+
       <span className="text-sidebar-foreground/20">|</span>
+
+      {/* Google Maps — opens our location in Maps */}
+      <Tooltip delayDuration={100}>
+        <TooltipTrigger asChild>
+          <a
+            href="https://www.google.com/maps/place/Maika.ge/@41.7231446,44.7910174,17z/data=!3m1!4b1!4m6!3m5!1s0x404473c7faeeac33:0x51850ad0fd75a99b!8m2!3d41.7231446!4d44.7910174!16s%2Fg%2F11h6g3tpzr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-red-400 transition-colors"
+            aria-label="ლოკაცია Google Maps-ზე"
+          >
+            <MapPin className="h-3.5 w-3.5" />
+          </a>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs">
+          📍 Maika.ge — გვიპოვე რუკაზე
+        </TooltipContent>
+      </Tooltip>
 
       {/* Social icons */}
       <a href="https://wa.me/995599050807" target="_blank" rel="noopener noreferrer" className="hover:text-green-400 transition-colors" aria-label="WhatsApp">
