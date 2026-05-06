@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendLovableEmail } from "npm:@lovable.dev/email-js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -106,24 +105,36 @@ ${orderRow.front_mockup_url ? `<p><a href="${orderRow.front_mockup_url}">წი�
 ${orderRow.back_mockup_url ? `<p><a href="${orderRow.back_mockup_url}">უკანა მოქაპი ნახვა</a></p>` : ""}
         `.trim();
 
-        // Send notification email via Lovable email-js. Run in background
-        // via EdgeRuntime.waitUntil so the create-payment response isn't
-        // blocked on the email API (was making "go to payment" feel slow).
-        // Errors still log clearly so silent failures stay debuggable.
-        const apiKey = Deno.env.get("LOVABLE_API_KEY");
-        if (!apiKey) {
-          console.error("[create-payment] LOVABLE_API_KEY not set — order notification email NOT sent");
+        // Send order notification via Resend. Earlier paths via Lovable
+        // email-js / process-email-queue produced ~1500 retries per message
+        // in production with zero deliveries, so we switched off entirely.
+        // Background-send via EdgeRuntime.waitUntil so the create-payment
+        // response doesn't wait on the email API.
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        const resendFrom = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
+        if (!resendKey) {
+          console.error("[create-payment] RESEND_API_KEY not set — order notification email NOT sent");
         } else {
-          const sendPromise = sendLovableEmail(
-            {
-              to: "maika@maika.ge",
+          const sendPromise = fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: resendFrom,
+              to: ["maika@maika.ge"],
               subject: `ახალი შეკვეთა: ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
               html: htmlBody,
-            } as any,
-            { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
-          )
-            .then(() => console.log("[create-payment] Order notification email sent for orderId:", orderId))
-            .catch((sendErr) => console.error("[create-payment] Email send threw:", sendErr));
+            }),
+          })
+            .then(async (res) => {
+              if (!res.ok) {
+                const body = await res.text();
+                console.error("[create-payment] Resend HTTP", res.status, body);
+              } else {
+                const body = await res.json().catch(() => null);
+                console.log("[create-payment] Order notification email sent for orderId:", orderId, "resend_id:", body?.id);
+              }
+            })
+            .catch((sendErr) => console.error("[create-payment] Resend fetch threw:", sendErr));
           // @ts-ignore — EdgeRuntime is provided by the Supabase Edge runtime
           if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
             // @ts-ignore
