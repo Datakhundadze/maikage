@@ -15,6 +15,7 @@ interface PriceTier {
 const PRICES: Record<string, PriceTier> = {
   // T-Shirt brands
   "GILDAN":         { frontOnly: 35, backPhoto: 50, backText: 45 },
+  "Sol's":          { frontOnly: 50, backPhoto: 65, backText: 60 },
   "GILDAN HUMMER":  { frontOnly: 60, backPhoto: 75, backText: 70 },
   "TH":             { frontOnly: 45, backPhoto: 60, backText: 55 },
   "GIORDANO":       { frontOnly: 70, backPhoto: 85, backText: 80 },

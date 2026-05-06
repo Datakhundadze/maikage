@@ -38,6 +38,92 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_designs: {
+        Row: {
+          ai_generated: boolean | null
+          ai_prompt: string | null
+          category: string | null
+          created_at: string | null
+          default_color: string | null
+          default_product_id: string | null
+          description_en: string | null
+          description_ka: string | null
+          id: string
+          is_featured: boolean | null
+          is_published: boolean | null
+          meta_description_en: string | null
+          meta_description_ka: string | null
+          order_count: number | null
+          print_file_url: string
+          published_at: string | null
+          slug: string
+          tags: string[] | null
+          thumbnail_url: string | null
+          title_en: string | null
+          title_ka: string
+          updated_at: string | null
+          view_count: number | null
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          ai_prompt?: string | null
+          category?: string | null
+          created_at?: string | null
+          default_color?: string | null
+          default_product_id?: string | null
+          description_en?: string | null
+          description_ka?: string | null
+          id?: string
+          is_featured?: boolean | null
+          is_published?: boolean | null
+          meta_description_en?: string | null
+          meta_description_ka?: string | null
+          order_count?: number | null
+          print_file_url: string
+          published_at?: string | null
+          slug: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title_en?: string | null
+          title_ka: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          ai_generated?: boolean | null
+          ai_prompt?: string | null
+          category?: string | null
+          created_at?: string | null
+          default_color?: string | null
+          default_product_id?: string | null
+          description_en?: string | null
+          description_ka?: string | null
+          id?: string
+          is_featured?: boolean | null
+          is_published?: boolean | null
+          meta_description_en?: string | null
+          meta_description_ka?: string | null
+          order_count?: number | null
+          print_file_url?: string
+          published_at?: string | null
+          slug?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title_en?: string | null
+          title_ka?: string
+          updated_at?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_designs_default_product_id_fkey"
+            columns: ["default_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       corporate_inquiries: {
         Row: {
           color: string | null
@@ -385,6 +471,78 @@ export type Database = {
           total_price?: number
           transparent_image_url?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          base_price: number | null
+          colors: Json
+          created_at: string | null
+          description_en: string | null
+          description_ka: string | null
+          display_name_en: string | null
+          display_name_ka: string
+          display_order: number | null
+          id: string
+          is_active: boolean | null
+          mockup_image_url: string | null
+          print_area_height: number
+          print_area_width: number
+          print_area_x: number
+          print_area_y: number
+          quality: string
+          sizes: string[] | null
+          slug: string
+          sub_product: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_price?: number | null
+          colors?: Json
+          created_at?: string | null
+          description_en?: string | null
+          description_ka?: string | null
+          display_name_en?: string | null
+          display_name_ka: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          mockup_image_url?: string | null
+          print_area_height?: number
+          print_area_width?: number
+          print_area_x?: number
+          print_area_y?: number
+          quality?: string
+          sizes?: string[] | null
+          slug: string
+          sub_product?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_price?: number | null
+          colors?: Json
+          created_at?: string | null
+          description_en?: string | null
+          description_ka?: string | null
+          display_name_en?: string | null
+          display_name_ka?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean | null
+          mockup_image_url?: string | null
+          print_area_height?: number
+          print_area_width?: number
+          print_area_x?: number
+          print_area_y?: number
+          quality?: string
+          sizes?: string[] | null
+          slug?: string
+          sub_product?: string | null
+          type?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

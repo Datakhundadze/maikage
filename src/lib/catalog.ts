@@ -51,7 +51,7 @@ export const PRODUCTS: ProductInfo[] = [
 
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
-  "T-Shirt": ["GILDAN", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "Oversize", "GILDAN KIDS"],
+  "T-Shirt": ["GILDAN", "Sol's", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "Oversize", "GILDAN KIDS"],
   "Hoodie": ["GILDAN Hoodie", "Premium Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
   "Tote Bag": [],
   "Cap": [],
@@ -65,6 +65,7 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
 export const BRAND_COLORS: Record<string, ProductColor[]> = {
   // T-Shirt brands
   "GILDAN": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
+  "Sol's": ["White", "Black"],
   "GILDAN HUMMER": ["White", "Black", "Electric Blue", "Light Gray Melange"],
   "TH": ["White", "Black"],
   "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki", "Brown"],
@@ -98,6 +99,7 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
 export const BRAND_SIZES: Record<string, string[]> = {
   // T-Shirts
   "GILDAN": ["S", "M", "L", "XL", "XXL", "XXXL", "XXXXL"],
+  "Sol's": ["S", "M", "L", "XL", "XXL"],
   "GILDAN HUMMER": ["S", "M", "L", "XL", "XXL"],
   "TH": ["S", "M", "L", "XL", "XXL"],
   "JEL T-Shirt": ["S", "M", "L", "XL", "XXL", "XXXL"],
@@ -309,6 +311,12 @@ const KNOWN_IMAGES: Record<string, string> = {
   "T-Shirt|JEL T-Shirt|Khaki|back": "/products/tshirt/jel-tshirt-khaki-back.png",
   "T-Shirt|JEL T-Shirt|Brown|front": "/products/tshirt/jel-tshirt-brown-front.png",
   "T-Shirt|JEL T-Shirt|Brown|back": "/products/tshirt/jel-tshirt-brown-back.png",
+
+  // Sol's T-Shirt
+  "T-Shirt|Sol's|White|front": "/products/sols-tshirt-white-front.png",
+  "T-Shirt|Sol's|White|back": "/products/sols-tshirt-white-back.png",
+  "T-Shirt|Sol's|Black|front": "/products/sols-tshirt-black-front.png",
+  "T-Shirt|Sol's|Black|back": "/products/sols-tshirt-black-back.png",
 
   // Oversize T-Shirt
   "T-Shirt|Oversize|White|front": "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/tshirt/oversize-white-front.png",
