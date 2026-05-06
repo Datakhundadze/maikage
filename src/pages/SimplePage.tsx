@@ -343,9 +343,25 @@ export default function SimplePage() {
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
 
+  // Wait for the user-selected font to actually be loaded before drawing
+  // text on canvas. Without this the browser silently falls back to a system
+  // font when canvas runs faster than the network request to fonts.googleapis,
+  // which produced order mockups where the text either looked wrong or was so
+  // small at fallback metrics that it was invisible at admin thumbnail size.
+  const ensureFontReady = async (fontFamily: string) => {
+    if (typeof document === "undefined" || !document.fonts) return;
+    try {
+      // Pull just the first family ("'Playfair Display', serif" → "Playfair Display").
+      const first = fontFamily.split(",")[0].replace(/['"]/g, "").trim();
+      if (first) await (document as any).fonts.load(`bold 80px "${first}"`);
+      await document.fonts.ready;
+    } catch { /* fonts API best-effort */ }
+  };
+
   // Composite layers onto product image for a given side
   const compositeSide = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
     if (side.photos.length === 0 && !side.designText.trim()) return null;
+    if (side.designText.trim()) await ensureFontReady(side.selectedFont.family);
 
     const { config } = productConfig;
     const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
@@ -474,6 +490,7 @@ export default function SimplePage() {
   // relative to the mockup canvas.
   const compositeDesignOnly = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
     if (side.photos.length === 0 && !side.designText.trim()) return null;
+    if (side.designText.trim()) await ensureFontReady(side.selectedFont.family);
 
     const { config } = productConfig;
     const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
@@ -838,14 +855,35 @@ export default function SimplePage() {
                 <PriceDisplay breakdown={breakdown} />
                 {(() => {
                   const needsSize = (BRAND_SIZES[productConfig.config.subProduct]?.length > 0) || productConfig.config.product === "Phone Case";
-                  const handleOrderClick = () => {
+                  // Both buttons must use fresh composite output. The useEffect
+                  // that populates frontMockup/backDesignOnly is debounced
+                  // 250ms, so a quick click can race past stale state and ship
+                  // a missing back print file. Re-compute synchronously here.
+                  const computeFresh = async () => {
+                    const hasFront = frontData.photos.length > 0 || frontData.designText.trim();
+                    const hasBack = backData.photos.length > 0 || backData.designText.trim();
+                    const [fm, bm, fdo, bdo] = await Promise.all([
+                      hasFront ? compositeSide(frontData, "front") : Promise.resolve(null),
+                      hasBack ? compositeSide(backData, "back") : Promise.resolve(null),
+                      hasFront ? compositeDesignOnly(frontData, "front") : Promise.resolve(null),
+                      hasBack ? compositeDesignOnly(backData, "back") : Promise.resolve(null),
+                    ]);
+                    setFrontMockup(fm);
+                    setBackMockup(bm);
+                    setFrontDesignOnly(fdo);
+                    setBackDesignOnly(bdo);
+                    return { fm, bm, fdo, bdo };
+                  };
+
+                  const handleOrderClick = async () => {
                     if (needsSize && !productConfig.config.size) {
                       setSizeError(true);
                       document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
                       return;
                     }
                     setSizeError(false);
-                    if (frontMockup || backMockup) saveToGenerations(frontMockup, backMockup, frontDesignOnly || backDesignOnly);
+                    const { fm, bm, fdo, bdo } = await computeFresh();
+                    if (fm || bm) saveToGenerations(fm, bm, fdo || bdo);
                     setOrderDialogOpen(true);
                   };
                   const handleAddToCart = async () => {
@@ -855,7 +893,8 @@ export default function SimplePage() {
                       return;
                     }
                     setSizeError(false);
-                    if (!frontMockup && !backMockup) {
+                    const { fm, bm, fdo, bdo } = await computeFresh();
+                    if (!fm && !bm) {
                       toast({ title: "ჯერ შექმენი დიზაინი", variant: "destructive" });
                       return;
                     }
@@ -866,10 +905,10 @@ export default function SimplePage() {
                         color: productConfig.config.color,
                         size: productConfig.config.size || null,
                         isStudio: false,
-                        frontMockupDataUrl: frontMockup,
-                        backMockupDataUrl: backMockup,
-                        transparentImageDataUrl: frontDesignOnly,
-                        backTransparentImageDataUrl: backDesignOnly,
+                        frontMockupDataUrl: fm,
+                        backMockupDataUrl: bm,
+                        transparentImageDataUrl: fdo,
+                        backTransparentImageDataUrl: bdo,
                         frontOriginalPhotos: frontData.photos.map(p => p.image),
                         backOriginalPhotos: backData.photos.map(p => p.image),
                         prompt: buildTextPrompt(frontData, backData),

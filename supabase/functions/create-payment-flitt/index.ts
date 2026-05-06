@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendLovableEmail } from "npm:@lovable.dev/email-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,22 +122,32 @@ serve(async (req) => {
   <tr style="background:#f0f9f0;"><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">სულ</td><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">${orderRow.total_price} ₾</td></tr>
 </table>`.trim();
 
-        // Background send via EdgeRuntime.waitUntil — same approach as
-        // create-payment, keeps "go to payment" responsive.
-        const apiKey = Deno.env.get("LOVABLE_API_KEY");
-        if (!apiKey) {
-          console.error("[create-payment-flitt] LOVABLE_API_KEY not set — order notification email NOT sent");
+        // Background send via Resend — same approach as create-payment.
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        const resendFrom = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
+        if (!resendKey) {
+          console.error("[create-payment-flitt] RESEND_API_KEY not set — order notification email NOT sent");
         } else {
-          const sendPromise = sendLovableEmail(
-            {
-              to: "maika@maika.ge",
+          const sendPromise = fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: resendFrom,
+              to: ["maika@maika.ge"],
               subject: `ახალი შეკვეთა (Flitt): ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
               html: htmlBody,
-            } as any,
-            { apiKey, sendUrl: Deno.env.get("LOVABLE_SEND_URL") },
-          )
-            .then(() => console.log("[create-payment-flitt] Order notification email sent for orderId:", orderId))
-            .catch((sendErr) => console.error("[create-payment-flitt] Email send threw:", sendErr));
+            }),
+          })
+            .then(async (res) => {
+              if (!res.ok) {
+                const body = await res.text();
+                console.error("[create-payment-flitt] Resend HTTP", res.status, body);
+              } else {
+                const body = await res.json().catch(() => null);
+                console.log("[create-payment-flitt] Order notification email sent for orderId:", orderId, "resend_id:", body?.id);
+              }
+            })
+            .catch((sendErr) => console.error("[create-payment-flitt] Resend fetch threw:", sendErr));
           // @ts-ignore — EdgeRuntime is provided by the Supabase Edge runtime
           if (typeof EdgeRuntime !== "undefined" && typeof EdgeRuntime.waitUntil === "function") {
             // @ts-ignore
