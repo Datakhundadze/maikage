@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +66,16 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const [tags, setTags] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Object URL for the preview frame; revoked when the file changes or unmount.
+  useEffect(() => {
+    if (!file) { setPreviewUrl(null); return; }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   const reset = () => {
     setTitle(""); setTitleEn(""); setCategory(""); setTags(""); setDescription(""); setFile(null);
@@ -132,7 +141,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>ახალი დიზაინი</DialogTitle>
         </DialogHeader>
@@ -180,6 +189,19 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
               <p className="text-xs text-muted-foreground">
                 {file.name} — {(file.size / 1024).toFixed(0)} KB
               </p>
+            )}
+            {previewUrl && (
+              <div
+                className="mt-2 mx-auto w-full max-w-[400px] aspect-square rounded-md border border-border overflow-hidden"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(-45deg, hsl(var(--muted)) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, hsl(var(--muted)) 75%), linear-gradient(-45deg, transparent 75%, hsl(var(--muted)) 75%)",
+                  backgroundSize: "20px 20px",
+                  backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0",
+                }}
+              >
+                <img src={previewUrl} alt="preview" className="w-full h-full object-contain" />
+              </div>
             )}
           </div>
         </div>

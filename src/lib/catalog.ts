@@ -9,7 +9,10 @@ export type ProductColor =
   | "White" | "Black" | "Beige" | "Light Gray" | "Red" | "Electric Blue"
   | "Dark Navy" | "Yellow" | "Orange" | "Light Blue" | "Standard Blue"
   | "Burgundy" | "Gray" | "Lime" | "Purple" | "Light Gray Melange"
-  | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green" | "Blue";
+  | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green" | "Blue"
+  // Sol's-specific palette: distinct shades from the global names so GILDAN/JEL
+  // keep their own Khaki/Pink/Electric Blue/Dark Navy hexes unchanged.
+  | "Sol's Khaki" | "Sol's Pink" | "Sol's Emerald" | "Sol's Electric" | "Sol's Navy" | "Sol's Ultramarine";
 
 export type ProductView = "front" | "back";
 
@@ -65,9 +68,10 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
 export const BRAND_COLORS: Record<string, ProductColor[]> = {
   // T-Shirt brands
   "GILDAN": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
-  // Sol's: hybrid — White & Black use real photos; others fall back to white photo + canvas tint.
-  // Reuses existing GILDAN color names/hexes so matching colors render identically across brands.
-  "Sol's": ["White", "Black", "Khaki", "Pink", "Green", "Dark Navy", "Electric Blue"],
+  // Sol's: hybrid — White & Black use real photos (sols-{white,black}-{front,back}.png),
+  // the other six fall back to sols-white-{front,back}.png and get tinted on canvas
+  // with their Sol's-specific hex values (see COLORS below).
+  "Sol's": ["White", "Black", "Sol's Khaki", "Sol's Pink", "Sol's Emerald", "Sol's Electric", "Sol's Navy", "Sol's Ultramarine"],
   "GILDAN HUMMER": ["White", "Black", "Electric Blue", "Light Gray Melange"],
   "TH": ["White", "Black"],
   "JEL T-Shirt": ["Black", "Purple", "Gray", "Light Cream", "Pink", "Electric Blue", "Khaki", "Brown"],
@@ -148,6 +152,13 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "Purple", hex: "#800080" },
   { name: "Khaki", hex: "#C3B091" },
   { name: "Brown", hex: "#654321" },
+  // Sol's-specific shades
+  { name: "Sol's Khaki", hex: "#41442F" },
+  { name: "Sol's Pink", hex: "#EBC9D9" },
+  { name: "Sol's Emerald", hex: "#007169" },
+  { name: "Sol's Electric", hex: "#324F9A" },
+  { name: "Sol's Navy", hex: "#333949" },
+  { name: "Sol's Ultramarine", hex: "#141B5F" },
 ];
 
 // Phone case model list (stored in the `size` field of orders)
@@ -405,6 +416,14 @@ export const COLOR_FILTERS: Record<ProductColor, string> = {
   "Purple": "brightness(0.7) saturate(2) hue-rotate(270deg)",
   "Khaki": "sepia(0.6) brightness(0.9) saturate(0.8)",
   "Brown": "sepia(0.8) brightness(0.7) saturate(1.2)",
+  // Sol's-specific filter approximations (live preview uses canvas pixel tint;
+  // these are kept only because COLOR_FILTERS is typed Record<ProductColor, _>).
+  "Sol's Khaki": "sepia(0.5) brightness(0.4) saturate(1)",
+  "Sol's Pink": "brightness(1) saturate(1.2) hue-rotate(320deg)",
+  "Sol's Emerald": "brightness(0.6) saturate(3) hue-rotate(150deg)",
+  "Sol's Electric": "brightness(0.5) saturate(2) hue-rotate(220deg)",
+  "Sol's Navy": "brightness(0.4) saturate(0.8) hue-rotate(220deg)",
+  "Sol's Ultramarine": "brightness(0.35) saturate(3) hue-rotate(230deg)",
 };
 
 // Generate catalog entries

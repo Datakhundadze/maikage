@@ -155,7 +155,7 @@ export default function ProductPreview({
     }
   }, [imgLoaded, effectiveColorHex, isExactImage]);
 
-  const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy"].includes(colorName);
+  const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy", "Sol's Khaki", "Sol's Emerald", "Sol's Electric", "Sol's Navy", "Sol's Ultramarine"].includes(colorName);
   const bgStyle = isDarkColor ? { backgroundColor: "#d0d0d0" } : undefined;
   const bgClass = isDarkColor ? "" : "bg-card";
 
