@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import DraggablePlacement from "@/components/DraggablePlacement";
@@ -107,8 +107,6 @@ export default function ProductPreview({
   productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers, onBackgroundClick,
 }: ProductPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const imgRef = useRef<HTMLImageElement | null>(null);
 
   const resolvedSub = subProduct || catalog.getDefaultSubProduct(productName as ProductType);
   const imageResult = catalog.findImageForColor(productName as ProductType, resolvedSub, colorName as ProductColor, view as ProductView);
@@ -129,31 +127,35 @@ export default function ProductPreview({
     height: `${zoneH * 100}%`,
   };
 
+  const effectiveColorHex = colorName === "Black" ? "#1a1a1a" : colorHex;
+
+  // Single effect: load image and draw to canvas atomically. The previous split
+  // (load in one effect, draw in a second keyed on imgLoaded) lost view-toggle
+  // redraws when the new image came from cache — both setImgLoaded(false) and
+  // setImgLoaded(true) batched within the same tick, so the draw effect didn't
+  // see a dep change and the canvas kept showing the previous image.
   useEffect(() => {
-    setImgLoaded(false);
-    if (!baseImageUrl) return;
+    if (!baseImageUrl || !canvasRef.current) return;
+    let cancelled = false;
+    const canvas = canvasRef.current;
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = () => { imgRef.current = img; setImgLoaded(true); };
-    img.onerror = () => setImgLoaded(false);
+    img.onload = () => {
+      if (cancelled) return;
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      if (isExactImage) {
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+      } else {
+        colorizeImage(img, canvas, effectiveColorHex);
+      }
+    };
     img.src = baseImageUrl;
-  }, [baseImageUrl]);
-
-  const effectiveColorHex = colorName === "Black" ? "#1a1a1a" : colorHex;
-  useEffect(() => {
-    if (!imgLoaded || !imgRef.current || !canvasRef.current) return;
-    if (isExactImage) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      canvas.width = imgRef.current.naturalWidth;
-      canvas.height = imgRef.current.naturalHeight;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(imgRef.current, 0, 0);
-    } else {
-      colorizeImage(imgRef.current, canvasRef.current, effectiveColorHex);
-    }
-  }, [imgLoaded, effectiveColorHex, isExactImage]);
+    return () => { cancelled = true; };
+  }, [baseImageUrl, isExactImage, effectiveColorHex]);
 
   const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy", "Sol's Khaki", "Sol's Emerald", "Sol's Electric", "Sol's Navy", "Sol's Ultramarine"].includes(colorName);
   const bgStyle = isDarkColor ? { backgroundColor: "#d0d0d0" } : undefined;
