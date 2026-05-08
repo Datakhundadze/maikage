@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut } from "lucide-react";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import AdminOrders from "@/components/admin/AdminOrders";
 import AdminDesigns from "@/components/admin/AdminDesigns";
@@ -10,8 +10,8 @@ import AdminUsers from "@/components/admin/AdminUsers";
 import AdminAnalytics from "@/components/admin/AdminAnalytics";
 import AdminCorporate from "@/components/admin/AdminCorporate";
 import AdminCatalog from "@/components/admin/AdminCatalog";
-
-const ADMIN_PASSWORD = "maisuri720520";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 
 type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate" | "catalog";
 
@@ -48,13 +48,19 @@ function writeTabToUrl(tab: Tab) {
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const [authenticated, setAuthenticated] = useState(false);
+  const { user, loading: authLoading, signInWithEmail, signUpWithEmail, signOut, error: authError } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdminCheck();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>(() => readTabFromUrl());
 
   const tabRef = useRef(activeTab);
   tabRef.current = activeTab;
+
+  const authenticated = !!user && isAdmin;
+  const checking = authLoading || (!!user && adminLoading);
 
   // Keep ?tab=... in sync with state so admins can deep-link / share URLs.
   useEffect(() => {
@@ -74,46 +80,99 @@ export default function AdminPage() {
     return () => window.removeEventListener("popstate", onPop);
   }, [authenticated]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setAuthenticated(true);
-      setError(false);
-    } else {
-      setError(true);
+    setSubmitting(true);
+    try {
+      if (isSignUp) await signUpWithEmail(email, password);
+      else await signInWithEmail(email, password);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  if (!authenticated) {
+  if (checking) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4">
+        <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
           <div className="text-center space-y-2">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 text-black text-xl font-black">
               M
             </div>
             <h1 className="text-xl font-bold text-foreground">ადმინ პანელი</h1>
-            <p className="text-sm text-muted-foreground">შეიყვანეთ პაროლი</p>
+            <p className="text-sm text-muted-foreground">
+              {isSignUp ? "ადმინის რეგისტრაცია" : "გაიარეთ ავტორიზაცია"}
+            </p>
           </div>
           <div className="space-y-2">
+            <Input
+              type="email"
+              placeholder="ელფოსტა"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoFocus
+            />
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="password"
                 placeholder="პაროლი"
                 value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(false); }}
-                className={`pl-10 ${error ? "border-destructive" : ""}`}
-                autoFocus
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="pl-10"
               />
             </div>
-            {error && <p className="text-xs text-destructive">არასწორი პაროლი</p>}
+            {authError && <p className="text-xs text-destructive">{authError}</p>}
           </div>
-          <Button type="submit" className="w-full">შესვლა</Button>
-          <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => navigate("/")}>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "..." : isSignUp ? "რეგისტრაცია" : "შესვლა"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {isSignUp ? "უკვე გაქვთ ანგარიში? შესვლა" : "არ გაქვთ ანგარიში? რეგისტრაცია"}
+          </button>
+          <Button variant="ghost" type="button" className="w-full text-muted-foreground" onClick={() => navigate("/")}>
             <ArrowLeft className="mr-2 h-4 w-4" /> მთავარ გვერდზე
           </Button>
         </form>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm space-y-4 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/20 text-destructive">
+            <Lock className="h-5 w-5" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground">წვდომა აკრძალულია</h1>
+          <p className="text-sm text-muted-foreground">
+            ეს ანგარიში ({user.email}) არ არის ადმინი.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" onClick={() => signOut()}>
+              <LogOut className="mr-2 h-4 w-4" /> გასვლა
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/")}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> მთავარ გვერდზე
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -134,9 +193,12 @@ export default function AdminPage() {
               </div>
               <div>
                 <h1 className="text-sm font-bold leading-tight">ადმინ პანელი</h1>
-                <p className="text-xs text-muted-foreground">maika.ge</p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
             </div>
+            <Button variant="ghost" size="sm" className="ml-auto gap-1" onClick={() => signOut()}>
+              <LogOut className="h-4 w-4" /> გასვლა
+            </Button>
           </div>
 
           <nav className="flex gap-1 -mb-px overflow-x-auto">
