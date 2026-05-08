@@ -12,8 +12,10 @@ import AdminCorporate from "@/components/admin/AdminCorporate";
 import AdminCatalog from "@/components/admin/AdminCatalog";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { supabase } from "@/integrations/supabase/client";
 
 type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate" | "catalog";
+type Mode = "login" | "signup" | "forgot";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "დეშბორდი", icon: LayoutDashboard },
@@ -53,8 +55,22 @@ export default function AdminPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [mode, setMode] = useState<Mode>("login");
+  const [resetSent, setResetSent] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(() => readTabFromUrl());
+
+  // Detect Supabase password recovery flow: when the admin clicks the reset
+  // link in their email, Supabase fires PASSWORD_RECOVERY and sets a session.
+  // We override the normal "logged-in → dashboard" flow to force a new
+  // password before letting them in.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const tabRef = useRef(activeTab);
   tabRef.current = activeTab;
@@ -84,8 +100,33 @@ export default function AdminPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      if (isSignUp) await signUpWithEmail(email, password);
-      else await signInWithEmail(email, password);
+      if (mode === "signup") await signUpWithEmail(email, password);
+      else if (mode === "login") await signInWithEmail(email, password);
+      else if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/admin`,
+        });
+        if (!error) setResetSent(true);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setRecoveryError(null);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) {
+        setRecoveryError(error.message);
+      } else {
+        setRecoveryMode(false);
+        setPassword("");
+        // Clean the recovery hash from URL so a refresh doesn't re-enter recovery.
+        window.history.replaceState(null, "", window.location.pathname);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -95,6 +136,42 @@ export default function AdminPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Recovery mode supersedes everything: even if Supabase already established a
+  // session via the reset link, we require the admin to set a new password
+  // before reaching the dashboard.
+  if (recoveryMode) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <form onSubmit={handleSetNewPassword} className="w-full max-w-sm space-y-4">
+          <div className="text-center space-y-2">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 text-black text-xl font-black">
+              M
+            </div>
+            <h1 className="text-xl font-bold text-foreground">ახალი password</h1>
+            <p className="text-sm text-muted-foreground">შეიყვანეთ ახალი password ადმინ ანგარიშისთვის</p>
+          </div>
+          <div className="relative">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="password"
+              placeholder="ახალი password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              autoFocus
+              className="pl-10"
+            />
+          </div>
+          {recoveryError && <p className="text-xs text-destructive">{recoveryError}</p>}
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? "..." : "შეცვლა"}
+          </Button>
+        </form>
       </div>
     );
   }
@@ -109,42 +186,89 @@ export default function AdminPage() {
             </div>
             <h1 className="text-xl font-bold text-foreground">ადმინ პანელი</h1>
             <p className="text-sm text-muted-foreground">
-              {isSignUp ? "ადმინის რეგისტრაცია" : "გაიარეთ ავტორიზაცია"}
+              {mode === "signup" && "ადმინის რეგისტრაცია"}
+              {mode === "login" && "გაიარეთ ავტორიზაცია"}
+              {mode === "forgot" && "Password-ის აღდგენა"}
             </p>
           </div>
-          <div className="space-y-2">
-            <Input
-              type="email"
-              placeholder="ელფოსტა"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-            />
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="password"
-                placeholder="პაროლი"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="pl-10"
-              />
+
+          {mode === "forgot" && resetSent ? (
+            <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-foreground space-y-2">
+              <p>📧 Reset link გავიგზავნე <strong>{email}</strong>-ზე.</p>
+              <p className="text-muted-foreground text-xs">შეამოწმე inbox (და spam folder). ბმულზე დაჭერით დაუბრუნდები აქ ახალი password-ის დასაყენებლად.</p>
             </div>
-            {authError && <p className="text-xs text-destructive">{authError}</p>}
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Input
+                  type="email"
+                  placeholder="ელფოსტა"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoFocus
+                />
+                {mode !== "forgot" && (
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="password"
+                      placeholder="პაროლი"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="pl-10"
+                    />
+                  </div>
+                )}
+                {authError && <p className="text-xs text-destructive">{authError}</p>}
+              </div>
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting ? "..." : mode === "signup" ? "რეგისტრაცია" : mode === "forgot" ? "Reset link გაგზავნა" : "შესვლა"}
+              </Button>
+            </>
+          )}
+
+          <div className="flex flex-col gap-1.5 text-center text-sm">
+            {mode === "login" && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setMode("forgot"); setResetSent(false); }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  ვერ გახსოვს password?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("signup")}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  არ გაქვთ ანგარიში? რეგისტრაცია
+                </button>
+              </>
+            )}
+            {mode === "signup" && (
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                უკვე გაქვთ ანგარიში? შესვლა
+              </button>
+            )}
+            {mode === "forgot" && (
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setResetSent(false); }}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← უკან, შესვლაზე
+              </button>
+            )}
           </div>
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "..." : isSignUp ? "რეგისტრაცია" : "შესვლა"}
-          </Button>
-          <button
-            type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {isSignUp ? "უკვე გაქვთ ანგარიში? შესვლა" : "არ გაქვთ ანგარიში? რეგისტრაცია"}
-          </button>
+
           <Button variant="ghost" type="button" className="w-full text-muted-foreground" onClick={() => navigate("/")}>
             <ArrowLeft className="mr-2 h-4 w-4" /> მთავარ გვერდზე
           </Button>
