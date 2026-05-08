@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,18 +14,40 @@ interface Props {
   onUploaded: () => void;
 }
 
+interface ProductOption {
+  id: string;
+  type: string;
+  display_name_ka: string;
+  display_order: number;
+  base_price: number | null;
+}
+
 const DEFAULT_CATEGORIES = [
   "georgian", "sports", "humor", "anime", "food", "gym", "tech", "seasonal",
 ];
 
-// Auto-slug from title (UTF-8 friendly: lowercase ASCII + dashes; for Georgian
-// titles strip non-letters and append timestamp so we always get something).
-function slugify(s: string): string {
-  const base = s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return base || `design-${Date.now().toString(36)}`;
+// ALA-LC romanization for Georgian → Latin. Used to seed a URL-safe slug from
+// the Georgian title.
+const KA_TO_LAT: Record<string, string> = {
+  "ა": "a", "ბ": "b", "გ": "g", "დ": "d", "ე": "e", "ვ": "v", "ზ": "z",
+  "თ": "t", "ი": "i", "კ": "k", "ლ": "l", "მ": "m", "ნ": "n", "ო": "o",
+  "პ": "p", "ჟ": "zh", "რ": "r", "ს": "s", "ტ": "t", "უ": "u", "ფ": "p",
+  "ქ": "k", "ღ": "gh", "ყ": "q", "შ": "sh", "ჩ": "ch", "ც": "ts", "ძ": "dz",
+  "წ": "ts", "ჭ": "ch", "ხ": "kh", "ჯ": "j", "ჰ": "h",
+};
+
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function slugifyTitle(s: string): string {
+  let out = "";
+  for (const ch of s.toLowerCase()) {
+    const mapped = KA_TO_LAT[ch];
+    if (mapped) out += mapped;
+    else if (/[a-z0-9]/.test(ch)) out += ch;
+    else if (/\s/.test(ch)) out += "-";
+    // anything else (punctuation, emoji, ...) is dropped
+  }
+  return out.replace(/-+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 }
 
 // Resize the uploaded print file to a 400x400 thumbnail via canvas. Keeps
@@ -62,12 +84,17 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [titleEn, setTitleEn] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugDirty, setSlugDirty] = useState(false);
+  const [slugTaken, setSlugTaken] = useState(false);
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [products, setProducts] = useState<ProductOption[]>([]);
+  const [defaultProductId, setDefaultProductId] = useState<string>("");
 
   // Object URL for the preview frame; revoked when the file changes or unmount.
   useEffect(() => {
@@ -77,16 +104,77 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  // Auto-suggest the slug from the Georgian title until the admin types into
+  // the slug field directly. Then we stop syncing so manual edits stick.
+  useEffect(() => {
+    if (slugDirty) return;
+    setSlug(slugifyTitle(title));
+  }, [title, slugDirty]);
+
+  // Load active products for the default-product dropdown. Default to the
+  // first T-Shirt so the most common case is one click away.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (supabase as any)
+      .from("products")
+      .select("id, type, display_name_ka, display_order, base_price")
+      .eq("is_active", true)
+      .order("type", { ascending: true })
+      .order("display_order", { ascending: true })
+      .then(({ data }: { data: ProductOption[] | null }) => {
+        if (cancelled || !data) return;
+        setProducts(data);
+        setDefaultProductId((prev) => {
+          if (prev) return prev;
+          const firstTshirt = data.find((p) => p.type === "T-Shirt");
+          return firstTshirt?.id ?? data[0]?.id ?? "";
+        });
+      });
+    return () => { cancelled = true; };
+  }, [open]);
+
+  // Slug uniqueness probe (best-effort; final check happens at insert time
+  // via the unique constraint).
+  useEffect(() => {
+    if (!slug || !SLUG_RE.test(slug)) { setSlugTaken(false); return; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      (supabase as any)
+        .from("catalog_designs")
+        .select("slug")
+        .eq("slug", slug)
+        .limit(1)
+        .then(({ data }: { data: { slug: string }[] | null }) => {
+          if (!cancelled) setSlugTaken((data?.length ?? 0) > 0);
+        });
+    }, 350);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [slug]);
+
+  const productsByType = useMemo(() => {
+    const groups: Record<string, ProductOption[]> = {};
+    for (const p of products) {
+      (groups[p.type] ||= []).push(p);
+    }
+    return groups;
+  }, [products]);
+
   const reset = () => {
-    setTitle(""); setTitleEn(""); setCategory(""); setTags(""); setDescription(""); setFile(null);
+    setTitle(""); setTitleEn(""); setSlug(""); setSlugDirty(false); setSlugTaken(false);
+    setCategory(""); setTags(""); setDescription(""); setFile(null);
   };
 
   const handleSubmit = async () => {
     if (!title.trim()) { toast({ title: "შეიყვანე სათაური", variant: "destructive" }); return; }
+    if (!slug || !SLUG_RE.test(slug) || slug.length < 3 || slug.length > 60) {
+      toast({ title: "Slug არასწორია", description: "მხოლოდ a-z, 0-9, dash; 3-60 სიმბოლო", variant: "destructive" });
+      return;
+    }
+    if (!defaultProductId) { toast({ title: "აირჩიე ნაგულისხმევი პროდუქტი", variant: "destructive" }); return; }
     if (!file) { toast({ title: "აირჩიე print file", variant: "destructive" }); return; }
     setSubmitting(true);
     try {
-      const slug = slugify(title);
       const ext = file.name.split(".").pop()?.toLowerCase() || "png";
 
       // 1. upload print file
@@ -125,6 +213,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         print_file_url: printUrl,
         thumbnail_url: thumbUrl,
+        default_product_id: defaultProductId,
         is_published: false,
       });
       if (insErr) throw insErr;
@@ -150,12 +239,50 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
           <div className="space-y-1.5">
             <Label htmlFor="cat-title">სათაური *</Label>
             <Input id="cat-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="მაგ. ქართული ნაკრები" />
-            {title && <p className="text-xs text-muted-foreground">slug: <code>{slugify(title)}</code></p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="cat-slug">სლაგი *</Label>
+            <Input
+              id="cat-slug"
+              value={slug}
+              onChange={(e) => { setSlug(e.target.value); setSlugDirty(true); }}
+              placeholder="kartuli-nakreba"
+            />
+            <p className="text-xs text-muted-foreground">URL: maika.ge/design/<code>{slug || "..."}</code></p>
+            {slug && !SLUG_RE.test(slug) && (
+              <p className="text-xs text-destructive">მხოლოდ a-z, 0-9, dash; პირველი/ბოლო სიმბოლო ასო ან ციფრი</p>
+            )}
+            {slug && SLUG_RE.test(slug) && slugTaken && (
+              <p className="text-xs text-amber-600">⚠ ეს slug უკვე გამოყენებულია — შეცვალე სხვაზე</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="cat-title-en">სათაური (EN)</Label>
             <Input id="cat-title-en" value={titleEn} onChange={(e) => setTitleEn(e.target.value)} placeholder="optional" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="cat-default-product">ნაგულისხმევი პროდუქტი *</Label>
+            <select
+              id="cat-default-product"
+              value={defaultProductId}
+              onChange={(e) => setDefaultProductId(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {products.length === 0 && <option value="">იტვირთება...</option>}
+              {Object.entries(productsByType).map(([type, items]) => (
+                <optgroup key={type} label={type}>
+                  {items.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.display_name_ka}{p.base_price != null ? ` — ₾${p.base_price}` : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">კატალოგში თავდაპირველად ამ პროდუქტზე გამოჩნდება</p>
           </div>
 
           <div className="space-y-1.5">
