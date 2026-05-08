@@ -13,12 +13,18 @@ export interface ProductConfig {
 
 const STORAGE_KEY = "maika-product-config";
 
+// placementCoords are interpreted ZONE-relative by DraggablePlacement and the
+// composite canvas (see SimplePage compositeSide): scale=1 fills the printable
+// zone; x=0.5, y=0.5 centres in it. Default to "fill the zone, centred" so the
+// frame matches the dashed print area instead of being a tiny 14% sub-box.
+const FILL_ZONE_COORDS: PlacementCoords = { x: 0.5, y: 0.5, scale: 1 };
+
 const DEFAULT_CONFIG: ProductConfig = {
   product: "T-Shirt",
   subProduct: catalog.getDefaultSubProduct("T-Shirt"),
   color: "White",
   view: "front",
-  placementCoords: { x: 0.5, y: 0.42, scale: 0.38 },
+  placementCoords: FILL_ZONE_COORDS,
   size: "",
 };
 
@@ -34,13 +40,12 @@ function loadStoredConfig(): ProductConfig {
     const subProduct = parsed.subProduct || catalog.getDefaultSubProduct(product);
     const view = (parsed.view || DEFAULT_CONFIG.view) as ProductView;
     const color = (parsed.color || DEFAULT_CONFIG.color) as ProductColor;
-    const entry = catalog.findProduct(product, subProduct, color, view);
     return {
       product,
       subProduct,
       color,
       view,
-      placementCoords: entry?.placementZone || DEFAULT_CONFIG.placementCoords,
+      placementCoords: FILL_ZONE_COORDS,
       size: parsed.size || "",
     };
   } catch {
@@ -63,13 +68,12 @@ export function useProductConfig() {
     const subProduct = catalog.getDefaultSubProduct(product);
     const colors = catalog.getAvailableColors(product, subProduct);
     const color = colors.includes(config.color) ? config.color : colors[0] || "Black";
-    const entry = catalog.findProduct(product, subProduct, color, config.view);
     setConfig({
       product,
       subProduct,
       color,
       view: config.view,
-      placementCoords: entry?.placementZone || { x: 0.5, y: 0.28, scale: 0.38 },
+      placementCoords: FILL_ZONE_COORDS,
       size: "",
     });
   }, [config.color, config.view]);
@@ -77,33 +81,21 @@ export function useProductConfig() {
   const setSubProduct = useCallback((subProduct: string) => {
     const colors = catalog.getAvailableColors(config.product, subProduct);
     const color = colors.includes(config.color) ? config.color : colors[0] || "Black";
-    const entry = catalog.findProduct(config.product, subProduct, color, config.view);
     setConfig((prev) => ({
       ...prev,
       subProduct,
       color,
-      placementCoords: entry?.placementZone || prev.placementCoords,
       size: "",
     }));
-  }, [config.product, config.color, config.view]);
+  }, [config.product, config.color]);
 
   const setColor = useCallback((color: ProductColor) => {
-    const entry = catalog.findProduct(config.product, config.subProduct, color, config.view);
-    setConfig((prev) => ({
-      ...prev,
-      color,
-      placementCoords: entry?.placementZone || prev.placementCoords,
-    }));
-  }, [config.product, config.subProduct, config.view]);
+    setConfig((prev) => ({ ...prev, color }));
+  }, []);
 
   const setView = useCallback((view: ProductView) => {
-    const entry = catalog.findProduct(config.product, config.subProduct, config.color, view);
-    setConfig((prev) => ({
-      ...prev,
-      view,
-      placementCoords: entry?.placementZone || prev.placementCoords,
-    }));
-  }, [config.product, config.subProduct, config.color]);
+    setConfig((prev) => ({ ...prev, view }));
+  }, []);
 
   const setPlacementCoords = useCallback((coords: PlacementCoords) => {
     setConfig((prev) => ({ ...prev, placementCoords: coords }));
