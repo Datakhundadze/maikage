@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { CATEGORIES } from "@/lib/categories";
 import { Upload } from "lucide-react";
 
 interface Props {
@@ -21,10 +22,6 @@ interface ProductOption {
   display_order: number;
   base_price: number | null;
 }
-
-const DEFAULT_CATEGORIES = [
-  "georgian", "sports", "humor", "anime", "food", "gym", "tech", "seasonal",
-];
 
 // ALA-LC romanization for Georgian → Latin. Used to seed a URL-safe slug from
 // the Georgian title.
@@ -87,7 +84,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const [slug, setSlug] = useState("");
   const [slugDirty, setSlugDirty] = useState(false);
   const [slugTaken, setSlugTaken] = useState(false);
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState<string>("georgian");
   const [tags, setTags] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -162,7 +159,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
 
   const reset = () => {
     setTitle(""); setTitleEn(""); setSlug(""); setSlugDirty(false); setSlugTaken(false);
-    setCategory(""); setTags(""); setDescription(""); setFile(null);
+    setCategory("georgian"); setTags(""); setDescription(""); setFile(null);
   };
 
   const handleSubmit = async () => {
@@ -209,7 +206,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
         title_ka: title.trim(),
         title_en: titleEn.trim() || null,
         description_ka: description.trim() || null,
-        category: category.trim() || null,
+        category: category || null,
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         print_file_url: printUrl,
         thumbnail_url: thumbUrl,
@@ -286,17 +283,17 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cat-category">კატეგორია</Label>
-            <Input
+            <Label htmlFor="cat-category">კატეგორია *</Label>
+            <select
               id="cat-category"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="georgian, sports, humor..."
-              list="cat-suggestions"
-            />
-            <datalist id="cat-suggestions">
-              {DEFAULT_CATEGORIES.map((c) => <option key={c} value={c} />)}
-            </datalist>
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.label_ka}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-1.5">
