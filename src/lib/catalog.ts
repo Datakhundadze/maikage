@@ -263,10 +263,10 @@ export const PHONE_CASE_GROUPS: PhoneCaseGroup[] = [
 export const PHONE_CASE_MODELS: string[] = PHONE_CASE_GROUPS.flatMap(g => g.models);
 
 // Default placement zones — the printable area shown as the dashed frame in the
-// preview. Scale 0.50 ≈ half the canvas width, which matches the typical chest
-// area on a t-shirt mockup without overflowing the garment edges.
-const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.50 };
-const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.50 };
+// preview. Scale 0.42 ≈ 42% of canvas width, sized to the chest area on a t-shirt
+// mockup without overflowing the garment edges.
+const DEFAULT_FRONT: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.42 };
+const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.42 };
 
 // Hoodie-specific: design sits lower on the chest, below collar/zipper
 const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.51, scale: 0.28, scaleY: 0.28 };
