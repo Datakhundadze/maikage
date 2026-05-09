@@ -12,6 +12,7 @@ import LoginPage from "./pages/LoginPage";
 import StudioPage from "./pages/StudioPage";
 import MyDesignsPage from "./pages/MyDesignsPage";
 import CommunityPage from "./pages/CommunityPage";
+import CatalogPage from "./pages/CatalogPage";
 import AdminPage from "./pages/AdminPage";
 import LandingPage from "./pages/LandingPage";
 import SimplePage from "./pages/SimplePage";
@@ -26,6 +27,19 @@ import { RouteChangeTracker } from "@/components/RouteChangeTracker";
 
 const queryClient = new QueryClient();
 
+// Direct-URL paths that must always go through <Routes>, even when
+// useAppState's persisted mode would otherwise short-circuit to a full-page
+// view (landing, simple, cart, etc.). Without this, a first-time visitor —
+// whose mode defaults to "landing" — would see the landing page when they
+// open /designs, /my-designs, /community, /design/<slug>, etc. directly.
+const ALWAYS_ROUTED: RegExp[] = [
+  /^\/designs(\/|$)/,
+  /^\/design\//,
+  /^\/community(\/|$)/,
+  /^\/my-designs(\/|$)/,
+  /^\/corporate(\/|$)/,
+];
+
 function AppRoutes() {
   const { user, loading } = useAuth();
   const { mode } = useAppState();
@@ -38,14 +52,18 @@ function AppRoutes() {
   // Try-on page is standalone — accessible from all modes
   if (pathname === "/try-on") return <Routes><Route path="/try-on" element={<TryOnPage />} /></Routes>;
 
-  if (mode === "landing") return <LandingPage />;
-  if (mode === "simple") return <SimplePage />;
-  if (mode === "terms") return <TermsPage />;
-  if (mode === "privacy") return <PrivacyPage />;
-  if (mode === "corporate") return <CorporatePage />;
-  if (mode === "sport") return <SportPage />;
-  if (mode === "about") return <AboutPage />;
-  if (mode === "cart") return <CartPage />;
+  const isAlwaysRouted = ALWAYS_ROUTED.some((re) => re.test(pathname));
+
+  if (!isAlwaysRouted) {
+    if (mode === "landing") return <LandingPage />;
+    if (mode === "simple") return <SimplePage />;
+    if (mode === "terms") return <TermsPage />;
+    if (mode === "privacy") return <PrivacyPage />;
+    if (mode === "corporate") return <CorporatePage />;
+    if (mode === "sport") return <SportPage />;
+    if (mode === "about") return <AboutPage />;
+    if (mode === "cart") return <CartPage />;
+  }
 
   if (loading) {
     return (
@@ -58,6 +76,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<StudioPage />} />
+      <Route path="/designs" element={<CatalogPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/corporate" element={<CorporatePage />} />
