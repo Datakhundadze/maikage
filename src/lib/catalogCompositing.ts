@@ -15,6 +15,12 @@ import {
   type ProductView,
 } from "@/lib/catalog";
 
+// Catalog detail page wants the design to feel hero-sized, larger than the
+// editor's default placement (e.g. T-Shirt zone scale 0.35). Multiply the
+// zone's scale by this factor in both the off-screen mockup AND in the live
+// preview's placementCoords so they stay in sync.
+export const CATALOG_PRINT_SCALE = 1.5;
+
 interface CompositeArgs {
   printFileUrl: string;
   productName: string;
@@ -92,8 +98,8 @@ export async function compositeDesignOnProduct(args: CompositeArgs): Promise<str
     }
 
     const zone = imageResult.entry.placementZone;
-    const zoneW = (zone.scale ?? 1) * canvas.width;
-    const zoneH = (zone.scaleY ?? zone.scale ?? 1) * canvas.height;
+    const zoneW = (zone.scale ?? 1) * CATALOG_PRINT_SCALE * canvas.width;
+    const zoneH = (zone.scaleY ?? zone.scale ?? 1) * CATALOG_PRINT_SCALE * canvas.height;
     const zoneX = (zone.x ?? 0.5) * canvas.width - zoneW / 2;
     const zoneY = (zone.y ?? 0.5) * canvas.height - zoneH / 2;
 

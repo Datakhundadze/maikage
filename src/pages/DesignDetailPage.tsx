@@ -9,14 +9,16 @@ import OrderDialog from "@/components/OrderDialog";
 import { Button } from "@/components/ui/button";
 import {
   catalog,
+  BRAND_COLORS,
   BRAND_SIZES,
+  COLORS,
   type PlacementCoords,
   type ProductType,
   type ProductColor,
 } from "@/lib/catalog";
 import { calculatePrice } from "@/lib/pricing";
 import { CATEGORIES } from "@/lib/categories";
-import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
+import { compositeDesignOnProduct, CATALOG_PRINT_SCALE } from "@/lib/catalogCompositing";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
 
 interface CatalogDesignRow {
@@ -100,10 +102,16 @@ export default function DesignDetailPage() {
       const prod: ProductRow | undefined = prodRows?.[0];
       if (prod) {
         setProduct(prod);
-        // Default selections
+        // Default selections — prefer catalog's BRAND_COLORS (SSOT), fall back
+        // to admin-curated products.colors, then "White".
+        const sub = prod.sub_product || prod.type;
+        const brandColors = BRAND_COLORS[sub] ?? [];
+        const availableNames = brandColors.length > 0
+          ? brandColors
+          : (prod.colors ?? []).map((c) => c.name as ProductColor);
         const colorChoice =
-          (row.default_color && prod.colors?.find((c) => c.name === row.default_color)?.name) ||
-          prod.colors?.[0]?.name ||
+          (row.default_color && availableNames.find((n) => n === row.default_color)) ||
+          availableNames[0] ||
           "White";
         setSelectedColor(colorChoice);
       }
@@ -124,10 +132,29 @@ export default function DesignDetailPage() {
     );
   }, [product, selectedColor]);
 
-  const placementCoords: PlacementCoords = useMemo(
-    () => imageResult?.entry.placementZone ?? { x: 0.5, y: 0.42, scale: 0.35 },
-    [imageResult],
-  );
+  // Scale up the print on the live preview to match the off-screen mockup
+  // produced by compositeDesignOnProduct (both apply CATALOG_PRINT_SCALE).
+  const placementCoords: PlacementCoords = useMemo(() => {
+    const zone = imageResult?.entry.placementZone ?? { x: 0.5, y: 0.42, scale: 0.35 };
+    return {
+      ...zone,
+      scale: (zone.scale ?? 1) * CATALOG_PRINT_SCALE,
+      scaleY: zone.scaleY != null ? zone.scaleY * CATALOG_PRINT_SCALE : undefined,
+    };
+  }, [imageResult]);
+
+  const colorOptions = useMemo(() => {
+    if (!product) return [] as { name: string; hex: string }[];
+    const sub = product.sub_product || product.type;
+    const brandColorNames = BRAND_COLORS[sub] ?? [];
+    if (brandColorNames.length > 0) {
+      return brandColorNames.map((name) => {
+        const entry = COLORS.find((c) => c.name === name);
+        return { name: name as string, hex: entry?.hex ?? "#FFFFFF" };
+      });
+    }
+    return product.colors ?? [];
+  }, [product]);
 
   const sizeOptions: string[] = useMemo(() => {
     if (!product) return [];
@@ -274,8 +301,10 @@ export default function DesignDetailPage() {
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Live preview */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            {/* Live preview — hide ProductPreview's dashed placement-zone
+                outline (and DraggablePlacement's dashed border) since this is
+                a presentation page, not an editor. CSS scope avoids a new prop. */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden [&_.border-dashed]:hidden">
               <ProductPreview
                 productName={product.type}
                 subProduct={product.sub_product || product.type}
@@ -303,11 +332,11 @@ export default function DesignDetailPage() {
               </div>
 
               {/* Color */}
-              {product.colors?.length > 0 && (
+              {colorOptions.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold mb-2">ფერი</h3>
                   <div className="flex flex-wrap gap-2">
-                    {product.colors.map((c) => {
+                    {colorOptions.map((c) => {
                       const active = selectedColor === c.name;
                       return (
                         <button
@@ -386,7 +415,11 @@ export default function DesignDetailPage() {
         backTransparentImageDataUrl={null}
         prompt={design.title_ka}
         size={selectedSize || undefined}
-      />
+      >
+        {/* Suppress OrderDialog's default DialogTrigger button — we drive
+            opening via externalOpen, our own "შეუკვეთე" button is the trigger. */}
+        <span className="hidden" />
+      </OrderDialog>
     </div>
   );
 }
