@@ -13,7 +13,6 @@ import {
   type PlacementCoords,
   type ProductType,
   type ProductColor,
-  type ProductView,
 } from "@/lib/catalog";
 import { calculatePrice } from "@/lib/pricing";
 import { CATEGORIES } from "@/lib/categories";
@@ -63,7 +62,6 @@ export default function DesignDetailPage() {
 
   const [selectedColor, setSelectedColor] = useState<string>("White");
   const [selectedSize, setSelectedSize] = useState<string>("");
-  const [selectedView, setSelectedView] = useState<ProductView>("front");
   const [sizeError, setSizeError] = useState(false);
 
   const [composing, setComposing] = useState(false);
@@ -115,28 +113,21 @@ export default function DesignDetailPage() {
     return () => { cancelled = true; };
   }, [slug]);
 
-  // Resolved catalog metadata for the current product+color+view
+  // Resolved catalog metadata for the current product+color (always front view)
   const imageResult = useMemo(() => {
     if (!product) return null;
     return catalog.findImageForColor(
       product.type as ProductType,
       product.sub_product || product.type,
       selectedColor as ProductColor,
-      selectedView,
+      "front",
     );
-  }, [product, selectedColor, selectedView]);
+  }, [product, selectedColor]);
 
   const placementCoords: PlacementCoords = useMemo(
     () => imageResult?.entry.placementZone ?? { x: 0.5, y: 0.42, scale: 0.35 },
     [imageResult],
   );
-
-  // Whether the product has any back image at all (drives the front/back toggle).
-  const supportsBack = useMemo(() => {
-    if (!product) return false;
-    const sub = product.sub_product || product.type;
-    return !!catalog.findImageForColor(product.type as ProductType, sub, selectedColor as ProductColor, "back")?.entry.imageUrl;
-  }, [product, selectedColor]);
 
   const sizeOptions: string[] = useMemo(() => {
     if (!product) return [];
@@ -155,11 +146,11 @@ export default function DesignDetailPage() {
     return calculatePrice(
       product.type as ProductType,
       product.sub_product || product.type,
-      selectedView === "front",
-      selectedView === "back",
+      true,
+      false,
       false,
     );
-  }, [product, selectedView]);
+  }, [product]);
 
   const buildMockup = async () => {
     if (!design || !product) return null;
@@ -168,7 +159,7 @@ export default function DesignDetailPage() {
       productName: product.type,
       subProduct: product.sub_product || product.type,
       color: selectedColor,
-      view: selectedView,
+      view: "front",
     });
   };
 
@@ -211,10 +202,10 @@ export default function DesignDetailPage() {
         color: selectedColor,
         size: selectedSize || null,
         isStudio: false,
-        frontMockupDataUrl: selectedView === "front" ? mockup : null,
-        backMockupDataUrl: selectedView === "back" ? mockup : null,
-        transparentImageDataUrl: selectedView === "front" ? design.print_file_url : null,
-        backTransparentImageDataUrl: selectedView === "back" ? design.print_file_url : null,
+        frontMockupDataUrl: mockup,
+        backMockupDataUrl: null,
+        transparentImageDataUrl: design.print_file_url,
+        backTransparentImageDataUrl: null,
         frontOriginalPhotos: [],
         backOriginalPhotos: [],
         prompt: design.title_ka,
@@ -289,7 +280,7 @@ export default function DesignDetailPage() {
                 productName={product.type}
                 subProduct={product.sub_product || product.type}
                 colorName={selectedColor}
-                view={selectedView}
+                view="front"
                 placementCoords={placementCoords}
                 designImage={design.print_file_url}
                 disabled
@@ -330,28 +321,6 @@ export default function DesignDetailPage() {
                         />
                       );
                     })}
-                  </div>
-                </div>
-              )}
-
-              {/* View toggle */}
-              {supportsBack && (
-                <div>
-                  <h3 className="text-sm font-semibold mb-2">ხედი</h3>
-                  <div className="flex gap-2">
-                    {(["front", "back"] as ProductView[]).map((v) => (
-                      <button
-                        key={v}
-                        onClick={() => setSelectedView(v)}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                          selectedView === v
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground border border-border hover:text-foreground"
-                        }`}
-                      >
-                        {v === "front" ? "წინა" : "უკანა"}
-                      </button>
-                    ))}
                   </div>
                 </div>
               )}
@@ -411,10 +380,10 @@ export default function DesignDetailPage() {
         isStudio={false}
         externalOpen={orderDialogOpen}
         onExternalOpenChange={setOrderDialogOpen}
-        frontMockupDataUrl={selectedView === "front" ? orderMockup : null}
-        backMockupDataUrl={selectedView === "back" ? orderMockup : null}
-        transparentImageDataUrl={selectedView === "front" ? design.print_file_url : null}
-        backTransparentImageDataUrl={selectedView === "back" ? design.print_file_url : null}
+        frontMockupDataUrl={orderMockup}
+        backMockupDataUrl={null}
+        transparentImageDataUrl={design.print_file_url}
+        backTransparentImageDataUrl={null}
         prompt={design.title_ka}
         size={selectedSize || undefined}
       />
