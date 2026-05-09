@@ -13,6 +13,7 @@ import StudioPage from "./pages/StudioPage";
 import MyDesignsPage from "./pages/MyDesignsPage";
 import CommunityPage from "./pages/CommunityPage";
 import CatalogPage from "./pages/CatalogPage";
+import DesignDetailPage from "./pages/DesignDetailPage";
 import AdminPage from "./pages/AdminPage";
 import LandingPage from "./pages/LandingPage";
 import SimplePage from "./pages/SimplePage";
@@ -77,6 +78,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<StudioPage />} />
       <Route path="/designs" element={<CatalogPage />} />
+      <Route path="/design/:slug" element={<DesignDetailPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/corporate" element={<CorporatePage />} />

@@ -1,0 +1,423 @@
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/hooks/useCart";
+import AppHeader from "@/components/AppHeader";
+import ProductPreview from "@/components/ProductPreview";
+import OrderDialog from "@/components/OrderDialog";
+import { Button } from "@/components/ui/button";
+import {
+  catalog,
+  BRAND_SIZES,
+  type PlacementCoords,
+  type ProductType,
+  type ProductColor,
+  type ProductView,
+} from "@/lib/catalog";
+import { calculatePrice } from "@/lib/pricing";
+import { CATEGORIES } from "@/lib/categories";
+import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
+import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
+
+interface CatalogDesignRow {
+  id: string;
+  slug: string;
+  title_ka: string;
+  print_file_url: string;
+  thumbnail_url: string | null;
+  category: string | null;
+  default_product_id: string | null;
+  default_color: string | null;
+}
+
+interface ProductColorOption {
+  name: string;
+  hex: string;
+}
+
+interface ProductRow {
+  id: string;
+  type: string;
+  sub_product: string | null;
+  display_name_ka: string;
+  base_price: number | null;
+  colors: ProductColorOption[];
+  sizes: string[];
+}
+
+const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.slug, c.label_ka]),
+);
+
+export default function DesignDetailPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { addItem: addToCart, adding: addingToCart } = useCart();
+
+  const [design, setDesign] = useState<CatalogDesignRow | null>(null);
+  const [product, setProduct] = useState<ProductRow | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  const [selectedColor, setSelectedColor] = useState<string>("White");
+  const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedView, setSelectedView] = useState<ProductView>("front");
+  const [sizeError, setSizeError] = useState(false);
+
+  const [composing, setComposing] = useState(false);
+  const [orderDialogOpen, setOrderDialogOpen] = useState(false);
+  const [orderMockup, setOrderMockup] = useState<string | null>(null);
+
+  // Fetch design + product on slug change
+  useEffect(() => {
+    if (!slug) { setNotFound(true); setLoading(false); return; }
+    let cancelled = false;
+    setLoading(true);
+    setNotFound(false);
+
+    (async () => {
+      const { data: rows } = await (supabase as any)
+        .from("catalog_designs")
+        .select("id, slug, title_ka, print_file_url, thumbnail_url, category, default_product_id, default_color")
+        .eq("slug", slug)
+        .eq("is_published", true)
+        .limit(1);
+      if (cancelled) return;
+
+      const row: CatalogDesignRow | undefined = rows?.[0];
+      if (!row) { setNotFound(true); setLoading(false); return; }
+      setDesign(row);
+
+      if (!row.default_product_id) { setLoading(false); return; }
+
+      const { data: prodRows } = await (supabase as any)
+        .from("products")
+        .select("id, type, sub_product, display_name_ka, base_price, colors, sizes")
+        .eq("id", row.default_product_id)
+        .limit(1);
+      if (cancelled) return;
+
+      const prod: ProductRow | undefined = prodRows?.[0];
+      if (prod) {
+        setProduct(prod);
+        // Default selections
+        const colorChoice =
+          (row.default_color && prod.colors?.find((c) => c.name === row.default_color)?.name) ||
+          prod.colors?.[0]?.name ||
+          "White";
+        setSelectedColor(colorChoice);
+      }
+      setLoading(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [slug]);
+
+  // Resolved catalog metadata for the current product+color+view
+  const imageResult = useMemo(() => {
+    if (!product) return null;
+    return catalog.findImageForColor(
+      product.type as ProductType,
+      product.sub_product || product.type,
+      selectedColor as ProductColor,
+      selectedView,
+    );
+  }, [product, selectedColor, selectedView]);
+
+  const placementCoords: PlacementCoords = useMemo(
+    () => imageResult?.entry.placementZone ?? { x: 0.5, y: 0.42, scale: 0.35 },
+    [imageResult],
+  );
+
+  // Whether the product has any back image at all (drives the front/back toggle).
+  const supportsBack = useMemo(() => {
+    if (!product) return false;
+    const sub = product.sub_product || product.type;
+    return !!catalog.findImageForColor(product.type as ProductType, sub, selectedColor as ProductColor, "back")?.entry.imageUrl;
+  }, [product, selectedColor]);
+
+  const sizeOptions: string[] = useMemo(() => {
+    if (!product) return [];
+    if (product.sizes && product.sizes.length > 0) return product.sizes;
+    const sub = product.sub_product || product.type;
+    return BRAND_SIZES[sub] ?? [];
+  }, [product]);
+
+  const needsSize = useMemo(() => {
+    if (!product) return false;
+    return sizeOptions.length > 0 || product.type === "Phone Case";
+  }, [product, sizeOptions]);
+
+  const priceBreakdown = useMemo(() => {
+    if (!product) return null;
+    return calculatePrice(
+      product.type as ProductType,
+      product.sub_product || product.type,
+      selectedView === "front",
+      selectedView === "back",
+      false,
+    );
+  }, [product, selectedView]);
+
+  const buildMockup = async () => {
+    if (!design || !product) return null;
+    return compositeDesignOnProduct({
+      printFileUrl: design.print_file_url,
+      productName: product.type,
+      subProduct: product.sub_product || product.type,
+      color: selectedColor,
+      view: selectedView,
+    });
+  };
+
+  const validateSize = () => {
+    if (needsSize && !selectedSize) {
+      setSizeError(true);
+      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return false;
+    }
+    setSizeError(false);
+    return true;
+  };
+
+  const handleOrderClick = async () => {
+    if (!validateSize() || !design || !product || !priceBreakdown) return;
+    setComposing(true);
+    const mockup = await buildMockup();
+    setComposing(false);
+    if (!mockup) {
+      toast({ title: "preview ვერ აიგო", description: "სცადე სხვა ფერი/პროდუქტი", variant: "destructive" });
+      return;
+    }
+    setOrderMockup(mockup);
+    setOrderDialogOpen(true);
+  };
+
+  const handleAddToCartClick = async () => {
+    if (!validateSize() || !design || !product || !priceBreakdown) return;
+    setComposing(true);
+    const mockup = await buildMockup();
+    setComposing(false);
+    if (!mockup) {
+      toast({ title: "preview ვერ აიგო", description: "სცადე სხვა ფერი/პროდუქტი", variant: "destructive" });
+      return;
+    }
+    try {
+      await addToCart({
+        product: product.type,
+        subProduct: product.sub_product || product.type,
+        color: selectedColor,
+        size: selectedSize || null,
+        isStudio: false,
+        frontMockupDataUrl: selectedView === "front" ? mockup : null,
+        backMockupDataUrl: selectedView === "back" ? mockup : null,
+        transparentImageDataUrl: selectedView === "front" ? design.print_file_url : null,
+        backTransparentImageDataUrl: selectedView === "back" ? design.print_file_url : null,
+        frontOriginalPhotos: [],
+        backOriginalPhotos: [],
+        prompt: design.title_ka,
+        productPrice: priceBreakdown.total,
+      });
+      toast({ title: "კალათაში დაემატა ✓" });
+    } catch (e: any) {
+      toast({ title: "შეცდომა", description: e?.message ?? String(e), variant: "destructive" });
+    }
+  };
+
+  const categoryLabel = design?.category ? CATEGORY_LABEL[design.category] ?? design.category : null;
+
+  // ── States ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen">
+        <AppHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound || !design) {
+    return (
+      <div className="flex flex-col h-screen">
+        <AppHeader />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
+          <ImageOff className="h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">დიზაინი ვერ მოიძებნა</p>
+          <Button variant="outline" onClick={() => navigate("/designs")}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> კატალოგში დაბრუნება
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product || !priceBreakdown) {
+    return (
+      <div className="flex flex-col h-screen">
+        <AppHeader />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
+          <p className="text-sm text-muted-foreground">ამ დიზაინს არ აქვს კონფიგურირებული პროდუქტი</p>
+          <Button variant="outline" onClick={() => navigate("/designs")}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> კატალოგში დაბრუნება
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Main render ───────────────────────────────────────────────────────────
+  return (
+    <div className="flex flex-col h-screen">
+      <AppHeader />
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6">
+          <button
+            onClick={() => navigate("/designs")}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4"
+          >
+            <ArrowLeft className="h-4 w-4" /> კატალოგი
+          </button>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Live preview */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden">
+              <ProductPreview
+                productName={product.type}
+                subProduct={product.sub_product || product.type}
+                colorName={selectedColor}
+                view={selectedView}
+                placementCoords={placementCoords}
+                designImage={design.print_file_url}
+                disabled
+              />
+            </div>
+
+            {/* Config panel */}
+            <div className="space-y-5">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">{design.title_ka}</h1>
+                <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>{product.display_name_ka}</span>
+                  {categoryLabel && (
+                    <>
+                      <span>·</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[11px]">{categoryLabel}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Color */}
+              {product.colors?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">ფერი</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {product.colors.map((c) => {
+                      const active = selectedColor === c.name;
+                      return (
+                        <button
+                          key={c.name}
+                          onClick={() => setSelectedColor(c.name)}
+                          title={c.name}
+                          className={`h-9 w-9 rounded-full border-2 transition-all ${
+                            active ? "border-primary scale-110 shadow-sm" : "border-border hover:border-muted-foreground"
+                          }`}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* View toggle */}
+              {supportsBack && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">ხედი</h3>
+                  <div className="flex gap-2">
+                    {(["front", "back"] as ProductView[]).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => setSelectedView(v)}
+                        className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          selectedView === v
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground border border-border hover:text-foreground"
+                        }`}
+                      >
+                        {v === "front" ? "წინა" : "უკანა"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Size */}
+              {sizeOptions.length > 0 && (
+                <div id="size-selector">
+                  <h3 className="text-sm font-semibold mb-2">ზომა {needsSize && <span className="text-destructive">*</span>}</h3>
+                  <select
+                    value={selectedSize}
+                    onChange={(e) => { setSelectedSize(e.target.value); setSizeError(false); }}
+                    className={`w-full h-10 rounded-md border bg-background px-3 py-2 text-sm ${
+                      sizeError ? "border-destructive" : "border-input"
+                    }`}
+                  >
+                    <option value="">აირჩიე ზომა</option>
+                    {sizeOptions.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  {sizeError && <p className="mt-1 text-xs text-destructive">აირჩიე ზომა</p>}
+                </div>
+              )}
+
+              {/* Price */}
+              <div className="rounded-xl border border-border bg-card p-4 flex items-baseline justify-between">
+                <span className="text-sm text-muted-foreground">ფასი</span>
+                <span className="text-xl font-bold">₾{priceBreakdown.total}</span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-2">
+                <Button onClick={handleOrderClick} disabled={composing} className="w-full h-11 gap-2 font-semibold">
+                  <ShoppingBag className="h-4 w-4" />
+                  {composing ? "მზადდება..." : "შეუკვეთე"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleAddToCartClick}
+                  disabled={composing || addingToCart}
+                  className="w-full h-11 gap-2 font-semibold"
+                >
+                  <ShoppingCart className="h-4 w-4" />
+                  {addingToCart ? "ემატება..." : "კალათაში დამატება"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <OrderDialog
+        breakdown={priceBreakdown}
+        product={product.type}
+        subProduct={product.sub_product || product.type}
+        color={selectedColor}
+        isStudio={false}
+        externalOpen={orderDialogOpen}
+        onExternalOpenChange={setOrderDialogOpen}
+        frontMockupDataUrl={selectedView === "front" ? orderMockup : null}
+        backMockupDataUrl={selectedView === "back" ? orderMockup : null}
+        transparentImageDataUrl={selectedView === "front" ? design.print_file_url : null}
+        backTransparentImageDataUrl={selectedView === "back" ? design.print_file_url : null}
+        prompt={design.title_ka}
+        size={selectedSize || undefined}
+      />
+    </div>
+  );
+}
