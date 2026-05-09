@@ -3,7 +3,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { Paintbrush, FolderOpen, Globe, ShieldCheck, LogIn, LogOut, ShoppingCart } from "lucide-react";
+import { Paintbrush, FolderOpen, Globe, ShieldCheck, LogIn, LogOut, ShoppingCart, Images } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import LoginModal from "@/components/LoginModal";
 import { useCart } from "@/hooks/useCart";
@@ -21,6 +21,7 @@ export default function AppHeader() {
 
   const navItems = [
     { path: "/", label: t(lang, "nav.studio"), icon: Paintbrush },
+    { path: "/designs", label: t(lang, "nav.catalog"), icon: Images },
     { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
     { path: "/community", label: t(lang, "nav.community"), icon: Globe },
     ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: ShieldCheck }] : []),

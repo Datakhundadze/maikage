@@ -24,6 +24,7 @@ const translations = {
       simple: "Simple",
       myDesigns: "My Designs",
       community: "Samples",
+      catalog: "Catalog",
       logout: "Logout",
     },
     theme: {
@@ -176,6 +177,7 @@ const translations = {
       simple: "მარტივი",
       myDesigns: "ჩემი დიზაინები",
       community: "მაგალითები",
+      catalog: "კატალოგი",
       logout: "გამოსვლა",
     },
     theme: {
