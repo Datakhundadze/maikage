@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "https://ykoseamefoabptuijsza.supabase.co/functions/v1/sitemap"
+    },
+    {
       "source": "/products/:path*",
       "destination": "/products/:path*"
     },

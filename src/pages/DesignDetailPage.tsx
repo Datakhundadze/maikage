@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
@@ -30,7 +31,11 @@ interface CatalogDesignRow {
   category: string | null;
   default_product_id: string | null;
   default_color: string | null;
+  meta_description_ka: string | null;
+  tags: string[] | null;
 }
+
+const SITE_URL = "https://maika.ge";
 
 interface ProductColorOption {
   name: string;
@@ -80,7 +85,7 @@ export default function DesignDetailPage() {
     (async () => {
       const { data: rows } = await (supabase as any)
         .from("catalog_designs")
-        .select("id, slug, title_ka, print_file_url, thumbnail_url, category, default_product_id, default_color")
+        .select("id, slug, title_ka, print_file_url, thumbnail_url, category, default_product_id, default_color, meta_description_ka, tags")
         .eq("slug", slug)
         .eq("is_published", true)
         .limit(1);
@@ -287,9 +292,54 @@ export default function DesignDetailPage() {
     );
   }
 
+  // ── SEO data ──────────────────────────────────────────────────────────────
+  const canonical = `${SITE_URL}/design/${design.slug}`;
+  const fallbackDesc = `${design.title_ka} დიზაინი მაისურზე. ფასი ₾${priceBreakdown.total}. შეუკვეთე ონლაინ Maika.ge-ზე.`;
+  const description = design.meta_description_ka?.trim() || fallbackDesc;
+  const ogImage = design.thumbnail_url || design.print_file_url;
+
+  const jsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: design.title_ka,
+    description,
+    image: ogImage,
+    url: canonical,
+    sku: design.slug,
+    brand: { "@type": "Brand", name: "Maika.ge" },
+    offers: {
+      "@type": "Offer",
+      url: canonical,
+      priceCurrency: "GEL",
+      price: String(priceBreakdown.total),
+      availability: "https://schema.org/InStock",
+      seller: { "@type": "Organization", name: "Maika.ge" },
+    },
+  };
+  if (design.tags && design.tags.length > 0) {
+    jsonLd.keywords = design.tags.join(", ");
+  }
+
   // ── Main render ───────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen">
+      <Helmet>
+        <title>{`${design.title_ka} — Maika.ge`}</title>
+        <meta name="description" content={description} />
+        <link rel="canonical" href={canonical} />
+        <meta property="og:title" content={design.title_ka} />
+        <meta property="og:description" content={description} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:url" content={canonical} />
+        <meta property="og:type" content="product" />
+        <meta property="og:site_name" content="Maika.ge" />
+        <meta property="og:locale" content="ka_GE" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={design.title_ka} />
+        <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content={ogImage} />
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      </Helmet>
       <AppHeader />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6">

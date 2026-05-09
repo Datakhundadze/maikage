@@ -1,4 +1,10 @@
 [[redirects]]
+  from = "/sitemap.xml"
+  to = "https://ykoseamefoabptuijsza.supabase.co/functions/v1/sitemap"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/products/*"
   to = "/products/:splat"
   status = 200
