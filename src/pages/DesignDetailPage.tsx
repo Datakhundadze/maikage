@@ -301,10 +301,15 @@ export default function DesignDetailPage() {
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Live preview — hide ProductPreview's dashed placement-zone
-                outline (and DraggablePlacement's dashed border) since this is
-                a presentation page, not an editor. CSS scope avoids a new prop. */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden [&_.border-dashed]:hidden">
+            {/* Live preview — neutralise the dashed borders rendered by
+                ProductPreview's zone outline AND DraggablePlacement's
+                wrapper (both visual editor affordances we don't want here).
+                Earlier we used [&_.border-dashed]:hidden but that also
+                display:none'd the DraggablePlacement wrapper, which contains
+                the design <img> — so the design vanished. Override only the
+                border colour instead so the elements stay laid out, the
+                design renders, and no dashes are visible. */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden [&_.border-dashed]:!border-transparent">
               <ProductPreview
                 productName={product.type}
                 subProduct={product.sub_product || product.type}
