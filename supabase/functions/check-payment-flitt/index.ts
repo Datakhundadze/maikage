@@ -7,7 +7,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PAID = ["approved", "success", "successful", "completed", "paid"];
+// Per Flitt's order lifecycle, `order_status: "approved"` is the only state
+// that signals a captured payment. Values like "success" / "completed" /
+// "paid" are not part of Flitt's documented order_status enum, and matching
+// them risks false positives if Flitt ever uses them for non-final states.
+const PAID = ["approved"];
 const FAILED = ["declined", "expired", "reversed", "failed", "error"];
 
 async function buildSignature(
@@ -57,6 +61,11 @@ serve(async (req) => {
       });
     }
 
+    // Flitt's /api/status/order_id endpoint queries by the merchant-supplied
+    // order_id — which is the same value we registered in create-payment-flitt
+    // (the Maika orders.id UUID). The numeric `bog_order_id` column stores
+    // Flitt's internal `payment_id`, which would need /api/status/payment_id
+    // instead. Verify with Flitt support if results ever look mismatched.
     const requestFields = {
       order_id: orderId,
       merchant_id: merchantId,
