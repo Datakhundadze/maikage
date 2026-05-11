@@ -465,6 +465,38 @@ export default function SimplePage() {
       } catch { /* skip */ }
     }
 
+    // [composite-telemetry] Diagnostic only: capture the exact state the
+    // compositor sees so a future text-missing order can be triaged from
+    // browser console / Lovable logs. Remove once root cause is fixed.
+    {
+      const tcX = side.textCoords.x;
+      const tcY = side.textCoords.y;
+      const txDiag = zoneX + zoneW * tcX;
+      const fromLeftDiag = (txDiag - zoneX) * 2;
+      const fromRightDiag = (zoneX + zoneW - txDiag) * 2;
+      const maxTextWidth = Math.min(zoneW * 0.95, fromLeftDiag, fromRightDiag);
+      console.warn("[composite-telemetry]", {
+        function: "compositeSide",
+        side: view,
+        hasPhotos: side.photos.length > 0,
+        photoCount: side.photos.length,
+        hasText: !!side.designText.trim(),
+        textLength: side.designText.length,
+        textPreview: side.designText.slice(0, 30),
+        textCoordsX: tcX,
+        textCoordsY: tcY,
+        selectedFont: side.selectedFont,
+        textColor: side.textColor,
+        zoneX, zoneY, zoneW, zoneH,
+        maxTextWidth,
+        fontFaceReady:
+          typeof document !== "undefined" && document.fonts
+            ? document.fonts.check('bold 80px "Noto Sans Georgian"')
+            : null,
+        timestamp: Date.now(),
+      });
+    }
+
     // Draw text (multiline, constrained to zone width)
     if (side.designText.trim()) {
       const tc = side.textCoords;
@@ -534,6 +566,42 @@ export default function SimplePage() {
         }
         ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
       } catch { /* skip */ }
+    }
+
+    // [composite-telemetry] Diagnostic only: same as compositeSide above.
+    // Remove once root cause is fixed.
+    {
+      const tcX = side.textCoords.x;
+      const tcY = side.textCoords.y;
+      const txDiag = canvasW * tcX;
+      const maxTextWidth = Math.min(
+        canvasW * 0.95,
+        txDiag * 2,
+        (canvasW - txDiag) * 2,
+      );
+      console.warn("[composite-telemetry]", {
+        function: "compositeDesignOnly",
+        side: view,
+        hasPhotos: side.photos.length > 0,
+        photoCount: side.photos.length,
+        hasText: !!side.designText.trim(),
+        textLength: side.designText.length,
+        textPreview: side.designText.slice(0, 30),
+        textCoordsX: tcX,
+        textCoordsY: tcY,
+        selectedFont: side.selectedFont,
+        textColor: side.textColor,
+        zoneX: 0,
+        zoneY: 0,
+        zoneW: canvasW,
+        zoneH: canvasH,
+        maxTextWidth,
+        fontFaceReady:
+          typeof document !== "undefined" && document.fonts
+            ? document.fonts.check('bold 80px "Noto Sans Georgian"')
+            : null,
+        timestamp: Date.now(),
+      });
     }
 
     if (side.designText.trim()) {
