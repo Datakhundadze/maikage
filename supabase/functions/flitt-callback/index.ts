@@ -7,7 +7,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PAID = ["approved", "success", "successful", "completed", "paid"];
+// Per Flitt's order lifecycle, `order_status: "approved"` is the only state
+// that signals a captured payment. Other values like "created", "processing",
+// "expired", "declined", "reversed" are non-paid lifecycle states.
+// `response_status` is an API-protocol acknowledgment ("success" = callback
+// well-formed), NOT a payment outcome — it must never feed the paid decision.
+const PAID = ["approved"];
 const FAILED = ["declined", "expired", "reversed", "failed", "error"];
 
 async function sha1Hex(input: string): Promise<string> {
@@ -102,28 +107,51 @@ serve(async (req) => {
     // merchant_data carries cart_id when present (set in create-payment-flitt)
     const cartId = merchantData && merchantData !== orderId ? merchantData : null;
 
-    const isPaid = PAID.includes(orderStatus) || PAID.includes(responseStatus);
+    // response_status is a protocol-level acknowledgment. If Flitt sent a
+    // non-"success" response_status, the callback itself is malformed — log
+    // for visibility but do not let it influence the payment decision.
+    if (responseStatus && responseStatus !== "success") {
+      console.warn(
+        "[flitt-callback] Non-success response_status received:",
+        responseStatus,
+        "(payment decision still based solely on order_status)",
+      );
+    }
+
+    // Decide on order_status only. Check FAILED before PAID so any future
+    // accidental overlap in the PAID list can never override a failure.
     const isFailed = FAILED.includes(orderStatus);
+    const isPaid = !isFailed && PAID.includes(orderStatus);
 
     const applyUpdate = (patch: Record<string, unknown>) => {
       const q = supabase.from("orders").update(patch);
       return cartId ? q.eq("cart_id", cartId) : q.eq("id", orderId);
     };
 
-    if (isPaid) {
+    if (isFailed) {
+      const { error } = await applyUpdate({ payment_status: "failed" });
+      if (error) console.error("[flitt-callback] failed update error:", error);
+      else console.log(
+        "[flitt-callback] Decision=FAILED order_status=", orderStatus,
+        cartId ? `cart=${cartId}` : orderId,
+      );
+    } else if (isPaid) {
       const { error } = await applyUpdate({
         payment_status: "paid",
         status: "confirmed",
         paid_at: new Date().toISOString(),
       });
       if (error) console.error("[flitt-callback] paid update error:", error);
-      else console.log("[flitt-callback] Marked paid:", cartId ? `cart=${cartId}` : orderId);
-    } else if (isFailed) {
-      const { error } = await applyUpdate({ payment_status: "failed" });
-      if (error) console.error("[flitt-callback] failed update error:", error);
-      else console.log("[flitt-callback] Marked failed:", cartId ? `cart=${cartId}` : orderId);
+      else console.log(
+        "[flitt-callback] Decision=PAID order_status=", orderStatus,
+        cartId ? `cart=${cartId}` : orderId,
+      );
     } else {
-      console.log("[flitt-callback] Unhandled status order_status=", orderStatus, "response_status=", responseStatus);
+      console.log(
+        "[flitt-callback] Decision=IGNORE order_status=", orderStatus,
+        "response_status=", responseStatus,
+        cartId ? `cart=${cartId}` : orderId,
+      );
     }
 
     return new Response(JSON.stringify({ status: "ok" }), {
