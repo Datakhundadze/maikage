@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
+import { buildBreadcrumbList } from "@/lib/seoSchemas";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import AppHeader from "@/components/AppHeader";
@@ -320,6 +321,18 @@ export default function DesignDetailPage() {
     jsonLd.keywords = design.tags.join(", ");
   }
 
+  // BreadcrumbList — separate from Product JSON-LD so Google can show both
+  // rich-result types simultaneously. Final item (the design itself) omits
+  // `item` URL per Google's structured-data guidance.
+  const breadcrumbJsonLd = buildBreadcrumbList([
+    { name: "მთავარი", url: SITE_URL },
+    { name: "კატალოგი", url: `${SITE_URL}/designs` },
+    ...(design.category && categoryLabel
+      ? [{ name: categoryLabel, url: `${SITE_URL}/designs?category=${encodeURIComponent(design.category)}` }]
+      : []),
+    { name: design.title_ka },
+  ]);
+
   // ── Main render ───────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen">
@@ -329,7 +342,7 @@ export default function DesignDetailPage() {
         image={ogImage}
         url={canonical}
         type="product"
-        schemas={[jsonLd]}
+        schemas={[jsonLd, breadcrumbJsonLd]}
       />
       <AppHeader />
       <div className="flex-1 overflow-y-auto">
