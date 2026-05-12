@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Star, Trash2, Upload } from "lucide-react";
+import { Eye, EyeOff, Star, Trash2, Upload, Package } from "lucide-react";
 import DesignUploadDialog from "./DesignUploadDialog";
+import BulkDesignUploadDialog from "./BulkDesignUploadDialog";
 
 interface CatalogDesign {
   id: string;
@@ -34,6 +35,7 @@ export default function CatalogDesigns() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -156,6 +158,9 @@ export default function CatalogDesigns() {
               </Button>
             </>
           )}
+          <Button size="sm" variant="outline" onClick={() => setBulkUploadOpen(true)}>
+            <Package className="h-4 w-4 mr-1" /> ჯგუფური ატვირთვა
+          </Button>
           <Button size="sm" onClick={() => setUploadOpen(true)}>
             <Upload className="h-4 w-4 mr-1" /> ახლის ატვირთვა
           </Button>
@@ -215,6 +220,12 @@ export default function CatalogDesigns() {
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         onUploaded={() => { setUploadOpen(false); load(); }}
+      />
+
+      <BulkDesignUploadDialog
+        open={bulkUploadOpen}
+        onClose={() => setBulkUploadOpen(false)}
+        onUploaded={() => { load(); }}
       />
     </div>
   );
