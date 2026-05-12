@@ -113,16 +113,44 @@ function drawMultilineText(
   const lines = text.split("\n").filter((l) => l.trim());
   if (lines.length === 0) return;
 
-  const longestLine = lines.reduce((a, b) => (a.length > b.length ? a : b), "");
-  const fontSize = Math.min(maxFontSize, maxWidth / (longestLine.length * 0.55));
-  const lineHeight = fontSize * 1.25;
-  const totalHeight = lineHeight * lines.length;
-
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = `bold ${fontSize}px ${fontFamily}`;
 
+  // Minimum legible size. Scales with maxFontSize so the 3000px print
+  // canvas keeps the floor at print resolution while the 800px preview
+  // floor stays at 8 px.
+  const MIN_FONT_SIZE = Math.max(8, maxFontSize * 0.1);
+
+  // Measure the actual rendered width at maxFontSize with the user's font,
+  // then shrink proportionally if the widest line exceeds maxWidth. The
+  // previous heuristic (length * 0.55) underestimated Noto Sans Georgian's
+  // wide glyphs, so long Georgian text rendered at full maxFontSize, then
+  // got clipped by the placement-zone ctx.clip() — only the middle of the
+  // string remained visible on the mockup.
+  let fontSize = maxFontSize;
+  ctx.font = `bold ${fontSize}px ${fontFamily}`;
+  let widest = 0;
+  for (const line of lines) {
+    const w = ctx.measureText(line).width;
+    if (w > widest) widest = w;
+  }
+  if (widest > maxWidth && widest > 0) {
+    fontSize = Math.max(MIN_FONT_SIZE, fontSize * (maxWidth / widest));
+    ctx.font = `bold ${fontSize}px ${fontFamily}`;
+  }
+  if (fontSize <= MIN_FONT_SIZE && widest > maxWidth) {
+    // At the floor and still too wide: fillText's maxWidth arg will squash
+    // horizontally instead of clipping, so the user sees compressed text
+    // rather than nothing. Surface a console warning for triage.
+    console.warn(
+      "[drawMultilineText] text still exceeds maxWidth at MIN_FONT_SIZE",
+      { textPreview: text.slice(0, 30), maxWidth, fontSize, widest },
+    );
+  }
+
+  const lineHeight = fontSize * 1.25;
+  const totalHeight = lineHeight * lines.length;
   const startY = cy - totalHeight / 2 + lineHeight / 2;
   for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], cx, startY + i * lineHeight, maxWidth);
