@@ -121,7 +121,7 @@ export default function CatalogPage() {
                       {img ? (
                         <img
                           src={img}
-                          alt={d.title_ka}
+                          alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
                           className="w-full h-full object-contain p-3 group-hover:scale-[1.02] transition-transform"
                           loading="lazy"
                         />

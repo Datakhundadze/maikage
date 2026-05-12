@@ -371,6 +371,7 @@ export default function DesignDetailPage() {
                 view="front"
                 placementCoords={placementCoords}
                 designImage={design.print_file_url}
+                designAlt={`${design.title_ka} — ${product.type} ${selectedColor}`}
                 disabled
               />
             </div>
