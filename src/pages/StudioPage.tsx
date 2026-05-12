@@ -24,6 +24,7 @@ import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
+import SeoHead from "@/components/SeoHead";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
 const RESULT_TS_KEY = "maika_last_generation_ts";
@@ -360,6 +361,10 @@ function StudioContent() {
 
   return (
     <>
+      <SeoHead
+        title="AI სტუდია — შექმენი საკუთარი დიზაინი | Maika.ge"
+        description="Maika.ge AI სტუდია — შექმენი უნიკალური დიზაინი ხელოვნური ინტელექტით და დაბეჭდე მაისურზე, ჰუდიზე ან სხვა აპარელზე."
+      />
       <AppLayout
         sidebar={
           <div className="space-y-6">

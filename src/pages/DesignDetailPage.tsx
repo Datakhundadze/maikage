@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
+import SeoHead from "@/components/SeoHead";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import AppHeader from "@/components/AppHeader";
@@ -323,23 +323,14 @@ export default function DesignDetailPage() {
   // ── Main render ───────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen">
-      <Helmet>
-        <title>{`${design.title_ka} — Maika.ge`}</title>
-        <meta name="description" content={description} />
-        <link rel="canonical" href={canonical} />
-        <meta property="og:title" content={design.title_ka} />
-        <meta property="og:description" content={description} />
-        <meta property="og:image" content={ogImage} />
-        <meta property="og:url" content={canonical} />
-        <meta property="og:type" content="product" />
-        <meta property="og:site_name" content="Maika.ge" />
-        <meta property="og:locale" content="ka_GE" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={design.title_ka} />
-        <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={ogImage} />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-      </Helmet>
+      <SeoHead
+        title={`${design.title_ka} — Maika.ge`}
+        description={description}
+        image={ogImage}
+        url={canonical}
+        type="product"
+        schemas={[jsonLd]}
+      />
       <AppHeader />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6">

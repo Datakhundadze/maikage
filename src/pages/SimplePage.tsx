@@ -21,6 +21,7 @@ import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
+import SeoHead from "@/components/SeoHead";
 
 const FONT_GROUPS = [
   {
@@ -797,6 +798,10 @@ export default function SimplePage() {
 
   return (
     <div className="flex flex-col h-screen">
+      <SeoHead
+        title="ფოტო და ტექსტი მაისურზე — Maika.ge"
+        description="ატვირთე საკუთარი ფოტო, დაამატე ტექსტი და დაბეჭდე უნიკალური მაისური Maika.ge-ზე."
+      />
       <AppHeader />
       <ContactBar />
       {/* Sidebar + Main wrapper */}
