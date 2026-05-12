@@ -1,11 +1,16 @@
 import { useAppState } from "@/hooks/useAppState";
 import { ArrowLeft } from "lucide-react";
+import SeoHead from "@/components/SeoHead";
 
 export default function AboutPage() {
   const { setMode } = useAppState();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SeoHead
+        title="ჩვენ შესახებ — Maika.ge"
+        description="Maika.ge — 15 წლიანი გამოცდილება კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში. გაიცანი ჩვენი ისტორია, ხარისხის სტანდარტი და მისია."
+      />
       {/* Header */}
       <div className="border-b border-border px-6 py-4 flex items-center gap-4">
         <button

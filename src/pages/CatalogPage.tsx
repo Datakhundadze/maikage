@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import { CATEGORIES } from "@/lib/categories";
 import { ImageOff } from "lucide-react";
+import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface CatalogDesignRow {
   id: string;
@@ -58,6 +59,11 @@ export default function CatalogPage() {
 
   return (
     <div className="flex flex-col h-screen">
+      <SeoHead
+        title="კატალოგი — Maika.ge დიზაინები"
+        description="აარჩიე მზა დიზაინი Maika.ge-ის კატალოგიდან და დაბეჭდე მაისურზე, ჰუდიზე ან სხვა აპარელზე."
+        url={`${SITE_URL}/designs`}
+      />
       <AppHeader />
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-5">
@@ -115,7 +121,7 @@ export default function CatalogPage() {
                       {img ? (
                         <img
                           src={img}
-                          alt={d.title_ka}
+                          alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
                           className="w-full h-full object-contain p-3 group-hover:scale-[1.02] transition-transform"
                           loading="lazy"
                         />

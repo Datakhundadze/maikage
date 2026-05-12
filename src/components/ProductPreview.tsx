@@ -26,6 +26,8 @@ interface ProductPreviewProps {
   layers?: DesignLayer[];
   /** Called when user clicks the background (outside any layer) */
   onBackgroundClick?: () => void;
+  /** Override the alt text on the design image (for accessibility / SEO). */
+  designAlt?: string;
 }
 
 // SVG placeholder outlines for products without mockup images
@@ -104,7 +106,7 @@ function colorizeImage(img: HTMLImageElement, canvas: HTMLCanvasElement, targetH
 }
 
 export default function ProductPreview({
-  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers, onBackgroundClick,
+  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers, onBackgroundClick, designAlt,
 }: ProductPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -220,7 +222,7 @@ export default function ProductPreview({
             zone={zone}
           >
             {designImage && (
-              <img src={designImage} alt="Design" className="w-full h-full object-cover opacity-80" />
+              <img src={designImage} alt={designAlt ?? "Design"} className="w-full h-full object-cover opacity-80" />
             )}
           </DraggablePlacement>
         )}

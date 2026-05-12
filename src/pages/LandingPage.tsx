@@ -3,6 +3,8 @@ import { useAppState } from "@/hooks/useAppState";
 import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import { supabase } from "@/integrations/supabase/client";
+import SeoHead, { SITE_URL } from "@/components/SeoHead";
+import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 
 const SPORT_PHOTOS = [
   "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
@@ -115,6 +117,12 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <SeoHead
+        title="Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი 15 წლის გამოცდილებით"
+        description="Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში. შეუკვეთე საკუთარი დიზაინი ან აირჩიე კატალოგიდან."
+        url={`${SITE_URL}/`}
+        schemas={[LOCAL_BUSINESS_SCHEMA]}
+      />
       {/* Payment result banner */}
       {paymentBanner && (
         <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium shadow-lg transition-all ${

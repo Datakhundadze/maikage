@@ -1,12 +1,20 @@
 import { useAppState } from "@/hooks/useAppState";
 import { ArrowLeft, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
+import SeoHead, { SITE_URL } from "@/components/SeoHead";
+import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 
 export default function CorporatePage() {
   const { setMode } = useAppState();
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
+      <SeoHead
+        title="კორპორაციული შეკვეთები — Maika.ge"
+        description="დაუკავშირდი Maika.ge-ს კორპორაციული ფორმის, გუნდური მაისურების ან გასაჩუქრებელი აპარელის შესაკვეთად. ფასი, წარმოების ვადა და ხარისხი — შენი მოთხოვნით."
+        url={`${SITE_URL}/corporate`}
+        schemas={[LOCAL_BUSINESS_SCHEMA]}
+      />
       <div className="max-w-3xl mx-auto px-4 py-12">
         <button
           onClick={() => setMode("landing")}
