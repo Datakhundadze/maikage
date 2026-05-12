@@ -100,6 +100,54 @@ const LAYER_COLORS = [
 
 const MAX_PHOTOS = 5;
 
+// Stable per-tab session id so all composite events from one customer's
+// design session can be correlated when triaging an incident. Stored in
+// sessionStorage so a page reload preserves the id across navigations.
+function getCompositeSessionId(): string {
+  try {
+    if (typeof sessionStorage === "undefined") return "no-session";
+    const KEY = "maika_composite_session_id";
+    let id = sessionStorage.getItem(KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    return "no-session";
+  }
+}
+
+// Fire-and-forget telemetry sink. Keeps console.warn for in-browser
+// debugging and also persists the event to composite_events so a
+// reproducible incident can be triaged from the DB. The insert is
+// awaited only to attach an error log — we never block the compositor
+// on it.
+function logCompositeEvent(
+  eventType: string,
+  eventData: Record<string, unknown>,
+) {
+  console.warn("[composite-telemetry]", { function: eventType, ...eventData });
+  // composite_events is a new table not yet in the generated Database
+  // types — `as any` mirrors the pattern already used elsewhere for
+  // schema-ahead-of-types inserts (see OrderDialog.tsx).
+  void (supabase as any)
+    .from("composite_events")
+    .insert({
+      session_id: getCompositeSessionId(),
+      event_type: eventType,
+      event_data: eventData,
+    })
+    .then((res: { error: { message: string } | null }) => {
+      if (res?.error) {
+        console.warn(
+          "[composite-telemetry] insert failed:",
+          res.error.message,
+        );
+      }
+    });
+}
+
 function drawMultilineText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -493,9 +541,10 @@ export default function SimplePage() {
       } catch { /* skip */ }
     }
 
-    // [composite-telemetry] Diagnostic only: capture the exact state the
-    // compositor sees so a future text-missing order can be triaged from
-    // browser console / Lovable logs. Remove once root cause is fixed.
+    // [composite-telemetry] Captures the exact state the compositor sees
+    // so a future incident can be triaged from composite_events without
+    // depending on the customer's browser DevTools. Insert is fire-and-
+    // forget; the compositor never blocks on it.
     {
       const tcX = side.textCoords.x;
       const tcY = side.textCoords.y;
@@ -503,8 +552,7 @@ export default function SimplePage() {
       const fromLeftDiag = (txDiag - zoneX) * 2;
       const fromRightDiag = (zoneX + zoneW - txDiag) * 2;
       const maxTextWidth = Math.min(zoneW * 0.95, fromLeftDiag, fromRightDiag);
-      console.warn("[composite-telemetry]", {
-        function: "compositeSide",
+      logCompositeEvent("compositeSide", {
         side: view,
         hasPhotos: side.photos.length > 0,
         photoCount: side.photos.length,
@@ -596,8 +644,7 @@ export default function SimplePage() {
       } catch { /* skip */ }
     }
 
-    // [composite-telemetry] Diagnostic only: same as compositeSide above.
-    // Remove once root cause is fixed.
+    // [composite-telemetry] same as compositeSide above.
     {
       const tcX = side.textCoords.x;
       const tcY = side.textCoords.y;
@@ -607,8 +654,7 @@ export default function SimplePage() {
         txDiag * 2,
         (canvasW - txDiag) * 2,
       );
-      console.warn("[composite-telemetry]", {
-        function: "compositeDesignOnly",
+      logCompositeEvent("compositeDesignOnly", {
         side: view,
         hasPhotos: side.photos.length > 0,
         photoCount: side.photos.length,
