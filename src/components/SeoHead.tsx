@@ -9,7 +9,7 @@ const DEFAULT_TITLE =
 const DEFAULT_DESCRIPTION =
   "Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში.";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
-const TWITTER_HANDLE = "@maika_ge";
+
 
 // Site-wide Organization schema. Emitted on every page so any URL Google
 // crawls anchors the brand entity, surfaces the logo in the knowledge panel,
@@ -90,7 +90,6 @@ export default function SeoHead({
 
       {/* Twitter Card */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:site" content={TWITTER_HANDLE} />
       <meta name="twitter:title" content={resolvedTitle} />
       <meta name="twitter:description" content={resolvedDescription} />
       <meta name="twitter:image" content={resolvedImage} />
