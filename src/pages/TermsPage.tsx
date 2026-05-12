@@ -1,11 +1,16 @@
 import { useAppState } from "@/hooks/useAppState";
 import { ArrowLeft } from "lucide-react";
+import SeoHead from "@/components/SeoHead";
 
 export default function TermsPage() {
   const { setMode } = useAppState();
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
+      <SeoHead
+        title="წესები და პირობები — Maika.ge"
+        description="Maika.ge-ის გამოყენების წესები და პირობები."
+      />
       <div className="max-w-3xl mx-auto px-4 py-12">
         <button
           onClick={() => setMode("landing")}

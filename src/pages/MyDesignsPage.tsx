@@ -9,6 +9,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Trash2, Globe, GlobeLock, Eye } from "lucide-react";
 import Lightbox from "@/components/Lightbox";
+import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface Design {
   id: string;
@@ -95,6 +96,12 @@ export default function MyDesignsPage() {
 
   return (
     <>
+      <SeoHead
+        title="ჩემი დიზაინები — Maika.ge"
+        description="შენი შენახული დიზაინები Maika.ge-ზე."
+        url={`${SITE_URL}/my-designs`}
+        noindex
+      />
       <AppLayout
         sidebar={
           <div className="space-y-4">

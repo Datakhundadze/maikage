@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Heart, Eye } from "lucide-react";
 import Lightbox from "@/components/Lightbox";
+import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface CommunityDesign {
   id: string;
@@ -77,6 +78,11 @@ export default function CommunityPage() {
 
   return (
     <>
+      <SeoHead
+        title="საზოგადოება — Maika.ge"
+        description="გადახედე საზოგადოების მიერ გამოქვეყნებულ AI-შექმნილ დიზაინებს Maika.ge-ზე."
+        url={`${SITE_URL}/community`}
+      />
       <AppLayout
         sidebar={
           <div className="space-y-4">

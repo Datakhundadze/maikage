@@ -73,6 +73,7 @@ export default function SeoHead({
     <Helmet>
       <title>{resolvedTitle}</title>
       <meta name="description" content={resolvedDescription} />
+      <link rel="canonical" href={resolvedUrl} />
       {noindex && <meta name="robots" content="noindex,nofollow" />}
 
       {/* Open Graph */}
