@@ -4,6 +4,7 @@ import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDoll
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
+import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 
 const SPORT_PHOTOS = [
   "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
@@ -120,6 +121,7 @@ export default function LandingPage() {
         title="Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი 15 წლის გამოცდილებით"
         description="Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში. შეუკვეთე საკუთარი დიზაინი ან აირჩიე კატალოგიდან."
         url={`${SITE_URL}/`}
+        schemas={[LOCAL_BUSINESS_SCHEMA]}
       />
       {/* Payment result banner */}
       {paymentBanner && (
