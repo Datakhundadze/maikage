@@ -207,6 +207,24 @@ function isMostlyTransparent(canvas: HTMLCanvasElement): boolean {
   return transparentCount / total > 0.95;
 }
 
+// Detect the realistic-mode failure pattern: matting produced partial
+// alpha across most of the canvas instead of the expected
+// {fully-opaque subject, fully-transparent background} split. This happens
+// when Gemini 3 Pro slightly re-renders the subject between the white-bg
+// and black-bg passes — per-pixel difference is moderate everywhere,
+// alpha lands in a mid-band, and the result is a translucent haze that
+// isMostlyTransparent doesn't catch.
+function isMostlyPartialAlpha(canvas: HTMLCanvasElement): boolean {
+  const ctx = canvas.getContext("2d")!;
+  const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let partialCount = 0;
+  const total = data.length / 4;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] > 5 && data[i] < 250) partialCount++;
+  }
+  return partialCount / total > 0.7;
+}
+
 export function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -409,6 +427,15 @@ export async function runGenerationPipeline(
   // Stage 2: Background removal via difference matting with fallback
   onStatusChange("PROCESSING_TRANSPARENCY");
 
+  // Mode-aware fallback thresholds. Photoreal Gemini 3 Pro output has soft
+  // shadow/penumbra around the subject so "background" pixels can sit at
+  // RGB ≈ 210-240 (not pure white); the illustration path from Gemini 2.5
+  // Flash has pure-white background and benefits from the stricter
+  // historical defaults. Keep illustration mode untouched so the existing
+  // clean-matting flow doesn't regress.
+  const fallbackWhiteThreshold = isRealistic ? 210 : 240;
+  const fallbackCornerThreshold = isRealistic ? 210 : 235;
+
   let transparentImage: string;
   try {
     // Try difference matting: convert white bg to black bg, then extract alpha
@@ -419,10 +446,23 @@ export async function runGenerationPipeline(
     const blackCanvas = imageToCanvas(blackImg);
     const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
 
-    // Validate matting result — if mostly transparent, fallback to simple removal
-    if (isMostlyTransparent(transparentCanvas)) {
-      console.warn("[Generation] Difference matting produced mostly transparent result, falling back to white bg removal");
-      const fallbackCanvas = removeConnectedWhiteBackground(removeWhiteBackground(whiteCanvas));
+    // Validate matting result. isMostlyTransparent catches the "everything
+    // collapsed to alpha=0" failure; isMostlyPartialAlpha catches the
+    // realistic-mode "everything stuck at mid-band alpha" failure where the
+    // subject was re-rendered between passes. Either triggers the fallback.
+    const mattingFailed =
+      isMostlyTransparent(transparentCanvas) ||
+      isMostlyPartialAlpha(transparentCanvas);
+
+    if (mattingFailed) {
+      console.warn(
+        "[Generation] Difference matting unreliable, falling back to white-bg removal",
+        { isRealistic, fallbackWhiteThreshold, fallbackCornerThreshold },
+      );
+      const fallbackCanvas = removeConnectedWhiteBackground(
+        removeWhiteBackground(whiteCanvas, fallbackWhiteThreshold),
+        fallbackCornerThreshold,
+      );
       transparentImage = fallbackCanvas.toDataURL("image/png");
     } else {
       // Flood-fill to remove any residual white border the matting missed
@@ -433,7 +473,10 @@ export async function runGenerationPipeline(
     console.warn("[Generation] Difference matting failed, using white bg removal fallback:", mattingError);
     const whiteImg = await loadImage(designImage);
     const whiteCanvas = imageToCanvas(whiteImg);
-    const fallbackCanvas = removeConnectedWhiteBackground(removeWhiteBackground(whiteCanvas));
+    const fallbackCanvas = removeConnectedWhiteBackground(
+      removeWhiteBackground(whiteCanvas, fallbackWhiteThreshold),
+      fallbackCornerThreshold,
+    );
     transparentImage = fallbackCanvas.toDataURL("image/png");
   }
 

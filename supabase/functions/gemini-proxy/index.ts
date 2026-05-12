@@ -114,7 +114,7 @@ MANDATORY PHOTOGRAPHIC PROPERTIES:
 • Zero black outlines — real objects in photographs never have cartoon outlines
 • Three-dimensional volume, weight, and physical presence
 • Photographic imperfections: subtle lens vignette, natural grain, real-world light behavior
-• Background: solid pure white studio backdrop #FFFFFF
+• Background: pure white studio cyclorama #FFFFFF — ZERO ambient shadow on the backdrop, NO floor shadow under the subject, NO drop shadow, NO penumbra anywhere on the white surface. The subject must cast no shadow onto the background. Use light only from above-front so the backdrop stays uniformly bright pure-white (#FFFFFF) edge-to-edge. The downstream pipeline removes this background by difference matting, which requires the backdrop to be uniformly #FFFFFF — any shadow or off-white tone will leave a visible halo when composited onto a t-shirt.
 
 ${text ? `TEXT: Render the text "${text}" as physical text on a real surface (printed, painted, engraved, or signage) — must look photographic` : "• No text, letters, numbers, or written characters anywhere in the image"}
 
@@ -234,7 +234,9 @@ serve(async (req) => {
         content: [
           {
             type: "text",
-            text: "Change the background of this image from WHITE to PURE BLACK (#000000). Keep the subject/design EXACTLY identical — same colors, same details, same position. Only the white background should become pure black. Do not alter the subject in any way.",
+            text: `Change the background of this image from WHITE to PURE BLACK (#000000). Keep the subject/design EXACTLY identical — same colors, same details, same position. Only the white background should become pure black. Do not alter the subject in any way.
+
+CRITICAL: Output must be pixel-identical to the input except for the background color. Do NOT redraw, re-light, or re-shade the subject. Do NOT change subject colors, contours, shadows, highlights, or details. Do NOT regenerate the photograph — this is a background-swap operation, not a re-shoot. Only replace the white background pixels with #000000. The subject and its silhouette must remain exactly as in the input — every subject pixel must match the input pixel for pixel. The downstream pipeline performs difference matting between the input and your output; subject pixels that differ across the two will produce a translucent halo on the final image.`,
           },
           { type: "image_url", image_url: { url: params.image } },
         ],
