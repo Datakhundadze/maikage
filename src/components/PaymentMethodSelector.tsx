@@ -24,7 +24,7 @@ const METHODS: {
     desc: "ბარათით გადახდა",
     bankLogo: "/payment-logos/bog.png",
     bankAlt: "Bank of Georgia",
-    cards: [CARD_VISA, CARD_MC],
+    cards: [CARD_VISA, CARD_MC, CARD_APPLE, CARD_GPAY],
   },
   {
     value: "tbc",
