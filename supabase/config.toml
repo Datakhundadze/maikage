@@ -26,3 +26,12 @@ verify_jwt = true
 
 [functions.sitemap]
 verify_jwt = false
+
+[functions.create-payment-flitt]
+verify_jwt = false
+
+[functions.flitt-callback]
+verify_jwt = false
+
+[functions.check-payment-flitt]
+verify_jwt = false
