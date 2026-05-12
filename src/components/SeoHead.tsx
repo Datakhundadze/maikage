@@ -11,6 +11,34 @@ const DEFAULT_DESCRIPTION =
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
 const TWITTER_HANDLE = "@maika_ge";
 
+// Site-wide Organization schema. Emitted on every page so any URL Google
+// crawls anchors the brand entity, surfaces the logo in the knowledge panel,
+// and ties social profiles to the same entity.
+const ORGANIZATION_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": ["Organization", "ClothingStore"],
+  name: "Maika.ge",
+  alternateName: "Maika",
+  url: SITE_URL,
+  logo: `${SITE_URL}/maika-logo.png`,
+  image: `${SITE_URL}/maika-logo.png`,
+  description:
+    "Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში.",
+  email: "maika@maika.ge",
+  telephone: "+995599050807",
+  foundingDate: "2011",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "Tbilisi",
+    addressCountry: "GE",
+  },
+  sameAs: [
+    "https://www.facebook.com/maika.ge",
+    "https://www.instagram.com/maika.ge_/",
+    "https://www.tiktok.com/@maika.ge",
+  ],
+};
+
 export interface SeoHeadProps {
   title?: string;
   description?: string;
@@ -66,12 +94,12 @@ export default function SeoHead({
       <meta name="twitter:description" content={resolvedDescription} />
       <meta name="twitter:image" content={resolvedImage} />
 
+      <script type="application/ld+json">
+        {JSON.stringify(ORGANIZATION_SCHEMA)}
+      </script>
+
       {schemas?.map((schema, i) => (
-        <script
-          key={i}
-          type="application/ld+json"
-          // eslint-disable-next-line react/no-danger
-        >
+        <script key={i} type="application/ld+json">
           {JSON.stringify(schema)}
         </script>
       ))}
