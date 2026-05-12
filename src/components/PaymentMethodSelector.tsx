@@ -58,25 +58,25 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
             <RadioGroupItem value={m.value} id={`pay-${m.value}`} />
             <Label
               htmlFor={`pay-${m.value}`}
-              className="cursor-pointer flex-1 flex flex-wrap items-center gap-x-4 gap-y-2"
+              className="cursor-pointer flex-1 min-w-0 flex items-center gap-2 flex-nowrap"
             >
               <img
                 src={m.bankLogo}
                 alt={m.bankAlt}
-                className="h-9 md:h-10 w-auto object-contain shrink-0"
+                className="h-7 md:h-8 w-auto object-contain shrink-0"
                 loading="lazy"
               />
               <span className="sr-only">
                 {m.label} — {m.desc}
               </span>
-              <div className="flex items-center gap-1.5 ml-auto flex-wrap">
+              <div className="flex items-center gap-1 sm:gap-1.5 ml-auto flex-nowrap shrink-0">
                 {m.cards.map((c) => (
                   <img
                     key={c.alt}
                     src={c.src}
                     alt={c.alt}
                     title={c.alt}
-                    className="h-5 w-auto object-contain"
+                    className="h-4 sm:h-5 w-auto object-contain shrink-0"
                     loading="lazy"
                   />
                 ))}
