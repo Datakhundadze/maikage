@@ -49,7 +49,11 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
         {METHODS.map((m) => (
           <div
             key={m.value}
-            className="flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-accent/50 transition-colors"
+            className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+              value === m.value
+                ? "border-primary bg-[hsl(0_0%_92%)]"
+                : "border-border bg-[hsl(0_0%_96%)] hover:bg-[hsl(0_0%_93%)]"
+            }`}
           >
             <RadioGroupItem value={m.value} id={`pay-${m.value}`} />
             <Label
@@ -59,7 +63,7 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
               <img
                 src={m.bankLogo}
                 alt={m.bankAlt}
-                className="h-8 md:h-10 w-auto object-contain shrink-0"
+                className="h-9 md:h-10 w-auto object-contain shrink-0"
                 loading="lazy"
               />
               <span className="sr-only">
@@ -72,7 +76,7 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
                     src={c.src}
                     alt={c.alt}
                     title={c.alt}
-                    className="h-5 md:h-6 w-auto object-contain"
+                    className="h-5 w-auto object-contain"
                     loading="lazy"
                   />
                 ))}
