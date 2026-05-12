@@ -2,6 +2,13 @@ import { useRef, useCallback, useState, type ReactNode } from "react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { RotateCw } from "lucide-react";
 
+// Floor and ceiling for the design-layer scale relative to the placement
+// zone. 0.1 keeps the layer from collapsing to invisible; 3 lets the user
+// grow the layer well past the printable zone so long text has room — the
+// composite still clips to the zone so the extra space is editor-only.
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 3;
+
 interface DraggablePlacementProps {
   coords: PlacementCoords;
   onCoordsChange: (coords: PlacementCoords) => void;
@@ -124,8 +131,13 @@ export default function DraggablePlacement({
       const isTop = dragMode.includes("t");
       const sdx = isLeft ? -dx : dx;
       const sdy = isTop ? -dy : dy;
-      const newScaleX = Math.max(0.1, Math.min(1, startRef.current.cs + sdx * 2));
-      const newScaleY = Math.max(0.1, Math.min(1, startRef.current.csY + sdy * 2));
+      // scale=1 fills the placement zone exactly. Capping at 1 prevented
+      // users from growing the design box wide enough to fit long text
+      // alongside an image. Composite still ctx.clip()s to the printable
+      // zone, so anything beyond scale=1 simply won't print — the larger
+      // cap is purely a layout/legibility affordance during editing.
+      const newScaleX = Math.max(MIN_SCALE, Math.min(MAX_SCALE, startRef.current.cs + sdx * 2));
+      const newScaleY = Math.max(MIN_SCALE, Math.min(MAX_SCALE, startRef.current.csY + sdy * 2));
       onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
     }
   }, [dragMode, coords, onCoordsChange, getCenterPoint, zoneW, zoneH]);
