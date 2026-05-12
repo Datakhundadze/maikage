@@ -1,15 +1,32 @@
+# Social-preview and search crawlers — explicit Allow so they're never
+# accidentally caught by the wildcard rule below. Listed first because
+# robots.txt grants the most-specific User-agent match precedence.
+
 User-agent: Googlebot
 Allow: /
 
 User-agent: Bingbot
 Allow: /
 
-User-agent: Twitterbot
-Allow: /
-
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: Facebot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
+
+# Everyone else: indexable, except admin and internal API surface.
 User-agent: *
 Allow: /
 Disallow: /admin
