@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.check-payment-flitt]
 verify_jwt = false
+
+[functions.check-design-quality]
+verify_jwt = true
