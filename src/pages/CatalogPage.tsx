@@ -110,7 +110,6 @@ export default function CatalogPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
               {designs.map((d) => {
-                const img = d.thumbnail_url || d.print_file_url;
                 const catLabel = d.category ? CATEGORY_LABEL_BY_SLUG[d.category] ?? d.category : null;
                 return (
                   <button
