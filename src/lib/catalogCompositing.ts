@@ -19,7 +19,7 @@ import {
 // editor's default placement (e.g. T-Shirt zone scale 0.35). Multiply the
 // zone's scale by this factor in both the off-screen mockup AND in the live
 // preview's placementCoords so they stay in sync.
-export const CATALOG_PRINT_SCALE = 1.5;
+export const CATALOG_PRINT_SCALE = 2.6;
 
 interface CompositeArgs {
   printFileUrl: string;
