@@ -13,13 +13,31 @@ import {
   type ProductType,
   type ProductColor,
   type ProductView,
+  type PlacementCoords,
 } from "@/lib/catalog";
 
 // Catalog detail page wants the design to feel hero-sized, larger than the
 // editor's default placement (e.g. T-Shirt zone scale 0.35). Multiply the
 // zone's scale by this factor in both the off-screen mockup AND in the live
 // preview's placementCoords so they stay in sync.
-export const CATALOG_PRINT_SCALE = 2.0;
+export const CATALOG_PRINT_SCALE = 1.3;
+export const CATALOG_CHEST_MAX_WIDTH = 0.45;
+
+function getCappedCatalogPrintScale(zone: PlacementCoords) {
+  const zoneWidth = zone.scale ?? 1;
+  const maxScaleForChest = CATALOG_CHEST_MAX_WIDTH / zoneWidth;
+  return Math.min(CATALOG_PRINT_SCALE, maxScaleForChest);
+}
+
+export function getCatalogPrintPlacementCoords(zone: PlacementCoords): PlacementCoords {
+  const cappedScale = getCappedCatalogPrintScale(zone);
+  return {
+    x: 0.5,
+    y: 0.5,
+    scale: cappedScale,
+    scaleY: cappedScale,
+  };
+}
 
 interface CompositeArgs {
   printFileUrl: string;
@@ -98,8 +116,9 @@ export async function compositeDesignOnProduct(args: CompositeArgs): Promise<str
     }
 
     const zone = imageResult.entry.placementZone;
-    const zoneW = (zone.scale ?? 1) * CATALOG_PRINT_SCALE * canvas.width;
-    const zoneH = (zone.scaleY ?? zone.scale ?? 1) * CATALOG_PRINT_SCALE * canvas.height;
+    const cappedScale = getCappedCatalogPrintScale(zone);
+    const zoneW = (zone.scale ?? 1) * cappedScale * canvas.width;
+    const zoneH = (zone.scaleY ?? zone.scale ?? 1) * cappedScale * canvas.height;
     const zoneX = (zone.x ?? 0.5) * canvas.width - zoneW / 2;
     const zoneY = (zone.y ?? 0.5) * canvas.height - zoneH / 2;
 
