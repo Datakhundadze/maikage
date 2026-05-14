@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import { CATEGORIES } from "@/lib/categories";
 import { ImageOff } from "lucide-react";
+import CatalogDesignCard from "@/components/CatalogDesignCard";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface CatalogDesignRow {
