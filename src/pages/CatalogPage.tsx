@@ -119,12 +119,11 @@ export default function CatalogPage() {
                     className="group flex flex-col text-left rounded-xl border border-border bg-card overflow-hidden hover:border-primary/60 hover:shadow-sm transition-all"
                   >
                     <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
-                      {img ? (
-                        <img
-                          src={img}
+                      {d.print_file_url ? (
+                        <CatalogDesignCard
+                          printFileUrl={d.print_file_url}
+                          fallbackUrl={d.thumbnail_url}
                           alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
-                          className="w-full h-full object-contain p-3 group-hover:scale-[1.02] transition-transform"
-                          loading="lazy"
                         />
                       ) : (
                         <ImageOff className="h-8 w-8 text-muted-foreground/40" />
