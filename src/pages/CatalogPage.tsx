@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import { CATEGORIES } from "@/lib/categories";
 import { ImageOff } from "lucide-react";
+import CatalogDesignCard from "@/components/CatalogDesignCard";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface CatalogDesignRow {
@@ -109,7 +110,6 @@ export default function CatalogPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
               {designs.map((d) => {
-                const img = d.thumbnail_url || d.print_file_url;
                 const catLabel = d.category ? CATEGORY_LABEL_BY_SLUG[d.category] ?? d.category : null;
                 return (
                   <button
@@ -118,12 +118,11 @@ export default function CatalogPage() {
                     className="group flex flex-col text-left rounded-xl border border-border bg-card overflow-hidden hover:border-primary/60 hover:shadow-sm transition-all"
                   >
                     <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
-                      {img ? (
-                        <img
-                          src={img}
+                      {d.print_file_url ? (
+                        <CatalogDesignCard
+                          printFileUrl={d.print_file_url}
+                          fallbackUrl={d.thumbnail_url}
                           alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
-                          className="w-full h-full object-contain p-3 group-hover:scale-[1.02] transition-transform"
-                          loading="lazy"
                         />
                       ) : (
                         <ImageOff className="h-8 w-8 text-muted-foreground/40" />
