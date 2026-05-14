@@ -20,7 +20,7 @@ import {
 } from "@/lib/catalog";
 import { calculatePrice } from "@/lib/pricing";
 import { CATEGORIES } from "@/lib/categories";
-import { compositeDesignOnProduct, CATALOG_PRINT_SCALE } from "@/lib/catalogCompositing";
+import { compositeDesignOnProduct, getCatalogPrintPlacementCoords } from "@/lib/catalogCompositing";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
 
 interface CatalogDesignRow {
@@ -138,15 +138,11 @@ export default function DesignDetailPage() {
     );
   }, [product, selectedColor]);
 
-  // Scale up the print on the live preview to match the off-screen mockup
-  // produced by compositeDesignOnProduct (both apply CATALOG_PRINT_SCALE).
+  // Keep the live preview matched to the off-screen catalog mockup: both use
+  // the same centered, capped print box inside the product's placement zone.
   const placementCoords: PlacementCoords = useMemo(() => {
     const zone = imageResult?.entry.placementZone ?? { x: 0.5, y: 0.42, scale: 0.35 };
-    return {
-      ...zone,
-      scale: (zone.scale ?? 1) * CATALOG_PRINT_SCALE,
-      scaleY: zone.scaleY != null ? zone.scaleY * CATALOG_PRINT_SCALE : undefined,
-    };
+    return getCatalogPrintPlacementCoords(zone);
   }, [imageResult]);
 
   const colorOptions = useMemo(() => {
