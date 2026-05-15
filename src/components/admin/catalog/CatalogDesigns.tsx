@@ -45,7 +45,7 @@ export default function CatalogDesigns() {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("catalog_designs")
-      .select("id, slug, title_ka, title_en, thumbnail_url, print_file_url, category, tags, is_published, is_featured, view_count, order_count, created_at")
+      .select("id, slug, title_ka, title_en, thumbnail_url, print_file_url, category, tags, is_published, is_featured, view_count, order_count, created_at, default_color")
       .order("created_at", { ascending: false });
     if (error) {
       toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
