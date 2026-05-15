@@ -37,7 +37,7 @@ export default function CatalogPage() {
     setLoading(true);
     let q = (supabase as any)
       .from("catalog_designs")
-      .select("id, slug, title_ka, thumbnail_url, print_file_url, category, created_at")
+      .select("id, slug, title_ka, thumbnail_url, print_file_url, category, created_at, default_color")
       .eq("is_published", true)
       .order("created_at", { ascending: false });
     if (activeCat !== ALL) q = q.eq("category", activeCat);
