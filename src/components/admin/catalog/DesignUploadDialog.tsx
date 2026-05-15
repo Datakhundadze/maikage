@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES } from "@/lib/categories";
 import { Upload } from "lucide-react";
 import { slugifyTitle, makeThumbnail, SLUG_RE } from "./designUploadHelpers";
+import MockupColorPicker from "./MockupColorPicker";
 
 interface Props {
   open: boolean;
@@ -39,6 +40,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [defaultProductId, setDefaultProductId] = useState<string>("");
+  const [mockupColor, setMockupColor] = useState<string>("White");
 
   // Object URL for the preview frame; revoked when the file changes or unmount.
   useEffect(() => {
@@ -107,6 +109,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const reset = () => {
     setTitle(""); setTitleEn(""); setSlug(""); setSlugDirty(false); setSlugTaken(false);
     setCategory("georgian"); setTags(""); setDescription(""); setFile(null);
+    setMockupColor("White");
   };
 
   const handleSubmit = async () => {
@@ -158,6 +161,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
         print_file_url: printUrl,
         thumbnail_url: thumbUrl,
         default_product_id: defaultProductId,
+        default_color: mockupColor,
         is_published: false,
       });
       if (insErr) throw insErr;
@@ -241,6 +245,12 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
                 <option key={c.slug} value={c.slug}>{c.label_ka}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>მაისურის ფერი (კატალოგში)</Label>
+            <MockupColorPicker value={mockupColor} onChange={setMockupColor} />
+            <p className="text-xs text-muted-foreground">კატალოგში დიზაინი ამ ფერის მაისურზე გამოჩნდება (default: White)</p>
           </div>
 
           <div className="space-y-1.5">

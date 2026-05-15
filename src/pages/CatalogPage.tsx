@@ -7,6 +7,14 @@ import { CATEGORIES } from "@/lib/categories";
 import { ImageOff } from "lucide-react";
 import CatalogDesignCard from "@/components/CatalogDesignCard";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
+import { COLORS } from "@/lib/catalog";
+
+// Map stored color (any case) to canonical COLORS.name; fallback "White".
+function normalizeColor(raw: string | null | undefined): string {
+  if (!raw) return "White";
+  const found = COLORS.find((c) => c.name.toLowerCase() === raw.toLowerCase());
+  return found?.name ?? "White";
+}
 
 interface CatalogDesignRow {
   id: string;
@@ -16,6 +24,7 @@ interface CatalogDesignRow {
   print_file_url: string;
   category: string | null;
   created_at: string;
+  default_color: string | null;
 }
 
 const ALL = "__all__";
@@ -36,7 +45,7 @@ export default function CatalogPage() {
     setLoading(true);
     let q = (supabase as any)
       .from("catalog_designs")
-      .select("id, slug, title_ka, thumbnail_url, print_file_url, category, created_at")
+      .select("id, slug, title_ka, thumbnail_url, print_file_url, category, created_at, default_color")
       .eq("is_published", true)
       .order("created_at", { ascending: false });
     if (activeCat !== ALL) q = q.eq("category", activeCat);
@@ -123,6 +132,7 @@ export default function CatalogPage() {
                           printFileUrl={d.print_file_url}
                           fallbackUrl={d.thumbnail_url}
                           alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
+                          color={normalizeColor(d.default_color)}
                         />
                       ) : (
                         <ImageOff className="h-8 w-8 text-muted-foreground/40" />

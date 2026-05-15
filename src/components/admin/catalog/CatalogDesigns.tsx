@@ -6,6 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Star, Trash2, Upload, Package } from "lucide-react";
 import DesignUploadDialog from "./DesignUploadDialog";
 import BulkDesignUploadDialog from "./BulkDesignUploadDialog";
+import MockupColorPicker from "./MockupColorPicker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { COLORS } from "@/lib/catalog";
 
 interface CatalogDesign {
   id: string;
@@ -21,6 +24,7 @@ interface CatalogDesign {
   view_count: number;
   order_count: number;
   created_at: string;
+  default_color: string | null;
 }
 
 const STATUS_FILTERS = ["all", "published", "draft", "featured"] as const;
@@ -41,7 +45,7 @@ export default function CatalogDesigns() {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("catalog_designs")
-      .select("id, slug, title_ka, title_en, thumbnail_url, print_file_url, category, tags, is_published, is_featured, view_count, order_count, created_at")
+      .select("id, slug, title_ka, title_en, thumbnail_url, print_file_url, category, tags, is_published, is_featured, view_count, order_count, created_at, default_color")
       .order("created_at", { ascending: false });
     if (error) {
       toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
@@ -118,6 +122,21 @@ export default function CatalogDesigns() {
     const { error } = await (supabase as any).from("catalog_designs").delete().eq("id", d.id);
     if (error) toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
     else load();
+  };
+
+  const updateMockupColor = async (d: CatalogDesign, color: string) => {
+    // Optimistic update
+    setDesigns((prev) => prev.map((x) => x.id === d.id ? { ...x, default_color: color } : x));
+    const { error } = await (supabase as any)
+      .from("catalog_designs")
+      .update({ default_color: color })
+      .eq("id", d.id);
+    if (error) {
+      toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
+      load();
+    } else {
+      toast({ title: "ფერი განახლდა", description: `${d.title_ka} → ${color}` });
+    }
   };
 
   return (
@@ -198,7 +217,20 @@ export default function CatalogDesigns() {
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${d.is_published ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
                     {d.is_published ? "live" : "draft"}
                   </span>
-                  <div className="flex gap-0.5">
+                  <div className="flex gap-0.5 items-center">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          title={`მაისურის ფერი: ${d.default_color || "White"}`}
+                          className="h-4 w-4 rounded-full border border-border hover:scale-110 transition-transform"
+                          style={{ backgroundColor: COLORS.find((c) => c.name.toLowerCase() === (d.default_color || "white").toLowerCase())?.hex ?? "#FFFFFF" }}
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2" align="end">
+                        <p className="text-xs font-medium mb-2">მაისურის ფერი</p>
+                        <MockupColorPicker value={d.default_color} onChange={(c) => updateMockupColor(d, c)} />
+                      </PopoverContent>
+                    </Popover>
                     <button onClick={() => toggleFeatured(d)} title="გამორჩეული" className="p-1 hover:bg-accent rounded">
                       <Star className={`h-3 w-3 ${d.is_featured ? "fill-amber-500 text-amber-500" : "text-muted-foreground"}`} />
                     </button>
