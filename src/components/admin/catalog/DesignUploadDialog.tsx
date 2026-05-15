@@ -109,6 +109,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const reset = () => {
     setTitle(""); setTitleEn(""); setSlug(""); setSlugDirty(false); setSlugTaken(false);
     setCategory("georgian"); setTags(""); setDescription(""); setFile(null);
+    setMockupColor("White");
   };
 
   const handleSubmit = async () => {
