@@ -33,3 +33,31 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Long-lived caching for static product assets. Files in /products/ and
+# /payment-logos/ are content-stable: a new design replaces a new path
+# rather than overwriting an existing one. /assets/ contains Vite's
+# build output with content-hashed filenames.
+#
+# Lovable hosting may serve via its own edge that ignores netlify.toml.
+# If headers don't apply in production, the only effect is shorter
+# browser-cache lifetime — no correctness issue.
+[[headers]]
+  for = "/products/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/payment-logos/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, stale-while-revalidate=86400"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.webp"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000, stale-while-revalidate=86400"

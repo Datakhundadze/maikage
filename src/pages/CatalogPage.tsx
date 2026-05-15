@@ -118,7 +118,7 @@ export default function CatalogPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {designs.map((d) => {
+              {designs.map((d, idx) => {
                 const catLabel = d.category ? CATEGORY_LABEL_BY_SLUG[d.category] ?? d.category : null;
                 return (
                   <button
@@ -133,6 +133,7 @@ export default function CatalogPage() {
                           fallbackUrl={d.thumbnail_url}
                           alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
                           color={normalizeColor(d.default_color)}
+                          priority={idx === 0}
                         />
                       ) : (
                         <ImageOff className="h-8 w-8 text-muted-foreground/40" />

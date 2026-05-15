@@ -114,7 +114,7 @@ export default function TryOnModal({ open, onClose, designImage }: TryOnModalPro
             >
               {personImage ? (
                 <div className="relative">
-                  <img src={personImage} alt="Person" className="w-full max-h-64 object-contain rounded-xl" />
+                  <img src={personImage} alt="Person" width={600} height={800} className="w-full max-h-64 object-contain rounded-xl" loading="eager" />
                   <button
                     className="absolute top-2 right-2 bg-black/60 rounded-full p-1 hover:bg-black/80 transition-colors"
                     onClick={(e) => { e.stopPropagation(); setPersonImage(null); setResultImage(null); }}
@@ -142,7 +142,7 @@ export default function TryOnModal({ open, onClose, designImage }: TryOnModalPro
           {/* Result */}
           {resultImage && (
             <div className="relative rounded-xl overflow-hidden border border-border">
-              <img src={resultImage} alt="Try-on result" className="w-full object-contain" />
+              <img src={resultImage} alt="Try-on result" width={800} height={1000} className="w-full object-contain" loading="eager" fetchPriority="high" />
               <div className="absolute top-2 right-2 flex gap-2">
                 <Button size="sm" variant="secondary" className="gap-1.5" onClick={downloadResult}>
                   <Download className="h-3.5 w-3.5" /> გადმოწერა

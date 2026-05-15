@@ -212,7 +212,15 @@ export default function ProductPreview({
             onSelect={layer.onSelect}
             zone={zone}
           >
-            <img src={layer.image} alt="Design" className="w-full h-full object-cover opacity-80" />
+            <img
+              src={layer.image}
+              alt="Design"
+              width={800}
+              height={800}
+              className="w-full h-full object-cover opacity-80"
+              loading="eager"
+              fetchPriority="high"
+            />
           </DraggablePlacement>
         ))}
 
@@ -227,7 +235,15 @@ export default function ProductPreview({
             zone={zone}
           >
             {designImage && (
-              <img src={designImage} alt={designAlt ?? "Design"} className="w-full h-full object-cover opacity-80" />
+              <img
+                src={designImage}
+                alt={designAlt ?? "Design"}
+                width={800}
+                height={800}
+                className="w-full h-full object-cover opacity-80"
+                loading="eager"
+                fetchPriority="high"
+              />
             )}
           </DraggablePlacement>
         )}

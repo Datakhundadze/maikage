@@ -66,8 +66,12 @@ export default function SportPage() {
                   key={src}
                   src={src}
                   alt={`სპორტული ფორმა ${i + 1}`}
+                  width={600}
+                  height={800}
                   className="absolute inset-0 w-full h-full object-contain p-2 transition-opacity duration-700 ease-in-out"
                   style={{ opacity: i === current ? 1 : 0 }}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  fetchPriority={i === 0 ? "high" : "auto"}
                 />
               ))}
             </div>

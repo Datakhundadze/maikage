@@ -387,15 +387,23 @@ export default function LandingPage() {
                 </button>
               </div>
 
-              {/* Auto-rotating photo slideshow */}
+              {/* Auto-rotating photo slideshow. Below the fold, but the
+                  first photo is the one initially visible; mark it eager
+                  so it's ready by the time the user scrolls. The rest
+                  are lazy since they're only revealed via the rotation
+                  interval. */}
               <div className="relative w-48 h-56 sm:w-56 sm:h-64 flex-shrink-0">
                 {SPORT_PHOTOS.map((src, i) => (
                   <img
                     key={src}
                     src={src}
                     alt="Sport Set"
+                    width={800}
+                    height={800}
                     className="absolute inset-0 w-full h-full object-contain rounded-2xl transition-opacity duration-700"
                     style={{ opacity: i === sportPhotoIdx ? 1 : 0 }}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    fetchPriority={i === 0 ? "low" : "auto"}
                   />
                 ))}
                 {/* Dot indicators */}
