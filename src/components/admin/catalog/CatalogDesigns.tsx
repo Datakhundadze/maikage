@@ -124,6 +124,21 @@ export default function CatalogDesigns() {
     else load();
   };
 
+  const updateMockupColor = async (d: CatalogDesign, color: string) => {
+    // Optimistic update
+    setDesigns((prev) => prev.map((x) => x.id === d.id ? { ...x, default_color: color } : x));
+    const { error } = await (supabase as any)
+      .from("catalog_designs")
+      .update({ default_color: color })
+      .eq("id", d.id);
+    if (error) {
+      toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
+      load();
+    } else {
+      toast({ title: "ფერი განახლდა", description: `${d.title_ka} → ${color}` });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
