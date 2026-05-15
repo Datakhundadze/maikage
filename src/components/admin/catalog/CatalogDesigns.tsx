@@ -6,6 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Star, Trash2, Upload, Package } from "lucide-react";
 import DesignUploadDialog from "./DesignUploadDialog";
 import BulkDesignUploadDialog from "./BulkDesignUploadDialog";
+import MockupColorPicker from "./MockupColorPicker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { COLORS } from "@/lib/catalog";
 
 interface CatalogDesign {
   id: string;
