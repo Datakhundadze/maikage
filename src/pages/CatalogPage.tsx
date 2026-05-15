@@ -124,6 +124,7 @@ export default function CatalogPage() {
                           printFileUrl={d.print_file_url}
                           fallbackUrl={d.thumbnail_url}
                           alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
+                          color={normalizeColor(d.default_color)}
                         />
                       ) : (
                         <ImageOff className="h-8 w-8 text-muted-foreground/40" />
