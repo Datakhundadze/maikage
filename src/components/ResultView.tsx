@@ -101,6 +101,8 @@ export default function ResultView({ result, onViewImage, productName = "design"
             <img
               src={result.mockupImage}
               alt=""
+              width={800}
+              height={800}
               className="w-full h-full object-cover blur-[50px] opacity-40 scale-110"
               aria-hidden="true"
               loading="lazy"
@@ -111,6 +113,8 @@ export default function ResultView({ result, onViewImage, productName = "design"
             <img
               src={result.mockupImage}
               alt="Mockup preview"
+              width={800}
+              height={800}
               className="max-h-[500px] object-contain rounded-lg"
               loading="eager"
               fetchPriority="high"
@@ -187,6 +191,8 @@ export default function ResultView({ result, onViewImage, productName = "design"
             <img
               src={result.transparentImage}
               alt="Print file"
+              width={800}
+              height={800}
               className="max-h-[300px] object-contain"
               loading="lazy"
             />

@@ -215,6 +215,8 @@ export default function ProductPreview({
             <img
               src={layer.image}
               alt="Design"
+              width={800}
+              height={800}
               className="w-full h-full object-cover opacity-80"
               loading="eager"
               fetchPriority="high"
@@ -236,6 +238,8 @@ export default function ProductPreview({
               <img
                 src={designImage}
                 alt={designAlt ?? "Design"}
+                width={800}
+                height={800}
                 className="w-full h-full object-cover opacity-80"
                 loading="eager"
                 fetchPriority="high"

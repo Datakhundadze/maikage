@@ -112,6 +112,8 @@ export default function CommunityPage() {
                           <img
                             src={getPublicUrl(d.mockup_image_path)}
                             alt={d.title}
+                            width={800}
+                            height={800}
                             className="w-full h-full object-contain"
                             loading={idx === 0 ? "eager" : "lazy"}
                             fetchPriority={idx === 0 ? "high" : "auto"}

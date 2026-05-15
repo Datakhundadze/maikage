@@ -85,6 +85,8 @@ function CartItemRow({
           <img
             src={item.frontMockupUrl}
             alt=""
+            width={80}
+            height={80}
             className="w-full h-full object-contain"
             loading="lazy"
           />

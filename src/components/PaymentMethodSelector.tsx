@@ -3,12 +3,15 @@ import { Label } from "@/components/ui/label";
 
 export type PaymentMethod = "bog" | "tbc";
 
-type CardLogo = { src: string; alt: string };
+// width/height match each PNG's intrinsic aspect (scaled-down) so the
+// browser reserves a stable box during image load → zero CLS as the
+// payment radio panel renders.
+type CardLogo = { src: string; alt: string; width: number; height: number };
 
-const CARD_VISA: CardLogo = { src: "/payment-logos/visa.png", alt: "Visa" };
-const CARD_MC: CardLogo = { src: "/payment-logos/mastercard.png", alt: "Mastercard" };
-const CARD_APPLE: CardLogo = { src: "/payment-logos/apple-pay.png", alt: "Apple Pay" };
-const CARD_GPAY: CardLogo = { src: "/payment-logos/google-pay.png", alt: "Google Pay" };
+const CARD_VISA: CardLogo = { src: "/payment-logos/visa.png", alt: "Visa", width: 192, height: 62 };
+const CARD_MC: CardLogo = { src: "/payment-logos/mastercard.png", alt: "Mastercard", width: 192, height: 149 };
+const CARD_APPLE: CardLogo = { src: "/payment-logos/apple-pay.png", alt: "Apple Pay", width: 32, height: 32 };
+const CARD_GPAY: CardLogo = { src: "/payment-logos/google-pay.png", alt: "Google Pay", width: 84, height: 86 };
 
 const METHODS: {
   value: PaymentMethod;
@@ -16,6 +19,8 @@ const METHODS: {
   desc: string;
   bankLogo: string;
   bankAlt: string;
+  bankLogoWidth: number;
+  bankLogoHeight: number;
   cards: CardLogo[];
 }[] = [
   {
@@ -24,6 +29,8 @@ const METHODS: {
     desc: "ბარათით გადახდა",
     bankLogo: "/payment-logos/bog.png",
     bankAlt: "Bank of Georgia",
+    bankLogoWidth: 77,
+    bankLogoHeight: 13,
     cards: [CARD_VISA, CARD_MC],
   },
   {
@@ -32,6 +39,8 @@ const METHODS: {
     desc: "ბარათით გადახდა",
     bankLogo: "/payment-logos/tbc.png",
     bankAlt: "TBC Bank",
+    bankLogoWidth: 128,
+    bankLogoHeight: 45,
     cards: [CARD_VISA, CARD_MC, CARD_APPLE, CARD_GPAY],
   },
 ];
@@ -63,6 +72,8 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
               <img
                 src={m.bankLogo}
                 alt={m.bankAlt}
+                width={m.bankLogoWidth}
+                height={m.bankLogoHeight}
                 className="h-7 md:h-8 w-auto object-contain shrink-0"
                 loading="lazy"
               />
@@ -76,6 +87,8 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
                     src={c.src}
                     alt={c.alt}
                     title={c.alt}
+                    width={c.width}
+                    height={c.height}
                     className="h-4 sm:h-5 w-auto object-contain shrink-0"
                     loading="lazy"
                   />

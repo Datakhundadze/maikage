@@ -398,6 +398,8 @@ export default function LandingPage() {
                     key={src}
                     src={src}
                     alt="Sport Set"
+                    width={800}
+                    height={800}
                     className="absolute inset-0 w-full h-full object-contain rounded-2xl transition-opacity duration-700"
                     style={{ opacity: i === sportPhotoIdx ? 1 : 0 }}
                     loading={i === 0 ? "eager" : "lazy"}

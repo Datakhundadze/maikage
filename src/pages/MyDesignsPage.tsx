@@ -132,6 +132,8 @@ export default function MyDesignsPage() {
                         <img
                           src={resolveImageUrl(d.mockup_image_path)!}
                           alt={d.title}
+                          width={800}
+                          height={800}
                           className="w-full h-full object-contain"
                           loading={idx === 0 ? "eager" : "lazy"}
                           fetchPriority={idx === 0 ? "high" : "auto"}
@@ -172,6 +174,8 @@ export default function MyDesignsPage() {
                           <img
                             src={imgUrl}
                             alt={g.prompt || "Generation"}
+                            width={800}
+                            height={800}
                             className="w-full h-full object-contain"
                             loading="lazy"
                           />

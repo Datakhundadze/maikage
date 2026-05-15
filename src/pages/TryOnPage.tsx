@@ -318,6 +318,8 @@ export default function TryOnPage() {
               <img
                 src={resultImage}
                 alt="გასინჯვის შედეგი"
+                width={800}
+                height={1000}
                 className="w-full object-contain"
                 loading="eager"
                 fetchPriority="high"
@@ -369,6 +371,8 @@ export default function TryOnPage() {
                       src={state.mockupImage}
                       alt=""
                       aria-hidden="true"
+                      width={800}
+                      height={800}
                       className="w-full h-full object-cover blur-[40px] opacity-40 scale-110"
                       loading="lazy"
                       fetchPriority="low"
@@ -378,6 +382,8 @@ export default function TryOnPage() {
                     <img
                       src={state.mockupImage}
                       alt="დიზაინი"
+                      width={800}
+                      height={800}
                       className="max-h-80 object-contain rounded-lg"
                       loading="eager"
                       fetchPriority="high"
@@ -410,6 +416,8 @@ export default function TryOnPage() {
                     <img
                       src={personImage}
                       alt="თქვენი ფოტო"
+                      width={600}
+                      height={800}
                       className="w-full max-h-80 object-contain rounded-xl"
                       loading="eager"
                     />

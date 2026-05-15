@@ -1020,6 +1020,8 @@ export default function SimplePage() {
                     <img
                       src={photo.image}
                       alt={`photo ${index + 1}`}
+                      width={64}
+                      height={64}
                       className="h-16 w-16 rounded-lg object-cover border border-border"
                       loading="lazy"
                     />
