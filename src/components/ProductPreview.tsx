@@ -186,10 +186,15 @@ export default function ProductPreview({
           </div>
         )}
 
-        {/* Placement zone outline: shows the printable area */}
+        {/* Placement zone outline: now a soft hint marking the initial
+            drop location for uploaded photos. The zone no longer
+            constrains where designs can go — customers are free to drag
+            and resize anywhere on the mockup, including onto sleeves
+            and edges. Subtler styling (thinner line, lower opacity) so
+            it reads as guidance rather than a boundary. */}
         {zone && (hasLayers || designImage) && (
           <div
-            className="absolute border-2 border-dashed border-muted-foreground/30 rounded-md pointer-events-none"
+            className="absolute border border-dashed border-muted-foreground/20 rounded-md pointer-events-none"
             style={zoneStyle}
           />
         )}
