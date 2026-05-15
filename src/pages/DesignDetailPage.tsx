@@ -116,7 +116,7 @@ export default function DesignDetailPage() {
           ? brandColors
           : (prod.colors ?? []).map((c) => c.name as ProductColor);
         const colorChoice =
-          (row.default_color && availableNames.find((n) => n === row.default_color)) ||
+          (row.default_color && availableNames.find((n) => n.toLowerCase() === row.default_color!.toLowerCase())) ||
           availableNames[0] ||
           "White";
         setSelectedColor(colorChoice);
