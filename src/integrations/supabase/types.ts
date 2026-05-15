@@ -427,6 +427,7 @@ export type Database = {
           delivery_address: string | null
           delivery_price: number
           delivery_type: string
+          design_state: Json | null
           email: string
           first_name: string
           front_mockup_url: string | null
@@ -457,6 +458,7 @@ export type Database = {
           delivery_address?: string | null
           delivery_price?: number
           delivery_type?: string
+          design_state?: Json | null
           email: string
           first_name: string
           front_mockup_url?: string | null
@@ -487,6 +489,7 @@ export type Database = {
           delivery_address?: string | null
           delivery_price?: number
           delivery_type?: string
+          design_state?: Json | null
           email?: string
           first_name?: string
           front_mockup_url?: string | null
