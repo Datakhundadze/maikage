@@ -217,7 +217,20 @@ export default function CatalogDesigns() {
                   <span className={`text-[10px] px-1.5 py-0.5 rounded ${d.is_published ? "bg-green-500/15 text-green-500" : "bg-muted text-muted-foreground"}`}>
                     {d.is_published ? "live" : "draft"}
                   </span>
-                  <div className="flex gap-0.5">
+                  <div className="flex gap-0.5 items-center">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          title={`მაისურის ფერი: ${d.default_color || "White"}`}
+                          className="h-4 w-4 rounded-full border border-border hover:scale-110 transition-transform"
+                          style={{ backgroundColor: COLORS.find((c) => c.name.toLowerCase() === (d.default_color || "white").toLowerCase())?.hex ?? "#FFFFFF" }}
+                        />
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2" align="end">
+                        <p className="text-xs font-medium mb-2">მაისურის ფერი</p>
+                        <MockupColorPicker value={d.default_color} onChange={(c) => updateMockupColor(d, c)} />
+                      </PopoverContent>
+                    </Popover>
                     <button onClick={() => toggleFeatured(d)} title="გამორჩეული" className="p-1 hover:bg-accent rounded">
                       <Star className={`h-3 w-3 ${d.is_featured ? "fill-amber-500 text-amber-500" : "text-muted-foreground"}`} />
                     </button>
