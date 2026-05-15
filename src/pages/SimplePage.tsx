@@ -292,10 +292,24 @@ function buildDesignStateInput(
   return { version: 1, front, back };
 }
 
-// Photo box always fills the full placement zone so the design occupies exactly
-// the dashed rectangle. Image inside uses cover-fit (center-crop) for non-matching
-// aspect ratios — preview matches export.
+// The empty placement frame uses zone-fill so a first-time upload lands
+// exactly where the dashed box sits. Subsequent uploads use a smaller box
+// offset from center so the customer can see each new photo distinctly
+// instead of having every upload completely cover the previous one
+// (which is what zone-fill defaults caused).
 const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.5, scale: 1, scaleY: 1 };
+
+// Stagger photos #2..#N at half size in a small diagonal so collisions are
+// visible. Customer is expected to drag/resize from there.
+function staggeredPhotoCoords(index: number): PlacementCoords {
+  const step = 0.08;
+  return {
+    x: Math.min(0.95, Math.max(0.05, 0.5 + (index - 1) * step)),
+    y: Math.min(0.95, Math.max(0.05, 0.5 + (index - 1) * step)),
+    scale: 0.5,
+    scaleY: 0.5,
+  };
+}
 
 const DEFAULT_SIDE: SideData = {
   photos: [],
@@ -362,9 +376,14 @@ export default function SimplePage() {
         const newPhoto: PhotoLayer = {
           id: `photo-${++photoIdCounter}`,
           image: result,
-          // Land at wherever the user dragged the empty placement frame
-          // (or zone-fill default if they never moved it).
-          coords: prev.photos.length === 0 ? { ...nextPhotoCoords } : { ...DEFAULT_PHOTO_COORDS },
+          // First photo: land at wherever the user dragged the empty
+          // placement frame (or zone-fill default if they never moved it).
+          // Subsequent photos: stagger at half-size so they don't cover
+          // each other completely.
+          coords:
+            prev.photos.length === 0
+              ? { ...nextPhotoCoords }
+              : staggeredPhotoCoords(prev.photos.length),
         };
         return { ...prev, photos: [...prev.photos, newPhoto] };
       });
