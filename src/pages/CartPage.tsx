@@ -14,6 +14,46 @@ import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentM
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import SeoHead from "@/components/SeoHead";
 
+// Mirror a cart item's originals into order-originals/{orderId}/ so the
+// admin's "ორიგინალი" download buttons (which list that folder) show up
+// for cart-based orders. Without this, cart orders never populate that
+// folder and admin can only see the rendered mockup.
+//
+// Best-effort: failures are logged but never abort the checkout. Runs
+// fire-and-forget so the payment redirect isn't gated on storage copies.
+async function mirrorCartItemOriginals(cartItemId: string, orderRowIds: string[]) {
+  try {
+    const { data, error } = await supabase.storage
+      .from("designs")
+      .list(`cart-items/${cartItemId}`, { limit: 100 });
+    if (error || !data) return;
+    const originals = data.filter((f) => f.name.includes("-original-"));
+    if (originals.length === 0) return;
+
+    await Promise.all(
+      orderRowIds.flatMap((orderId) =>
+        originals.map(async (file) => {
+          // Cart layout: "front-original-0.png" | "back-original-1.png".
+          // OrderDialog layout: "front-0.png" | "back-1.png". Rename
+          // during copy so admin's filter (name.startsWith("back")) and
+          // numbering stay consistent across both checkout paths.
+          const m = file.name.match(/^(front|back)-original-(\d+)\.(png|jpg|jpeg|webp)$/i);
+          if (!m) return;
+          const [, side, idx, ext] = m;
+          const from = `cart-items/${cartItemId}/${file.name}`;
+          const to = `order-originals/${orderId}/${side}-${idx}.${ext.toLowerCase()}`;
+          const { error: copyErr } = await supabase.storage.from("designs").copy(from, to);
+          if (copyErr) {
+            console.warn(`[cart-mirror] copy ${from} → ${to} failed:`, copyErr.message);
+          }
+        }),
+      ),
+    );
+  } catch (e) {
+    console.warn(`[cart-mirror] cart-item ${cartItemId} mirror failed:`, e);
+  }
+}
+
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
 
 const DELIVERY_PRICES: Record<DeliveryType, number> = {
@@ -171,6 +211,20 @@ export default function CartPage() {
 
       const { error } = await supabase.from("orders").insert(rows as any);
       if (error) throw error;
+
+      // Fire-and-forget: mirror each cart item's originals into
+      // order-originals/{orderId}/ so admin's photo download buttons work
+      // for cart orders. Don't await — the payment redirect shouldn't wait
+      // on storage copies, and admin polling will pick up the files when
+      // they appear.
+      void Promise.all(
+        items.map((item) => {
+          const matchingIds = rows
+            .filter((r) => r.front_mockup_url === item.frontMockupUrl)
+            .map((r) => r.id);
+          return mirrorCartItemOriginals(item.id, matchingIds);
+        }),
+      );
 
       // Best-effort: populate back_transparent_image_url for rows that have it.
       // If the column hasn't been added via migration yet, silently skip.
