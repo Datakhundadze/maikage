@@ -7,6 +7,14 @@ import { CATEGORIES } from "@/lib/categories";
 import { ImageOff } from "lucide-react";
 import CatalogDesignCard from "@/components/CatalogDesignCard";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
+import { COLORS } from "@/lib/catalog";
+
+// Map stored color (any case) to canonical COLORS.name; fallback "White".
+function normalizeColor(raw: string | null | undefined): string {
+  if (!raw) return "White";
+  const found = COLORS.find((c) => c.name.toLowerCase() === raw.toLowerCase());
+  return found?.name ?? "White";
+}
 
 interface CatalogDesignRow {
   id: string;
