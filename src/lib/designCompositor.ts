@@ -10,8 +10,11 @@ import type { DesignStateSide } from "@/lib/designState";
 // while this one reads from the persisted JSONB column. They share no
 // runtime, but the rendering math must stay in sync; see the test plan
 // in commit notes for parity verification steps.
+//
+// Output is sized to the full t-shirt canvas (4000×4000) — see
+// compositeDesignOnly's banner comment for the resolution decision.
 
-const DEFAULT_PRINT_SIZE = 3000;
+const DEFAULT_PRINT_SIZE = 4000;
 
 async function ensureFontReady(fontFamily: string): Promise<void> {
   if (typeof document === "undefined" || !document.fonts) return;
@@ -81,12 +84,12 @@ export async function compositePrintFileFromDesignState(
 
   if (hasText && side.text) await ensureFontReady(side.text.font);
 
+  // Print canvas = full mockup-canvas area (square, matches the 800×800
+  // source mockups) so a re-rendered design includes every layer the
+  // customer placed, including those outside the saved zone.
   const PRINT_SIZE = options.canvasWidth ?? DEFAULT_PRINT_SIZE;
-  // Match compositeDesignOnly's aspect computation: zone.height /
-  // zone.width is the aspect, and the canvas IS the zone.
-  const aspect = side.zone.width > 0 ? side.zone.height / side.zone.width : 1;
   const canvasW = PRINT_SIZE;
-  const canvasH = Math.round(PRINT_SIZE * aspect);
+  const canvasH = PRINT_SIZE;
 
   const canvas = document.createElement("canvas");
   canvas.width = canvasW;
@@ -94,16 +97,24 @@ export async function compositePrintFileFromDesignState(
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
+  // Zone in print-canvas pixels. design_state.zone is in canvas-fraction
+  // (x/y = center, width/height = size); reproject through the print
+  // canvas so photo.x/y/scale (zone-relative) map back to canvas pixels.
+  const printZoneW = canvasW * side.zone.width;
+  const printZoneH = canvasH * side.zone.height;
+  const printZoneX = canvasW * side.zone.x - printZoneW / 2;
+  const printZoneY = canvasH * side.zone.y - printZoneH / 2;
+
   // Photos in z_order ascending (matches upload order).
   const sortedPhotos = [...side.photos].sort((a, b) => a.z_order - b.z_order);
   for (const photo of sortedPhotos) {
     if (!photo.url) continue;
     try {
       const img = await loadImage(photo.url);
-      const boxW = canvasW * photo.scale;
-      const boxH = canvasH * photo.scaleY;
-      const boxX = canvasW * photo.x - boxW / 2;
-      const boxY = canvasH * photo.y - boxH / 2;
+      const boxW = printZoneW * photo.scale;
+      const boxH = printZoneH * photo.scaleY;
+      const boxX = printZoneX + printZoneW * photo.x - boxW / 2;
+      const boxY = printZoneY + printZoneH * photo.y - boxH / 2;
       const imgAspect = img.naturalWidth / img.naturalHeight;
       const boxAspect = boxH > 0 ? boxW / boxH : 1;
       let srcX = 0;
@@ -133,8 +144,8 @@ export async function compositePrintFileFromDesignState(
 
   if (hasText && side.text) {
     const t = side.text;
-    const tx = canvasW * t.x;
-    const ty = canvasH * t.y;
+    const tx = printZoneX + printZoneW * t.x;
+    const ty = printZoneY + printZoneH * t.y;
     const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
     const fontPx = Math.round(canvasW * 0.1);
     if (t.rotation) {
