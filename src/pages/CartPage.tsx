@@ -155,6 +155,7 @@ export default function CartPage() {
           prompt: item.prompt,
           size: item.size,
           cart_id: cartId,
+          design_state: item.designState,
         };
         return Array.from({ length: item.quantity }, () => ({
           id: crypto.randomUUID(),

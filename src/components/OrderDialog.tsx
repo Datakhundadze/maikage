@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 import type { PriceBreakdown } from "@/lib/pricing";
+import type { DesignState } from "@/lib/designState";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
@@ -43,6 +44,9 @@ interface OrderDialogProps {
   frontOriginalPhotos?: string[];
   backOriginalPhotos?: string[];
   prompt?: string | null;
+  /** Structured editor state — photos[].url is filled in after originals
+   *  upload completes. Null when there's nothing to render. */
+  designState?: DesignState | null;
   onBeforeOpen?: () => void;
   size?: string;
 }
@@ -73,17 +77,25 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
 
 // Upload full-resolution originals so admin can download the user's raw photos
 // (not the shrunken composite). Stored at a predictable path so admin can list them.
-async function uploadOriginalPhotos(photos: string[], orderId: string, side: "front" | "back"): Promise<void> {
-  await Promise.all(photos.map(async (dataUrl, i) => {
+// Returns the public URL for each photo in order (null entries for failures) so
+// the caller can wire them into design_state.
+async function uploadOriginalPhotos(photos: string[], orderId: string, side: "front" | "back"): Promise<(string | null)[]> {
+  return Promise.all(photos.map(async (dataUrl, i) => {
     try {
       const res = await fetch(dataUrl);
       const blob = await res.blob();
       const ext = blob.type === "image/jpeg" ? "jpg" : blob.type === "image/webp" ? "webp" : "png";
       const path = `order-originals/${orderId}/${side}-${i}.${ext}`;
       const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: blob.type, upsert: true });
-      if (error) console.error(`[OrderDialog] Upload original ${side}-${i} failed:`, error);
+      if (error) {
+        console.error(`[OrderDialog] Upload original ${side}-${i} failed:`, error);
+        return null;
+      }
+      const { data } = supabase.storage.from("designs").getPublicUrl(path);
+      return data.publicUrl;
     } catch (e) {
       console.error(`[OrderDialog] Upload original ${side}-${i} error:`, e);
+      return null;
     }
   }));
 }
@@ -113,7 +125,7 @@ async function uploadTryOnAssets(orderId: string): Promise<void> {
   }));
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, backTransparentImageDataUrl, frontOriginalPhotos, backOriginalPhotos, prompt, onBeforeOpen, size }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, backTransparentImageDataUrl, frontOriginalPhotos, backOriginalPhotos, prompt, designState, onBeforeOpen, size }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -163,15 +175,30 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       const orderId = crypto.randomUUID();
 
       // Upload mockup images and full-resolution originals in parallel
-      const [frontUrl, backUrl, transparentUrl, backTransparentUrl] = await Promise.all([
+      const [frontUrl, backUrl, transparentUrl, backTransparentUrl, frontOriginalUrls, backOriginalUrls] = await Promise.all([
         frontMockupDataUrl ? uploadMockupImage(frontMockupDataUrl, orderId, "front") : Promise.resolve(null),
         backMockupDataUrl ? uploadMockupImage(backMockupDataUrl, orderId, "back") : Promise.resolve(null),
         transparentImageDataUrl ? uploadMockupImage(transparentImageDataUrl, orderId, "transparent") : Promise.resolve(null),
         backTransparentImageDataUrl ? uploadMockupImage(backTransparentImageDataUrl, orderId, "transparent-back") : Promise.resolve(null),
-        frontOriginalPhotos?.length ? uploadOriginalPhotos(frontOriginalPhotos, orderId, "front") : Promise.resolve(),
-        backOriginalPhotos?.length ? uploadOriginalPhotos(backOriginalPhotos, orderId, "back") : Promise.resolve(),
+        frontOriginalPhotos?.length ? uploadOriginalPhotos(frontOriginalPhotos, orderId, "front") : Promise.resolve([] as (string | null)[]),
+        backOriginalPhotos?.length ? uploadOriginalPhotos(backOriginalPhotos, orderId, "back") : Promise.resolve([] as (string | null)[]),
         uploadTryOnAssets(orderId),
       ]);
+
+      // Merge upload URLs into design_state so admin can re-render. Photos
+      // with a failed upload land with url=null — the coords are still
+      // preserved so the customer can re-upload manually.
+      const finalDesignState: DesignState | null = designState
+        ? {
+            ...designState,
+            front: designState.front
+              ? { ...designState.front, photos: designState.front.photos.map((p, i) => ({ ...p, url: frontOriginalUrls[i] ?? null })) }
+              : null,
+            back: designState.back
+              ? { ...designState.back, photos: designState.back.photos.map((p, i) => ({ ...p, url: backOriginalUrls[i] ?? null })) }
+              : null,
+          }
+        : null;
 
       // 1. Insert order into database
       const { data: orderData, error } = await supabase.from("orders").insert({
@@ -198,6 +225,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         transparent_image_url: transparentUrl,
         prompt: prompt || null,
         size: size || null,
+        design_state: finalDesignState,
       } as any).select("id").single();
 
       if (error) throw error;

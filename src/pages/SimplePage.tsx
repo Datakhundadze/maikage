@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingBag } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
@@ -236,6 +237,59 @@ function buildTextPrompt(front: SideData, back: SideData): string | null {
   fmt("წინა მხარე", front);
   fmt("უკანა მხარე", back);
   return parts.length ? parts.join("\n\n") : null;
+}
+
+// Build the structured editor state for persistence. Photo URLs start as
+// null and are filled in by the order/cart submission flow once the
+// originals upload completes.
+function buildDesignStateInput(
+  frontData: SideData,
+  backData: SideData,
+  product: string,
+  subProduct: string,
+  color: string,
+): DesignState | null {
+  const buildSide = (s: SideData, view: "front" | "back"): DesignStateSide | null => {
+    if (s.photos.length === 0 && !s.designText.trim()) return null;
+    const resolvedSub = subProduct || catalog.getDefaultSubProduct(product as ProductType);
+    const imageResult = catalog.findImageForColor(product as ProductType, resolvedSub, color as ProductColor, view);
+    const zone = imageResult?.entry.placementZone;
+    return {
+      side: view,
+      photos: s.photos.map((p, i) => ({
+        url: null,
+        x: p.coords.x,
+        y: p.coords.y,
+        scale: p.coords.scale,
+        scaleY: p.coords.scaleY ?? p.coords.scale,
+        rotation: p.coords.rotation ?? 0,
+        z_order: i,
+      })),
+      text: s.designText.trim()
+        ? {
+            content: s.designText,
+            font: s.selectedFont.family,
+            fontName: s.selectedFont.name,
+            color: s.textColor,
+            x: s.textCoords.x,
+            y: s.textCoords.y,
+            scale: s.textCoords.scale,
+            scaleY: s.textCoords.scaleY ?? s.textCoords.scale,
+            rotation: s.textCoords.rotation ?? 0,
+          }
+        : null,
+      zone: {
+        x: zone?.x ?? 0.5,
+        y: zone?.y ?? 0.5,
+        width: zone?.scale ?? 1,
+        height: zone?.scaleY ?? zone?.scale ?? 1,
+      },
+    };
+  };
+  const front = buildSide(frontData, "front");
+  const back = buildSide(backData, "back");
+  if (!front && !back) return null;
+  return { version: 1, front, back };
 }
 
 // Photo box always fills the full placement zone so the design occupies exactly
@@ -1060,6 +1114,13 @@ export default function SimplePage() {
                         backOriginalPhotos: backData.photos.map(p => p.image),
                         prompt: buildTextPrompt(frontData, backData),
                         productPrice: breakdown.total,
+                        designState: buildDesignStateInput(
+                          frontData,
+                          backData,
+                          productConfig.config.product,
+                          productConfig.config.subProduct,
+                          productConfig.config.color,
+                        ),
                       });
                       toast({ title: "კალათაში დაემატა ✓" });
                     } catch (e: any) {
@@ -1100,6 +1161,13 @@ export default function SimplePage() {
                         backOriginalPhotos={backData.photos.map(p => p.image)}
                         size={productConfig.config.size}
                         prompt={buildTextPrompt(frontData, backData)}
+                        designState={buildDesignStateInput(
+                          frontData,
+                          backData,
+                          productConfig.config.product,
+                          productConfig.config.subProduct,
+                          productConfig.config.color,
+                        )}
                       >
                         <span className="hidden" />
                       </OrderDialog>

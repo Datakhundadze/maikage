@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { DesignState } from "@/lib/designState";
 
 export interface CartItem {
   id: string;
@@ -16,6 +17,9 @@ export interface CartItem {
   prompt: string | null;
   productPrice: number;
   quantity: number;
+  /** Structured editor state with upload URLs filled in. Null for legacy
+   *  cart items persisted before this field was added. */
+  designState: DesignState | null;
 }
 
 interface AddItemInput {
@@ -32,6 +36,7 @@ interface AddItemInput {
   backOriginalPhotos: string[];
   prompt: string | null;
   productPrice: number;
+  designState: DesignState | null;
 }
 
 interface CartContextType {
@@ -75,7 +80,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as CartItem[]) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Partial<CartItem>[];
+      // Items persisted before designState was added: default it to null
+      // so consumers don't have to guard against `undefined`.
+      return parsed.map((i) => ({ ...i, designState: i.designState ?? null } as CartItem));
     } catch {
       return [];
     }
@@ -111,16 +120,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
           : Promise.resolve(null),
       ]);
 
-      await Promise.all(
+      const frontOriginalUrls = await Promise.all(
         data.frontOriginalPhotos.map((url, i) =>
           uploadDataUrl(url, `${prefix}/front-original-${i}.png`),
         ),
       );
-      await Promise.all(
+      const backOriginalUrls = await Promise.all(
         data.backOriginalPhotos.map((url, i) =>
           uploadDataUrl(url, `${prefix}/back-original-${i}.png`),
         ),
       );
+
+      // Merge upload URLs into design_state so the order-row insert at
+      // checkout has the photo URLs already filled in.
+      const finalDesignState: DesignState | null = data.designState
+        ? {
+            ...data.designState,
+            front: data.designState.front
+              ? { ...data.designState.front, photos: data.designState.front.photos.map((p, i) => ({ ...p, url: frontOriginalUrls[i] ?? null })) }
+              : null,
+            back: data.designState.back
+              ? { ...data.designState.back, photos: data.designState.back.photos.map((p, i) => ({ ...p, url: backOriginalUrls[i] ?? null })) }
+              : null,
+          }
+        : null;
 
       const item: CartItem = {
         id: cartItemId,
@@ -137,6 +160,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         prompt: data.prompt,
         productPrice: data.productPrice,
         quantity: 1,
+        designState: finalDesignState,
       };
 
       setItems((prev) => [...prev, item]);

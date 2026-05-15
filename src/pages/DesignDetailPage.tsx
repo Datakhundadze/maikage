@@ -239,6 +239,7 @@ export default function DesignDetailPage() {
         backOriginalPhotos: [],
         prompt: design.title_ka,
         productPrice: priceBreakdown.total,
+        designState: null,
       });
       toast({ title: "კალათაში დაემატა ✓" });
     } catch (e: any) {
