@@ -700,9 +700,19 @@ export default function SimplePage() {
 
   // Composite design-only (photos + text on transparent background, no product)
   // Used as the "print file" saved alongside the full mockup.
-  // Output is cropped to the placement zone and rendered at high resolution
-  // so admin downloads are print-quality regardless of how small the zone is
-  // relative to the mockup canvas.
+  //
+  // Output is sized to the full mockup-canvas area (not the zone) so the
+  // print file contains every layer the customer placed, including ones
+  // that extend onto sleeves, hem, or beyond the dashed editor zone. The
+  // print shop is free to crop to the actual garment area at their end.
+  //
+  // Resolution: 4000 px on the longer side. The mockup source is always
+  // 800×800, so this is 5× linear scale ≈ 5x DPI on the source mockup.
+  // For a 33×33 cm t-shirt print area that's ~300 DPI — enough for DTG /
+  // sublimation print. The user's investigation suggested 5900×7080 for
+  // a 50×60 cm rectangular front at 300 DPI, but our mockup canvas is
+  // square and capping at 4000 keeps the data-URL size manageable while
+  // still well above print-quality at common print sizes.
   const compositeDesignOnly = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
     if (side.photos.length === 0 && !side.designText.trim()) return null;
     if (side.designText.trim()) await ensureFontReady(side.selectedFont.family);
@@ -712,16 +722,21 @@ export default function SimplePage() {
     const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, view);
     const zone = imageResult?.entry.placementZone;
 
-    // Canvas represents just the printable zone (cropped), scaled up for print quality.
-    const PRINT_SIZE = 3000;
-    const aspect = zone ? (zone.scaleY ?? zone.scale) / zone.scale : 1;
-    const canvasW = PRINT_SIZE;
-    const canvasH = Math.round(PRINT_SIZE * aspect);
+    const PRINT_MAX = 4000;
+    const canvasW = PRINT_MAX;
+    const canvasH = PRINT_MAX;
 
     const canvas = document.createElement("canvas");
     canvas.width = canvasW;
     canvas.height = canvasH;
     const ctx = canvas.getContext("2d")!;
+
+    // Zone in print-canvas pixels — used to map zone-relative photo coords
+    // to t-shirt-canvas positions, the same way compositeSide does.
+    const printZoneW = zone ? canvasW * zone.scale : canvasW;
+    const printZoneH = zone ? canvasH * (zone.scaleY ?? zone.scale) : canvasH;
+    const printZoneX = zone ? canvasW * zone.x - printZoneW / 2 : 0;
+    const printZoneY = zone ? canvasH * zone.y - printZoneH / 2 : 0;
 
     for (const photo of side.photos) {
       try {
@@ -732,10 +747,10 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        const boxW = canvasW * photo.coords.scale;
-        const boxH = canvasH * (photo.coords.scaleY ?? photo.coords.scale);
-        const boxX = canvasW * photo.coords.x - boxW / 2;
-        const boxY = canvasH * photo.coords.y - boxH / 2;
+        const boxW = printZoneW * photo.coords.scale;
+        const boxH = printZoneH * (photo.coords.scaleY ?? photo.coords.scale);
+        const boxX = printZoneX + printZoneW * photo.coords.x - boxW / 2;
+        const boxY = printZoneY + printZoneH * photo.coords.y - boxH / 2;
         // object-cover: fill the print area entirely, center-cropping the image.
         const imgAspect = img.naturalWidth / img.naturalHeight;
         const boxAspect = boxW / boxH;
@@ -766,12 +781,8 @@ export default function SimplePage() {
     {
       const tcX = side.textCoords.x;
       const tcY = side.textCoords.y;
-      const txDiag = canvasW * tcX;
-      const maxTextWidth = Math.min(
-        canvasW * 0.95,
-        txDiag * 2,
-        (canvasW - txDiag) * 2,
-      );
+      const txDiag = printZoneX + printZoneW * tcX;
+      const maxTextWidth = Math.min(canvasW * 0.95, txDiag * 2, (canvasW - txDiag) * 2);
       logCompositeEvent("compositeDesignOnly", {
         side: view,
         hasPhotos: side.photos.length > 0,
@@ -783,10 +794,12 @@ export default function SimplePage() {
         textCoordsY: tcY,
         selectedFont: side.selectedFont,
         textColor: side.textColor,
-        zoneX: 0,
-        zoneY: 0,
-        zoneW: canvasW,
-        zoneH: canvasH,
+        zoneX: printZoneX,
+        zoneY: printZoneY,
+        zoneW: printZoneW,
+        zoneH: printZoneH,
+        canvasW,
+        canvasH,
         maxTextWidth,
         fontFaceReady:
           typeof document !== "undefined" && document.fonts
@@ -798,12 +811,15 @@ export default function SimplePage() {
 
     if (side.designText.trim()) {
       const tc = side.textCoords;
-      const tx = canvasW * tc.x;
-      const ty = canvasH * tc.y;
-      // Center-aligned text: width must fit within canvas given its position,
-      // otherwise the side closer to the edge gets cropped on the print file.
+      const tx = printZoneX + printZoneW * tc.x;
+      const ty = printZoneY + printZoneH * tc.y;
+      // Center-aligned text: width must fit within the full print canvas
+      // given its position. The zone is no longer a hard boundary so the
+      // limit is the canvas edge, not the dashed-rectangle edge.
       const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
-      // Scale the text font size proportionally (was 80px on 800px = 10% of canvas width)
+      // Scale the text font size proportionally — 10% of canvas width
+      // gives ~400 px at PRINT_MAX=4000, the same relative size as the
+      // 80 px on the 800 px mockup.
       const fontPx = Math.round(canvasW * 0.1);
       const textRotation = tc.rotation ?? 0;
       let textMetrics: { overflow: boolean; fontSize: number; widest: number };
