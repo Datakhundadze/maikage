@@ -40,6 +40,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [defaultProductId, setDefaultProductId] = useState<string>("");
+  const [mockupColor, setMockupColor] = useState<string>("White");
 
   // Object URL for the preview frame; revoked when the file changes or unmount.
   useEffect(() => {
