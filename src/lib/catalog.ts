@@ -1,5 +1,7 @@
 // Product catalog types and data
 
+import { preferWebP } from "@/lib/webpSupport";
+
 export type ProductType =
   | "Hoodie" | "T-Shirt" | "Tote Bag" | "Cap" | "Apron" | "Phone Case" | "Mug" | "Sport";
 
@@ -520,21 +522,28 @@ class CatalogService {
     return this.lookupMap.get(`${type}|${subType}|${color}|${view}`);
   }
 
-  /** Find the image to display: exact color match (no colorization) or base image for tinting */
+  /** Find the image to display: exact color match (no colorization) or base image for tinting.
+   *  imageUrl is swapped to .webp on browsers that support it (see preferWebP)
+   *  so canvas-loaded mockups ship as 30-50× smaller files. The .png originals
+   *  remain at the same path as fallback for legacy clients. */
   findImageForColor(type: ProductType, subType: string, color: ProductColor, view: ProductView): { entry: CatalogEntry; isExact: boolean } | undefined {
+    const withWebPUrl = (entry: CatalogEntry): CatalogEntry => (
+      entry.imageUrl ? { ...entry, imageUrl: preferWebP(entry.imageUrl) } : entry
+    );
+
     // 1. Try exact color match — use as-is, no colorization needed
     const exact = this.lookupMap.get(`${type}|${subType}|${color}|${view}`);
-    if (exact?.imageUrl) return { entry: exact, isExact: true };
+    if (exact?.imageUrl) return { entry: withWebPUrl(exact), isExact: true };
 
     // 2. Try White base for colorization
     const white = this.lookupMap.get(`${type}|${subType}|White|${view}`);
-    if (white?.imageUrl) return { entry: white, isExact: false };
+    if (white?.imageUrl) return { entry: withWebPUrl(white), isExact: false };
 
     // 3. Fallback: any color with a real image
     const colors = this.getAvailableColors(type, subType);
     for (const c of colors) {
       const entry = this.lookupMap.get(`${type}|${subType}|${c}|${view}`);
-      if (entry?.imageUrl) return { entry, isExact: false };
+      if (entry?.imageUrl) return { entry: withWebPUrl(entry), isExact: false };
     }
     return undefined;
   }
