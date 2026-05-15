@@ -161,6 +161,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
         print_file_url: printUrl,
         thumbnail_url: thumbUrl,
         default_product_id: defaultProductId,
+        default_color: mockupColor,
         is_published: false,
       });
       if (insErr) throw insErr;
