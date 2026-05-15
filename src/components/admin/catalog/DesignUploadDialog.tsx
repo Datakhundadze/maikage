@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES } from "@/lib/categories";
 import { Upload } from "lucide-react";
 import { slugifyTitle, makeThumbnail, SLUG_RE } from "./designUploadHelpers";
+import MockupColorPicker from "./MockupColorPicker";
 
 interface Props {
   open: boolean;
