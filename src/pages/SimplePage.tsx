@@ -590,8 +590,20 @@ export default function SimplePage() {
           srcH = img.naturalWidth / boxAspect;
           srcY = (img.naturalHeight - srcH) / 2;
         }
+        // Live preview rotates the layer with CSS `transform: rotate()`
+        // around its center (DraggablePlacement). Mirror that here so the
+        // composited mockup matches what the customer sees.
+        const rotationDeg = photo.coords.rotation ?? 0;
         ctx.globalAlpha = 0.8;
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        if (rotationDeg) {
+          ctx.save();
+          ctx.translate(boxX + boxW / 2, boxY + boxH / 2);
+          ctx.rotate((rotationDeg * Math.PI) / 180);
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, -boxW / 2, -boxH / 2, boxW, boxH);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        }
         ctx.globalAlpha = 1;
       } catch { /* skip */ }
     }
@@ -638,7 +650,16 @@ export default function SimplePage() {
       const fromLeft = (tx - zoneX) * 2;
       const fromRight = (zoneX + zoneW - tx) * 2;
       const maxTextWidth = Math.min(zoneW * 0.95, fromLeft, fromRight);
-      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+      const textRotation = tc.rotation ?? 0;
+      if (textRotation) {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate((textRotation * Math.PI) / 180);
+        drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+        ctx.restore();
+      } else {
+        drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+      }
     }
 
     ctx.restore();
@@ -695,7 +716,18 @@ export default function SimplePage() {
           srcH = img.naturalWidth / boxAspect;
           srcY = (img.naturalHeight - srcH) / 2;
         }
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        // Match the live preview's CSS rotation (around the box center) so
+        // the print file reflects the customer's intended orientation.
+        const rotationDeg = photo.coords.rotation ?? 0;
+        if (rotationDeg) {
+          ctx.save();
+          ctx.translate(boxX + boxW / 2, boxY + boxH / 2);
+          ctx.rotate((rotationDeg * Math.PI) / 180);
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, -boxW / 2, -boxH / 2, boxW, boxH);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        }
       } catch { /* skip */ }
     }
 
@@ -742,7 +774,16 @@ export default function SimplePage() {
       const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
       // Scale the text font size proportionally (was 80px on 800px = 10% of canvas width)
       const fontPx = Math.round(canvasW * 0.1);
-      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+      const textRotation = tc.rotation ?? 0;
+      if (textRotation) {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate((textRotation * Math.PI) / 180);
+        drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+        ctx.restore();
+      } else {
+        drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+      }
     }
 
     return canvas.toDataURL("image/png");
