@@ -16,6 +16,7 @@ interface CatalogDesignRow {
   print_file_url: string;
   category: string | null;
   created_at: string;
+  default_color: string | null;
 }
 
 const ALL = "__all__";
