@@ -159,9 +159,9 @@ function drawMultilineText(
   fontFamily: string,
   color: string,
   maxFontSize: number,
-) {
+): { overflow: boolean; fontSize: number; widest: number } {
   const lines = text.split("\n").filter((l) => l.trim());
-  if (lines.length === 0) return;
+  if (lines.length === 0) return { overflow: false, fontSize: 0, widest: 0 };
 
   ctx.fillStyle = color;
   ctx.textAlign = "center";
@@ -189,7 +189,8 @@ function drawMultilineText(
     fontSize = Math.max(MIN_FONT_SIZE, fontSize * (maxWidth / widest));
     ctx.font = `bold ${fontSize}px ${fontFamily}`;
   }
-  if (fontSize <= MIN_FONT_SIZE && widest > maxWidth) {
+  const overflow = fontSize <= MIN_FONT_SIZE && widest > maxWidth;
+  if (overflow) {
     // At the floor and still too wide: fillText's maxWidth arg will squash
     // horizontally instead of clipping, so the user sees compressed text
     // rather than nothing. Surface a console warning for triage.
@@ -205,6 +206,7 @@ function drawMultilineText(
   for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], cx, startY + i * lineHeight, maxWidth);
   }
+  return { overflow, fontSize, widest };
 }
 
 interface PhotoLayer {
@@ -670,14 +672,26 @@ export default function SimplePage() {
       const fromRight = (zoneX + zoneW - tx) * 2;
       const maxTextWidth = Math.min(zoneW * 0.95, fromLeft, fromRight);
       const textRotation = tc.rotation ?? 0;
+      let textMetrics: { overflow: boolean; fontSize: number; widest: number };
       if (textRotation) {
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate((textRotation * Math.PI) / 180);
-        drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+        textMetrics = drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, 80);
         ctx.restore();
       } else {
-        drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+        textMetrics = drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+      }
+      if (textMetrics.overflow) {
+        logCompositeEvent("textOverflow", {
+          source: "compositeSide",
+          side: view,
+          textPreview: side.designText.slice(0, 60),
+          maxTextWidth,
+          fontSize: textMetrics.fontSize,
+          widest: textMetrics.widest,
+          fontFamily: side.selectedFont.family,
+        });
       }
     }
 
@@ -794,14 +808,26 @@ export default function SimplePage() {
       // Scale the text font size proportionally (was 80px on 800px = 10% of canvas width)
       const fontPx = Math.round(canvasW * 0.1);
       const textRotation = tc.rotation ?? 0;
+      let textMetrics: { overflow: boolean; fontSize: number; widest: number };
       if (textRotation) {
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate((textRotation * Math.PI) / 180);
-        drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+        textMetrics = drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
         ctx.restore();
       } else {
-        drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+        textMetrics = drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+      }
+      if (textMetrics.overflow) {
+        logCompositeEvent("textOverflow", {
+          source: "compositeDesignOnly",
+          side: view,
+          textPreview: side.designText.slice(0, 60),
+          maxTextWidth,
+          fontSize: textMetrics.fontSize,
+          widest: textMetrics.widest,
+          fontFamily: side.selectedFont.family,
+        });
       }
     }
 
