@@ -248,6 +248,12 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
           </div>
 
           <div className="space-y-1.5">
+            <Label>მაისურის ფერი (კატალოგში)</Label>
+            <MockupColorPicker value={mockupColor} onChange={setMockupColor} />
+            <p className="text-xs text-muted-foreground">კატალოგში დიზაინი ამ ფერის მაისურზე გამოჩნდება (default: White)</p>
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="cat-tags">ტეგები (მძიმეებით)</Label>
             <Input id="cat-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="football, georgia" />
           </div>
