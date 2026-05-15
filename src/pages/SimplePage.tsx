@@ -571,20 +571,17 @@ export default function SimplePage() {
        ctx.fillRect(0, 0, 800, 800);
      }
 
-    // Clip drawing to the placement zone so design never overflows the product
+    // Zone geometry (in canvas pixels) — still used for positioning photos
+    // since coords are zone-relative, but no longer used to clip drawing.
+    // Customers can now drag layers anywhere on the t-shirt (sleeves,
+    // hem, etc.) and the mockup reflects exactly what they placed.
     const zoneW = zone ? 800 * zone.scale : 800;
     const zoneH = zone ? 800 * (zone.scaleY ?? zone.scale) : 800;
     const zoneX = zone ? 800 * zone.x - zoneW / 2 : 0;
     const zoneY = zone ? 800 * zone.y - zoneH / 2 : 0;
 
-    ctx.save();
-    if (zone) {
-      ctx.beginPath();
-      ctx.rect(zoneX, zoneY, zoneW, zoneH);
-      ctx.clip();
-    }
-
-    // Draw photo layers (constrained within placement zone)
+    // Draw photo layers (positioned via zone offset; clipping removed —
+    // off-zone parts are visible on the mockup, matching the live preview).
     for (const photo of side.photos) {
       try {
         const img = new Image();
@@ -637,9 +634,9 @@ export default function SimplePage() {
       const tcX = side.textCoords.x;
       const tcY = side.textCoords.y;
       const txDiag = zoneX + zoneW * tcX;
-      const fromLeftDiag = (txDiag - zoneX) * 2;
-      const fromRightDiag = (zoneX + zoneW - txDiag) * 2;
-      const maxTextWidth = Math.min(zoneW * 0.95, fromLeftDiag, fromRightDiag);
+      // Text width is now canvas-bounded, not zone-bounded — must match
+      // the drawing logic below or the telemetry value is misleading.
+      const maxTextWidth = Math.min(800 * 0.95, txDiag * 2, (800 - txDiag) * 2);
       logCompositeEvent("compositeSide", {
         side: view,
         hasPhotos: side.photos.length > 0,
@@ -661,16 +658,19 @@ export default function SimplePage() {
       });
     }
 
-    // Draw text (multiline, constrained to zone width)
+    // Draw text (multiline, constrained by the full canvas now that the
+    // zone is no longer a hard boundary — long text can flow beyond the
+    // dashed editor zone onto the t-shirt's sleeves / hem).
     if (side.designText.trim()) {
       const tc = side.textCoords;
       const tx = zoneX + zoneW * tc.x;
       const ty = zoneY + zoneH * tc.y;
-      // Center-aligned text: width must fit within the canvas/zone given its
-      // position, otherwise the side closer to the edge gets cropped.
-      const fromLeft = (tx - zoneX) * 2;
-      const fromRight = (zoneX + zoneW - tx) * 2;
-      const maxTextWidth = Math.min(zoneW * 0.95, fromLeft, fromRight);
+      // Center-aligned text: width must fit within the canvas given its
+      // position; the side closer to the edge still bounds maxWidth so
+      // text doesn't run off the mockup entirely.
+      const fromLeft = tx * 2;
+      const fromRight = (800 - tx) * 2;
+      const maxTextWidth = Math.min(800 * 0.95, fromLeft, fromRight);
       const textRotation = tc.rotation ?? 0;
       let textMetrics: { overflow: boolean; fontSize: number; widest: number };
       if (textRotation) {
@@ -694,8 +694,6 @@ export default function SimplePage() {
         });
       }
     }
-
-    ctx.restore();
 
     return canvas.toDataURL("image/png");
   }, [productConfig]);
