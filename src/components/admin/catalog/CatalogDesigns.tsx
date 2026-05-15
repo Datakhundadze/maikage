@@ -24,6 +24,7 @@ interface CatalogDesign {
   view_count: number;
   order_count: number;
   created_at: string;
+  default_color: string | null;
 }
 
 const STATUS_FILTERS = ["all", "published", "draft", "featured"] as const;
