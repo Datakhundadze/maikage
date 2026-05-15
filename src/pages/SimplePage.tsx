@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingBag } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
@@ -158,9 +159,9 @@ function drawMultilineText(
   fontFamily: string,
   color: string,
   maxFontSize: number,
-) {
+): { overflow: boolean; fontSize: number; widest: number } {
   const lines = text.split("\n").filter((l) => l.trim());
-  if (lines.length === 0) return;
+  if (lines.length === 0) return { overflow: false, fontSize: 0, widest: 0 };
 
   ctx.fillStyle = color;
   ctx.textAlign = "center";
@@ -188,7 +189,8 @@ function drawMultilineText(
     fontSize = Math.max(MIN_FONT_SIZE, fontSize * (maxWidth / widest));
     ctx.font = `bold ${fontSize}px ${fontFamily}`;
   }
-  if (fontSize <= MIN_FONT_SIZE && widest > maxWidth) {
+  const overflow = fontSize <= MIN_FONT_SIZE && widest > maxWidth;
+  if (overflow) {
     // At the floor and still too wide: fillText's maxWidth arg will squash
     // horizontally instead of clipping, so the user sees compressed text
     // rather than nothing. Surface a console warning for triage.
@@ -204,6 +206,7 @@ function drawMultilineText(
   for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], cx, startY + i * lineHeight, maxWidth);
   }
+  return { overflow, fontSize, widest };
 }
 
 interface PhotoLayer {
@@ -238,10 +241,77 @@ function buildTextPrompt(front: SideData, back: SideData): string | null {
   return parts.length ? parts.join("\n\n") : null;
 }
 
-// Photo box always fills the full placement zone so the design occupies exactly
-// the dashed rectangle. Image inside uses cover-fit (center-crop) for non-matching
-// aspect ratios — preview matches export.
+// Build the structured editor state for persistence. Photo URLs start as
+// null and are filled in by the order/cart submission flow once the
+// originals upload completes.
+function buildDesignStateInput(
+  frontData: SideData,
+  backData: SideData,
+  product: string,
+  subProduct: string,
+  color: string,
+): DesignState | null {
+  const buildSide = (s: SideData, view: "front" | "back"): DesignStateSide | null => {
+    if (s.photos.length === 0 && !s.designText.trim()) return null;
+    const resolvedSub = subProduct || catalog.getDefaultSubProduct(product as ProductType);
+    const imageResult = catalog.findImageForColor(product as ProductType, resolvedSub, color as ProductColor, view);
+    const zone = imageResult?.entry.placementZone;
+    return {
+      side: view,
+      photos: s.photos.map((p, i) => ({
+        url: null,
+        x: p.coords.x,
+        y: p.coords.y,
+        scale: p.coords.scale,
+        scaleY: p.coords.scaleY ?? p.coords.scale,
+        rotation: p.coords.rotation ?? 0,
+        z_order: i,
+      })),
+      text: s.designText.trim()
+        ? {
+            content: s.designText,
+            font: s.selectedFont.family,
+            fontName: s.selectedFont.name,
+            color: s.textColor,
+            x: s.textCoords.x,
+            y: s.textCoords.y,
+            scale: s.textCoords.scale,
+            scaleY: s.textCoords.scaleY ?? s.textCoords.scale,
+            rotation: s.textCoords.rotation ?? 0,
+          }
+        : null,
+      zone: {
+        x: zone?.x ?? 0.5,
+        y: zone?.y ?? 0.5,
+        width: zone?.scale ?? 1,
+        height: zone?.scaleY ?? zone?.scale ?? 1,
+      },
+    };
+  };
+  const front = buildSide(frontData, "front");
+  const back = buildSide(backData, "back");
+  if (!front && !back) return null;
+  return { version: 1, front, back };
+}
+
+// The empty placement frame uses zone-fill so a first-time upload lands
+// exactly where the dashed box sits. Subsequent uploads use a smaller box
+// offset from center so the customer can see each new photo distinctly
+// instead of having every upload completely cover the previous one
+// (which is what zone-fill defaults caused).
 const DEFAULT_PHOTO_COORDS: PlacementCoords = { x: 0.5, y: 0.5, scale: 1, scaleY: 1 };
+
+// Stagger photos #2..#N at half size in a small diagonal so collisions are
+// visible. Customer is expected to drag/resize from there.
+function staggeredPhotoCoords(index: number): PlacementCoords {
+  const step = 0.08;
+  return {
+    x: Math.min(0.95, Math.max(0.05, 0.5 + (index - 1) * step)),
+    y: Math.min(0.95, Math.max(0.05, 0.5 + (index - 1) * step)),
+    scale: 0.5,
+    scaleY: 0.5,
+  };
+}
 
 const DEFAULT_SIDE: SideData = {
   photos: [],
@@ -308,9 +378,14 @@ export default function SimplePage() {
         const newPhoto: PhotoLayer = {
           id: `photo-${++photoIdCounter}`,
           image: result,
-          // Land at wherever the user dragged the empty placement frame
-          // (or zone-fill default if they never moved it).
-          coords: prev.photos.length === 0 ? { ...nextPhotoCoords } : { ...DEFAULT_PHOTO_COORDS },
+          // First photo: land at wherever the user dragged the empty
+          // placement frame (or zone-fill default if they never moved it).
+          // Subsequent photos: stagger at half-size so they don't cover
+          // each other completely.
+          coords:
+            prev.photos.length === 0
+              ? { ...nextPhotoCoords }
+              : staggeredPhotoCoords(prev.photos.length),
         };
         return { ...prev, photos: [...prev.photos, newPhoto] };
       });
@@ -536,8 +611,20 @@ export default function SimplePage() {
           srcH = img.naturalWidth / boxAspect;
           srcY = (img.naturalHeight - srcH) / 2;
         }
+        // Live preview rotates the layer with CSS `transform: rotate()`
+        // around its center (DraggablePlacement). Mirror that here so the
+        // composited mockup matches what the customer sees.
+        const rotationDeg = photo.coords.rotation ?? 0;
         ctx.globalAlpha = 0.8;
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        if (rotationDeg) {
+          ctx.save();
+          ctx.translate(boxX + boxW / 2, boxY + boxH / 2);
+          ctx.rotate((rotationDeg * Math.PI) / 180);
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, -boxW / 2, -boxH / 2, boxW, boxH);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        }
         ctx.globalAlpha = 1;
       } catch { /* skip */ }
     }
@@ -584,7 +671,28 @@ export default function SimplePage() {
       const fromLeft = (tx - zoneX) * 2;
       const fromRight = (zoneX + zoneW - tx) * 2;
       const maxTextWidth = Math.min(zoneW * 0.95, fromLeft, fromRight);
-      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+      const textRotation = tc.rotation ?? 0;
+      let textMetrics: { overflow: boolean; fontSize: number; widest: number };
+      if (textRotation) {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate((textRotation * Math.PI) / 180);
+        textMetrics = drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+        ctx.restore();
+      } else {
+        textMetrics = drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+      }
+      if (textMetrics.overflow) {
+        logCompositeEvent("textOverflow", {
+          source: "compositeSide",
+          side: view,
+          textPreview: side.designText.slice(0, 60),
+          maxTextWidth,
+          fontSize: textMetrics.fontSize,
+          widest: textMetrics.widest,
+          fontFamily: side.selectedFont.family,
+        });
+      }
     }
 
     ctx.restore();
@@ -641,7 +749,18 @@ export default function SimplePage() {
           srcH = img.naturalWidth / boxAspect;
           srcY = (img.naturalHeight - srcH) / 2;
         }
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        // Match the live preview's CSS rotation (around the box center) so
+        // the print file reflects the customer's intended orientation.
+        const rotationDeg = photo.coords.rotation ?? 0;
+        if (rotationDeg) {
+          ctx.save();
+          ctx.translate(boxX + boxW / 2, boxY + boxH / 2);
+          ctx.rotate((rotationDeg * Math.PI) / 180);
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, -boxW / 2, -boxH / 2, boxW, boxH);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        }
       } catch { /* skip */ }
     }
 
@@ -688,7 +807,28 @@ export default function SimplePage() {
       const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
       // Scale the text font size proportionally (was 80px on 800px = 10% of canvas width)
       const fontPx = Math.round(canvasW * 0.1);
-      drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+      const textRotation = tc.rotation ?? 0;
+      let textMetrics: { overflow: boolean; fontSize: number; widest: number };
+      if (textRotation) {
+        ctx.save();
+        ctx.translate(tx, ty);
+        ctx.rotate((textRotation * Math.PI) / 180);
+        textMetrics = drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+        ctx.restore();
+      } else {
+        textMetrics = drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+      }
+      if (textMetrics.overflow) {
+        logCompositeEvent("textOverflow", {
+          source: "compositeDesignOnly",
+          side: view,
+          textPreview: side.designText.slice(0, 60),
+          maxTextWidth,
+          fontSize: textMetrics.fontSize,
+          widest: textMetrics.widest,
+          fontFamily: side.selectedFont.family,
+        });
+      }
     }
 
     return canvas.toDataURL("image/png");
@@ -1060,6 +1200,13 @@ export default function SimplePage() {
                         backOriginalPhotos: backData.photos.map(p => p.image),
                         prompt: buildTextPrompt(frontData, backData),
                         productPrice: breakdown.total,
+                        designState: buildDesignStateInput(
+                          frontData,
+                          backData,
+                          productConfig.config.product,
+                          productConfig.config.subProduct,
+                          productConfig.config.color,
+                        ),
                       });
                       toast({ title: "კალათაში დაემატა ✓" });
                     } catch (e: any) {
@@ -1100,6 +1247,13 @@ export default function SimplePage() {
                         backOriginalPhotos={backData.photos.map(p => p.image)}
                         size={productConfig.config.size}
                         prompt={buildTextPrompt(frontData, backData)}
+                        designState={buildDesignStateInput(
+                          frontData,
+                          backData,
+                          productConfig.config.product,
+                          productConfig.config.subProduct,
+                          productConfig.config.color,
+                        )}
                       >
                         <span className="hidden" />
                       </OrderDialog>

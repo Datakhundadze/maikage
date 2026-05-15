@@ -421,6 +421,7 @@ function StudioContent() {
                           backOriginalPhotos: [],
                           prompt: result?.prompt || null,
                           productPrice: priceBreakdown.total,
+                          designState: null,
                         });
                         toast({ title: "კალათაში დაემატა ✓" });
                       } catch (e: any) {

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { DesignState } from "@/lib/designState";
+import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
 
 export interface CartItem {
   id: string;
@@ -16,6 +18,9 @@ export interface CartItem {
   prompt: string | null;
   productPrice: number;
   quantity: number;
+  /** Structured editor state with upload URLs filled in. Null for legacy
+   *  cart items persisted before this field was added. */
+  designState: DesignState | null;
 }
 
 interface AddItemInput {
@@ -32,6 +37,7 @@ interface AddItemInput {
   backOriginalPhotos: string[];
   prompt: string | null;
   productPrice: number;
+  designState: DesignState | null;
 }
 
 interface CartContextType {
@@ -49,24 +55,24 @@ const CartContext = createContext<CartContextType | null>(null);
 
 const STORAGE_KEY = "maika-cart-v1";
 
-async function uploadDataUrl(
-  dataUrl: string,
-  path: string,
-): Promise<string | null> {
+// Required uploads (mockup, transparent print file): throw on persistent
+// failure so the cart-add can surface a toast instead of silently
+// adding a broken cart item.
+async function uploadDataUrl(dataUrl: string, path: string): Promise<string> {
+  const blob = await dataUrlToBlob(dataUrl);
+  const { publicUrl } = await uploadBlobWithRetry("designs", path, blob);
+  return publicUrl;
+}
+
+// Best-effort uploads (original full-resolution photos). The cart still
+// goes through if these fail since the admin can recover from the
+// rendered mockup. Returns null on failure so the caller can record it
+// in design_state.
+async function uploadOriginalDataUrl(dataUrl: string, path: string): Promise<string | null> {
   try {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    const { error } = await supabase.storage
-      .from("designs")
-      .upload(path, blob, { contentType: blob.type || "image/png", upsert: true });
-    if (error) {
-      console.error(`[useCart] upload ${path} failed:`, error);
-      return null;
-    }
-    const { data } = supabase.storage.from("designs").getPublicUrl(path);
-    return data.publicUrl;
+    return await uploadDataUrl(dataUrl, path);
   } catch (e) {
-    console.error(`[useCart] upload ${path} error:`, e);
+    console.error(`[useCart] best-effort original upload ${path} failed:`, e);
     return null;
   }
 }
@@ -75,7 +81,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as CartItem[]) : [];
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Partial<CartItem>[];
+      // Items persisted before designState was added: default it to null
+      // so consumers don't have to guard against `undefined`.
+      return parsed.map((i) => ({ ...i, designState: i.designState ?? null } as CartItem));
     } catch {
       return [];
     }
@@ -111,16 +121,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
           : Promise.resolve(null),
       ]);
 
-      await Promise.all(
+      const frontOriginalUrls = await Promise.all(
         data.frontOriginalPhotos.map((url, i) =>
-          uploadDataUrl(url, `${prefix}/front-original-${i}.png`),
+          uploadOriginalDataUrl(url, `${prefix}/front-original-${i}.png`),
         ),
       );
-      await Promise.all(
+      const backOriginalUrls = await Promise.all(
         data.backOriginalPhotos.map((url, i) =>
-          uploadDataUrl(url, `${prefix}/back-original-${i}.png`),
+          uploadOriginalDataUrl(url, `${prefix}/back-original-${i}.png`),
         ),
       );
+
+      // Merge upload URLs into design_state so the order-row insert at
+      // checkout has the photo URLs already filled in.
+      const finalDesignState: DesignState | null = data.designState
+        ? {
+            ...data.designState,
+            front: data.designState.front
+              ? { ...data.designState.front, photos: data.designState.front.photos.map((p, i) => ({ ...p, url: frontOriginalUrls[i] ?? null })) }
+              : null,
+            back: data.designState.back
+              ? { ...data.designState.back, photos: data.designState.back.photos.map((p, i) => ({ ...p, url: backOriginalUrls[i] ?? null })) }
+              : null,
+          }
+        : null;
 
       const item: CartItem = {
         id: cartItemId,
@@ -137,6 +161,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         prompt: data.prompt,
         productPrice: data.productPrice,
         quantity: 1,
+        designState: finalDesignState,
       };
 
       setItems((prev) => [...prev, item]);

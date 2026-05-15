@@ -13,6 +13,47 @@ import AppHeader from "@/components/AppHeader";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import SeoHead from "@/components/SeoHead";
+import { submitOrder } from "@/lib/orderSubmission";
+
+// Mirror a cart item's originals into order-originals/{orderId}/ so the
+// admin's "ორიგინალი" download buttons (which list that folder) show up
+// for cart-based orders. Without this, cart orders never populate that
+// folder and admin can only see the rendered mockup.
+//
+// Best-effort: failures are logged but never abort the checkout. Runs
+// fire-and-forget so the payment redirect isn't gated on storage copies.
+async function mirrorCartItemOriginals(cartItemId: string, orderRowIds: string[]) {
+  try {
+    const { data, error } = await supabase.storage
+      .from("designs")
+      .list(`cart-items/${cartItemId}`, { limit: 100 });
+    if (error || !data) return;
+    const originals = data.filter((f) => f.name.includes("-original-"));
+    if (originals.length === 0) return;
+
+    await Promise.all(
+      orderRowIds.flatMap((orderId) =>
+        originals.map(async (file) => {
+          // Cart layout: "front-original-0.png" | "back-original-1.png".
+          // OrderDialog layout: "front-0.png" | "back-1.png". Rename
+          // during copy so admin's filter (name.startsWith("back")) and
+          // numbering stay consistent across both checkout paths.
+          const m = file.name.match(/^(front|back)-original-(\d+)\.(png|jpg|jpeg|webp)$/i);
+          if (!m) return;
+          const [, side, idx, ext] = m;
+          const from = `cart-items/${cartItemId}/${file.name}`;
+          const to = `order-originals/${orderId}/${side}-${idx}.${ext.toLowerCase()}`;
+          const { error: copyErr } = await supabase.storage.from("designs").copy(from, to);
+          if (copyErr) {
+            console.warn(`[cart-mirror] copy ${from} → ${to} failed:`, copyErr.message);
+          }
+        }),
+      ),
+    );
+  } catch (e) {
+    console.warn(`[cart-mirror] cart-item ${cartItemId} mirror failed:`, e);
+  }
+}
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
 
@@ -155,6 +196,7 @@ export default function CartPage() {
           prompt: item.prompt,
           size: item.size,
           cart_id: cartId,
+          design_state: item.designState,
         };
         return Array.from({ length: item.quantity }, () => ({
           id: crypto.randomUUID(),
@@ -168,64 +210,47 @@ export default function CartPage() {
         rows[0].total_price = rows[0].product_price + deliveryPrice;
       }
 
-      const { error } = await supabase.from("orders").insert(rows as any);
-      if (error) throw error;
-
-      // Best-effort: populate back_transparent_image_url for rows that have it.
-      // If the column hasn't been added via migration yet, silently skip.
-      for (const item of items) {
-        if (item.backTransparentImageUrl) {
-          const matchingIds = rows
-            .filter(r => r.front_mockup_url === item.frontMockupUrl)
-            .map(r => r.id);
-          await supabase
-            .from("orders")
-            .update({ back_transparent_image_url: item.backTransparentImageUrl } as any)
-            .in("id", matchingIds)
-            .then(({ error: e }) => { if (e) console.warn("[Cart] back_transparent_image_url skipped:", e.message); });
-        }
-      }
-
       const firstOrderId = rows[0].id;
       const description =
         items.length === 1
           ? `${items[0].product} - ${items[0].subProduct || ""} (${items[0].color})`
           : `Cart: ${rows.length} items`;
 
-      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-flitt";
-      const paymentRes = await supabase.functions.invoke(payFn, {
-        body: {
-          orderId: firstOrderId,
-          amount: totalWithDelivery,
-          description,
-          cartId,
-        },
+      const backTransparentBackfill = items
+        .filter((i) => i.backTransparentImageUrl)
+        .map((item) => ({
+          orderIds: rows.filter((r) => r.front_mockup_url === item.frontMockupUrl).map((r) => r.id),
+          url: item.backTransparentImageUrl as string,
+        }));
+
+      const redirectUrl = await submitOrder({
+        rows,
+        paymentOrderId: firstOrderId,
+        amount: totalWithDelivery,
+        description,
+        paymentMethod,
+        cartId,
+        backTransparentBackfill,
       });
 
-      if (paymentRes.error) {
-        let detail = paymentRes.error.message || "Payment creation failed";
-        const ctx = (paymentRes.error as any).context;
-        if (ctx && typeof ctx.json === "function") {
-          try {
-            const body = await ctx.json();
-            if (body?.error) detail = typeof body.error === "string" ? body.error : JSON.stringify(body.error);
-          } catch {
-            try {
-              const text = await ctx.text();
-              if (text) detail = text;
-            } catch {}
-          }
-        }
-        throw new Error(detail);
-      }
-
-      const { redirect_url } = paymentRes.data as { redirect_url: string };
-      if (!redirect_url) throw new Error("No redirect URL received from payment provider");
+      // Fire-and-forget: mirror each cart item's originals into
+      // order-originals/{orderId}/ so admin's photo download buttons work
+      // for cart orders. Don't await — the payment redirect shouldn't wait
+      // on storage copies, and admin polling will pick up the files when
+      // they appear.
+      void Promise.all(
+        items.map((item) => {
+          const matchingIds = rows
+            .filter((r) => r.front_mockup_url === item.frontMockupUrl)
+            .map((r) => r.id);
+          return mirrorCartItemOriginals(item.id, matchingIds);
+        }),
+      );
 
       localStorage.setItem("maika_pending_order_id", firstOrderId);
       localStorage.setItem("maika_pending_cart_id", cartId);
       clearCart();
-      window.location.href = redirect_url;
+      window.location.href = redirectUrl;
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
       setSubmitting(false);

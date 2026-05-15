@@ -163,6 +163,23 @@ export default function DraggablePlacement({
   const width = `${photoW * 100}%`;
   const height = `${photoH * 100}%`;
 
+  // Detect when the layer extends outside the printable zone in
+  // zone-relative coordinates. The composite ctx.clip()s to the zone so
+  // anything outside this box will be silently cropped on the saved
+  // mockup and print file — the customer can't see this from the live
+  // preview alone, so we surface it as a red border to warn them.
+  const EDGE_EPSILON = 0.001;
+  const layerLeftZ = coords.x - scaleX / 2;
+  const layerRightZ = coords.x + scaleX / 2;
+  const layerTopZ = coords.y - scaleY / 2;
+  const layerBottomZ = coords.y + scaleY / 2;
+  const overflowsZone = zone !== undefined && (
+    layerLeftZ < -EDGE_EPSILON ||
+    layerRightZ > 1 + EDGE_EPSILON ||
+    layerTopZ < -EDGE_EPSILON ||
+    layerBottomZ > 1 + EDGE_EPSILON
+  );
+
   const handleClass = `absolute w-3 h-3 rounded-full border-2 border-primary-foreground z-10 ${accentClass ? accentClass : "bg-primary"}`;
   const isRotating = dragMode === "rotate";
 
@@ -170,12 +187,25 @@ export default function DraggablePlacement({
   const showHandles = isManaged ? selected && !disabled : !disabled;
   const showBorder = isManaged ? selected : true;
 
+  // Override the border color when the layer overflows the zone. We want
+  // the warning to be visible even when not selected, so this takes
+  // precedence over showBorder=false and over borderClass.
+  const effectiveBorderClass = overflowsZone
+    ? "border-2 border-dashed border-destructive"
+    : showBorder
+      ? `border-2 border-dashed ${disabled ? "border-muted-foreground/30" : (borderClass || "border-primary/60")}`
+      : "border-2 border-transparent";
+  const moveBorderClass = dragMode === "move" && !overflowsZone
+    ? (borderClass ? borderClass.replace("/60", "") : "border-primary")
+    : "";
+
   return (
     <div
       ref={containerRef}
+      title={overflowsZone ? "ფიგურა გადის print zone-ის გარეთ — ეს ნაწილი არ დაიბეჭდება" : undefined}
       className={`absolute rounded-md transition-colors ${
         disabled ? "pointer-events-none" : "cursor-move"
-      } ${showBorder ? `border-2 border-dashed ${disabled ? "border-muted-foreground/30" : (borderClass || "border-primary/60")}` : "border-2 border-transparent"} ${dragMode === "move" ? (borderClass ? borderClass.replace("/60", "") : "border-primary") : ""}`}
+      } ${effectiveBorderClass} ${moveBorderClass}`}
       style={{ left, top, width, height, touchAction: "none", transform: `rotate(${rotation}deg)` }}
       onPointerDown={(e) => handlePointerDown(e, "move")}
       onPointerMove={handlePointerMove}

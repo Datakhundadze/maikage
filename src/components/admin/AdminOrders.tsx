@@ -7,6 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Download, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import type { DesignState } from "@/lib/designState";
+import { isDesignState } from "@/lib/designState";
+import { compositePrintFileFromDesignState } from "@/lib/designCompositor";
+import { uploadBlobWithRetry } from "@/lib/uploadWithRetry";
 
 interface Order {
   id: string;
@@ -37,6 +41,8 @@ interface Order {
   paid_at: string | null;
   cart_id: string | null;
   payment_provider: string;
+  /** JSONB column added 2026-05-15; null for orders placed before then. */
+  design_state: DesignState | null;
 }
 
 const STATUS_OPTIONS = ["pending", "confirmed", "in_production", "shipped", "delivered", "cancelled"];
@@ -226,6 +232,45 @@ export default function AdminOrders() {
   }
 
   const [checkingPayment, setCheckingPayment] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
+
+  async function regeneratePrintFile(order: Order, side: "front" | "back") {
+    if (!isDesignState(order.design_state)) {
+      toast({ title: "design_state არ არსებობს", variant: "destructive" });
+      return;
+    }
+    const sideState = order.design_state[side];
+    if (!sideState) {
+      toast({ title: `${side === "front" ? "წინა" : "უკანა"} მხარის მონაცემები ცარიელია`, variant: "destructive" });
+      return;
+    }
+    const key = `${order.id}:${side}`;
+    setRegenerating(key);
+    try {
+      const blob = await compositePrintFileFromDesignState(sideState);
+      if (!blob) {
+        toast({ title: "ცარიელი დიზაინი — ფაილი ვერ შეიქმნა", variant: "destructive" });
+        return;
+      }
+      const suffix = side === "front" ? "transparent" : "transparent-back";
+      const path = `order-mockups/${order.id}-${suffix}.png`;
+      const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: "image/png" });
+      const column = side === "front" ? "transparent_image_url" : "back_transparent_image_url";
+      const { error } = await supabase
+        .from("orders")
+        .update({ [column]: publicUrl } as any)
+        .eq("id", order.id);
+      if (error) throw new Error(error.message);
+      setOrders((prev) =>
+        prev.map((o) => (o.id === order.id ? { ...o, [column]: publicUrl } as Order : o)),
+      );
+      toast({ title: "პრინტ ფაილი დაგენერირდა ✓" });
+    } catch (e: any) {
+      toast({ title: "შეცდომა", description: e?.message ?? String(e), variant: "destructive" });
+    } finally {
+      setRegenerating(null);
+    }
+  }
 
   async function checkPayment(orderId: string, provider?: string) {
     setCheckingPayment(orderId);
@@ -537,6 +582,46 @@ export default function AdminOrders() {
                                 <Download className="h-3 w-3" /> პრინტ ფაილი
                               </Button>
                             </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {/* Regenerate print file from saved design_state. Available
+                        for orders placed after 2026-05-15 (the design_state
+                        migration). For older orders the saved mockup is the
+                        only artifact and this section stays hidden. */}
+                    {isDesignState(order.design_state) && (order.design_state.front || order.design_state.back) && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-xs text-muted-foreground mb-1.5">
+                          პრინტ ფაილის გენერაცია (design_state-ით)
+                          {!order.transparent_image_url && !order.back_transparent_image_url && (
+                            <span className="text-destructive"> — გადახდის დროს ვერ ატვირთა</span>
+                          )}
+                        </p>
+                        <div className="flex gap-2 flex-wrap">
+                          {order.design_state.front && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs gap-1.5"
+                              disabled={regenerating === `${order.id}:front`}
+                              onClick={() => regeneratePrintFile(order, "front")}
+                            >
+                              <RefreshCw className={`h-3 w-3 ${regenerating === `${order.id}:front` ? "animate-spin" : ""}`} />
+                              {regenerating === `${order.id}:front` ? "გენერდება..." : "წინა მხარის გადაგენერაცია"}
+                            </Button>
+                          )}
+                          {order.design_state.back && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs gap-1.5"
+                              disabled={regenerating === `${order.id}:back`}
+                              onClick={() => regeneratePrintFile(order, "back")}
+                            >
+                              <RefreshCw className={`h-3 w-3 ${regenerating === `${order.id}:back` ? "animate-spin" : ""}`} />
+                              {regenerating === `${order.id}:back` ? "გენერდება..." : "უკანა მხარის გადაგენერაცია"}
+                            </Button>
                           )}
                         </div>
                       </div>
