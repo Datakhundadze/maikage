@@ -125,7 +125,7 @@ export default function MyDesignsPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Saved designs (with full controls) */}
-                {designs.map((d) => (
+                {designs.map((d, idx) => (
                   <div key={d.id} className="rounded-2xl border border-border bg-card overflow-hidden group">
                     <div className="relative aspect-square bg-muted">
                       {resolveImageUrl(d.mockup_image_path) && (
@@ -133,7 +133,8 @@ export default function MyDesignsPage() {
                           src={resolveImageUrl(d.mockup_image_path)!}
                           alt={d.title}
                           className="w-full h-full object-contain"
-                          loading="lazy"
+                          loading={idx === 0 ? "eager" : "lazy"}
+                          fetchPriority={idx === 0 ? "high" : "auto"}
                         />
                       )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">

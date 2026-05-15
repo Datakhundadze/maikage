@@ -9,6 +9,9 @@ interface Props {
   productType?: string;
   subProduct?: string;
   color?: string;
+  /** Mark this card as the LCP candidate — the first card in the
+   *  catalog grid should set this so the browser fetches it eagerly. */
+  priority?: boolean;
 }
 
 // Small in-memory cache so re-rendering the catalog (filter switching)
@@ -22,6 +25,7 @@ export default function CatalogDesignCard({
   productType = "T-Shirt",
   subProduct = "GILDAN",
   color = "White",
+  priority = false,
 }: Props) {
   const cacheKey = `${productType}|${subProduct}|${color}|${printFileUrl}`;
   const [mockup, setMockup] = useState<string | null>(() => mockupCache.get(cacheKey) ?? null);
@@ -58,7 +62,8 @@ export default function CatalogDesignCard({
       src={src}
       alt={alt}
       className="w-full h-full object-contain p-3 group-hover:scale-[1.02] transition-transform"
-      loading="lazy"
+      loading={priority ? "eager" : "lazy"}
+      fetchPriority={priority ? "high" : "auto"}
     />
   );
 }

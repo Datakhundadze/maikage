@@ -82,7 +82,12 @@ function CartItemRow({
     <div className="flex gap-3 p-3 rounded-lg border border-border bg-card">
       <div className="w-20 h-20 rounded border border-border bg-muted overflow-hidden flex-shrink-0">
         {item.frontMockupUrl ? (
-          <img src={item.frontMockupUrl} alt="" className="w-full h-full object-contain" />
+          <img
+            src={item.frontMockupUrl}
+            alt=""
+            className="w-full h-full object-contain"
+            loading="lazy"
+          />
         ) : null}
       </div>
       <div className="flex-1 min-w-0">

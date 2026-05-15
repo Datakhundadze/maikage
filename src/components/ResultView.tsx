@@ -98,10 +98,23 @@ export default function ResultView({ result, onViewImage, productName = "design"
         </div>
         <div className="relative group">
           <div className="absolute inset-0 overflow-hidden">
-            <img src={result.mockupImage} alt="" className="w-full h-full object-cover blur-[50px] opacity-40 scale-110" />
+            <img
+              src={result.mockupImage}
+              alt=""
+              className="w-full h-full object-cover blur-[50px] opacity-40 scale-110"
+              aria-hidden="true"
+              loading="lazy"
+              fetchPriority="low"
+            />
           </div>
           <div className="relative p-4 flex justify-center">
-            <img src={result.mockupImage} alt="Mockup preview" className="max-h-[500px] object-contain rounded-lg" />
+            <img
+              src={result.mockupImage}
+              alt="Mockup preview"
+              className="max-h-[500px] object-contain rounded-lg"
+              loading="eager"
+              fetchPriority="high"
+            />
           </div>
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
             <Button size="sm" variant="secondary" onClick={() => onViewImage(result.mockupImage)}>
@@ -171,7 +184,12 @@ export default function ResultView({ result, onViewImage, productName = "design"
               backgroundPosition: "0 0, 0 10px, 10px -10px, -10px 0px",
             }}
           >
-            <img src={result.transparentImage} alt="Print file" className="max-h-[300px] object-contain" />
+            <img
+              src={result.transparentImage}
+              alt="Print file"
+              className="max-h-[300px] object-contain"
+              loading="lazy"
+            />
           </div>
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
             <Button size="sm" variant="secondary" onClick={() => onViewImage(result.transparentImage)}>

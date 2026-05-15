@@ -123,7 +123,7 @@ export default function DesignSection({
           {/* Multi images */}
           {isMulti && images?.map((img, i) => (
             <div key={i} className="relative group h-16 w-16 rounded-lg overflow-hidden border border-border">
-              <img src={img} alt="" className="h-full w-full object-cover" />
+              <img src={img} alt="" className="h-full w-full object-cover" loading="lazy" />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                 {onViewImage && (
                   <button onClick={() => onViewImage(img)} className="text-white">
@@ -140,7 +140,7 @@ export default function DesignSection({
           {/* Single image */}
           {!isMulti && image && (
             <div className="relative group h-16 w-16 rounded-lg overflow-hidden border border-border">
-              <img src={image} alt="" className="h-full w-full object-cover" />
+              <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
                 {onViewImage && (
                   <button onClick={() => onViewImage(image)} className="text-white">

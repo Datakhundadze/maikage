@@ -315,7 +315,13 @@ export default function TryOnPage() {
           /* ── Result view ── */
           <div className="flex flex-col items-center gap-6">
             <div className="relative w-full max-w-lg rounded-2xl overflow-hidden border border-border shadow-lg">
-              <img src={resultImage} alt="გასინჯვის შედეგი" className="w-full object-contain" />
+              <img
+                src={resultImage}
+                alt="გასინჯვის შედეგი"
+                className="w-full object-contain"
+                loading="eager"
+                fetchPriority="high"
+              />
             </div>
             <div className="flex flex-col items-center gap-3 w-full max-w-sm">
               <Button
@@ -362,7 +368,10 @@ export default function TryOnPage() {
                     <img
                       src={state.mockupImage}
                       alt=""
+                      aria-hidden="true"
                       className="w-full h-full object-cover blur-[40px] opacity-40 scale-110"
+                      loading="lazy"
+                      fetchPriority="low"
                     />
                   </div>
                   <div className="relative p-6 flex justify-center">
@@ -370,6 +379,8 @@ export default function TryOnPage() {
                       src={state.mockupImage}
                       alt="დიზაინი"
                       className="max-h-80 object-contain rounded-lg"
+                      loading="eager"
+                      fetchPriority="high"
                     />
                   </div>
                 </div>
@@ -400,6 +411,7 @@ export default function TryOnPage() {
                       src={personImage}
                       alt="თქვენი ფოტო"
                       className="w-full max-h-80 object-contain rounded-xl"
+                      loading="eager"
                     />
                     <button
                       className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 rounded-full p-1.5 transition-colors"

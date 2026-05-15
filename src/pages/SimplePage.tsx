@@ -1021,6 +1021,7 @@ export default function SimplePage() {
                       src={photo.image}
                       alt={`photo ${index + 1}`}
                       className="h-16 w-16 rounded-lg object-cover border border-border"
+                      loading="lazy"
                     />
                     <button
                       onClick={() => removePhoto(photo.id)}
