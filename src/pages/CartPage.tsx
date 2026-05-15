@@ -13,6 +13,7 @@ import AppHeader from "@/components/AppHeader";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import SeoHead from "@/components/SeoHead";
+import { submitOrder } from "@/lib/orderSubmission";
 
 // Mirror a cart item's originals into order-originals/{orderId}/ so the
 // admin's "ორიგინალი" download buttons (which list that folder) show up
@@ -209,8 +210,28 @@ export default function CartPage() {
         rows[0].total_price = rows[0].product_price + deliveryPrice;
       }
 
-      const { error } = await supabase.from("orders").insert(rows as any);
-      if (error) throw error;
+      const firstOrderId = rows[0].id;
+      const description =
+        items.length === 1
+          ? `${items[0].product} - ${items[0].subProduct || ""} (${items[0].color})`
+          : `Cart: ${rows.length} items`;
+
+      const backTransparentBackfill = items
+        .filter((i) => i.backTransparentImageUrl)
+        .map((item) => ({
+          orderIds: rows.filter((r) => r.front_mockup_url === item.frontMockupUrl).map((r) => r.id),
+          url: item.backTransparentImageUrl as string,
+        }));
+
+      const redirectUrl = await submitOrder({
+        rows,
+        paymentOrderId: firstOrderId,
+        amount: totalWithDelivery,
+        description,
+        paymentMethod,
+        cartId,
+        backTransparentBackfill,
+      });
 
       // Fire-and-forget: mirror each cart item's originals into
       // order-originals/{orderId}/ so admin's photo download buttons work
@@ -226,61 +247,10 @@ export default function CartPage() {
         }),
       );
 
-      // Best-effort: populate back_transparent_image_url for rows that have it.
-      // If the column hasn't been added via migration yet, silently skip.
-      for (const item of items) {
-        if (item.backTransparentImageUrl) {
-          const matchingIds = rows
-            .filter(r => r.front_mockup_url === item.frontMockupUrl)
-            .map(r => r.id);
-          await supabase
-            .from("orders")
-            .update({ back_transparent_image_url: item.backTransparentImageUrl } as any)
-            .in("id", matchingIds)
-            .then(({ error: e }) => { if (e) console.warn("[Cart] back_transparent_image_url skipped:", e.message); });
-        }
-      }
-
-      const firstOrderId = rows[0].id;
-      const description =
-        items.length === 1
-          ? `${items[0].product} - ${items[0].subProduct || ""} (${items[0].color})`
-          : `Cart: ${rows.length} items`;
-
-      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-flitt";
-      const paymentRes = await supabase.functions.invoke(payFn, {
-        body: {
-          orderId: firstOrderId,
-          amount: totalWithDelivery,
-          description,
-          cartId,
-        },
-      });
-
-      if (paymentRes.error) {
-        let detail = paymentRes.error.message || "Payment creation failed";
-        const ctx = (paymentRes.error as any).context;
-        if (ctx && typeof ctx.json === "function") {
-          try {
-            const body = await ctx.json();
-            if (body?.error) detail = typeof body.error === "string" ? body.error : JSON.stringify(body.error);
-          } catch {
-            try {
-              const text = await ctx.text();
-              if (text) detail = text;
-            } catch {}
-          }
-        }
-        throw new Error(detail);
-      }
-
-      const { redirect_url } = paymentRes.data as { redirect_url: string };
-      if (!redirect_url) throw new Error("No redirect URL received from payment provider");
-
       localStorage.setItem("maika_pending_order_id", firstOrderId);
       localStorage.setItem("maika_pending_cart_id", cartId);
       clearCart();
-      window.location.href = redirect_url;
+      window.location.href = redirectUrl;
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
       setSubmitting(false);

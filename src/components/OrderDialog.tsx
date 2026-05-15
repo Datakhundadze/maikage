@@ -7,12 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 import type { PriceBreakdown } from "@/lib/pricing";
 import type { DesignState } from "@/lib/designState";
 import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
+import { mergeDesignStateUrls, submitOrder } from "@/lib/orderSubmission";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
@@ -170,20 +170,13 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       // Merge upload URLs into design_state so admin can re-render. Photos
       // with a failed upload land with url=null — the coords are still
       // preserved so the customer can re-upload manually.
-      const finalDesignState: DesignState | null = designState
-        ? {
-            ...designState,
-            front: designState.front
-              ? { ...designState.front, photos: designState.front.photos.map((p, i) => ({ ...p, url: frontOriginalUrls[i] ?? null })) }
-              : null,
-            back: designState.back
-              ? { ...designState.back, photos: designState.back.photos.map((p, i) => ({ ...p, url: backOriginalUrls[i] ?? null })) }
-              : null,
-          }
-        : null;
+      const finalDesignState: DesignState | null = mergeDesignStateUrls(
+        designState ?? null,
+        frontOriginalUrls,
+        backOriginalUrls,
+      );
 
-      // 1. Insert order into database
-      const { data: orderData, error } = await supabase.from("orders").insert({
+      const row = {
         id: orderId,
         user_id: user?.id || null,
         first_name: firstName.trim(),
@@ -208,56 +201,21 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         prompt: prompt || null,
         size: size || null,
         design_state: finalDesignState,
-      } as any).select("id").single();
+      };
 
-      if (error) throw error;
-
-      // Best-effort: populate back_transparent_image_url if the column exists in the
-      // schema. If the migration hasn't been applied yet, silently ignore — the core
-      // order data is already saved.
-      if (backTransparentUrl) {
-        const { error: backErr } = await supabase
-          .from("orders")
-          .update({ back_transparent_image_url: backTransparentUrl } as any)
-          .eq("id", orderData.id);
-        if (backErr) console.warn("[OrderDialog] back_transparent_image_url update skipped:", backErr.message);
-      }
-
-      // 2. Call create-payment edge function (route to TBC or BOG)
-      const payFn = paymentMethod === "bog" ? "create-payment" : "create-payment-flitt";
-      const paymentRes = await supabase.functions.invoke(payFn, {
-        body: {
-          orderId: orderData.id,
-          amount: totalWithDelivery,
-          description: `${product} - ${subProduct} (${color})`,
-        },
+      const redirectUrl = await submitOrder({
+        rows: [row],
+        paymentOrderId: orderId,
+        amount: totalWithDelivery,
+        description: `${product} - ${subProduct} (${color})`,
+        paymentMethod,
+        backTransparentBackfill: backTransparentUrl
+          ? [{ orderIds: [orderId], url: backTransparentUrl }]
+          : undefined,
       });
 
-      if (paymentRes.error) {
-        let detail = paymentRes.error.message || "Payment creation failed";
-        const ctx = (paymentRes.error as any).context;
-        if (ctx && typeof ctx.json === "function") {
-          try {
-            const body = await ctx.json();
-            if (body?.error) detail = typeof body.error === "string" ? body.error : JSON.stringify(body.error);
-          } catch {
-            try {
-              const text = await ctx.text();
-              if (text) detail = text;
-            } catch {}
-          }
-        }
-        throw new Error(detail);
-      }
-
-      const { redirect_url } = paymentRes.data as { redirect_url: string };
-
-      if (redirect_url) {
-        localStorage.setItem("maika_pending_order_id", orderData.id);
-        window.location.href = redirect_url;
-      } else {
-        throw new Error("No redirect URL received from payment provider");
-      }
+      localStorage.setItem("maika_pending_order_id", orderId);
+      window.location.href = redirectUrl;
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
       setSubmitting(false);
