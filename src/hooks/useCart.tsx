@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignState } from "@/lib/designState";
+import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
 
 export interface CartItem {
   id: string;
@@ -54,24 +55,24 @@ const CartContext = createContext<CartContextType | null>(null);
 
 const STORAGE_KEY = "maika-cart-v1";
 
-async function uploadDataUrl(
-  dataUrl: string,
-  path: string,
-): Promise<string | null> {
+// Required uploads (mockup, transparent print file): throw on persistent
+// failure so the cart-add can surface a toast instead of silently
+// adding a broken cart item.
+async function uploadDataUrl(dataUrl: string, path: string): Promise<string> {
+  const blob = await dataUrlToBlob(dataUrl);
+  const { publicUrl } = await uploadBlobWithRetry("designs", path, blob);
+  return publicUrl;
+}
+
+// Best-effort uploads (original full-resolution photos). The cart still
+// goes through if these fail since the admin can recover from the
+// rendered mockup. Returns null on failure so the caller can record it
+// in design_state.
+async function uploadOriginalDataUrl(dataUrl: string, path: string): Promise<string | null> {
   try {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    const { error } = await supabase.storage
-      .from("designs")
-      .upload(path, blob, { contentType: blob.type || "image/png", upsert: true });
-    if (error) {
-      console.error(`[useCart] upload ${path} failed:`, error);
-      return null;
-    }
-    const { data } = supabase.storage.from("designs").getPublicUrl(path);
-    return data.publicUrl;
+    return await uploadDataUrl(dataUrl, path);
   } catch (e) {
-    console.error(`[useCart] upload ${path} error:`, e);
+    console.error(`[useCart] best-effort original upload ${path} failed:`, e);
     return null;
   }
 }
@@ -122,12 +123,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const frontOriginalUrls = await Promise.all(
         data.frontOriginalPhotos.map((url, i) =>
-          uploadDataUrl(url, `${prefix}/front-original-${i}.png`),
+          uploadOriginalDataUrl(url, `${prefix}/front-original-${i}.png`),
         ),
       );
       const backOriginalUrls = await Promise.all(
         data.backOriginalPhotos.map((url, i) =>
-          uploadDataUrl(url, `${prefix}/back-original-${i}.png`),
+          uploadOriginalDataUrl(url, `${prefix}/back-original-${i}.png`),
         ),
       );
 

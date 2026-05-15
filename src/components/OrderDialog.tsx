@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 
 import type { PriceBreakdown } from "@/lib/pricing";
 import type { DesignState } from "@/lib/designState";
+import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
@@ -51,50 +52,32 @@ interface OrderDialogProps {
   size?: string;
 }
 
-async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string | null> {
-  try {
-    if (!dataUrl) {
-      console.warn(`[OrderDialog] No ${side} mockup data URL provided`);
-      return null;
-    }
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    console.log(`[OrderDialog] Uploading ${side} mockup: ${blob.size} bytes`);
-    const path = `order-mockups/${orderId}-${side}.png`;
-    const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png", upsert: true });
-    if (error) {
-      console.error(`[OrderDialog] Upload ${side} mockup failed:`, error);
-      return null;
-    }
-    const { data } = supabase.storage.from("designs").getPublicUrl(path);
-    console.log(`[OrderDialog] ${side} mockup uploaded:`, data.publicUrl);
-    return data.publicUrl;
-  } catch (e) {
-    console.error(`[OrderDialog] Upload ${side} mockup error:`, e);
-    return null;
-  }
+// Throws on persistent failure (after one retry) so the order can abort
+// instead of being saved with a NULL print-file URL. The customer sees a
+// toast and their payment is not initiated.
+async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string> {
+  const blob = await dataUrlToBlob(dataUrl);
+  console.log(`[OrderDialog] Uploading ${side} mockup: ${blob.size} bytes`);
+  const path = `order-mockups/${orderId}-${side}.png`;
+  const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: "image/png" });
+  console.log(`[OrderDialog] ${side} mockup uploaded:`, publicUrl);
+  return publicUrl;
 }
 
-// Upload full-resolution originals so admin can download the user's raw photos
-// (not the shrunken composite). Stored at a predictable path so admin can list them.
-// Returns the public URL for each photo in order (null entries for failures) so
-// the caller can wire them into design_state.
+// Upload full-resolution originals so admin can download the user's raw photos.
+// Best-effort with one retry: a failed original returns null in design_state
+// but does NOT abort the order — admin can recover from the rendered mockup
+// or ask the customer to re-upload.
 async function uploadOriginalPhotos(photos: string[], orderId: string, side: "front" | "back"): Promise<(string | null)[]> {
   return Promise.all(photos.map(async (dataUrl, i) => {
     try {
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      const blob = await dataUrlToBlob(dataUrl);
       const ext = blob.type === "image/jpeg" ? "jpg" : blob.type === "image/webp" ? "webp" : "png";
       const path = `order-originals/${orderId}/${side}-${i}.${ext}`;
-      const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: blob.type, upsert: true });
-      if (error) {
-        console.error(`[OrderDialog] Upload original ${side}-${i} failed:`, error);
-        return null;
-      }
-      const { data } = supabase.storage.from("designs").getPublicUrl(path);
-      return data.publicUrl;
+      const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: blob.type });
+      return publicUrl;
     } catch (e) {
-      console.error(`[OrderDialog] Upload original ${side}-${i} error:`, e);
+      console.error(`[OrderDialog] best-effort original ${side}-${i} failed:`, e);
       return null;
     }
   }));
@@ -103,6 +86,7 @@ async function uploadOriginalPhotos(photos: string[], orderId: string, side: "fr
 // Upload try-on assets (person photo + result) so admin can see who placed
 // the order and what the try-on looked like. Stored under a `tryon-*` name
 // so they sort separately from regular originals in the admin list.
+// Best-effort: a failure is logged but never aborts the order.
 async function uploadTryOnAssets(orderId: string): Promise<void> {
   const stash = [
     { key: "maika-tryon-person", filename: "tryon-person" },
@@ -112,15 +96,13 @@ async function uploadTryOnAssets(orderId: string): Promise<void> {
     try {
       const dataUrl = sessionStorage.getItem(key);
       if (!dataUrl) return;
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
+      const blob = await dataUrlToBlob(dataUrl);
       const ext = blob.type === "image/jpeg" ? "jpg" : blob.type === "image/webp" ? "webp" : "png";
       const path = `order-originals/${orderId}/${filename}.${ext}`;
-      const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: blob.type, upsert: true });
-      if (error) console.error(`[OrderDialog] Upload ${filename} failed:`, error);
-      else sessionStorage.removeItem(key);
+      await uploadBlobWithRetry("designs", path, blob, { contentType: blob.type });
+      sessionStorage.removeItem(key);
     } catch (e) {
-      console.error(`[OrderDialog] Upload ${filename} error:`, e);
+      console.error(`[OrderDialog] best-effort ${filename} failed:`, e);
     }
   }));
 }
