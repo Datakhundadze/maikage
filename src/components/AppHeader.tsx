@@ -1,12 +1,26 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
 import { Paintbrush, FolderOpen, Globe, ShieldCheck, LogIn, LogOut, ShoppingCart, Images } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import LoginModal from "@/components/LoginModal";
+// LoginModal only opens when the user clicks "Sign in" — keep its
+// bundle separate so the header on logged-in pages stays cheap.
+const LoginModal = lazy(() => import("@/components/LoginModal"));
 import { useCart } from "@/hooks/useCart";
+
+// Hover-preload map: when the customer hovers a nav button we kick off
+// the route's chunk fetch so the click-to-render gap shrinks from
+// "wait for the chunk to download" to ~0 ms. Vite's module cache
+// dedupes repeat calls, so hovering twice is free. The studio route
+// "/" lives in the main bundle, so no entry here.
+const PRELOAD_BY_PATH: Record<string, () => Promise<unknown>> = {
+  "/designs": () => import("@/pages/CatalogPage"),
+  "/my-designs": () => import("@/pages/MyDesignsPage"),
+  "/community": () => import("@/pages/CommunityPage"),
+  "/admin": () => import("@/pages/AdminPage"),
+};
 
 export default function AppHeader() {
   const { lang, setMode, toggleLang } = useAppState();
@@ -54,6 +68,7 @@ export default function AppHeader() {
         <nav className="flex items-center gap-0.5 flex-1 justify-center overflow-x-auto">
           {navItems.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
+            const preload = PRELOAD_BY_PATH[path];
             return (
               <button
                 key={path}
@@ -65,6 +80,9 @@ export default function AppHeader() {
                   setMode("studio");
                   navigate(path);
                 }}
+                onMouseEnter={preload}
+                onFocus={preload}
+                onTouchStart={preload}
                 className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap ${
                   active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
@@ -119,7 +137,9 @@ export default function AppHeader() {
         </div>
       </header>
 
-      <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
+      <Suspense fallback={null}>
+        <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
+      </Suspense>
     </>
   );
 }

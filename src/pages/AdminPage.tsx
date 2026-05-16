@@ -1,15 +1,21 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut } from "lucide-react";
-import AdminDashboard from "@/components/admin/AdminDashboard";
-import AdminOrders from "@/components/admin/AdminOrders";
-import AdminDesigns from "@/components/admin/AdminDesigns";
-import AdminUsers from "@/components/admin/AdminUsers";
-import AdminAnalytics from "@/components/admin/AdminAnalytics";
-import AdminCorporate from "@/components/admin/AdminCorporate";
-import AdminCatalog from "@/components/admin/AdminCatalog";
+// Each admin tab is large (full-page CRUD UIs with their own forms,
+// tables, and supabase fetchers). Lazy-load them so visiting /admin
+// only ships the active tab's bundle — switching tabs fetches the
+// rest on demand. The Dashboard is also lazy: even though it's the
+// default tab, the chunking lets later tabs avoid landing in the
+// same bundle.
+const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
+const AdminOrders = lazy(() => import("@/components/admin/AdminOrders"));
+const AdminDesigns = lazy(() => import("@/components/admin/AdminDesigns"));
+const AdminUsers = lazy(() => import("@/components/admin/AdminUsers"));
+const AdminAnalytics = lazy(() => import("@/components/admin/AdminAnalytics"));
+const AdminCorporate = lazy(() => import("@/components/admin/AdminCorporate"));
+const AdminCatalog = lazy(() => import("@/components/admin/AdminCatalog"));
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { supabase } from "@/integrations/supabase/client";
@@ -348,13 +354,21 @@ export default function AdminPage() {
       </header>
 
       <div className="mx-auto max-w-7xl p-4 sm:p-6">
-        {activeTab === "dashboard" && <AdminDashboard />}
-        {activeTab === "orders" && <AdminOrders />}
-        {activeTab === "designs" && <AdminDesigns />}
-        {activeTab === "users" && <AdminUsers />}
-        {activeTab === "catalog" && <AdminCatalog />}
-        {activeTab === "analytics" && <AdminAnalytics />}
-        {activeTab === "corporate" && <AdminCorporate />}
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-20">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          }
+        >
+          {activeTab === "dashboard" && <AdminDashboard />}
+          {activeTab === "orders" && <AdminOrders />}
+          {activeTab === "designs" && <AdminDesigns />}
+          {activeTab === "users" && <AdminUsers />}
+          {activeTab === "catalog" && <AdminCatalog />}
+          {activeTab === "analytics" && <AdminAnalytics />}
+          {activeTab === "corporate" && <AdminCorporate />}
+        </Suspense>
       </div>
     </div>
   );

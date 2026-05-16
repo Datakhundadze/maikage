@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppState } from "@/hooks/useAppState";
@@ -8,7 +8,7 @@ import { getGuestSessionId } from "@/lib/guestSession";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Trash2, Globe, GlobeLock, Eye } from "lucide-react";
-import Lightbox from "@/components/Lightbox";
+const Lightbox = lazy(() => import("@/components/Lightbox"));
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface Design {
@@ -198,7 +198,11 @@ export default function MyDesignsPage() {
           </div>
         }
       />
-      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {lightboxSrc && (
+        <Suspense fallback={null}>
+          <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+        </Suspense>
+      )}
     </>
   );
 }

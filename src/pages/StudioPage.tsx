@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getGuestSessionId } from "@/lib/guestSession";
 import AppLayout from "@/components/AppLayout";
@@ -7,7 +7,9 @@ import ProductPreview from "@/components/ProductPreview";
 import DesignStudioPanel from "@/components/DesignStudioPanel";
 import GenerationLoader from "@/components/GenerationLoader";
 import ResultView from "@/components/ResultView";
-import Lightbox from "@/components/Lightbox";
+// Lightbox and OrderDialog are user-action triggered — Suspense them so
+// they ship as separate chunks and don't bloat the studio's first paint.
+const Lightbox = lazy(() => import("@/components/Lightbox"));
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { DesignProvider, useDesign } from "@/hooks/useDesign";
 import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
@@ -18,7 +20,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAuth } from "@/hooks/useAuth";
 import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
-import OrderDialog from "@/components/OrderDialog";
+const OrderDialog = lazy(() => import("@/components/OrderDialog"));
 import LoginModal from "@/components/LoginModal";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useCart } from "@/hooks/useCart";
@@ -388,19 +390,21 @@ function StudioContent() {
               <PriceDisplay breakdown={priceBreakdown} />
               {result && (
                 <>
-                  <OrderDialog
-                    breakdown={priceBreakdown}
-                    product={productConfig.config.product}
-                    subProduct={productConfig.config.subProduct}
-                    color={productConfig.config.color}
-                    isStudio={true}
-                    externalOpen={orderDialogOpen}
-                    onExternalOpenChange={setOrderDialogOpen}
-                    frontMockupDataUrl={result?.mockupImage || null}
-                    transparentImageDataUrl={result?.transparentImage || null}
-                     prompt={result?.prompt || null}
-                     size={productConfig.config.size}
-                  />
+                  <Suspense fallback={null}>
+                    <OrderDialog
+                      breakdown={priceBreakdown}
+                      product={productConfig.config.product}
+                      subProduct={productConfig.config.subProduct}
+                      color={productConfig.config.color}
+                      isStudio={true}
+                      externalOpen={orderDialogOpen}
+                      onExternalOpenChange={setOrderDialogOpen}
+                      frontMockupDataUrl={result?.mockupImage || null}
+                      transparentImageDataUrl={result?.transparentImage || null}
+                      prompt={result?.prompt || null}
+                      size={productConfig.config.size}
+                    />
+                  </Suspense>
                   <Button
                     variant="outline"
                     className="w-full h-11 gap-2 font-semibold text-sm"
@@ -446,7 +450,11 @@ function StudioContent() {
         }
         main={mainContent}
       />
-      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {lightboxSrc && (
+        <Suspense fallback={null}>
+          <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+        </Suspense>
+      )}
       <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} message={loginModalMessage} />
       {limitMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm px-5 py-3 text-sm text-foreground shadow-lg flex items-center gap-3">
