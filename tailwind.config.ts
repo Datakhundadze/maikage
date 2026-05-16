@@ -13,6 +13,32 @@ export default {
       },
     },
     extend: {
+      // Override the default `font-sans` stack to put 'Noto Sans Georgian'
+      // first. Because the @font-face for it has a Georgian unicode-range,
+      // the browser only fetches the woff2 when the page contains those
+      // code points — Latin / Cyrillic UI characters fall through to the
+      // system stack with zero extra cost. Net effect: Georgian text gets
+      // consistent rendering across iOS / macOS / Android / Windows /
+      // Linux without depending on the OS bundling Noto.
+      fontFamily: {
+        sans: [
+          "'Noto Sans Georgian'",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "'Segoe UI'",
+          "Roboto",
+          "'Helvetica Neue'",
+          "Arial",
+          "'Noto Sans'",
+          "sans-serif",
+          "'Apple Color Emoji'",
+          "'Segoe UI Emoji'",
+          "'Segoe UI Symbol'",
+          "'Noto Color Emoji'",
+        ],
+      },
       colors: {
         banana: {
           50: "hsl(var(--banana-50))",
