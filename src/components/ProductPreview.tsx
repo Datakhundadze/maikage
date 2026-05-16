@@ -11,6 +11,10 @@ export interface DesignLayer {
   accentClass?: string;
   selected?: boolean;
   onSelect?: () => void;
+  /** Source image's natural width / height. Forwarded to
+   *  DraggablePlacement as `aspectLock` so corner drag stays
+   *  proportional and doesn't stretch the image. */
+  naturalAspect?: number;
 }
 
 interface ProductPreviewProps {
@@ -211,6 +215,7 @@ export default function ProductPreview({
             selected={layer.selected}
             onSelect={layer.onSelect}
             zone={zone}
+            aspectLock={layer.naturalAspect}
           >
             <img
               src={layer.image}

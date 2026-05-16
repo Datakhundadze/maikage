@@ -213,6 +213,10 @@ interface PhotoLayer {
   id: string;
   image: string;
   coords: PlacementCoords;
+  /** Source image's natural width / height. Populated asynchronously
+   *  after the photo loads; used by DraggablePlacement to lock corner
+   *  resize to this aspect so dragging doesn't stretch the image. */
+  naturalAspect?: number;
 }
 
 interface SideData {
@@ -373,10 +377,11 @@ export default function SimplePage() {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
+      const photoId = `photo-${++photoIdCounter}`;
       setSideData(prev => {
         if (prev.photos.length >= MAX_PHOTOS) return prev;
         const newPhoto: PhotoLayer = {
-          id: `photo-${++photoIdCounter}`,
+          id: photoId,
           image: result,
           // First photo: land at wherever the user dragged the empty
           // placement frame (or zone-fill default if they never moved it).
@@ -391,7 +396,23 @@ export default function SimplePage() {
       });
       // Auto-select the newly uploaded photo so the keyboard delete handler
       // can target it without extra clicks.
-      setSelectedLayerId(`photo-${photoIdCounter}`);
+      setSelectedLayerId(photoId);
+
+      // Measure natural aspect asynchronously and patch the photo. Used
+      // by DraggablePlacement's corner-drag aspect lock so the photo
+      // doesn't stretch when a customer resizes it. If the image fails
+      // to decode (unlikely — we just read it as a data URL), the photo
+      // keeps naturalAspect undefined and corners stay free-resize.
+      const probe = new Image();
+      probe.onload = () => {
+        if (!probe.naturalWidth || !probe.naturalHeight) return;
+        const aspect = probe.naturalWidth / probe.naturalHeight;
+        setSideData(prev => ({
+          ...prev,
+          photos: prev.photos.map(p => p.id === photoId ? { ...p, naturalAspect: aspect } : p),
+        }));
+      };
+      probe.src = result;
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -476,6 +497,7 @@ export default function SimplePage() {
         accentClass: LAYER_COLORS[index % LAYER_COLORS.length],
         selected: selectedLayerId === photo.id,
         onSelect: () => setSelectedLayerId(photo.id),
+        naturalAspect: photo.naturalAspect,
       });
     });
     if (textImage) {

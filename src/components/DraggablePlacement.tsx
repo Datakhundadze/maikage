@@ -25,6 +25,13 @@ interface DraggablePlacementProps {
    * the composite canvas. Without a zone, coords are relative to the full parent.
    */
   zone?: PlacementCoords;
+  /**
+   * Lock the corner-drag resize to this aspect ratio (width / height of the
+   * source content). When set, corner drag is proportional — both `scale`
+   * and `scaleY` change together so the displayed box keeps this aspect.
+   * Text layers omit this so they can still be stretched on either axis.
+   */
+  aspectLock?: number;
 }
 
 type DragMode =
@@ -45,6 +52,7 @@ export default function DraggablePlacement({
   selected,
   onSelect,
   zone,
+  aspectLock,
 }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
@@ -156,17 +164,44 @@ export default function DraggablePlacement({
       }
       onCoordsChange({ ...coords, x: newX, y: newY, scale: newScale, scaleY: newScaleY });
     } else {
-      // Corner handle: free two-axis resize. Future commit makes this
-      // proportional (aspect-locked) when an aspectLock is provided.
+      // Corner handle: two-axis resize.
+      //  - Without aspectLock (text layers): free, both axes independent.
+      //  - With aspectLock (photo layers): proportional, locked to the
+      //    source image's natural aspect ratio so dragging a corner
+      //    doesn't stretch the image content.
       const isLeft = dragMode.includes("l");
       const isTop = dragMode.includes("t");
       const sdx = isLeft ? -dx : dx;
       const sdy = isTop ? -dy : dy;
-      const newScaleX = Math.max(MIN_SCALE, Math.min(MAX_SCALE, startRef.current.cs + sdx * 2));
-      const newScaleY = Math.max(MIN_SCALE, Math.min(MAX_SCALE, startRef.current.csY + sdy * 2));
-      onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
+      const clamp = (v: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, v));
+      if (aspectLock && aspectLock > 0) {
+        // Use whichever axis the cursor moved further in (in pixels) so
+        // the resize tracks the user's dominant direction. Convert the
+        // chosen-axis delta into the other axis via the aspect lock.
+        // The box's effective pixel aspect on screen is
+        //   (scale * zoneW * parentW) / (scaleY * zoneH * parentH)
+        // which must equal aspectLock for the photo not to stretch:
+        //   scaleY = scale * (zoneW * parentW) / (aspectLock * zoneH * parentH)
+        // Parent dims cancel because dx is already in zone-fraction units.
+        const aspectFactor = (zoneW) / (aspectLock * zoneH);
+        const dxPx = Math.abs(dx * zoneW);
+        const dyPx = Math.abs(dy * zoneH);
+        if (dxPx >= dyPx) {
+          const newScale = clamp(startRef.current.cs + sdx * 2);
+          const newScaleY = clamp(newScale * aspectFactor);
+          onCoordsChange({ ...coords, scale: newScaleY / aspectFactor, scaleY: newScaleY });
+        } else {
+          const newScaleY = clamp(startRef.current.csY + sdy * 2);
+          const newScale = clamp(newScaleY * aspectFactor);
+          onCoordsChange({ ...coords, scale: newScale, scaleY: newScale / aspectFactor });
+        }
+      } else {
+        const newScaleX = clamp(startRef.current.cs + sdx * 2);
+        const newScaleY = clamp(startRef.current.csY + sdy * 2);
+        onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
+      }
     }
-  }, [dragMode, coords, onCoordsChange, getCenterPoint, zoneW, zoneH]);
+  }, [dragMode, coords, onCoordsChange, getCenterPoint, zoneW, zoneH, aspectLock]);
 
   const handlePointerUp = useCallback(() => {
     setDragMode(null);
