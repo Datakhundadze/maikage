@@ -51,8 +51,20 @@ export default function AppHeader() {
   return (
     <>
       <header className="h-14 flex items-center gap-2 px-3 border-b border-sidebar-border shrink-0 bg-sidebar text-sidebar-foreground">
-        {/* LEFT: logo */}
-        <button onClick={() => setMode("landing")} className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+        {/* LEFT: logo — navigates home. setMode("landing") alone was
+            a no-op on routes that AppRoutes treats as ALWAYS_ROUTED
+            (/designs, /design/:slug, /community, /my-designs,
+            /corporate): mode flipped but the URL stayed put, so the
+            click had no visible effect. navigate("/") moves the URL
+            to "/" where AppRoutes then honours mode === "landing". */}
+        <button
+          onClick={() => {
+            setMode("landing");
+            navigate("/");
+          }}
+          aria-label={lang === "en" ? "Home" : "მთავარი"}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-sm font-black">
             M
           </div>
