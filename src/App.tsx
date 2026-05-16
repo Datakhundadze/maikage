@@ -4,28 +4,40 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { Suspense, lazy } from "react";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { AppStateProvider, useAppState } from "@/hooks/useAppState";
 import { CartProvider } from "@/hooks/useCart";
-import CartPage from "./pages/CartPage";
-import LoginPage from "./pages/LoginPage";
-import StudioPage from "./pages/StudioPage";
-import MyDesignsPage from "./pages/MyDesignsPage";
-import CommunityPage from "./pages/CommunityPage";
-import CatalogPage from "./pages/CatalogPage";
-import DesignDetailPage from "./pages/DesignDetailPage";
-import AdminPage from "./pages/AdminPage";
-import LandingPage from "./pages/LandingPage";
-import SimplePage from "./pages/SimplePage";
-import TermsPage from "./pages/TermsPage";
-import PrivacyPage from "./pages/PrivacyPage";
-import CorporatePage from "./pages/CorporatePage";
-import SportPage from "./pages/SportPage";
-import AboutPage from "./pages/AboutPage";
-import TryOnPage from "./pages/TryOnPage";
-import NotFound from "./pages/NotFound";
 import { RouteChangeTracker } from "@/components/RouteChangeTracker";
+
+// Each route component is a separate JS chunk after Vite build. Customers
+// visiting the landing page no longer download the admin / catalog /
+// studio code unless they navigate there. Suspense renders a small
+// spinner while the next chunk loads (typically < 200 ms on a warm
+// cache, ~1 s cold over 4G).
+const CartPage = lazy(() => import("./pages/CartPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const StudioPage = lazy(() => import("./pages/StudioPage"));
+const MyDesignsPage = lazy(() => import("./pages/MyDesignsPage"));
+const CommunityPage = lazy(() => import("./pages/CommunityPage"));
+const CatalogPage = lazy(() => import("./pages/CatalogPage"));
+const DesignDetailPage = lazy(() => import("./pages/DesignDetailPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const SimplePage = lazy(() => import("./pages/SimplePage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const CorporatePage = lazy(() => import("./pages/CorporatePage"));
+const SportPage = lazy(() => import("./pages/SportPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const TryOnPage = lazy(() => import("./pages/TryOnPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// LoginPage is currently unused at the routing layer (no <LoginPage />
+// renders in this file) but kept as a lazy import so its bundle stays
+// separate if a future route references it.
+void LoginPage;
 
 const queryClient = new QueryClient();
 
@@ -41,6 +53,16 @@ const ALWAYS_ROUTED: RegExp[] = [
   /^\/my-designs(\/|$)/,
   /^\/corporate(\/|$)/,
 ];
+
+// Shared fallback for chunk-load suspensions. Mirrors the spinner used by
+// AppRoutes' auth-loading state so the visual is consistent.
+function RouteLoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
+}
 
 function AppRoutes() {
   const { user, loading } = useAuth();
@@ -99,7 +121,9 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <RouteChangeTracker />
-                <AppRoutes />
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <AppRoutes />
+                </Suspense>
               </BrowserRouter>
             </TooltipProvider>
           </CartProvider>
