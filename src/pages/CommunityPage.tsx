@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppState } from "@/hooks/useAppState";
@@ -7,7 +7,7 @@ import { useDesignStorage } from "@/hooks/useDesignStorage";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Heart, Eye } from "lucide-react";
-import Lightbox from "@/components/Lightbox";
+const Lightbox = lazy(() => import("@/components/Lightbox"));
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface CommunityDesign {
@@ -148,7 +148,11 @@ export default function CommunityPage() {
           </div>
         }
       />
-      {lightboxSrc && <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+      {lightboxSrc && (
+        <Suspense fallback={null}>
+          <Lightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+        </Suspense>
+      )}
     </>
   );
 }

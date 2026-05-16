@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
@@ -16,7 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
 import PriceDisplay from "@/components/PriceDisplay";
-import OrderDialog from "@/components/OrderDialog";
+// OrderDialog ships ~21 KB (radix dialog + form code) and never renders on
+// initial paint — wait until the customer actually opens it.
+const OrderDialog = lazy(() => import("@/components/OrderDialog"));
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
@@ -1404,32 +1406,34 @@ export default function SimplePage() {
                         <ShoppingBag className="h-4 w-4" />
                         {addingToCart ? "ემატება..." : "კალათაში დამატება"}
                       </Button>
-                      <OrderDialog
-                        breakdown={breakdown}
-                        product={productConfig.config.product}
-                        subProduct={productConfig.config.subProduct}
-                        color={productConfig.config.color}
-                        isStudio={false}
-                        externalOpen={orderDialogOpen}
-                        onExternalOpenChange={setOrderDialogOpen}
-                        frontMockupDataUrl={frontMockup}
-                        backMockupDataUrl={backMockup}
-                        transparentImageDataUrl={frontDesignOnly}
-                        backTransparentImageDataUrl={backDesignOnly}
-                        frontOriginalPhotos={frontData.photos.map(p => p.image)}
-                        backOriginalPhotos={backData.photos.map(p => p.image)}
-                        size={productConfig.config.size}
-                        prompt={buildTextPrompt(frontData, backData)}
-                        designState={buildDesignStateInput(
-                          frontData,
-                          backData,
-                          productConfig.config.product,
-                          productConfig.config.subProduct,
-                          productConfig.config.color,
-                        )}
-                      >
-                        <span className="hidden" />
-                      </OrderDialog>
+                      <Suspense fallback={null}>
+                        <OrderDialog
+                          breakdown={breakdown}
+                          product={productConfig.config.product}
+                          subProduct={productConfig.config.subProduct}
+                          color={productConfig.config.color}
+                          isStudio={false}
+                          externalOpen={orderDialogOpen}
+                          onExternalOpenChange={setOrderDialogOpen}
+                          frontMockupDataUrl={frontMockup}
+                          backMockupDataUrl={backMockup}
+                          transparentImageDataUrl={frontDesignOnly}
+                          backTransparentImageDataUrl={backDesignOnly}
+                          frontOriginalPhotos={frontData.photos.map(p => p.image)}
+                          backOriginalPhotos={backData.photos.map(p => p.image)}
+                          size={productConfig.config.size}
+                          prompt={buildTextPrompt(frontData, backData)}
+                          designState={buildDesignStateInput(
+                            frontData,
+                            backData,
+                            productConfig.config.product,
+                            productConfig.config.subProduct,
+                            productConfig.config.color,
+                          )}
+                        >
+                          <span className="hidden" />
+                        </OrderDialog>
+                      </Suspense>
                     </>
                   );
                 })()}

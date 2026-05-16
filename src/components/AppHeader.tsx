@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
 import { Paintbrush, FolderOpen, Globe, ShieldCheck, LogIn, LogOut, ShoppingCart, Images } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import LoginModal from "@/components/LoginModal";
+// LoginModal only opens when the user clicks "Sign in" — keep its
+// bundle separate so the header on logged-in pages stays cheap.
+const LoginModal = lazy(() => import("@/components/LoginModal"));
 import { useCart } from "@/hooks/useCart";
 
 export default function AppHeader() {
@@ -119,7 +121,9 @@ export default function AppHeader() {
         </div>
       </header>
 
-      <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
+      <Suspense fallback={null}>
+        <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
+      </Suspense>
     </>
   );
 }

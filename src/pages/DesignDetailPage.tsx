@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import AppHeader from "@/components/AppHeader";
 import ProductPreview from "@/components/ProductPreview";
-import OrderDialog from "@/components/OrderDialog";
+const OrderDialog = lazy(() => import("@/components/OrderDialog"));
 import { Button } from "@/components/ui/button";
 import {
   catalog,
@@ -458,25 +458,27 @@ export default function DesignDetailPage() {
         </div>
       </div>
 
-      <OrderDialog
-        breakdown={priceBreakdown}
-        product={product.type}
-        subProduct={product.sub_product || product.type}
-        color={selectedColor}
-        isStudio={false}
-        externalOpen={orderDialogOpen}
-        onExternalOpenChange={setOrderDialogOpen}
-        frontMockupDataUrl={orderMockup}
-        backMockupDataUrl={null}
-        transparentImageDataUrl={design.print_file_url}
-        backTransparentImageDataUrl={null}
-        prompt={design.title_ka}
-        size={selectedSize || undefined}
-      >
-        {/* Suppress OrderDialog's default DialogTrigger button — we drive
-            opening via externalOpen, our own "შეუკვეთე" button is the trigger. */}
-        <span className="hidden" />
-      </OrderDialog>
+      <Suspense fallback={null}>
+        <OrderDialog
+          breakdown={priceBreakdown}
+          product={product.type}
+          subProduct={product.sub_product || product.type}
+          color={selectedColor}
+          isStudio={false}
+          externalOpen={orderDialogOpen}
+          onExternalOpenChange={setOrderDialogOpen}
+          frontMockupDataUrl={orderMockup}
+          backMockupDataUrl={null}
+          transparentImageDataUrl={design.print_file_url}
+          backTransparentImageDataUrl={null}
+          prompt={design.title_ka}
+          size={selectedSize || undefined}
+        >
+          {/* Suppress OrderDialog's default DialogTrigger button — we drive
+              opening via externalOpen, our own "შეუკვეთე" button is the trigger. */}
+          <span className="hidden" />
+        </OrderDialog>
+      </Suspense>
     </div>
   );
 }
