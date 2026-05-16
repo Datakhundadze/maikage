@@ -62,6 +62,16 @@
     <meta name="author" content="Maika.ge" />
     <meta name="google-site-verification" content="4kCNc1dYurq6vmfhFIAJItxJbNPTkAjMlYcmeOI7EFg" />
 
+    <!-- Render-blocking JS audit (Phase 3):
+         - GTM bootstrap IIFE below: tiny (~300 B parsed), creates the
+           real gtm.js <script> with async=true so the heavy fetch is
+           non-blocking. Keeping the inline tag in <head> per GTM's
+           install guide for event-timing accuracy.
+         - gtag.js: already loaded with async ✓.
+         - /src/main.tsx: type=module so it's deferred by spec ✓.
+         No further script-level defer / async work needed — Phase 2's
+         route splitting already addressed the JS payload itself. -->
+
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
