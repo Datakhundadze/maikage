@@ -11,6 +11,11 @@
          latency. -->
     <link rel="preconnect" href="https://ykoseamefoabptuijsza.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://ykoseamefoabptuijsza.supabase.co" />
+    <!-- Analytics: GTM + gtag.js both load from googletagmanager.com.
+         dns-prefetch warms the lookup; full preconnect would also do
+         TCP+TLS handshake but for an async script that's not on the
+         critical path the DNS warmup alone is the better trade. -->
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
     <!-- Preload the self-hosted Noto Sans Georgian woff2 (Georgian
          Unicode subset, ~42 KB). Loaded at high priority alongside the
          HTML parse so Georgian UI text — the bulk of the site — has the
