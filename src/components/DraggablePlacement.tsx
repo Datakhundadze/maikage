@@ -404,7 +404,7 @@ export default function DraggablePlacement({
             onPointerDown={(e) => handlePointerDown(e, "rotate")}
           >
             <div className="flex flex-col items-center">
-              <div className={`w-px h-3 ${accentClass ? accentClass : "bg-primary"} opacity-60`} />
+              <div className={`w-px h-8 ${accentClass ? accentClass : "bg-primary"} opacity-60`} />
               <div className={`w-5 h-5 rounded-full border-2 border-primary-foreground flex items-center justify-center ${accentClass ? accentClass : "bg-primary"}`}>
                 <RotateCw className="w-2.5 h-2.5 text-white" />
               </div>
