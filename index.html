@@ -16,20 +16,6 @@
          TCP+TLS handshake but for an async script that's not on the
          critical path the DNS warmup alone is the better trade. -->
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-    <!-- Preload the self-hosted Noto Sans Georgian woff2 (Georgian
-         Unicode subset, ~42 KB). Loaded at high priority alongside the
-         HTML parse so Georgian UI text — the bulk of the site — has the
-         font ready by first paint without an additional roundtrip.
-         crossorigin is mandatory for font preloads; without it the
-         browser would treat the preload as a separate fetch from the
-         CSS-triggered one and download the file twice. -->
-    <link
-      rel="preload"
-      href="/fonts/noto-sans-georgian-georgian.woff2"
-      as="font"
-      type="font/woff2"
-      crossorigin
-    />
     <!-- Google Fonts: loaded non-blocking via the well-supported
          media-print swap trick. The browser fetches the stylesheet at
          high priority but, because `media="print"` matches no current
@@ -40,9 +26,10 @@
          without JS.
          Only the SimplePage editor's font picker actually consumes
          these — the rest of the UI uses the Tailwind system-font stack
-         (plus the self-hosted Noto Sans Georgian declared in
-         src/index.css) so deferring the load doesn't change the
-         visible UI for non-editor visitors. -->
+         (Georgian glyphs hit each platform's bundled Noto Sans
+         Georgian / Sylfaen via system fallback). Deferring the load
+         therefore doesn't change the visible UI for non-editor
+         visitors. -->
     <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=BPG+Arial&family=Dancing+Script:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Noto+Sans+Georgian:wght@400;700&family=Noto+Serif+Georgian:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Raleway:wght@400;700&family=Roboto:wght@400;700&display=swap"
