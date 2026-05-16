@@ -120,11 +120,11 @@ export function buildProductSchema(input: {
     url: input.url,
     sku: input.slug,
     mpn: input.slug,
-    // GILDAN is the blank-garment manufacturer maika.ge prints onto by
-    // default — that's the brand the customer physically receives, which
-    // is what Google's product-snippet guidance asks for in the `brand`
-    // slot. The maika.ge "seller" identity is captured below in offers.
-    brand: { "@type": "Brand", name: "GILDAN" },
+    // Brand is maika.ge because customers experience this as a maika.ge
+    // product — a custom design on a curated catalog garment — not as a
+    // generic blank shirt. The blank-garment manufacturer (e.g. GILDAN)
+    // is a supply detail the buyer isn't shopping for.
+    brand: { "@type": "Brand", name: "maika.ge" },
     offers: {
       "@type": "Offer",
       url: input.url,
