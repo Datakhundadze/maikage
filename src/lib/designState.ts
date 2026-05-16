@@ -15,6 +15,18 @@ export interface DesignStatePhoto {
   rotation: number;
   /** Render order, low to high (matches upload order). */
   z_order: number;
+  /** Source image's natural width / height. Stored so the admin
+   *  compositor can derive source height without re-loading the image.
+   *  Optional — older orders predate the crop UX. */
+  natural_aspect?: number;
+  /** Source crop / pan state. All in zone fractions (same units as
+   *  `scale`). `source_scale` is the source width; `source_offset_x/y`
+   *  is the source center offset from the window center. Optional —
+   *  when missing the compositor renders cover-fit-centered, matching
+   *  the visual behaviour of orders placed before the crop UX shipped. */
+  source_scale?: number;
+  source_offset_x?: number;
+  source_offset_y?: number;
 }
 
 export interface DesignStateText {

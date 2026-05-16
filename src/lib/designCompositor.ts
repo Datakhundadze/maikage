@@ -111,12 +111,66 @@ export async function compositePrintFileFromDesignState(
     if (!photo.url) continue;
     try {
       const img = await loadImage(photo.url);
-      const boxW = printZoneW * photo.scale;
-      const boxH = printZoneH * photo.scaleY;
-      const boxX = printZoneX + printZoneW * photo.x - boxW / 2;
-      const boxY = printZoneY + printZoneH * photo.y - boxH / 2;
+      const winW = printZoneW * photo.scale;
+      const winH = printZoneH * photo.scaleY;
+      const winCx = printZoneX + printZoneW * photo.x;
+      const winCy = printZoneY + printZoneH * photo.y;
+      const winX = winCx - winW / 2;
+      const winY = winCy - winH / 2;
+
+      // Crop semantics: when source_scale / source_offset_x/y are
+      // present, render the source at its absolute position in zone
+      // coordinates, clipped to the window. Legacy orders (fields
+      // missing) fall through to the cover-fit center-crop below so
+      // they render exactly as they did at order time.
+      if (
+        photo.source_scale !== undefined &&
+        photo.source_offset_x !== undefined &&
+        photo.source_offset_y !== undefined &&
+        photo.source_scale > 0 &&
+        img.naturalWidth > 0 &&
+        img.naturalHeight > 0
+      ) {
+        const naturalAspect = img.naturalWidth / img.naturalHeight;
+        const srcW_canvas = printZoneW * photo.source_scale;
+        const srcH_canvas = srcW_canvas / naturalAspect;
+        const srcCx_canvas = winCx + printZoneW * photo.source_offset_x;
+        const srcCy_canvas = winCy + printZoneH * photo.source_offset_y;
+        const srcX_canvas = srcCx_canvas - srcW_canvas / 2;
+        const srcY_canvas = srcCy_canvas - srcH_canvas / 2;
+
+        const destX = Math.max(srcX_canvas, winX);
+        const destY = Math.max(srcY_canvas, winY);
+        const destR = Math.min(srcX_canvas + srcW_canvas, winX + winW);
+        const destB = Math.min(srcY_canvas + srcH_canvas, winY + winH);
+        const destW = destR - destX;
+        const destH = destB - destY;
+        if (destW <= 0 || destH <= 0) continue;
+
+        const sxFrac = (destX - srcX_canvas) / srcW_canvas;
+        const syFrac = (destY - srcY_canvas) / srcH_canvas;
+        const swFrac = destW / srcW_canvas;
+        const shFrac = destH / srcH_canvas;
+        const sx = sxFrac * img.naturalWidth;
+        const sy = syFrac * img.naturalHeight;
+        const sw = swFrac * img.naturalWidth;
+        const sh = shFrac * img.naturalHeight;
+
+        if (photo.rotation) {
+          ctx.save();
+          ctx.translate(winCx, winCy);
+          ctx.rotate((photo.rotation * Math.PI) / 180);
+          ctx.drawImage(img, sx, sy, sw, sh, destX - winCx, destY - winCy, destW, destH);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, sx, sy, sw, sh, destX, destY, destW, destH);
+        }
+        continue;
+      }
+
+      // Legacy cover-fit (no source state stored).
       const imgAspect = img.naturalWidth / img.naturalHeight;
-      const boxAspect = boxH > 0 ? boxW / boxH : 1;
+      const boxAspect = winH > 0 ? winW / winH : 1;
       let srcX = 0;
       let srcY = 0;
       let srcW = img.naturalWidth;
@@ -130,12 +184,12 @@ export async function compositePrintFileFromDesignState(
       }
       if (photo.rotation) {
         ctx.save();
-        ctx.translate(boxX + boxW / 2, boxY + boxH / 2);
+        ctx.translate(winCx, winCy);
         ctx.rotate((photo.rotation * Math.PI) / 180);
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, -boxW / 2, -boxH / 2, boxW, boxH);
+        ctx.drawImage(img, srcX, srcY, srcW, srcH, -winW / 2, -winH / 2, winW, winH);
         ctx.restore();
       } else {
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
+        ctx.drawImage(img, srcX, srcY, srcW, srcH, winX, winY, winW, winH);
       }
     } catch (e) {
       console.warn(`[designCompositor] photo skipped:`, e);
