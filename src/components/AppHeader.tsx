@@ -10,6 +10,18 @@ import { useNavigate, useLocation } from "react-router-dom";
 const LoginModal = lazy(() => import("@/components/LoginModal"));
 import { useCart } from "@/hooks/useCart";
 
+// Hover-preload map: when the customer hovers a nav button we kick off
+// the route's chunk fetch so the click-to-render gap shrinks from
+// "wait for the chunk to download" to ~0 ms. Vite's module cache
+// dedupes repeat calls, so hovering twice is free. The studio route
+// "/" lives in the main bundle, so no entry here.
+const PRELOAD_BY_PATH: Record<string, () => Promise<unknown>> = {
+  "/designs": () => import("@/pages/CatalogPage"),
+  "/my-designs": () => import("@/pages/MyDesignsPage"),
+  "/community": () => import("@/pages/CommunityPage"),
+  "/admin": () => import("@/pages/AdminPage"),
+};
+
 export default function AppHeader() {
   const { lang, setMode, toggleLang } = useAppState();
   const { itemCount } = useCart();
@@ -56,6 +68,7 @@ export default function AppHeader() {
         <nav className="flex items-center gap-0.5 flex-1 justify-center overflow-x-auto">
           {navItems.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
+            const preload = PRELOAD_BY_PATH[path];
             return (
               <button
                 key={path}
@@ -67,6 +80,9 @@ export default function AppHeader() {
                   setMode("studio");
                   navigate(path);
                 }}
+                onMouseEnter={preload}
+                onFocus={preload}
+                onTouchStart={preload}
                 className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap ${
                   active
                     ? "bg-sidebar-primary text-sidebar-primary-foreground"
