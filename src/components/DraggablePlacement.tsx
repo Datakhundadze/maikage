@@ -84,12 +84,15 @@ export default function DraggablePlacement({
   const [dragMode, setDragMode] = useState<DragMode>(null);
   // Drag start cache includes the source state so multi-update drags (corner
   // proportional resize) can derive new values from the start state rather
-  // than the in-flight update.
+  // than the in-flight update. `altKey` is snapshotted on pointerDown so
+  // a center-drag that began with Alt held continues panning even if the
+  // user lets go of Alt mid-gesture.
   const startRef = useRef({
     mx: 0, my: 0,
     cx: 0, cy: 0, cs: 0, csY: 0,
     startAngle: 0, startRotation: 0,
     srcScale: 0, srcOffsetX: 0, srcOffsetY: 0,
+    altKey: false,
   });
 
   // Zone geometry in parent coordinates (fractions 0-1)
@@ -122,6 +125,7 @@ export default function DraggablePlacement({
       srcScale: source?.scale ?? 0,
       srcOffsetX: source?.offsetX ?? 0,
       srcOffsetY: source?.offsetY ?? 0,
+      altKey: e.altKey,
     };
     if (mode === "rotate") {
       const center = getCenterPoint();
@@ -168,6 +172,19 @@ export default function DraggablePlacement({
     const dy = (e.clientY - startRef.current.my) / (rect.height * zoneH);
 
     if (dragMode === "move") {
+      // Alt-drag on the center pans the source within the window instead
+      // of moving the window itself — useful for repositioning a tightly
+      // cropped photo's visible region without disturbing the layout.
+      // Falls through to the normal move when there's no source state to
+      // pan (text layer or photo without naturalAspect yet).
+      if (startRef.current.altKey && source && onSourceChange) {
+        onSourceChange({
+          scale: startRef.current.srcScale,
+          offsetX: startRef.current.srcOffsetX + dx,
+          offsetY: startRef.current.srcOffsetY + dy,
+        });
+        return;
+      }
       // No clamp on move: the design centre can go anywhere on the preview
       // (or even slightly off it). The outer preview container is
       // overflow-hidden so off-canvas movement is harmless visually.
