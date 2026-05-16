@@ -213,6 +213,122 @@ interface PhotoLayer {
   id: string;
   image: string;
   coords: PlacementCoords;
+  /** Source image's natural width / height. Populated asynchronously
+   *  after the photo loads; used by DraggablePlacement to lock corner
+   *  resize to this aspect so dragging doesn't stretch the image. */
+  naturalAspect?: number;
+  /** Source-image crop / pan state, in zone fractions (same units as
+   *  `coords.scale`). `sourceScale` is the source width; `sourceOffsetX/Y`
+   *  is the source center offset from the window center. Undefined means
+   *  cover-fit-centered (the editor renders that as the implicit default).
+   *  Becomes defined once the customer drags an edge handle or pans. */
+  sourceScale?: number;
+  sourceOffsetX?: number;
+  sourceOffsetY?: number;
+}
+
+// Render a photo layer onto a 2D canvas, honoring either the legacy
+// cover-fit mode (no source state) or the new crop mode (source state
+// present). zone* params are in canvas pixels; the photo's coords/source
+// are interpreted as zone fractions. Rotation is applied around the
+// window center. Caller controls ctx.globalAlpha.
+function drawPhotoOntoCanvas(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  zoneX: number,
+  zoneY: number,
+  zoneW: number,
+  zoneH: number,
+  photo: {
+    coords: PlacementCoords;
+    sourceScale?: number;
+    sourceOffsetX?: number;
+    sourceOffsetY?: number;
+  },
+): void {
+  const winW = zoneW * photo.coords.scale;
+  const winH = zoneH * (photo.coords.scaleY ?? photo.coords.scale);
+  const winCx = zoneX + zoneW * photo.coords.x;
+  const winCy = zoneY + zoneH * photo.coords.y;
+  const winX = winCx - winW / 2;
+  const winY = winCy - winH / 2;
+  const rotationDeg = photo.coords.rotation ?? 0;
+
+  const hasCropState =
+    photo.sourceScale !== undefined &&
+    photo.sourceOffsetX !== undefined &&
+    photo.sourceOffsetY !== undefined &&
+    photo.sourceScale > 0 &&
+    img.naturalWidth > 0 &&
+    img.naturalHeight > 0;
+
+  if (hasCropState) {
+    // Source rect in canvas pixels (the image's "physical" placement on
+    // the t-shirt mockup, independent of the window box).
+    const naturalAspect = img.naturalWidth / img.naturalHeight;
+    const srcW_canvas = zoneW * photo.sourceScale!;
+    const srcH_canvas = srcW_canvas / naturalAspect;
+    const srcCx_canvas = winCx + zoneW * photo.sourceOffsetX!;
+    const srcCy_canvas = winCy + zoneH * photo.sourceOffsetY!;
+    const srcX_canvas = srcCx_canvas - srcW_canvas / 2;
+    const srcY_canvas = srcCy_canvas - srcH_canvas / 2;
+
+    // Intersection of source rect with the window — that's what's
+    // actually visible. Clip pre-rotation in window-space coordinates.
+    const destX = Math.max(srcX_canvas, winX);
+    const destY = Math.max(srcY_canvas, winY);
+    const destR = Math.min(srcX_canvas + srcW_canvas, winX + winW);
+    const destB = Math.min(srcY_canvas + srcH_canvas, winY + winH);
+    const destW = destR - destX;
+    const destH = destB - destY;
+    if (destW <= 0 || destH <= 0) return;
+
+    // Map the visible portion back to image-native pixel space.
+    const sxFrac = (destX - srcX_canvas) / srcW_canvas;
+    const syFrac = (destY - srcY_canvas) / srcH_canvas;
+    const swFrac = destW / srcW_canvas;
+    const shFrac = destH / srcH_canvas;
+    const sx = sxFrac * img.naturalWidth;
+    const sy = syFrac * img.naturalHeight;
+    const sw = swFrac * img.naturalWidth;
+    const sh = shFrac * img.naturalHeight;
+
+    if (rotationDeg) {
+      ctx.save();
+      ctx.translate(winCx, winCy);
+      ctx.rotate((rotationDeg * Math.PI) / 180);
+      ctx.drawImage(img, sx, sy, sw, sh, destX - winCx, destY - winCy, destW, destH);
+      ctx.restore();
+    } else {
+      ctx.drawImage(img, sx, sy, sw, sh, destX, destY, destW, destH);
+    }
+    return;
+  }
+
+  // Legacy cover-fit mode: center-crop the image to fill the window.
+  // Matches the visual rendering of orders placed before crop UX shipped.
+  const imgAspect = img.naturalWidth / img.naturalHeight;
+  const winAspect = winW / winH;
+  let srcX = 0;
+  let srcY = 0;
+  let srcW = img.naturalWidth;
+  let srcH = img.naturalHeight;
+  if (imgAspect > winAspect) {
+    srcW = img.naturalHeight * winAspect;
+    srcX = (img.naturalWidth - srcW) / 2;
+  } else {
+    srcH = img.naturalWidth / winAspect;
+    srcY = (img.naturalHeight - srcH) / 2;
+  }
+  if (rotationDeg) {
+    ctx.save();
+    ctx.translate(winCx, winCy);
+    ctx.rotate((rotationDeg * Math.PI) / 180);
+    ctx.drawImage(img, srcX, srcY, srcW, srcH, -winW / 2, -winH / 2, winW, winH);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, srcX, srcY, srcW, srcH, winX, winY, winW, winH);
+  }
 }
 
 interface SideData {
@@ -266,6 +382,10 @@ function buildDesignStateInput(
         scaleY: p.coords.scaleY ?? p.coords.scale,
         rotation: p.coords.rotation ?? 0,
         z_order: i,
+        natural_aspect: p.naturalAspect,
+        source_scale: p.sourceScale,
+        source_offset_x: p.sourceOffsetX,
+        source_offset_y: p.sourceOffsetY,
       })),
       text: s.designText.trim()
         ? {
@@ -373,10 +493,11 @@ export default function SimplePage() {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
+      const photoId = `photo-${++photoIdCounter}`;
       setSideData(prev => {
         if (prev.photos.length >= MAX_PHOTOS) return prev;
         const newPhoto: PhotoLayer = {
-          id: `photo-${++photoIdCounter}`,
+          id: photoId,
           image: result,
           // First photo: land at wherever the user dragged the empty
           // placement frame (or zone-fill default if they never moved it).
@@ -391,7 +512,23 @@ export default function SimplePage() {
       });
       // Auto-select the newly uploaded photo so the keyboard delete handler
       // can target it without extra clicks.
-      setSelectedLayerId(`photo-${photoIdCounter}`);
+      setSelectedLayerId(photoId);
+
+      // Measure natural aspect asynchronously and patch the photo. Used
+      // by DraggablePlacement's corner-drag aspect lock so the photo
+      // doesn't stretch when a customer resizes it. If the image fails
+      // to decode (unlikely — we just read it as a data URL), the photo
+      // keeps naturalAspect undefined and corners stay free-resize.
+      const probe = new Image();
+      probe.onload = () => {
+        if (!probe.naturalWidth || !probe.naturalHeight) return;
+        const aspect = probe.naturalWidth / probe.naturalHeight;
+        setSideData(prev => ({
+          ...prev,
+          photos: prev.photos.map(p => p.id === photoId ? { ...p, naturalAspect: aspect } : p),
+        }));
+      };
+      probe.src = result;
     };
     reader.readAsDataURL(file);
     e.target.value = "";
@@ -434,6 +571,25 @@ export default function SimplePage() {
     }));
   }, [setSideData]);
 
+  const updatePhotoSource = useCallback(
+    (id: string, source: { scale: number; offsetX: number; offsetY: number }) => {
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                sourceScale: source.scale,
+                sourceOffsetX: source.offsetX,
+                sourceOffsetY: source.offsetY,
+              }
+            : p,
+        ),
+      }));
+    },
+    [setSideData],
+  );
+
   const clearDesign = () => {
     setSideData(prev => ({
       ...prev,
@@ -464,10 +620,62 @@ export default function SimplePage() {
     });
   }, [sideData.designText, sideData.selectedFont, sideData.textColor]);
 
+  // Resolve the placement zone for the current product/color/view so the
+  // layer builder can derive cover-fit source defaults in zone-fraction
+  // units. The zone aspect (not always square) shows up in the math
+  // because source `scale` is in zone-X-fraction terms.
+  const zoneForLayers = useMemo(() => {
+    const { config } = productConfig;
+    const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
+    const imageResult = catalog.findImageForColor(
+      config.product as ProductType,
+      resolvedSub,
+      config.color as ProductColor,
+      currentView,
+    );
+    return imageResult?.entry.placementZone;
+  }, [productConfig, currentView]);
+
+  // Initial cover-fit source state for a photo whose customer hasn't yet
+  // dragged an edge handle / panned. Matches what `object-cover` does
+  // visually: source covers the window, with the longer dimension
+  // extending beyond. The compositors and live preview both treat
+  // missing source state as equivalent to this default.
+  const coverFitSource = useCallback(
+    (photo: PhotoLayer): { scale: number; offsetX: number; offsetY: number } | undefined => {
+      const naturalAspect = photo.naturalAspect;
+      if (!naturalAspect || naturalAspect <= 0) return undefined;
+      const zoneW = zoneForLayers?.scale ?? 1;
+      const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
+      const winScale = photo.coords.scale;
+      const winScaleY = photo.coords.scaleY ?? photo.coords.scale;
+      // Box pixel aspect (assuming square parent): (winScale × zoneW) / (winScaleY × zoneH).
+      const boxAspect = (winScale * zoneW) / (winScaleY * zoneH);
+      let sourceScale: number;
+      if (naturalAspect >= boxAspect) {
+        // Image is wider than box: source matches box HEIGHT, extends horizontally.
+        sourceScale = (winScaleY * zoneH * naturalAspect) / zoneW;
+      } else {
+        // Image is taller than box: source matches box WIDTH.
+        sourceScale = winScale;
+      }
+      return { scale: sourceScale, offsetX: 0, offsetY: 0 };
+    },
+    [zoneForLayers],
+  );
+
   // Build layers array
   const layers = useMemo<DesignLayer[]>(() => {
     const result: DesignLayer[] = [];
     sideData.photos.forEach((photo, index) => {
+      // If the customer has already cropped/panned this photo we carry
+      // those stored values through. Otherwise we synthesize a cover-fit
+      // default so DraggablePlacement always has a defined source state
+      // to drag from (without it, the first edge-drag would shift from 0).
+      const storedSource =
+        photo.sourceScale !== undefined && photo.sourceOffsetX !== undefined && photo.sourceOffsetY !== undefined
+          ? { scale: photo.sourceScale, offsetX: photo.sourceOffsetX, offsetY: photo.sourceOffsetY }
+          : coverFitSource(photo);
       result.push({
         id: photo.id,
         image: photo.image,
@@ -476,6 +684,9 @@ export default function SimplePage() {
         accentClass: LAYER_COLORS[index % LAYER_COLORS.length],
         selected: selectedLayerId === photo.id,
         onSelect: () => setSelectedLayerId(photo.id),
+        naturalAspect: photo.naturalAspect,
+        source: storedSource,
+        onSourceChange: (s) => updatePhotoSource(photo.id, s),
       });
     });
     if (textImage) {
@@ -490,7 +701,7 @@ export default function SimplePage() {
       });
     }
     return result;
-  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords, selectedLayerId]);
+  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords, updatePhotoSource, coverFitSource, selectedLayerId]);
 
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
@@ -591,37 +802,8 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        // Photo box: the bounding box the user sees/drags in the preview
-        const boxW = zoneW * photo.coords.scale;
-        const boxH = zoneH * (photo.coords.scaleY ?? photo.coords.scale);
-        const boxX = zoneX + zoneW * photo.coords.x - boxW / 2;
-        const boxY = zoneY + zoneH * photo.coords.y - boxH / 2;
-        // object-cover: fill the box entirely, center-cropping the image so the
-        // design occupies the full dashed zone area (no letterbox).
-        const imgAspect = img.naturalWidth / img.naturalHeight;
-        const boxAspect = boxW / boxH;
-        let srcX = 0, srcY = 0, srcW = img.naturalWidth, srcH = img.naturalHeight;
-        if (imgAspect > boxAspect) {
-          srcW = img.naturalHeight * boxAspect;
-          srcX = (img.naturalWidth - srcW) / 2;
-        } else {
-          srcH = img.naturalWidth / boxAspect;
-          srcY = (img.naturalHeight - srcH) / 2;
-        }
-        // Live preview rotates the layer with CSS `transform: rotate()`
-        // around its center (DraggablePlacement). Mirror that here so the
-        // composited mockup matches what the customer sees.
-        const rotationDeg = photo.coords.rotation ?? 0;
         ctx.globalAlpha = 0.8;
-        if (rotationDeg) {
-          ctx.save();
-          ctx.translate(boxX + boxW / 2, boxY + boxH / 2);
-          ctx.rotate((rotationDeg * Math.PI) / 180);
-          ctx.drawImage(img, srcX, srcY, srcW, srcH, -boxW / 2, -boxH / 2, boxW, boxH);
-          ctx.restore();
-        } else {
-          ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
-        }
+        drawPhotoOntoCanvas(ctx, img, zoneX, zoneY, zoneW, zoneH, photo);
         ctx.globalAlpha = 1;
       } catch { /* skip */ }
     }
@@ -747,33 +929,7 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        const boxW = printZoneW * photo.coords.scale;
-        const boxH = printZoneH * (photo.coords.scaleY ?? photo.coords.scale);
-        const boxX = printZoneX + printZoneW * photo.coords.x - boxW / 2;
-        const boxY = printZoneY + printZoneH * photo.coords.y - boxH / 2;
-        // object-cover: fill the print area entirely, center-cropping the image.
-        const imgAspect = img.naturalWidth / img.naturalHeight;
-        const boxAspect = boxW / boxH;
-        let srcX = 0, srcY = 0, srcW = img.naturalWidth, srcH = img.naturalHeight;
-        if (imgAspect > boxAspect) {
-          srcW = img.naturalHeight * boxAspect;
-          srcX = (img.naturalWidth - srcW) / 2;
-        } else {
-          srcH = img.naturalWidth / boxAspect;
-          srcY = (img.naturalHeight - srcH) / 2;
-        }
-        // Match the live preview's CSS rotation (around the box center) so
-        // the print file reflects the customer's intended orientation.
-        const rotationDeg = photo.coords.rotation ?? 0;
-        if (rotationDeg) {
-          ctx.save();
-          ctx.translate(boxX + boxW / 2, boxY + boxH / 2);
-          ctx.rotate((rotationDeg * Math.PI) / 180);
-          ctx.drawImage(img, srcX, srcY, srcW, srcH, -boxW / 2, -boxH / 2, boxW, boxH);
-          ctx.restore();
-        } else {
-          ctx.drawImage(img, srcX, srcY, srcW, srcH, boxX, boxY, boxW, boxH);
-        }
+        drawPhotoOntoCanvas(ctx, img, printZoneX, printZoneY, printZoneW, printZoneH, photo);
       } catch { /* skip */ }
     }
 
