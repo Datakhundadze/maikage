@@ -27,7 +27,12 @@ interface DraggablePlacementProps {
   zone?: PlacementCoords;
 }
 
-type DragMode = "move" | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br" | "rotate" | null;
+type DragMode =
+  | "move"
+  | "resize-tl" | "resize-tr" | "resize-bl" | "resize-br"
+  | "resize-t" | "resize-b" | "resize-l" | "resize-r"
+  | "rotate"
+  | null;
 
 export default function DraggablePlacement({
   coords,
@@ -116,26 +121,47 @@ export default function DraggablePlacement({
     if (dragMode === "move") {
       // No clamp on move: the design centre can go anywhere on the preview
       // (or even slightly off it). The outer preview container is
-      // overflow-hidden so off-canvas movement is harmless visually, and
-      // the composite still ctx.clip()s to the printable zone — anything
-      // dragged outside the dashed box simply won't print. Clamping made
-      // it impossible to position designs lower on the t-shirt when the
-      // catalog zone was small.
+      // overflow-hidden so off-canvas movement is harmless visually.
       onCoordsChange({
         ...coords,
         x: startRef.current.cx + dx,
         y: startRef.current.cy + dy,
       });
+    } else if (dragMode === "resize-t" || dragMode === "resize-b" || dragMode === "resize-l" || dragMode === "resize-r") {
+      // Edge handle: one-axis resize, with the opposite edge anchored so
+      // the box only grows/shrinks in the direction the user drags. The
+      // anchored edge stays fixed even though we store the box by its
+      // center, so the center has to shift by half the size change.
+      const clamp = (v: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, v));
+      let newScale = startRef.current.cs;
+      let newScaleY = startRef.current.csY;
+      let newX = startRef.current.cx;
+      let newY = startRef.current.cy;
+      if (dragMode === "resize-t") {
+        newScaleY = clamp(startRef.current.csY - dy);
+        const anchorBottom = startRef.current.cy + startRef.current.csY / 2;
+        newY = anchorBottom - newScaleY / 2;
+      } else if (dragMode === "resize-b") {
+        newScaleY = clamp(startRef.current.csY + dy);
+        const anchorTop = startRef.current.cy - startRef.current.csY / 2;
+        newY = anchorTop + newScaleY / 2;
+      } else if (dragMode === "resize-l") {
+        newScale = clamp(startRef.current.cs - dx);
+        const anchorRight = startRef.current.cx + startRef.current.cs / 2;
+        newX = anchorRight - newScale / 2;
+      } else {
+        newScale = clamp(startRef.current.cs + dx);
+        const anchorLeft = startRef.current.cx - startRef.current.cs / 2;
+        newX = anchorLeft + newScale / 2;
+      }
+      onCoordsChange({ ...coords, x: newX, y: newY, scale: newScale, scaleY: newScaleY });
     } else {
+      // Corner handle: free two-axis resize. Future commit makes this
+      // proportional (aspect-locked) when an aspectLock is provided.
       const isLeft = dragMode.includes("l");
       const isTop = dragMode.includes("t");
       const sdx = isLeft ? -dx : dx;
       const sdy = isTop ? -dy : dy;
-      // scale=1 fills the placement zone exactly. Capping at 1 prevented
-      // users from growing the design box wide enough to fit long text
-      // alongside an image. Composite still ctx.clip()s to the printable
-      // zone, so anything beyond scale=1 simply won't print — the larger
-      // cap is purely a layout/legibility affordance during editing.
       const newScaleX = Math.max(MIN_SCALE, Math.min(MAX_SCALE, startRef.current.cs + sdx * 2));
       const newScaleY = Math.max(MIN_SCALE, Math.min(MAX_SCALE, startRef.current.csY + sdy * 2));
       onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
@@ -163,7 +189,15 @@ export default function DraggablePlacement({
   const width = `${photoW * 100}%`;
   const height = `${photoH * 100}%`;
 
+  // Corner handles: filled circles, diagonal-resize cursors. Corner =
+  // two-axis resize (and proportional with aspectLock in a later commit).
   const handleClass = `absolute w-3 h-3 rounded-full border-2 border-primary-foreground z-10 ${accentClass ? accentClass : "bg-primary"}`;
+  // Edge handles: pill shapes aligned along their edge, single-axis-resize
+  // cursors. Visually distinct from corners so the customer can tell at a
+  // glance which handle does what.
+  const edgeBase = `absolute z-10 border border-primary-foreground rounded-sm ${accentClass ? accentClass : "bg-primary"}`;
+  const edgeHHandle = `${edgeBase} h-1.5 w-4`;   // horizontal pill for top/bottom
+  const edgeVHandle = `${edgeBase} w-1.5 h-4`;   // vertical pill for left/right
   const isRotating = dragMode === "rotate";
 
   const isManaged = selected !== undefined;
@@ -195,10 +229,29 @@ export default function DraggablePlacement({
 
       {showHandles && (
         <>
-          <div className={`${handleClass} -top-1.5 -left-1.5 cursor-nw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tl")} />
-          <div className={`${handleClass} -top-1.5 -right-1.5 cursor-ne-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tr")} />
-          <div className={`${handleClass} -bottom-1.5 -left-1.5 cursor-sw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-bl")} />
-          <div className={`${handleClass} -bottom-1.5 -right-1.5 cursor-se-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-br")} />
+          {/* Corner handles — two-axis resize */}
+          <div className={`${handleClass} -top-1.5 -left-1.5 cursor-nwse-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tl")} />
+          <div className={`${handleClass} -top-1.5 -right-1.5 cursor-nesw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-tr")} />
+          <div className={`${handleClass} -bottom-1.5 -left-1.5 cursor-nesw-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-bl")} />
+          <div className={`${handleClass} -bottom-1.5 -right-1.5 cursor-nwse-resize`} onPointerDown={(e) => handlePointerDown(e, "resize-br")} />
+
+          {/* Edge handles — one-axis resize (and crop in a later commit) */}
+          <div
+            className={`${edgeHHandle} -top-1 left-1/2 -translate-x-1/2 cursor-ns-resize`}
+            onPointerDown={(e) => handlePointerDown(e, "resize-t")}
+          />
+          <div
+            className={`${edgeHHandle} -bottom-1 left-1/2 -translate-x-1/2 cursor-ns-resize`}
+            onPointerDown={(e) => handlePointerDown(e, "resize-b")}
+          />
+          <div
+            className={`${edgeVHandle} -left-1 top-1/2 -translate-y-1/2 cursor-ew-resize`}
+            onPointerDown={(e) => handlePointerDown(e, "resize-l")}
+          />
+          <div
+            className={`${edgeVHandle} -right-1 top-1/2 -translate-y-1/2 cursor-ew-resize`}
+            onPointerDown={(e) => handlePointerDown(e, "resize-r")}
+          />
 
           <div
             className="absolute -bottom-8 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing z-10"
