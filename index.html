@@ -11,7 +11,31 @@
          latency. -->
     <link rel="preconnect" href="https://ykoseamefoabptuijsza.supabase.co" crossorigin />
     <link rel="dns-prefetch" href="https://ykoseamefoabptuijsza.supabase.co" />
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=BPG+Arial&family=Dancing+Script:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Noto+Sans+Georgian:wght@400;700&family=Noto+Serif+Georgian:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Raleway:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
+    <!-- Google Fonts: loaded non-blocking via the well-supported
+         media-print swap trick. The browser fetches the stylesheet at
+         high priority but, because `media="print"` matches no current
+         medium, it doesn't gate the initial paint. The inline onload
+         flips media to `all` once the CSS lands, applying the fonts
+         without blocking render. The <noscript> fallback restores the
+         classic synchronous load for the small set of crawlers / users
+         without JS.
+         Only the SimplePage editor's font picker actually consumes
+         these — the rest of the UI uses the Tailwind system-font stack
+         (plus the self-hosted Noto Sans Georgian declared in
+         src/index.css) so deferring the load doesn't change the
+         visible UI for non-editor visitors. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=BPG+Arial&family=Dancing+Script:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Noto+Sans+Georgian:wght@400;700&family=Noto+Serif+Georgian:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Raleway:wght@400;700&family=Roboto:wght@400;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=BPG+Arial&family=Dancing+Script:wght@400;700&family=Merriweather:wght@400;700&family=Montserrat:wght@400;700&family=Noto+Sans+Georgian:wght@400;700&family=Noto+Serif+Georgian:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Pacifico&family=Playfair+Display:wght@400;700&family=Raleway:wght@400;700&family=Roboto:wght@400;700&display=swap"
+      />
+    </noscript>
     <title>Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი 15 წლის გამოცდილებით</title>
     <link rel="canonical" href="https://maika.ge/" />
     <link rel="icon" href="/favicon.jpg" type="image/jpeg">
