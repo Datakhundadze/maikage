@@ -16,6 +16,7 @@ export const CATEGORIES = [
   { slug: "sports",         label_ka: "სპორტი",           label_en: "Sports" },
   { slug: "professions",    label_ka: "პროფესიები",      label_en: "Professions" },
   { slug: "seasonal",       label_ka: "სეზონური",         label_en: "Seasonal" },
+  { slug: "various",        label_ka: "სხვადასხვა",       label_en: "Various" },
 ] as const;
 
 export type CategorySlug = typeof CATEGORIES[number]["slug"];
