@@ -6,21 +6,19 @@ import { buildBreadcrumbList, buildProductSchema } from "@/lib/seoSchemas";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import AppHeader from "@/components/AppHeader";
-import ProductPreview from "@/components/ProductPreview";
+import CatalogDesignCard from "@/components/CatalogDesignCard";
 const OrderDialog = lazy(() => import("@/components/OrderDialog"));
 import { Button } from "@/components/ui/button";
 import {
-  catalog,
   BRAND_COLORS,
   BRAND_SIZES,
   COLORS,
-  type PlacementCoords,
   type ProductType,
   type ProductColor,
 } from "@/lib/catalog";
 import { calculatePrice } from "@/lib/pricing";
 import { CATEGORIES } from "@/lib/categories";
-import { compositeDesignOnProduct, getCatalogPrintPlacementCoords } from "@/lib/catalogCompositing";
+import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
 
 interface CatalogDesignRow {
@@ -126,24 +124,6 @@ export default function DesignDetailPage() {
 
     return () => { cancelled = true; };
   }, [slug]);
-
-  // Resolved catalog metadata for the current product+color (always front view)
-  const imageResult = useMemo(() => {
-    if (!product) return null;
-    return catalog.findImageForColor(
-      product.type as ProductType,
-      product.sub_product || product.type,
-      selectedColor as ProductColor,
-      "front",
-    );
-  }, [product, selectedColor]);
-
-  // Keep the live preview matched to the off-screen catalog mockup: both use
-  // the same centered, capped print box inside the product's placement zone.
-  const placementCoords: PlacementCoords = useMemo(() => {
-    const zone = imageResult?.entry.placementZone ?? { x: 0.5, y: 0.42, scale: 0.35 };
-    return getCatalogPrintPlacementCoords(zone);
-  }, [imageResult]);
 
   const colorOptions = useMemo(() => {
     if (!product) return [] as { name: string; hex: string }[];
@@ -346,24 +326,23 @@ export default function DesignDetailPage() {
           </button>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Live preview — neutralise the dashed borders rendered by
-                ProductPreview's zone outline AND DraggablePlacement's
-                wrapper (both visual editor affordances we don't want here).
-                Earlier we used [&_.border-dashed]:hidden but that also
-                display:none'd the DraggablePlacement wrapper, which contains
-                the design <img> — so the design vanished. Override only the
-                border colour instead so the elements stay laid out, the
-                design renders, and no dashes are visible. */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden [&_.border-dashed]:!border-transparent">
-              <ProductPreview
-                productName={product.type}
+            {/* Preview is composited via the same path the catalog grid
+                uses (CatalogDesignCard → compositeDesignOnProduct). The
+                previous implementation rendered through ProductPreview,
+                which uses object-cover on the design <img> — that
+                over-scaled non-square designs and pushed them past the
+                printable zone. The catalog flow contain-fits the print
+                inside the zone box, which is the correct behavior for
+                read-only product photography here. */}
+            <div className="rounded-2xl border border-border bg-card overflow-hidden aspect-square">
+              <CatalogDesignCard
+                printFileUrl={design.print_file_url}
+                fallbackUrl={design.thumbnail_url}
+                alt={`${design.title_ka} — ${product.type} ${selectedColor}`}
+                productType={product.type}
                 subProduct={product.sub_product || product.type}
-                colorName={selectedColor}
-                view="front"
-                placementCoords={placementCoords}
-                designImage={design.print_file_url}
-                designAlt={`${design.title_ka} — ${product.type} ${selectedColor}`}
-                disabled
+                color={selectedColor}
+                priority
               />
             </div>
 
