@@ -16,6 +16,21 @@
          TCP+TLS handshake but for an async script that's not on the
          critical path the DNS warmup alone is the better trade. -->
     <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <!-- Preload the default catalog t-shirt mockup (16 KB WebP) so the
+         CatalogDesignCard compositor finds it in cache the moment it
+         mounts. Without this, the canvas-side `new Image()` fetch runs
+         in serial with everything else and customers see the design
+         print appear before the t-shirt body — same byte budget, just
+         primed earlier. Cross-origin not needed (same origin) but
+         crossorigin attribute would not hurt; omitted because it's an
+         image preload, which doesn't require CORS. -->
+    <link
+      rel="preload"
+      as="image"
+      href="/products/tshirt/gildan-white-front.webp"
+      type="image/webp"
+      fetchpriority="high"
+    />
     <!-- Google Fonts: loaded non-blocking via the well-supported
          media-print swap trick. The browser fetches the stylesheet at
          high priority but, because `media="print"` matches no current

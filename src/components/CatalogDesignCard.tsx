@@ -53,6 +53,16 @@ export default function CatalogDesignCard({
     return () => { cancelled = true; };
   }, [cacheKey, printFileUrl, productType, subProduct, color, mockup, failed]);
 
+  // While compositing is in flight, render nothing and let the parent
+  // container's background (bg-muted/30 on the grid card, bg-card on the
+  // detail page) show through. The old fallback to fallbackUrl or
+  // printFileUrl rendered the design print PNG alone — without the
+  // t-shirt mockup behind it — which caused a visible flash on slow
+  // connections: the design appeared floating on the dark grid bg, then
+  // the composited mockup swapped in once the canvas work finished.
+  if (!mockup && !failed) {
+    return null;
+  }
   const src = mockup ?? fallbackUrl ?? printFileUrl;
   if (!src) {
     return <ImageOff className="h-8 w-8 text-muted-foreground/40" />;

@@ -51,8 +51,20 @@ export default function AppHeader() {
   return (
     <>
       <header className="h-14 flex items-center gap-2 px-3 border-b border-sidebar-border shrink-0 bg-sidebar text-sidebar-foreground">
-        {/* LEFT: logo */}
-        <button onClick={() => setMode("landing")} className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+        {/* LEFT: logo — navigates home. setMode("landing") alone was
+            a no-op on routes that AppRoutes treats as ALWAYS_ROUTED
+            (/designs, /design/:slug, /community, /my-designs,
+            /corporate): mode flipped but the URL stayed put, so the
+            click had no visible effect. navigate("/") moves the URL
+            to "/" where AppRoutes then honours mode === "landing". */}
+        <button
+          onClick={() => {
+            setMode("landing");
+            navigate("/");
+          }}
+          aria-label={lang === "en" ? "Home" : "მთავარი"}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground text-sm font-black">
             M
           </div>
@@ -99,7 +111,17 @@ export default function AppHeader() {
         {/* RIGHT: cart + lang + auth */}
         <div className="shrink-0 flex items-center gap-1.5">
           <button
-            onClick={() => setMode("cart")}
+            onClick={() => {
+              // Same fix as the logo (bug #3): setMode alone is a no-op
+              // on routes in AppRoutes' ALWAYS_ROUTED list (/designs,
+              // /design/:slug, /community, /my-designs, /corporate),
+              // because those paths always render through <Routes> and
+              // ignore the mode switch. Navigating to "/" first moves
+              // the pathname out of that list so the mode='cart' branch
+              // in AppRoutes can render <CartPage />.
+              setMode("cart");
+              navigate("/");
+            }}
             className="relative flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border"
             title={lang === "en" ? "Cart" : "კალათა"}
           >
