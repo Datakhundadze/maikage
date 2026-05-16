@@ -67,3 +67,119 @@ export function buildBreadcrumbList(items: Array<{ name: string; url?: string }>
     }),
   };
 }
+
+// Standard shipping rate (kept in sync with OrderDialog's
+// courier_tbilisi delivery — the only fee customers see at checkout).
+const SHIPPING_RATE_GEL = "8.00";
+
+// Build the Product JSON-LD blob for a catalog design detail page. Driven
+// by the design row from the catalog_designs table plus the calculated
+// price for whichever default product the design renders on.
+//
+// Shipping / return values are constants here rather than per-design
+// columns: the business uses a single courier rate (8 ₾ inside Tbilisi)
+// and custom-printed garments are not returnable, so emitting them
+// uniformly is honest and avoids per-row churn.
+export function buildProductSchema(input: {
+  /** Localized title from the DB (catalog_designs.title_ka). */
+  name: string;
+  /** Long description shown to crawlers. Pass null/undefined to fall back. */
+  description: string | null | undefined;
+  /** Full https://maika.ge/design/{slug} URL. */
+  url: string;
+  /** Used for both sku and mpn — design slug is stable per design. */
+  slug: string;
+  /** Full image URL for og + Product.image (thumbnail / print file). */
+  image: string;
+  /** Resolved category label (Georgian) or null when uncategorized. */
+  category?: string | null;
+  /** Final customer price for this design in GEL (numeric). */
+  priceGEL: number;
+  /** Optional design tags joined into Product.keywords for SEO. */
+  tags?: string[] | null;
+}) {
+  const fallbackDescription = `${input.name} მაისური — maika.ge-ის ექსკლუზიური დიზაინი`;
+  const description =
+    input.description && input.description.trim().length > 0
+      ? input.description.trim()
+      : fallbackDescription;
+
+  // Recomputed each render — Google's freshness is per-crawl so a
+  // page-load-time computation gives a rolling +1y horizon without any
+  // build-time stale state.
+  const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const product: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: input.name,
+    description,
+    image: input.image,
+    url: input.url,
+    sku: input.slug,
+    mpn: input.slug,
+    // GILDAN is the blank-garment manufacturer maika.ge prints onto by
+    // default — that's the brand the customer physically receives, which
+    // is what Google's product-snippet guidance asks for in the `brand`
+    // slot. The maika.ge "seller" identity is captured below in offers.
+    brand: { "@type": "Brand", name: "GILDAN" },
+    offers: {
+      "@type": "Offer",
+      url: input.url,
+      priceCurrency: "GEL",
+      price: input.priceGEL.toFixed(2),
+      availability: "https://schema.org/InStock",
+      itemCondition: "https://schema.org/NewCondition",
+      priceValidUntil: oneYearFromNow,
+      seller: { "@type": "Organization", name: "maika.ge" },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: SHIPPING_RATE_GEL,
+          currency: "GEL",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "GE",
+        },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: {
+            "@type": "QuantitativeValue",
+            minValue: 0,
+            maxValue: 1,
+            unitCode: "DAY",
+          },
+          transitTime: {
+            "@type": "QuantitativeValue",
+            minValue: 1,
+            maxValue: 3,
+            unitCode: "DAY",
+          },
+        },
+      },
+    },
+    // Custom-printed garments aren't returnable — this is the honest
+    // legal posture, surfaced to crawlers so Google can pass it through
+    // to shopping snippets without inferring a default policy that
+    // doesn't apply. Change if business policy changes.
+    hasMerchantReturnPolicy: {
+      "@type": "MerchantReturnPolicy",
+      applicableCountry: "GE",
+      returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+      merchantReturnLink: `${SITE_URL}/terms`,
+    },
+  };
+
+  if (input.category) {
+    product.category = input.category;
+  }
+  if (input.tags && input.tags.length > 0) {
+    product.keywords = input.tags.join(", ");
+  }
+
+  return product;
+}
