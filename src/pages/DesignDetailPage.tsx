@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
-import { buildBreadcrumbList } from "@/lib/seoSchemas";
+import { buildBreadcrumbList, buildProductSchema } from "@/lib/seoSchemas";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import AppHeader from "@/components/AppHeader";
@@ -292,31 +292,25 @@ export default function DesignDetailPage() {
 
   // ── SEO data ──────────────────────────────────────────────────────────────
   const canonical = `${SITE_URL}/design/${design.slug}`;
+  // og:description fallback is intentionally pricier-sounding than the
+  // Product schema fallback — the schema one ends up in shopping snippets
+  // where a clean "{name} მაისური — maika.ge-ის ექსკლუზიური დიზაინი"
+  // reads better. OG goes into social-share cards where the price hook
+  // gets the click.
   const fallbackDesc = `${design.title_ka} დიზაინი მაისურზე. ფასი ₾${priceBreakdown.total}. შეუკვეთე ონლაინ Maika.ge-ზე.`;
   const description = design.meta_description_ka?.trim() || fallbackDesc;
   const ogImage = design.thumbnail_url || design.print_file_url;
 
-  const jsonLd: Record<string, unknown> = {
-    "@context": "https://schema.org",
-    "@type": "Product",
+  const jsonLd = buildProductSchema({
     name: design.title_ka,
-    description,
-    image: ogImage,
+    description: design.meta_description_ka,
     url: canonical,
-    sku: design.slug,
-    brand: { "@type": "Brand", name: "Maika.ge" },
-    offers: {
-      "@type": "Offer",
-      url: canonical,
-      priceCurrency: "GEL",
-      price: String(priceBreakdown.total),
-      availability: "https://schema.org/InStock",
-      seller: { "@type": "Organization", name: "Maika.ge" },
-    },
-  };
-  if (design.tags && design.tags.length > 0) {
-    jsonLd.keywords = design.tags.join(", ");
-  }
+    slug: design.slug,
+    image: ogImage,
+    category: categoryLabel,
+    priceGEL: priceBreakdown.total,
+    tags: design.tags,
+  });
 
   // BreadcrumbList — separate from Product JSON-LD so Google can show both
   // rich-result types simultaneously. Final item (the design itself) omits
