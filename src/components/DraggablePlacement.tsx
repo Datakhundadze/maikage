@@ -361,6 +361,18 @@ export default function DraggablePlacement({
         </div>
       )}
 
+      {/* Helper hint for photo layers (those that supply an aspectLock).
+          Surfaces the corner/edge/center handle semantics so customers
+          don't have to discover the new UX by trial and error. Kept off
+          text layers where the same vocabulary would mislead — text
+          edges resize, not crop. Hidden during rotation so the degree
+          readout has the spot to itself. */}
+      {showHandles && aspectLock && !isRotating && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap pointer-events-none px-1.5 py-0.5 rounded bg-foreground/80 text-background">
+          კუთხეები: ზომა • კიდეები: ჭრა • ცენტრი: გადატანა (Alt: წანაცვლება)
+        </div>
+      )}
+
       {showHandles && (
         <>
           {/* Corner handles — two-axis resize */}
