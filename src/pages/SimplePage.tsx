@@ -217,6 +217,14 @@ interface PhotoLayer {
    *  after the photo loads; used by DraggablePlacement to lock corner
    *  resize to this aspect so dragging doesn't stretch the image. */
   naturalAspect?: number;
+  /** Source-image crop / pan state, in zone fractions (same units as
+   *  `coords.scale`). `sourceScale` is the source width; `sourceOffsetX/Y`
+   *  is the source center offset from the window center. Undefined means
+   *  cover-fit-centered (the editor renders that as the implicit default).
+   *  Becomes defined once the customer drags an edge handle or pans. */
+  sourceScale?: number;
+  sourceOffsetX?: number;
+  sourceOffsetY?: number;
 }
 
 interface SideData {
@@ -455,6 +463,25 @@ export default function SimplePage() {
     }));
   }, [setSideData]);
 
+  const updatePhotoSource = useCallback(
+    (id: string, source: { scale: number; offsetX: number; offsetY: number }) => {
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p =>
+          p.id === id
+            ? {
+                ...p,
+                sourceScale: source.scale,
+                sourceOffsetX: source.offsetX,
+                sourceOffsetY: source.offsetY,
+              }
+            : p,
+        ),
+      }));
+    },
+    [setSideData],
+  );
+
   const clearDesign = () => {
     setSideData(prev => ({
       ...prev,
@@ -485,10 +512,62 @@ export default function SimplePage() {
     });
   }, [sideData.designText, sideData.selectedFont, sideData.textColor]);
 
+  // Resolve the placement zone for the current product/color/view so the
+  // layer builder can derive cover-fit source defaults in zone-fraction
+  // units. The zone aspect (not always square) shows up in the math
+  // because source `scale` is in zone-X-fraction terms.
+  const zoneForLayers = useMemo(() => {
+    const { config } = productConfig;
+    const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
+    const imageResult = catalog.findImageForColor(
+      config.product as ProductType,
+      resolvedSub,
+      config.color as ProductColor,
+      currentView,
+    );
+    return imageResult?.entry.placementZone;
+  }, [productConfig, currentView]);
+
+  // Initial cover-fit source state for a photo whose customer hasn't yet
+  // dragged an edge handle / panned. Matches what `object-cover` does
+  // visually: source covers the window, with the longer dimension
+  // extending beyond. The compositors and live preview both treat
+  // missing source state as equivalent to this default.
+  const coverFitSource = useCallback(
+    (photo: PhotoLayer): { scale: number; offsetX: number; offsetY: number } | undefined => {
+      const naturalAspect = photo.naturalAspect;
+      if (!naturalAspect || naturalAspect <= 0) return undefined;
+      const zoneW = zoneForLayers?.scale ?? 1;
+      const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
+      const winScale = photo.coords.scale;
+      const winScaleY = photo.coords.scaleY ?? photo.coords.scale;
+      // Box pixel aspect (assuming square parent): (winScale × zoneW) / (winScaleY × zoneH).
+      const boxAspect = (winScale * zoneW) / (winScaleY * zoneH);
+      let sourceScale: number;
+      if (naturalAspect >= boxAspect) {
+        // Image is wider than box: source matches box HEIGHT, extends horizontally.
+        sourceScale = (winScaleY * zoneH * naturalAspect) / zoneW;
+      } else {
+        // Image is taller than box: source matches box WIDTH.
+        sourceScale = winScale;
+      }
+      return { scale: sourceScale, offsetX: 0, offsetY: 0 };
+    },
+    [zoneForLayers],
+  );
+
   // Build layers array
   const layers = useMemo<DesignLayer[]>(() => {
     const result: DesignLayer[] = [];
     sideData.photos.forEach((photo, index) => {
+      // If the customer has already cropped/panned this photo we carry
+      // those stored values through. Otherwise we synthesize a cover-fit
+      // default so DraggablePlacement always has a defined source state
+      // to drag from (without it, the first edge-drag would shift from 0).
+      const storedSource =
+        photo.sourceScale !== undefined && photo.sourceOffsetX !== undefined && photo.sourceOffsetY !== undefined
+          ? { scale: photo.sourceScale, offsetX: photo.sourceOffsetX, offsetY: photo.sourceOffsetY }
+          : coverFitSource(photo);
       result.push({
         id: photo.id,
         image: photo.image,
@@ -498,6 +577,8 @@ export default function SimplePage() {
         selected: selectedLayerId === photo.id,
         onSelect: () => setSelectedLayerId(photo.id),
         naturalAspect: photo.naturalAspect,
+        source: storedSource,
+        onSourceChange: (s) => updatePhotoSource(photo.id, s),
       });
     });
     if (textImage) {
@@ -512,7 +593,7 @@ export default function SimplePage() {
       });
     }
     return result;
-  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords, selectedLayerId]);
+  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords, updatePhotoSource, coverFitSource, selectedLayerId]);
 
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;

@@ -9,6 +9,27 @@ import { RotateCw } from "lucide-react";
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 3;
 
+/**
+ * Crop / pan state for a photo's source image, independent of the window box.
+ *
+ * - `scale`: source width in zone-X-fractions (absolute, matches `coords.scale` units).
+ * - `offsetX`/`offsetY`: source center offset from the window center, in zone fractions.
+ *
+ * When present, the edge handles become *crop* affordances: they change the
+ * window dimensions but don't touch the source, so the source pixel content
+ * stays put and only more / less of it is visible. The corner handles scale
+ * both the window and the source uniformly so the visible image continues to
+ * fill the box at the same aspect.
+ *
+ * When absent (legacy photos / text layers), edges still do 1-axis resize and
+ * corners do free 2-axis resize as before.
+ */
+export interface SourceState {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
 interface DraggablePlacementProps {
   coords: PlacementCoords;
   onCoordsChange: (coords: PlacementCoords) => void;
@@ -32,6 +53,9 @@ interface DraggablePlacementProps {
    * Text layers omit this so they can still be stretched on either axis.
    */
   aspectLock?: number;
+  /** Current source state. Pass alongside `onSourceChange` to enable crop. */
+  source?: SourceState;
+  onSourceChange?: (s: SourceState) => void;
 }
 
 type DragMode =
@@ -53,10 +77,20 @@ export default function DraggablePlacement({
   onSelect,
   zone,
   aspectLock,
+  source,
+  onSourceChange,
 }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
-  const startRef = useRef({ mx: 0, my: 0, cx: 0, cy: 0, cs: 0, csY: 0, startAngle: 0, startRotation: 0 });
+  // Drag start cache includes the source state so multi-update drags (corner
+  // proportional resize) can derive new values from the start state rather
+  // than the in-flight update.
+  const startRef = useRef({
+    mx: 0, my: 0,
+    cx: 0, cy: 0, cs: 0, csY: 0,
+    startAngle: 0, startRotation: 0,
+    srcScale: 0, srcOffsetX: 0, srcOffsetY: 0,
+  });
 
   // Zone geometry in parent coordinates (fractions 0-1)
   const zoneW = zone?.scale ?? 1;
@@ -84,6 +118,11 @@ export default function DraggablePlacement({
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     setDragMode(mode);
 
+    const srcSnapshot = {
+      srcScale: source?.scale ?? 0,
+      srcOffsetX: source?.offsetX ?? 0,
+      srcOffsetY: source?.offsetY ?? 0,
+    };
     if (mode === "rotate") {
       const center = getCenterPoint();
       const startAngle = Math.atan2(e.clientY - center.cy, e.clientX - center.cx);
@@ -93,6 +132,7 @@ export default function DraggablePlacement({
         cs: coords.scale, csY: coords.scaleY ?? coords.scale,
         startAngle,
         startRotation: coords.rotation ?? 0,
+        ...srcSnapshot,
       };
     } else {
       startRef.current = {
@@ -100,9 +140,10 @@ export default function DraggablePlacement({
         cx: coords.x, cy: coords.y,
         cs: coords.scale, csY: coords.scaleY ?? coords.scale,
         startAngle: 0, startRotation: 0,
+        ...srcSnapshot,
       };
     }
-  }, [disabled, coords, getCenterPoint, onSelect]);
+  }, [disabled, coords, source, getCenterPoint, onSelect]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragMode || !containerRef.current) return;
@@ -130,6 +171,9 @@ export default function DraggablePlacement({
       // No clamp on move: the design centre can go anywhere on the preview
       // (or even slightly off it). The outer preview container is
       // overflow-hidden so off-canvas movement is harmless visually.
+      // Source state stays unchanged — `offsetX/Y` are relative to the
+      // window center, so the source absolute position naturally tracks
+      // the window when the window moves.
       onCoordsChange({
         ...coords,
         x: startRef.current.cx + dx,
@@ -140,6 +184,11 @@ export default function DraggablePlacement({
       // the box only grows/shrinks in the direction the user drags. The
       // anchored edge stays fixed even though we store the box by its
       // center, so the center has to shift by half the size change.
+      //
+      // Crop semantics: when source state is supplied the source image
+      // stays absolute (the visible content doesn't shift) by adjusting
+      // the source offset inversely to the window center shift. The
+      // window simply reveals more or less of the same source pixels.
       const clamp = (v: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, v));
       let newScale = startRef.current.cs;
       let newScaleY = startRef.current.csY;
@@ -163,6 +212,18 @@ export default function DraggablePlacement({
         newX = anchorLeft + newScale / 2;
       }
       onCoordsChange({ ...coords, x: newX, y: newY, scale: newScale, scaleY: newScaleY });
+      if (source && onSourceChange) {
+        // Window shifted by (newX - oldX, newY - oldY). Compensate the
+        // source offset by the negative of that shift so the source's
+        // absolute position (coords.x + offsetX) stays put.
+        const shiftX = newX - startRef.current.cx;
+        const shiftY = newY - startRef.current.cy;
+        onSourceChange({
+          scale: startRef.current.srcScale,
+          offsetX: startRef.current.srcOffsetX - shiftX,
+          offsetY: startRef.current.srcOffsetY - shiftY,
+        });
+      }
     } else {
       // Corner handle: two-axis resize.
       //  - Without aspectLock (text layers): free, both axes independent.
@@ -174,34 +235,55 @@ export default function DraggablePlacement({
       const sdx = isLeft ? -dx : dx;
       const sdy = isTop ? -dy : dy;
       const clamp = (v: number) => Math.max(MIN_SCALE, Math.min(MAX_SCALE, v));
+      // Compute the new window scale + position, then (if source state is
+      // attached) scale the source proportionally around the same anchor
+      // corner so the visible image grows / shrinks with the window
+      // rather than just exposing more transparent space.
+      let newScale: number;
+      let newScaleY: number;
       if (aspectLock && aspectLock > 0) {
-        // Use whichever axis the cursor moved further in (in pixels) so
-        // the resize tracks the user's dominant direction. Convert the
-        // chosen-axis delta into the other axis via the aspect lock.
-        // The box's effective pixel aspect on screen is
-        //   (scale * zoneW * parentW) / (scaleY * zoneH * parentH)
-        // which must equal aspectLock for the photo not to stretch:
-        //   scaleY = scale * (zoneW * parentW) / (aspectLock * zoneH * parentH)
-        // Parent dims cancel because dx is already in zone-fraction units.
-        const aspectFactor = (zoneW) / (aspectLock * zoneH);
+        // The box's effective pixel aspect must equal aspectLock for the
+        // photo not to stretch:
+        //   (scale * zoneW) / (scaleY * zoneH) = aspectLock
+        //   → scaleY = scale * zoneW / (aspectLock * zoneH)
+        const aspectFactor = zoneW / (aspectLock * zoneH);
         const dxPx = Math.abs(dx * zoneW);
         const dyPx = Math.abs(dy * zoneH);
         if (dxPx >= dyPx) {
-          const newScale = clamp(startRef.current.cs + sdx * 2);
-          const newScaleY = clamp(newScale * aspectFactor);
-          onCoordsChange({ ...coords, scale: newScaleY / aspectFactor, scaleY: newScaleY });
+          const rawScale = clamp(startRef.current.cs + sdx * 2);
+          newScaleY = clamp(rawScale * aspectFactor);
+          newScale = newScaleY / aspectFactor;
         } else {
-          const newScaleY = clamp(startRef.current.csY + sdy * 2);
-          const newScale = clamp(newScaleY * aspectFactor);
-          onCoordsChange({ ...coords, scale: newScale, scaleY: newScale / aspectFactor });
+          newScaleY = clamp(startRef.current.csY + sdy * 2);
+          newScale = clamp(newScaleY / aspectFactor);
+          newScaleY = newScale * aspectFactor;
         }
       } else {
-        const newScaleX = clamp(startRef.current.cs + sdx * 2);
-        const newScaleY = clamp(startRef.current.csY + sdy * 2);
-        onCoordsChange({ ...coords, scale: newScaleX, scaleY: newScaleY });
+        newScale = clamp(startRef.current.cs + sdx * 2);
+        newScaleY = clamp(startRef.current.csY + sdy * 2);
+      }
+      // Anchor the OPPOSITE corner of the dragged one so the box grows
+      // away from a fixed point.
+      const signX = isLeft ? 1 : -1;   // +1 means anchor is to the RIGHT of center (and source/window grow LEFT)
+      const signY = isTop ? 1 : -1;
+      const anchorX = startRef.current.cx + signX * startRef.current.cs / 2;
+      const anchorY = startRef.current.cy + signY * startRef.current.csY / 2;
+      const newX = anchorX - signX * newScale / 2;
+      const newY = anchorY - signY * newScaleY / 2;
+      onCoordsChange({ ...coords, x: newX, y: newY, scale: newScale, scaleY: newScaleY });
+      if (source && onSourceChange) {
+        // Source scales by the same factor around the same anchor; the
+        // derived offset and scale formulas both reduce to multiplying
+        // the start values by F (see comment in commit message).
+        const F = startRef.current.cs > 0 ? newScale / startRef.current.cs : 1;
+        onSourceChange({
+          scale: startRef.current.srcScale * F,
+          offsetX: startRef.current.srcOffsetX * F,
+          offsetY: startRef.current.srcOffsetY * F,
+        });
       }
     }
-  }, [dragMode, coords, onCoordsChange, getCenterPoint, zoneW, zoneH, aspectLock]);
+  }, [dragMode, coords, source, onSourceChange, onCoordsChange, getCenterPoint, zoneW, zoneH, aspectLock]);
 
   const handlePointerUp = useCallback(() => {
     setDragMode(null);

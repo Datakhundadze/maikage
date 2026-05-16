@@ -1,7 +1,7 @@
 import { useRef, useEffect } from "react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
-import DraggablePlacement from "@/components/DraggablePlacement";
+import DraggablePlacement, { type SourceState } from "@/components/DraggablePlacement";
 
 export interface DesignLayer {
   id: string;
@@ -15,6 +15,12 @@ export interface DesignLayer {
    *  DraggablePlacement as `aspectLock` so corner drag stays
    *  proportional and doesn't stretch the image. */
   naturalAspect?: number;
+  /** Source crop / pan state. When present together with
+   *  `naturalAspect`, the layer image is rendered with explicit
+   *  positioning (cropped through the window) rather than
+   *  object-cover, and edge handles become crop handles. */
+  source?: SourceState;
+  onSourceChange?: (s: SourceState) => void;
 }
 
 interface ProductPreviewProps {
@@ -77,6 +83,68 @@ const PRODUCT_OUTLINES: Record<string, JSX.Element> = {
     </svg>
   ),
 };
+
+/**
+ * Render a layer's image, picking between two modes:
+ *
+ * 1. *Crop mode* — when the layer has both `naturalAspect` and an explicit
+ *    `source` state, the img is absolutely positioned inside the window
+ *    with its size and offset computed from `source.scale/offsetX/offsetY`
+ *    (all in zone fractions). The DraggablePlacement parent has
+ *    `overflow:hidden` so anything outside the window is clipped — that's
+ *    the crop.
+ *
+ * 2. *Cover mode* — fallback for text layers and photos whose natural
+ *    aspect hasn't been measured yet. Uses `object-cover` exactly as
+ *    before, preserving the existing visual behavior for old data.
+ */
+function renderLayerImage(layer: DesignLayer, zone: PlacementCoords | undefined): JSX.Element {
+  const naturalAspect = layer.naturalAspect;
+  const source = layer.source;
+  if (naturalAspect && source && naturalAspect > 0 && source.scale > 0) {
+    const zoneW = zone?.scale ?? 1;
+    const zoneH = zone?.scaleY ?? zone?.scale ?? 1;
+    const winScale = layer.coords.scale;
+    const winScaleY = layer.coords.scaleY ?? layer.coords.scale;
+    // Source dims as a fraction of the window box.
+    const srcWInWin = (source.scale) / winScale;
+    // Source height in zone-Y-fraction: source pixel-width / naturalAspect, then convert
+    // to zone-Y-fraction by dividing by zoneH (since source width = source.scale × zoneW
+    // pixel-equivalents, height = (source.scale × zoneW) / naturalAspect, fraction = /zoneH).
+    const srcHFrac = (source.scale * zoneW) / (naturalAspect * zoneH);
+    const srcHInWin = srcHFrac / winScaleY;
+    // Offsets expressed as window fractions for CSS calc().
+    const offXInWin = source.offsetX / winScale;
+    const offYInWin = source.offsetY / winScaleY;
+    return (
+      <img
+        src={layer.image}
+        alt="Design"
+        className="absolute opacity-80 max-w-none"
+        style={{
+          width: `${srcWInWin * 100}%`,
+          height: `${srcHInWin * 100}%`,
+          left: `calc(50% + ${offXInWin * 100}%)`,
+          top: `calc(50% + ${offYInWin * 100}%)`,
+          transform: "translate(-50%, -50%)",
+        }}
+        loading="eager"
+        fetchPriority="high"
+      />
+    );
+  }
+  return (
+    <img
+      src={layer.image}
+      alt="Design"
+      width={800}
+      height={800}
+      className="w-full h-full object-cover opacity-80"
+      loading="eager"
+      fetchPriority="high"
+    />
+  );
+}
 
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const h = hex.replace("#", "");
@@ -216,16 +284,10 @@ export default function ProductPreview({
             onSelect={layer.onSelect}
             zone={zone}
             aspectLock={layer.naturalAspect}
+            source={layer.source}
+            onSourceChange={layer.onSourceChange}
           >
-            <img
-              src={layer.image}
-              alt="Design"
-              width={800}
-              height={800}
-              className="w-full h-full object-cover opacity-80"
-              loading="eager"
-              fetchPriority="high"
-            />
+            {renderLayerImage(layer, zone)}
           </DraggablePlacement>
         ))}
 
