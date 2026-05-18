@@ -1242,6 +1242,21 @@ export default function SimplePage() {
               </div>
             )}
 
+            {/* Handle-semantics hint. Was previously a floating tooltip
+                in DraggablePlacement that overlapped the photo's top
+                edge inside the print zone area (bug 2). Lifting it into
+                the sidebar keeps the preview clean while still giving
+                customers an inline reminder of what each handle does.
+                Conditional on hasPhotos so the line only appears when
+                it's relevant. */}
+            {hasPhotos && (
+              <p className="text-[10px] leading-snug text-muted-foreground">
+                {lang === "en"
+                  ? "Corners: resize • Edges: crop • Center: move (Alt: pan)"
+                  : "კუთხეები: ზომა • კიდეები: ჭრა • ცენტრი: გადატანა (Alt: წანაცვლება)"}
+              </p>
+            )}
+
             {/* Upload / Add more button */}
             {canAddMore && (
               <Button
