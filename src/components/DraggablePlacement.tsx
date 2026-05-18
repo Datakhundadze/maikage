@@ -350,7 +350,7 @@ export default function DraggablePlacement({
       onPointerUp={handlePointerUp}
     >
       {children && (
-        <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-md pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center overflow-hidden pointer-events-none">
           {children}
         </div>
       )}
