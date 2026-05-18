@@ -361,17 +361,12 @@ export default function DraggablePlacement({
         </div>
       )}
 
-      {/* Helper hint for photo layers (those that supply an aspectLock).
-          Surfaces the corner/edge/center handle semantics so customers
-          don't have to discover the new UX by trial and error. Kept off
-          text layers where the same vocabulary would mislead — text
-          edges resize, not crop. Hidden during rotation so the degree
-          readout has the spot to itself. */}
-      {showHandles && aspectLock && !isRotating && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] whitespace-nowrap pointer-events-none px-1.5 py-0.5 rounded bg-foreground/80 text-background">
-          კუთხეები: ზომა • კიდეები: ჭრა • ცენტრი: გადატანა (Alt: წანაცვლება)
-        </div>
-      )}
+      {/* The crop/resize/move/pan hint that used to live here (a small
+          floating label above the selected photo) was moved into the
+          sidebar's Photos section in SimplePage. It overlapped the
+          photo's top edge inside the print zone visually — distracting
+          and unprofessional even though it was editor-only and never
+          rendered into the print file. */}
 
       {showHandles && (
         <>
