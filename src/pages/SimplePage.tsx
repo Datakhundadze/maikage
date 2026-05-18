@@ -489,6 +489,22 @@ export default function SimplePage() {
     setSideData(prev => ({ ...prev, [key]: value }));
   };
 
+  // Resolve the placement zone for the current product/color/view so the
+  // upload handler and the layer builder can derive contain / cover-fit
+  // math in zone-fraction units. The zone aspect (not always square)
+  // shows up because source `scale` is in zone-X-fraction terms.
+  const zoneForLayers = useMemo(() => {
+    const { config } = productConfig;
+    const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
+    const imageResult = catalog.findImageForColor(
+      config.product as ProductType,
+      resolvedSub,
+      config.color as ProductColor,
+      currentView,
+    );
+    return imageResult?.entry.placementZone;
+  }, [productConfig, currentView]);
+
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -516,25 +532,72 @@ export default function SimplePage() {
       // can target it without extra clicks.
       setSelectedLayerId(photoId);
 
-      // Measure natural aspect asynchronously and patch the photo. Used
-      // by DraggablePlacement's corner-drag aspect lock so the photo
-      // doesn't stretch when a customer resizes it. If the image fails
-      // to decode (unlikely — we just read it as a data URL), the photo
-      // keeps naturalAspect undefined and corners stay free-resize.
+      // Measure natural aspect asynchronously and apply CONTAIN-fit to the
+      // photo's window so the entire image is visible by default — no
+      // auto-crop on upload, matching Canva / Figma / Photoshop behavior.
+      //
+      // Strategy: keep whichever box dimension is the limiting one (the
+      // larger of the user's prior scale / scaleY for that axis), derive
+      // the other dimension from naturalAspect so the box's pixel aspect
+      // equals the image's. Source state is set explicitly so renderers
+      // skip the legacy cover-fit fallback (`coverFitSource`) and draw
+      // the source 1:1 with the window — no overflow, no crop.
+      //
+      // Backward compat: this only initializes source state for FRESH
+      // uploads. Saved design_state on existing orders already has its
+      // own source fields and is rendered unchanged.
       const probe = new Image();
       probe.onload = () => {
         if (!probe.naturalWidth || !probe.naturalHeight) return;
-        const aspect = probe.naturalWidth / probe.naturalHeight;
+        const naturalAspect = probe.naturalWidth / probe.naturalHeight;
+        const zoneW = zoneForLayers?.scale ?? 1;
+        const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
+        const zonePixelAspect = zoneW / zoneH;
         setSideData(prev => ({
           ...prev,
-          photos: prev.photos.map(p => p.id === photoId ? { ...p, naturalAspect: aspect } : p),
+          photos: prev.photos.map(p => {
+            if (p.id !== photoId) return p;
+            // Use the photo's current scale/scaleY as the "user-chosen
+            // size budget" — first upload typically gives 1×1 (zone
+            // fill), staggered uploads give 0.5×0.5, and any manual
+            // resize prior to the probe firing is also respected.
+            const baseScale = p.coords.scale;
+            const baseScaleY = p.coords.scaleY ?? p.coords.scale;
+            let newScale: number;
+            let newScaleY: number;
+            if (naturalAspect >= zonePixelAspect) {
+              // Image wider than the zone — fix width to the existing
+              // size budget, shrink height to match natural aspect.
+              newScale = baseScale;
+              newScaleY = baseScale * zoneW / (naturalAspect * zoneH);
+            } else {
+              // Image taller than the zone — fix height, shrink width.
+              newScaleY = baseScaleY;
+              newScale = baseScaleY * naturalAspect * zoneH / zoneW;
+            }
+            return {
+              ...p,
+              naturalAspect,
+              coords: {
+                ...p.coords,
+                scale: newScale,
+                scaleY: newScaleY,
+              },
+              // Source state: source width in zone-X-fractions equals the
+              // window's width in zone-X-fractions, so the source draws
+              // exactly onto the box with no overflow (contain-fit).
+              sourceScale: newScale,
+              sourceOffsetX: 0,
+              sourceOffsetY: 0,
+            };
+          }),
         }));
       };
       probe.src = result;
     };
     reader.readAsDataURL(file);
     e.target.value = "";
-  }, [setSideData, nextPhotoCoords]);
+  }, [setSideData, nextPhotoCoords, zoneForLayers]);
 
   const removePhoto = (id: string) => {
     setSideData(prev => ({
@@ -621,22 +684,6 @@ export default function SimplePage() {
       setTextImage(canvas.toDataURL("image/png"));
     });
   }, [sideData.designText, sideData.selectedFont, sideData.textColor]);
-
-  // Resolve the placement zone for the current product/color/view so the
-  // layer builder can derive cover-fit source defaults in zone-fraction
-  // units. The zone aspect (not always square) shows up in the math
-  // because source `scale` is in zone-X-fraction terms.
-  const zoneForLayers = useMemo(() => {
-    const { config } = productConfig;
-    const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
-    const imageResult = catalog.findImageForColor(
-      config.product as ProductType,
-      resolvedSub,
-      config.color as ProductColor,
-      currentView,
-    );
-    return imageResult?.entry.placementZone;
-  }, [productConfig, currentView]);
 
   // Initial cover-fit source state for a photo whose customer hasn't yet
   // dragged an edge handle / panned. Matches what `object-cover` does
