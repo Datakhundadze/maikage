@@ -18,6 +18,7 @@ const AdminCorporate = lazy(() => import("@/components/admin/AdminCorporate"));
 const AdminCatalog = lazy(() => import("@/components/admin/AdminCatalog"));
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
+import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
 
 type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate" | "catalog";
@@ -66,6 +67,17 @@ export default function AdminPage() {
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>(() => readTabFromUrl());
+  const { counts: badgeCounts, markSeen: markTabSeen } = useAdminTabBadges();
+
+  // The 5 tabs with badges. Other tabs (dashboard, analytics) are
+  // aggregate views with no "new items" semantic and stay unchanged.
+  const BADGE_TABS = new Set<Tab>(["orders", "users", "designs", "catalog", "corporate"]);
+  const isBadgeTab = (t: Tab): t is BadgeTabId => BADGE_TABS.has(t);
+
+  const handleTabClick = (tab: Tab) => {
+    setActiveTab(tab);
+    if (isBadgeTab(tab)) markTabSeen(tab);
+  };
 
   // Detect Supabase password recovery flow: when the admin clicks the reset
   // link in their email, Supabase fires PASSWORD_RECOVERY and sets a session.
@@ -334,11 +346,12 @@ export default function AdminPage() {
           <nav className="flex gap-1 -mb-px overflow-x-auto">
             {TABS.map(tab => {
               const active = activeTab === tab.id;
+              const badgeCount = isBadgeTab(tab.id) ? badgeCounts[tab.id] : 0;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                     active
                       ? "border-amber-500 text-foreground"
                       : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
@@ -346,6 +359,14 @@ export default function AdminPage() {
                 >
                   <tab.icon className="h-4 w-4" />
                   {tab.label}
+                  {badgeCount > 0 && (
+                    <span
+                      aria-label={`${badgeCount} new`}
+                      className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center"
+                    >
+                      {badgeCount > 99 ? "99+" : badgeCount}
+                    </span>
+                  )}
                 </button>
               );
             })}
