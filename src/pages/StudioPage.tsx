@@ -365,7 +365,7 @@ function StudioContent() {
     <>
       <SeoHead
         title="AI სტუდია — შექმენი საკუთარი დიზაინი | Maika.ge"
-        description="Maika.ge AI სტუდია — შექმენი უნიკალური დიზაინი ხელოვნური ინტელექტით და დაბეჭდე მაისურზე, ჰუდიზე ან სხვა აპარელზე."
+        description="Maika.ge AI სტუდია — შექმენი დიზაინი ხელოვნური ინტელექტით უფასოდ. დაბეჭდე oversize მაისურზე, ჰუდიზე, ჩანთაზე ან ქეისზე. შოურუმი Tbilisi-ში."
       />
       <AppLayout
         sidebar={
