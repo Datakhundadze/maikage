@@ -8,6 +8,7 @@ import { COLORS } from "@/lib/catalog";
 import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
+import SeoHead from "@/components/SeoHead";
 
 /**
  * Colorize the shirt region using flood-fill + multiply blend.
@@ -144,6 +145,11 @@ export default function TryOnPage() {
   if (!state?.mockupImage) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <SeoHead
+          title="დიზაინის წინასწარი ნახვა | Maika.ge"
+          description="ნახე როგორ გამოიყურება შენი დიზაინი მაისურზე ვიდრე შეუკვეთავ. Maika.ge-ის სტუდია."
+          noindex
+        />
         <p className="text-muted-foreground">სურათი ვერ მოიძებნა.</p>
         <Button variant="outline" onClick={goBack}>
           ← უკან
@@ -289,6 +295,11 @@ export default function TryOnPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SeoHead
+        title="დიზაინის წინასწარი ნახვა | Maika.ge"
+        description="ნახე როგორ გამოიყურება შენი დიზაინი მაისურზე ვიდრე შეუკვეთავ. Maika.ge-ის სტუდია."
+        noindex
+      />
       {/* Header */}
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur border-b border-border px-4 py-3 flex items-center gap-3">
         <Button

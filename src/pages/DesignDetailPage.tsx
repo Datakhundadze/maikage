@@ -19,6 +19,7 @@ import {
 import { calculatePrice } from "@/lib/pricing";
 import { CATEGORIES } from "@/lib/categories";
 import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
+import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
 
 interface CatalogDesignRow {
@@ -31,6 +32,7 @@ interface CatalogDesignRow {
   default_product_id: string | null;
   default_color: string | null;
   meta_description_ka: string | null;
+  description_ka: string | null;
   tags: string[] | null;
 }
 
@@ -84,7 +86,7 @@ export default function DesignDetailPage() {
     (async () => {
       const { data: rows } = await (supabase as any)
         .from("catalog_designs")
-        .select("id, slug, title_ka, print_file_url, thumbnail_url, category, default_product_id, default_color, meta_description_ka, tags")
+        .select("id, slug, title_ka, print_file_url, thumbnail_url, category, default_product_id, default_color, meta_description_ka, description_ka, tags")
         .eq("slug", slug)
         .eq("is_published", true)
         .limit(1);
@@ -272,13 +274,10 @@ export default function DesignDetailPage() {
 
   // ── SEO data ──────────────────────────────────────────────────────────────
   const canonical = `${SITE_URL}/design/${design.slug}`;
-  // og:description fallback is intentionally pricier-sounding than the
-  // Product schema fallback — the schema one ends up in shopping snippets
-  // where a clean "{name} მაისური — maika.ge-ის ექსკლუზიური დიზაინი"
-  // reads better. OG goes into social-share cards where the price hook
-  // gets the click.
-  const fallbackDesc = `${design.title_ka} დიზაინი მაისურზე. ფასი ₾${priceBreakdown.total}. შეუკვეთე ონლაინ Maika.ge-ზე.`;
-  const description = design.meta_description_ka?.trim() || fallbackDesc;
+  // Description chosen via buildDesignMetaDescription so each design gets a
+  // unique meta tag even when the admin hasn't filled meta_description_ka yet.
+  // See the function comment at the top of this file for the priority order.
+  const description = buildDesignMetaDescription(design, priceBreakdown.total, categoryLabel);
   const ogImage = design.thumbnail_url || design.print_file_url;
 
   const jsonLd = buildProductSchema({
