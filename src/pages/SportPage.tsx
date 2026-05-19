@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import { ArrowLeft } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
+import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 const BASE = "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport";
 
@@ -27,6 +28,12 @@ export default function SportPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SeoHead
+        title="სპორტული ფორმები — გუნდის ფორმები ინდივიდუალური ბრენდინგით | Maika.ge"
+        description="შეუკვეთე პროფესიონალური სპორტული ფორმები გუნდისთვის — კლუბის ლოგო, მოთამაშის ნომერი, სახელი. სრული კომპლექტი 1 ცალიდან. სწრაფი წარმოება Tbilisi-ში."
+        url={`${SITE_URL}/sport`}
+        type="website"
+      />
       {/* Header */}
       <div className="border-b border-border px-6 py-4 flex items-center gap-4">
         <button

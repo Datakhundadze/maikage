@@ -20,6 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
+import SeoHead from "@/components/SeoHead";
 
 type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate" | "catalog";
 type Mode = "login" | "signup" | "forgot";
@@ -153,6 +154,7 @@ export default function AdminPage() {
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
+        <SeoHead title="Admin | Maika.ge" noindex />
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
@@ -164,6 +166,7 @@ export default function AdminPage() {
   if (recoveryMode) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <SeoHead title="Admin | Maika.ge" noindex />
         <form onSubmit={handleSetNewPassword} className="w-full max-w-sm space-y-4">
           <div className="text-center space-y-2">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 text-black text-xl font-black">
@@ -197,6 +200,7 @@ export default function AdminPage() {
   if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <SeoHead title="Admin | Maika.ge" noindex />
         <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
           <div className="text-center space-y-2">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500 text-black text-xl font-black">
@@ -298,6 +302,7 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <SeoHead title="Admin | Maika.ge" noindex />
         <div className="w-full max-w-sm space-y-4 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-destructive/20 text-destructive">
             <Lock className="h-5 w-5" />
@@ -321,6 +326,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SeoHead title="Admin | Maika.ge" noindex />
       <header className="border-b border-border sticky top-0 bg-background/95 backdrop-blur z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex items-center gap-4 h-14">
