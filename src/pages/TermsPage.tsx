@@ -9,7 +9,7 @@ export default function TermsPage() {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
       <SeoHead
         title="წესები და პირობები — Maika.ge"
-        description="Maika.ge-ის გამოყენების წესები და პირობები."
+        description="Maika.ge-ის გამოყენების წესები და პირობები — შეკვეთის პროცესი, გადახდის მეთოდები, მიწოდება, დაბრუნების პოლიტიკა და სხვა მნიშვნელოვანი დეტალები."
       />
       <div className="max-w-3xl mx-auto px-4 py-12">
         <button

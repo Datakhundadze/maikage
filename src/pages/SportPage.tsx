@@ -30,7 +30,7 @@ export default function SportPage() {
     <div className="min-h-screen bg-background text-foreground">
       <SeoHead
         title="სპორტული ფორმები — გუნდის ფორმები ინდივიდუალური ბრენდინგით | Maika.ge"
-        description="შეუკვეთე პროფესიონალური სპორტული ფორმები გუნდისთვის — კლუბის ლოგო, მოთამაშის ნომერი, სახელი. სრული კომპლექტი 1 ცალიდან. სწრაფი წარმოება Tbilisi-ში."
+        description="ფეხბურთის მაისურზე გვარის და ნომრის ბეჭდვა — სრული გუნდის კომპლექტი 1 ცალიდან, კლუბის ლოგო. შეკვეთიდან იმავე ან მეორე დღეს მზადდება. Maika.ge."
         url={`${SITE_URL}/sport`}
         type="website"
       />

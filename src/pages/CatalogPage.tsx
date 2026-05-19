@@ -71,7 +71,7 @@ export default function CatalogPage() {
     <div className="flex flex-col h-screen">
       <SeoHead
         title="კატალოგი — Maika.ge დიზაინები"
-        description="აარჩიე მზა დიზაინი Maika.ge-ის კატალოგიდან და დაბეჭდე მაისურზე, ჰუდიზე ან სხვა აპარელზე."
+        description="აარჩიე მზა დიზაინი Maika.ge-ის კატალოგიდან — ქართული მოტივები, ფიროსმანი, მუსიკა, კინო, პატრიოტული. სხვადასხვა სტილისა და ხარისხის მაისურები."
         url={`${SITE_URL}/designs`}
       />
       <AppHeader />

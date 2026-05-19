@@ -1159,7 +1159,7 @@ export default function SimplePage() {
     <div className="flex flex-col h-screen">
       <SeoHead
         title="ფოტო და ტექსტი მაისურზე — Maika.ge"
-        description="ატვირთე საკუთარი ფოტო, დაამატე ტექსტი და დაბეჭდე უნიკალური მაისური Maika.ge-ზე."
+        description="ატვირთე ფოტო და დაბეჭდე უნიკალური დიზაინი მაისურზე, oversize ჰუდიზე, ჩანთაზე ან ქეისზე. რეცხვაგამძლე ეკოლოგიური საღებავი, შეკვეთიდან იმავე ან მეორე დღეს."
       />
       <AppHeader />
       <ContactBar />

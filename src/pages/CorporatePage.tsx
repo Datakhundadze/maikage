@@ -11,7 +11,7 @@ export default function CorporatePage() {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
       <SeoHead
         title="კორპორაციული შეკვეთები — Maika.ge"
-        description="დაუკავშირდი Maika.ge-ს კორპორაციული ფორმის, გუნდური მაისურების ან გასაჩუქრებელი აპარელის შესაკვეთად. ფასი, წარმოების ვადა და ხარისხი — შენი მოთხოვნით."
+        description="Maika.ge კორპორატიული შეკვეთები — გუნდის ფორმები, სპორტული კომპლექტები, ბრენდირებული მაისურები. სპეციალური ფასი, ექსპრესს კურიერი Tbilisi-ში."
         url={`${SITE_URL}/corporate`}
         schemas={[LOCAL_BUSINESS_SCHEMA]}
       />

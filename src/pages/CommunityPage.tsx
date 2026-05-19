@@ -80,7 +80,7 @@ export default function CommunityPage() {
     <>
       <SeoHead
         title="საზოგადოება — Maika.ge"
-        description="გადახედე საზოგადოების მიერ გამოქვეყნებულ AI-შექმნილ დიზაინებს Maika.ge-ზე."
+        description="გადახედე Maika.ge-ის საზოგადოების მიერ შექმნილ AI დიზაინებს. შთაგონდი სხვების კრეატივიდან და შექმენი საკუთარი დიზაინი ერთ კლიკში."
         url={`${SITE_URL}/community`}
       />
       <AppLayout
