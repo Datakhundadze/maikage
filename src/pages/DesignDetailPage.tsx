@@ -20,6 +20,7 @@ import { calculatePrice } from "@/lib/pricing";
 import { CATEGORIES } from "@/lib/categories";
 import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
 import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
+import { colorKa, productTypeKa } from "@/lib/i18n";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
 
 interface CatalogDesignRow {
@@ -337,7 +338,7 @@ export default function DesignDetailPage() {
               <CatalogDesignCard
                 printFileUrl={design.print_file_url}
                 fallbackUrl={design.thumbnail_url}
-                alt={`${design.title_ka} — ${product.type} ${selectedColor}`}
+                alt={`${design.title_ka} — ${productTypeKa(product.type)} ${colorKa(selectedColor)} | Maika.ge`}
                 productType={product.type}
                 subProduct={product.sub_product || product.type}
                 color={selectedColor}
