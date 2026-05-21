@@ -320,4 +320,21 @@ export function t(lang: Lang, key: string, ...args: any[]): string {
   return (result as string) ?? key;
 }
 
+// Direct lookups for color / product-type names. The general `t()` helper
+// returns the dotted key path on miss ("colors.Custom Red"), which is
+// fine for UI labels but unhelpful inside alt-text strings where we want
+// the original English literal as a graceful fallback. These helpers
+// return the Georgian mapping when present, the input string otherwise.
+type ColorKey = keyof typeof translations["ge"]["colors"];
+type ProductKey = keyof typeof translations["ge"]["products"];
+
+export function colorKa(colorEn: string): string {
+  return (translations.ge.colors as Record<string, string>)[colorEn] ?? colorEn;
+}
+
+export function productTypeKa(typeEn: string): string {
+  return (translations.ge.products as Record<string, string>)[typeEn] ?? typeEn;
+}
+
 export { translations };
+export type { ColorKey, ProductKey };

@@ -397,7 +397,7 @@ export default function LandingPage() {
                   <img
                     key={src}
                     src={src}
-                    alt="Sport Set"
+                    alt={`Maika.ge სპორტული ფორმა — გუნდის მაისური და შორტი ლოგოთი ${i + 1}`}
                     width={800}
                     height={800}
                     className="absolute inset-0 w-full h-full object-contain rounded-2xl transition-opacity duration-700"

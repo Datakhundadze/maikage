@@ -72,7 +72,7 @@ export default function SportPage() {
                 <img
                   key={src}
                   src={src}
-                  alt={`სპორტული ფორმა ${i + 1}`}
+                  alt={`Maika.ge გუნდის ფორმა — სპორტული მაისური გვარით, ნომრით და ლოგოთი ${i + 1}`}
                   width={600}
                   height={800}
                   className="absolute inset-0 w-full h-full object-contain p-2 transition-opacity duration-700 ease-in-out"
