@@ -71,18 +71,20 @@ type ResultItem = SuccessItem | FailureItem;
 const SYSTEM_PROMPT = `შენ ხარ Maika.ge-ს ქართველი SEO კოპირაიტერი. წერ მოკლე, ბუნებრივ, ხელით ნაწერი ხარისხის Georgian meta description-ებს კატალოგის დიზაინებისთვის.
 
 წესები:
-- სიგრძე: 140-160 სიმბოლო (ქართული სიმბოლოები ჩათვლით). ნუ გადააჭარბებ 160-ს.
+- სიგრძე: 150-158 ქართული სიმბოლო, არასოდეს გადააჭარბო 160-ს. ეს მკაცრი ლიმიტია — დათვალე სიმბოლოები სანამ პასუხს დააბრუნებ.
 - ენა: მხოლოდ ქართული.
 - ნუ ახსენებ ფასს — ფასები იცვლება პროდუქტისა და რაოდენობის მიხედვით.
 - ნუ გამოიყენებ სიტყვას "აპარელი". თუ საჭიროა, გამოიყენე "ტექსტილი".
 - ნუ ახსენებ "DTF"-ს ან ნებისმიერ ბეჭდვის ტექნოლოგიის ჟარგონს.
 - ბუნებრივად ჩართე სადაც შესაბამისია: oversize მაისური/ჰუდი, რეცხვაგამძლე ეკოლოგიური საღებავი, შეკვეთიდან იმავე ან მეორე დღეს, შოურუმი Tbilisi-ში.
 - იყავი უნიკალური და სპეციფიკური — გამოიყენე დიზაინის სათაური და კონკრეტული tag-ები, არ დაწერო ზოგადი ფრაზები.
+- არ დაიწყო ყველა აღწერა ერთი და იგივე ფრაზით (მაგ. „სასაცილო დიზაინი"). გამოიყენე მრავალფეროვანი დასაწყისი — ზოგი დაიწყე დიზაინის სახელით, ზოგი აღწერით, ზოგი მოწოდებით.
+- არ ჩასვა დიზაინის სახელი ბრჭყალებში. ჩაანაცვლე ბუნებრივად, ბრჭყალების გარეშე. არც „", არც "", არც '' — საერთოდ არ გამოიყენო ბრჭყალები ტექსტში.
 - დაასრულე ბრენდით "Maika.ge" სადაც ბუნებრივად ჯდება.
 - დააბრუნე მხოლოდ description-ის ტექსტი — ბრჭყალების, შესავლის, markdown-ის გარეშე.
 
-მაგალითი სასურველი სტილისთვის:
-"ნიკო ფიროსმანის ხელოვნება მაისურზე — ქართული კულტურის იკონური დიზაინი oversize მაისურზე ან ჰუდიზე. რეცხვაგამძლე ბეჭდვა, შეკვეთიდან იმავე ან მეორე დღეს."`;
+მაგალითი სასურველი სტილისთვის (გაითვალისწინე — ბრჭყალების გარეშე):
+ნიკო ფიროსმანის ხელოვნება მაისურზე — ქართული კულტურის იკონური დიზაინი oversize მაისურზე ან ჰუდიზე. რეცხვაგამძლე ბეჭდვა, შეკვეთიდან იმავე ან მეორე დღეს.`;
 
 function filterTags(tags: string[] | null): string[] {
   if (!tags) return [];
@@ -109,20 +111,36 @@ function charCount(s: string): number {
   return [...s].length;
 }
 
-async function generateOne(design: DesignRow, apiKey: string): Promise<string> {
+// Hard limit beyond which we trigger a one-shot "shorten" retry.
+const HARD_CHAR_LIMIT = 160;
+// Target we ask the retry call to hit (gives the model some headroom under 160).
+const RETRY_TARGET = 158;
+
+// Strip ALL double-quote variants (straight, curly, German low-9) anywhere
+// in the body. Belt-and-suspenders for the "no quotes" rule in the prompt —
+// quotes inside a meta-description tag are risky if not HTML-escaped, and
+// the dry run showed the model still wrapped design names in „" and "".
+function stripQuotes(s: string): string {
+  return s
+    .trim()
+    .replace(/["“”„‟]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+interface ChatMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
+
+async function callGateway(messages: ChatMessage[], apiKey: string): Promise<string> {
   const response = await fetch(GATEWAY_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: buildUserPrompt(design) },
-      ],
-    }),
+    body: JSON.stringify({ model: MODEL, messages }),
   });
 
   if (!response.ok) {
@@ -141,9 +159,44 @@ async function generateOne(design: DesignRow, apiKey: string): Promise<string> {
   if (typeof content !== "string" || content.trim().length === 0) {
     throw new Error(`Gateway returned no text content: ${JSON.stringify(data).slice(0, 300)}`);
   }
-  // Strip surrounding quotes / whitespace if the model leaked any despite
-  // the "no quotes" instruction.
-  return content.trim().replace(/^["“„'']+|["”'']+$/g, "").trim();
+  return content;
+}
+
+async function generateOne(design: DesignRow, apiKey: string): Promise<string> {
+  const userPrompt = buildUserPrompt(design);
+  const firstRaw = await callGateway(
+    [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
+    ],
+    apiKey,
+  );
+  const first = stripQuotes(firstRaw);
+
+  if (charCount(first) <= HARD_CHAR_LIMIT) return first;
+
+  // One-shot retry: continue the conversation so the model knows what to
+  // shorten. Same rules still apply.
+  const retryInstruction =
+    `შენი წინა პასუხი ძალიან გრძელია (${charCount(first)} სიმბოლო, ლიმიტი 160). ` +
+    `შეამოკლე ${RETRY_TARGET} სიმბოლომდე ან ნაკლები, ` +
+    `შინაარსი და ბრენდი დატოვე იგივე. ბრჭყალები, ფასი, „აპარელი", DTF — არც ერთი. ` +
+    `დააბრუნე მხოლოდ შემოკლებული ტექსტი.`;
+  const retryRaw = await callGateway(
+    [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
+      { role: "assistant", content: first },
+      { role: "user", content: retryInstruction },
+    ],
+    apiKey,
+  );
+  const retried = stripQuotes(retryRaw);
+
+  // If still over after retry, return it anyway — caller sees the overshoot
+  // via char_count. Truncating mid-word would be worse than letting a human
+  // edit it down.
+  return retried;
 }
 
 serve(async (req) => {
