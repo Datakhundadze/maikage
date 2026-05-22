@@ -83,8 +83,19 @@ const SYSTEM_PROMPT = `შენ ხარ Maika.ge-ს ქართველი
 - დაასრულე ბრენდით "Maika.ge" სადაც ბუნებრივად ჯდება.
 - დააბრუნე მხოლოდ description-ის ტექსტი — ბრჭყალების, შესავლის, markdown-ის გარეშე.
 
-მაგალითი სასურველი სტილისთვის (გაითვალისწინე — ბრჭყალების გარეშე):
-ნიკო ფიროსმანის ხელოვნება მაისურზე — ქართული კულტურის იკონური დიზაინი oversize მაისურზე ან ჰუდიზე. რეცხვაგამძლე ბეჭდვა, შეკვეთიდან იმავე ან მეორე დღეს.`;
+მაგალითები მრავალფეროვანი დასაწყისის სტილებისა (გაითვალისწინე — ბრჭყალების გარეშე, თითოეული სხვა სტილით იწყება, აზრი მათი კოპირება არ არის — მთავარია, რომ შენი დასაწყისიც განსხვავებული იყოს):
+
+[სტილი 1 — დაიწყე დიზაინის სახელით]
+ფიროსმანი oversize მაისურზე — ქართული ხელოვნების იკონური დიზაინი. რეცხვაგამძლე ეკოლოგიური ბეჭდვა, შეკვეთიდან იმავე ან მეორე დღეს. Maika.ge.
+
+[სტილი 2 — დაიწყე სცენით ან აღწერით]
+ძველი თბილისის ნოსტალგიური ხედი ხარისხიან ტექსტილზე. აირჩიე oversize მაისური ან ჰუდი, მიიღე მეორე დღესვე თბილისის შოურუმიდან. Maika.ge.
+
+[სტილი 3 — დაიწყე მოწოდებით]
+შეუკვეთე უნიკალური ქართული დიზაინი oversize მაისურზე ან ჰუდიზე. რეცხვაგამძლე ეკოლოგიური ბეჭდვა, სწრაფი წარმოება. Maika.ge შოურუმი თბილისში.
+
+[სტილი 4 — დაიწყე სამიზნე აუდიტორიით]
+მუსიკის მოყვარულთათვის — გამორჩეული დიზაინი oversize მაისურზე ან ჰუდიზე. რეცხვაგამძლე ბეჭდვა, შეკვეთიდან იმავე ან მეორე დღეს. Maika.ge.`;
 
 function filterTags(tags: string[] | null): string[] {
   if (!tags) return [];
@@ -93,14 +104,28 @@ function filterTags(tags: string[] | null): string[] {
     .filter((t) => t.length > 0 && !GENERIC_TAGS.has(t.toLowerCase()));
 }
 
-function buildUserPrompt(design: DesignRow): string {
+// Per-design opening-style directives, rotated by batch index. Forces variety
+// across the batch even though each Gemini call is isolated and the model
+// can't see what siblings wrote. Order matches the four labeled few-shot
+// examples in SYSTEM_PROMPT so the model has a concrete template per style.
+const OPENING_STYLES = [
+  "დაიწყე აღწერა დიზაინის სახელით (სტილი 1).",
+  "დაიწყე აღწერა სცენით ან დიზაინის აღწერით, არა სახელით (სტილი 2).",
+  "დაიწყე აღწერა მოწოდებით — მაგ. შეუკვეთე, აირჩიე, აღმოაჩინე (სტილი 3).",
+  "დაიწყე აღწერა სამიზნე აუდიტორიით — მაგ. მუსიკის მოყვარულთათვის, სპორტსმენებისთვის (სტილი 4).",
+];
+
+function buildUserPrompt(design: DesignRow, index: number): string {
   const specificTags = filterTags(design.tags);
+  const openingDirective = OPENING_STYLES[index % OPENING_STYLES.length];
   const lines = [
     `სათაური: ${design.title_ka}`,
     design.category ? `კატეგორია: ${design.category}` : null,
     specificTags.length > 0 ? `Tag-ები: ${specificTags.join(", ")}` : null,
     "",
-    "დაწერე ერთი meta description ამ დიზაინისთვის, ზემოთ მითითებული წესების მიხედვით.",
+    `დასაწყისის სტილი ამ კონკრეტული აღწერისთვის: ${openingDirective}`,
+    "",
+    "დაწერე ერთი meta description ამ დიზაინისთვის, ზემოთ მითითებული წესების და მითითებული დასაწყისის სტილის მიხედვით.",
   ].filter((l): l is string => l !== null);
   return lines.join("\n");
 }
@@ -162,8 +187,8 @@ async function callGateway(messages: ChatMessage[], apiKey: string): Promise<str
   return content;
 }
 
-async function generateOne(design: DesignRow, apiKey: string): Promise<string> {
-  const userPrompt = buildUserPrompt(design);
+async function generateOne(design: DesignRow, index: number, apiKey: string): Promise<string> {
+  const userPrompt = buildUserPrompt(design, index);
   const firstRaw = await callGateway(
     [
       { role: "system", content: SYSTEM_PROMPT },
@@ -247,10 +272,12 @@ serve(async (req) => {
     const results: ResultItem[] = [];
 
     // Sequential, not parallel — keeps us well under any gateway rate limit
-    // during dry runs and makes per-row error reporting trivial.
-    for (const design of rows) {
+    // during dry runs and makes per-row error reporting trivial. The index
+    // also drives the opening-style rotation (see OPENING_STYLES).
+    for (let i = 0; i < rows.length; i++) {
+      const design = rows[i];
       try {
-        const text = await generateOne(design, LOVABLE_API_KEY);
+        const text = await generateOne(design, i, LOVABLE_API_KEY);
         results.push({
           slug: design.slug,
           title_ka: design.title_ka,
