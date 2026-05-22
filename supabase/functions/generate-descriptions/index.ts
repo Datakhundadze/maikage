@@ -1,7 +1,7 @@
-// AI-generated SEO meta descriptions for catalog_designs (dry-run).
+// AI-generated SEO meta descriptions for catalog_designs.
 //
 // POST /functions/v1/generate-descriptions
-//   body: { limit?: number }     // default 3
+//   body: { limit?: number, dryRun?: boolean }   // dryRun defaults to true
 //
 // Behavior:
 //   1. Selects published catalog_designs rows where meta_description_ka is
@@ -9,12 +9,11 @@
 //   2. For each row, builds a Georgian SEO-description prompt from title_ka,
 //      category, and FILTERED tags (generic site-wide tags stripped), then
 //      calls the Lovable AI gateway (google/gemini-3-flash-preview).
-//   3. Returns a JSON array of { slug, title_ka, generated_description,
-//      char_count } per success, or { slug, error } per per-row failure.
-//
-// IMPORTANT: This function does NOT write to the database. Output is for
-// human review only. A follow-up function (or admin UI) will persist the
-// approved descriptions.
+//   3. When dryRun is false, UPDATEs catalog_designs.meta_description_ka by
+//      row id (NOT slug) using the service-role client.
+//   4. Returns a JSON array of { slug, title_ka, generated_description,
+//      char_count, written } per success, or { slug, error, written:false }
+//      per per-row failure, plus a summary { processed, written, failed }.
 //
 // Auth: verify_jwt = false (see supabase/config.toml) — invoked during
 // dry-run testing from the admin's machine. Tighten before production use.
@@ -46,6 +45,7 @@ const GENERIC_TAGS = new Set([
 ]);
 
 interface DesignRow {
+  id: string;
   slug: string;
   title_ka: string;
   category: string | null;
@@ -57,11 +57,13 @@ interface SuccessItem {
   title_ka: string;
   generated_description: string;
   char_count: number;
+  written: boolean;
 }
 
 interface FailureItem {
   slug: string;
   error: string;
+  written: false;
 }
 
 type ResultItem = SuccessItem | FailureItem;
@@ -242,23 +244,30 @@ serve(async (req) => {
     }
 
     let limit = DEFAULT_LIMIT;
+    // Default to dry-run so an accidental invocation never writes.
+    let dryRun = true;
     if (req.method === "POST") {
       try {
         const body = await req.json();
         if (typeof body?.limit === "number" && Number.isFinite(body.limit) && body.limit > 0) {
           limit = Math.min(Math.floor(body.limit), 50);
         }
+        if (typeof body?.dryRun === "boolean") {
+          dryRun = body.dryRun;
+        }
       } catch {
-        // Empty body / non-JSON → fall back to default.
+        // Empty body / non-JSON → fall back to defaults.
       }
     }
 
+    // Service-role client. Used ONLY inside this edge function (server-side);
+    // never returned to the caller. Required to bypass RLS for the UPDATE.
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // `is.null` OR empty string. PostgREST `.or()` filter handles both.
     const { data: designs, error: queryError } = await supabase
       .from("catalog_designs")
-      .select("slug, title_ka, category, tags")
+      .select("id, slug, title_ka, category, tags")
       .eq("is_published", true)
       .or("meta_description_ka.is.null,meta_description_ka.eq.")
       .order("created_at", { ascending: false })
@@ -270,6 +279,8 @@ serve(async (req) => {
 
     const rows = (designs ?? []) as DesignRow[];
     const results: ResultItem[] = [];
+    let writtenCount = 0;
+    let failedCount = 0;
 
     // Sequential, not parallel — keeps us well under any gateway rate limit
     // during dry runs and makes per-row error reporting trivial. The index
@@ -278,17 +289,41 @@ serve(async (req) => {
       const design = rows[i];
       try {
         const text = await generateOne(design, i, LOVABLE_API_KEY);
+
+        let written = false;
+        if (!dryRun) {
+          // Match by id (primary key from the SELECT above) — never by slug.
+          const { error: updateError } = await supabase
+            .from("catalog_designs")
+            .update({ meta_description_ka: text })
+            .eq("id", design.id);
+          if (updateError) {
+            results.push({
+              slug: design.slug,
+              error: `DB update failed: ${updateError.message}`,
+              written: false,
+            });
+            failedCount++;
+            continue;
+          }
+          written = true;
+          writtenCount++;
+        }
+
         results.push({
           slug: design.slug,
           title_ka: design.title_ka,
           generated_description: text,
           char_count: charCount(text),
+          written,
         });
       } catch (e) {
         results.push({
           slug: design.slug,
           error: e instanceof Error ? e.message : String(e),
+          written: false,
         });
+        failedCount++;
       }
     }
 
@@ -296,7 +331,13 @@ serve(async (req) => {
       JSON.stringify({
         model: MODEL,
         requested_limit: limit,
+        dry_run: dryRun,
         returned: results.length,
+        summary: {
+          processed: rows.length,
+          written: writtenCount,
+          failed: failedCount,
+        },
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
