@@ -321,6 +321,11 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           {/* Payment method */}
           <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />
 
+          {/* TEMPORARY DEBUG — revert after verifying runtime quantity. */}
+          <div style={{ background: "red", color: "white", padding: "4px", fontSize: "12px", fontWeight: "bold" }}>
+            DEBUG: quantity prop = {String(quantity)} → qty = {qty} → breakdown.total = {breakdown.total} → productSubtotal = {productSubtotal}
+          </div>
+
           {/* Price summary */}
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-1.5">
             <h4 className="text-sm font-semibold text-card-foreground mb-2">შეკვეთის ჯამი</h4>
