@@ -9,7 +9,7 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   try {
-    const { orderId, amount, description, cartId } = await req.json();
+    const { orderId, amount, description, cartId, backTransparentBackfill } = await req.json();
     if (!orderId || !amount) throw new Error("Missing orderId or amount");
     const bogClientId = Deno.env.get("BOG_CLIENT_ID");
     const bogClientSecret = Deno.env.get("BOG_CLIENT_SECRET");
@@ -79,6 +79,25 @@ serve(async (req) => {
         .update({ payment_status: "pending", bog_order_id: bogOrderId })
         .eq("id", orderId);
       if (updateError) console.error("Failed to update order:", updateError);
+    }
+
+    // Server-side back_transparent_image_url backfill. Previously ran from
+    // the browser as an anon UPDATE; moved here so the public UPDATE policy
+    // on orders can eventually be dropped. Best-effort: a failed backfill
+    // is logged but never aborts the payment.
+    if (Array.isArray(backTransparentBackfill)) {
+      for (const entry of backTransparentBackfill) {
+        if (!entry || !entry.url || !Array.isArray(entry.orderIds) || entry.orderIds.length === 0) continue;
+        try {
+          const { error: bfErr } = await supabase
+            .from("orders")
+            .update({ back_transparent_image_url: entry.url })
+            .in("id", entry.orderIds);
+          if (bfErr) console.warn("[create-payment] back_transparent_image_url backfill skipped:", bfErr.message);
+        } catch (bfThrow) {
+          console.warn("[create-payment] back_transparent_image_url backfill threw:", bfThrow);
+        }
+      }
     }
 
     // Fetch full order details to send email notification

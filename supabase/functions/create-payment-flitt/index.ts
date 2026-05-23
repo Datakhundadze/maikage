@@ -32,7 +32,7 @@ serve(async (req) => {
   }
 
   try {
-    const { orderId, amount, description, cartId } = await req.json();
+    const { orderId, amount, description, cartId, backTransparentBackfill } = await req.json();
     if (!orderId || !amount) throw new Error("Missing orderId or amount");
 
     const numericAmount = Number(amount);
@@ -105,6 +105,25 @@ serve(async (req) => {
         .from("orders")
         .update({ payment_status: "pending", bog_order_id: providerRef })
         .eq("id", orderId);
+    }
+
+    // Server-side back_transparent_image_url backfill. Previously ran from
+    // the browser as an anon UPDATE; moved here so the public UPDATE policy
+    // on orders can eventually be dropped. Best-effort: a failed backfill
+    // is logged but never aborts the payment.
+    if (Array.isArray(backTransparentBackfill)) {
+      for (const entry of backTransparentBackfill) {
+        if (!entry || !entry.url || !Array.isArray(entry.orderIds) || entry.orderIds.length === 0) continue;
+        try {
+          const { error: bfErr } = await supabase
+            .from("orders")
+            .update({ back_transparent_image_url: entry.url })
+            .in("id", entry.orderIds);
+          if (bfErr) console.warn("[create-payment-flitt] back_transparent_image_url backfill skipped:", bfErr.message);
+        } catch (bfThrow) {
+          console.warn("[create-payment-flitt] back_transparent_image_url backfill threw:", bfThrow);
+        }
+      }
     }
 
     // Email notification (fire-and-forget)
