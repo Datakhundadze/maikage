@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingBag } from "lucide-react";
+import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { DesignState, DesignStateSide } from "@/lib/designState";
@@ -457,6 +458,7 @@ export default function SimplePage() {
   const [publishing, setPublishing] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [sizeError, setSizeError] = useState(false);
+  const [quantity, setQuantity] = useState<number>(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1437,6 +1439,7 @@ export default function SimplePage() {
                         backOriginalPhotos: backData.photos.map(p => p.image),
                         prompt: buildTextPrompt(frontData, backData),
                         productPrice: breakdown.total,
+                        quantity,
                         designState: buildDesignStateInput(
                           frontData,
                           backData,
@@ -1446,6 +1449,7 @@ export default function SimplePage() {
                         ),
                       });
                       toast({ title: "კალათაში დაემატა ✓" });
+                      setQuantity(1);
                     } catch (e: any) {
                       toast({ title: "შეცდომა", description: e.message, variant: "destructive" });
                     }
@@ -1459,6 +1463,10 @@ export default function SimplePage() {
                         <ShoppingBag className="h-5 w-5" />
                         შეკვეთა
                       </Button>
+                      <div>
+                        <h3 className="text-sm font-semibold mb-2">რაოდენობა</h3>
+                        <QuantityStepper value={quantity} onChange={setQuantity} />
+                      </div>
                       <Button
                         variant="outline"
                         className="w-full h-11 gap-2 font-semibold text-sm"

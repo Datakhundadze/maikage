@@ -26,6 +26,7 @@ import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useCart } from "@/hooks/useCart";
 import { Button } from "@/components/ui/button";
 import { ShoppingBag } from "lucide-react";
+import QuantityStepper from "@/components/QuantityStepper";
 import SeoHead from "@/components/SeoHead";
 
 const RESULT_STORAGE_KEY = "maika_last_generation";
@@ -45,6 +46,7 @@ function StudioContent() {
   const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [sizeError, setSizeError] = useState(false);
+  const [quantity, setQuantity] = useState<number>(1);
 
   // Mobile: scroll to preview area when generation starts
   const mobilePreviewRef = useRef<HTMLDivElement>(null);
@@ -405,6 +407,10 @@ function StudioContent() {
                       size={productConfig.config.size}
                     />
                   </Suspense>
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2">რაოდენობა</h3>
+                    <QuantityStepper value={quantity} onChange={setQuantity} />
+                  </div>
                   <Button
                     variant="outline"
                     className="w-full h-11 gap-2 font-semibold text-sm"
@@ -425,9 +431,11 @@ function StudioContent() {
                           backOriginalPhotos: [],
                           prompt: result?.prompt || null,
                           productPrice: priceBreakdown.total,
+                          quantity,
                           designState: null,
                         });
                         toast({ title: "კალათაში დაემატა ✓" });
+                        setQuantity(1);
                       } catch (e: any) {
                         toast({ title: "შეცდომა", description: e.message, variant: "destructive" });
                       }

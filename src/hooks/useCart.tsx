@@ -37,6 +37,10 @@ interface AddItemInput {
   backOriginalPhotos: string[];
   prompt: string | null;
   productPrice: number;
+  /** Initial cart quantity. Defaults to 1 when omitted. Clamped to >= 1
+   *  inside addItem so a stray 0 / negative / non-integer never lands
+   *  in the cart. */
+  quantity?: number;
   designState: DesignState | null;
 }
 
@@ -160,7 +164,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         backTransparentImageUrl: backTransparentUrl,
         prompt: data.prompt,
         productPrice: data.productPrice,
-        quantity: 1,
+        quantity: Math.max(1, Math.floor(data.quantity ?? 1)),
         designState: finalDesignState,
       };
 

@@ -22,6 +22,7 @@ import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
 import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
 import { colorKa, productTypeKa } from "@/lib/i18n";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
+import QuantityStepper from "@/components/QuantityStepper";
 
 interface CatalogDesignRow {
   id: string;
@@ -72,6 +73,7 @@ export default function DesignDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string>("White");
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [sizeError, setSizeError] = useState(false);
+  const [quantity, setQuantity] = useState<number>(1);
 
   const [composing, setComposing] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
@@ -222,9 +224,11 @@ export default function DesignDetailPage() {
         backOriginalPhotos: [],
         prompt: design.title_ka,
         productPrice: priceBreakdown.total,
+        quantity,
         designState: null,
       });
       toast({ title: "კალათაში დაემატა ✓" });
+      setQuantity(1);
     } catch (e: any) {
       toast({ title: "შეცდომა", description: e?.message ?? String(e), variant: "destructive" });
     }
@@ -403,6 +407,15 @@ export default function DesignDetailPage() {
                   {sizeError && <p className="mt-1 text-xs text-destructive">აირჩიე ზომა</p>}
                 </div>
               )}
+
+              {/* Quantity (applies to "Add to cart" — the direct "Order now"
+                  always orders 1; bumping quantity here routes the order
+                  through the cart's expand-into-N-rows path that already
+                  multiplies the payment amount correctly.) */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2">რაოდენობა</h3>
+                <QuantityStepper value={quantity} onChange={setQuantity} />
+              </div>
 
               {/* Price */}
               <div className="rounded-xl border border-border bg-card p-4 flex items-baseline justify-between">
