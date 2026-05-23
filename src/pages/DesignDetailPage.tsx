@@ -459,6 +459,7 @@ export default function DesignDetailPage() {
           backTransparentImageDataUrl={null}
           prompt={design.title_ka}
           size={selectedSize || undefined}
+          quantity={quantity}
         >
           {/* Suppress OrderDialog's default DialogTrigger button — we drive
               opening via externalOpen, our own "შეუკვეთე" button is the trigger. */}

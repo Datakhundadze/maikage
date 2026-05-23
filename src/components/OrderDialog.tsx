@@ -50,6 +50,10 @@ interface OrderDialogProps {
   designState?: DesignState | null;
   onBeforeOpen?: () => void;
   size?: string;
+  /** How many units to order. Defaults to 1. Clamped to >= 1 internally
+   *  so a stray 0 / negative / non-integer can never reach the payment
+   *  amount calculation. */
+  quantity?: number;
 }
 
 // Throws on persistent failure (after one retry) so the order can abort
@@ -107,7 +111,7 @@ async function uploadTryOnAssets(orderId: string): Promise<void> {
   }));
 }
 
-export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, backTransparentImageDataUrl, frontOriginalPhotos, backOriginalPhotos, prompt, designState, onBeforeOpen, size }: OrderDialogProps) {
+export default function OrderDialog({ breakdown, product, subProduct, color, isStudio, children, externalOpen, onExternalOpenChange, frontMockupDataUrl, backMockupDataUrl, transparentImageDataUrl, backTransparentImageDataUrl, frontOriginalPhotos, backOriginalPhotos, prompt, designState, onBeforeOpen, size, quantity }: OrderDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -129,8 +133,14 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const [address, setAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bog");
 
+  // SAFETY INVARIANT: the displayed "სულ" below and the `amount` sent to
+  // the payment edge function MUST both derive from this single variable.
+  // Do not introduce a separate calculation for display vs amount — they
+  // would drift out of sync and either undercharge or overcharge.
+  const qty = Math.max(1, Math.floor(quantity ?? 1));
   const deliveryPrice = DELIVERY_PRICES[delivery];
-  const totalWithDelivery = breakdown.total + deliveryPrice;
+  const productSubtotal = breakdown.total * qty;
+  const totalWithDelivery = productSubtotal + deliveryPrice;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,8 +186,13 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         backOriginalUrls,
       );
 
-      const row = {
-        id: orderId,
+      // Mirror CartPage's expand-by-quantity pattern (CartPage.tsx:179-218):
+      // build one rowTemplate, then create `qty` rows sharing the same
+      // mockup URLs and (when qty > 1) a cart_id so admin groups them.
+      // `orderId` is reused as rows[0].id so the upload paths above and
+      // localStorage / payment / redirect all key off the same row.
+      const cartId = qty > 1 ? crypto.randomUUID() : null;
+      const rowTemplate = {
         user_id: user?.id || null,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
@@ -186,35 +201,46 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
         phone: phone.trim(),
         delivery_type: delivery,
         delivery_address: delivery !== "pickup" ? address.trim() : null,
-        delivery_price: deliveryPrice,
+        delivery_price: 0,
         product_price: breakdown.total,
-        total_price: totalWithDelivery,
+        total_price: breakdown.total,
         product,
         sub_product: subProduct,
         color,
         is_studio: isStudio,
-        payment_status: "unpaid",
+        payment_status: "unpaid" as const,
         payment_provider: paymentMethod,
         front_mockup_url: frontUrl,
         back_mockup_url: backUrl,
         transparent_image_url: transparentUrl,
         prompt: prompt || null,
         size: size || null,
+        cart_id: cartId,
         design_state: finalDesignState,
       };
+      const rows = Array.from({ length: qty }, (_, i) => ({
+        id: i === 0 ? orderId : crypto.randomUUID(),
+        ...rowTemplate,
+      }));
+
+      // Delivery is charged ONCE on the first row so the sum across rows
+      // equals totalWithDelivery. Same pattern as CartPage.tsx:215-218.
+      rows[0].delivery_price = deliveryPrice;
+      rows[0].total_price = rows[0].product_price + deliveryPrice;
 
       const redirectUrl = await submitOrder({
-        rows: [row],
-        paymentOrderId: orderId,
+        rows,
+        paymentOrderId: rows[0].id,
         amount: totalWithDelivery,
         description: `${product} - ${subProduct} (${color})`,
         paymentMethod,
+        cartId: cartId ?? undefined,
         backTransparentBackfill: backTransparentUrl
-          ? [{ orderIds: [orderId], url: backTransparentUrl }]
+          ? [{ orderIds: rows.map((r) => r.id), url: backTransparentUrl }]
           : undefined,
       });
 
-      localStorage.setItem("maika_pending_order_id", orderId);
+      localStorage.setItem("maika_pending_order_id", rows[0].id);
       window.location.href = redirectUrl;
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
@@ -299,9 +325,19 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-1.5">
             <h4 className="text-sm font-semibold text-card-foreground mb-2">შეკვეთის ჯამი</h4>
             <div className="space-y-1 text-sm">
+              {qty > 1 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>რაოდენობა</span>
+                  <span>{qty}</span>
+                </div>
+              )}
               <div className="flex justify-between text-muted-foreground">
                 <span>პროდუქტის ფასი</span>
-                <span>{breakdown.total} ₾</span>
+                <span>
+                  {qty > 1
+                    ? `${breakdown.total} ₾ × ${qty} = ${productSubtotal} ₾`
+                    : `${breakdown.total} ₾`}
+                </span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>მიწოდება</span>

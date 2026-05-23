@@ -1500,6 +1500,7 @@ export default function SimplePage() {
                             productConfig.config.subProduct,
                             productConfig.config.color,
                           )}
+                          quantity={quantity}
                         >
                           <span className="hidden" />
                         </OrderDialog>
