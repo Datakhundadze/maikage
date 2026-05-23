@@ -32,6 +32,7 @@ const CorporatePage = lazy(() => import("./pages/CorporatePage"));
 const SportPage = lazy(() => import("./pages/SportPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const TryOnPage = lazy(() => import("./pages/TryOnPage"));
+const FaqPage = lazy(() => import("./pages/FaqPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // LoginPage is currently unused at the routing layer (no <LoginPage />
@@ -52,6 +53,7 @@ const ALWAYS_ROUTED: RegExp[] = [
   /^\/community(\/|$)/,
   /^\/my-designs(\/|$)/,
   /^\/corporate(\/|$)/,
+  /^\/faq(\/|$)/,
 ];
 
 // Shared fallback for chunk-load suspensions. Mirrors the spinner used by
@@ -105,6 +107,7 @@ function AppRoutes() {
       <Route path="/my-designs" element={<MyDesignsPage />} />
       <Route path="/community" element={<CommunityPage />} />
       <Route path="/corporate" element={<CorporatePage />} />
+      <Route path="/faq" element={<FaqPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

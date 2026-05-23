@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
 import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
@@ -435,6 +436,10 @@ export default function LandingPage() {
             <button onClick={() => setMode("privacy")} className="text-muted-foreground hover:text-foreground transition-colors text-xs">
               {lang === "en" ? "Privacy Policy" : "კონფიდენციალურობა"}
             </button>
+            <span className="text-muted-foreground/30">•</span>
+            <Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors text-xs">
+              {lang === "en" ? "FAQ" : "ხშირად დასმული კითხვები"}
+            </Link>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 maika.ge</p>
         </div>
