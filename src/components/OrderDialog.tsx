@@ -317,6 +317,9 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           <Button type="submit" disabled={submitting} className="w-full h-12 font-semibold text-base">
             {submitting ? "იგზავნება..." : "გადახდა და შეკვეთა"}
           </Button>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            წარმოების ვადა: 1-3 სამუშაო დღე
+          </p>
         </form>
       </DialogContent>
     </Dialog>

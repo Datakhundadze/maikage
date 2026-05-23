@@ -24,6 +24,7 @@ const PRICES: Record<string, PriceTier> = {
   "Polo":           { frontOnly: 45, backPhoto: 60, backText: 55 },
   "NIKE":           { frontOnly: 100, backPhoto: 115, backText: 110 },
   "Oversize":       { frontOnly: 65, backPhoto: 80, backText: 75 },
+  "GILDAN KIDS":    { frontOnly: 35, backPhoto: 50, backText: 45 },
 
   // Hoodie brands
   "GILDAN Hoodie":       { frontOnly: 75, backPhoto: 90, backText: 85 },
