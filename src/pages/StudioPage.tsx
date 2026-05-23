@@ -405,6 +405,7 @@ function StudioContent() {
                       transparentImageDataUrl={result?.transparentImage || null}
                       prompt={result?.prompt || null}
                       size={productConfig.config.size}
+                      quantity={quantity}
                     />
                   </Suspense>
                   <div>
