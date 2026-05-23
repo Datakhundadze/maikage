@@ -5,8 +5,14 @@ import type { PaymentMethod } from "@/components/PaymentMethodSelector";
 // Shared order-submission primitives used by both checkout paths.
 // Extracts the steps that were previously duplicated between
 // OrderDialog.handleSubmit and CartPage.handleCheckout: design_state URL
-// merging, the back_transparent_image_url backfill, and the
-// create-payment edge function invocation with error normalization.
+// merging and the create-payment edge function invocation with error
+// normalization.
+//
+// The back_transparent_image_url backfill used to run from the browser
+// as an anon UPDATE on orders. It now ships in the create-payment /
+// create-payment-flitt request body and is applied server-side with
+// the service role — see the edge functions for the UPDATE that mirrors
+// the previous best-effort behavior.
 
 /** Splices upload-returned URLs into the photo entries of a DesignState. */
 export function mergeDesignStateUrls(
@@ -32,33 +38,16 @@ export function mergeDesignStateUrls(
   };
 }
 
-/**
- * Populates back_transparent_image_url after insert. Kept separate from
- * the insert payload because the Supabase generated Database type is
- * frequently stale relative to the schema; keeping this as an
- * `as any` update preserves the defensive behavior of the previous
- * implementation.
- */
-export async function backfillBackTransparentImageUrl(
-  orderIds: string[],
-  url: string | null,
-): Promise<void> {
-  if (!url || orderIds.length === 0) return;
-  const { error } = await supabase
-    .from("orders")
-    .update({ back_transparent_image_url: url } as any)
-    .in("id", orderIds);
-  if (error) {
-    console.warn("[orderSubmission] back_transparent_image_url update skipped:", error.message);
-  }
-}
-
 export interface PaymentInvocationParams {
   paymentMethod: PaymentMethod;
   orderId: string;
   amount: number;
   description: string;
   cartId?: string;
+  /** Forwarded to the edge function which applies the UPDATE with
+   *  service role. Best-effort server-side: a failed backfill is logged
+   *  but does not abort the payment. */
+  backTransparentBackfill?: { orderIds: string[]; url: string }[];
 }
 
 /**
@@ -74,6 +63,9 @@ export async function invokePaymentRedirect(params: PaymentInvocationParams): Pr
     description: params.description,
   };
   if (params.cartId) body.cartId = params.cartId;
+  if (params.backTransparentBackfill && params.backTransparentBackfill.length > 0) {
+    body.backTransparentBackfill = params.backTransparentBackfill;
+  }
 
   const paymentRes = await supabase.functions.invoke(payFn, { body });
 
@@ -115,25 +107,20 @@ export interface SubmitOrderParams {
   paymentMethod: PaymentMethod;
   /** Optional cart_id for cart-grouped checkout. */
   cartId?: string;
-  /** Optional per-row back_transparent_image_url backfill (orderId → url). */
+  /** Optional per-row back_transparent_image_url backfill (orderId → url).
+   *  Forwarded to the edge function; never UPDATEd from the browser. */
   backTransparentBackfill?: { orderIds: string[]; url: string }[];
 }
 
 /**
- * High-level checkout helper: inserts orders, applies any
- * back_transparent_image_url backfills, then calls the payment provider
- * and returns the redirect URL. Throws on any failure so the caller can
- * surface a toast and stop.
+ * High-level checkout helper: inserts orders, then calls the payment
+ * provider (which also applies any back_transparent_image_url backfill
+ * server-side). Throws on any failure so the caller can surface a toast
+ * and stop.
  */
 export async function submitOrder(params: SubmitOrderParams): Promise<string> {
   const { error } = await supabase.from("orders").insert(params.rows as any);
   if (error) throw new Error(error.message);
-
-  if (params.backTransparentBackfill) {
-    for (const entry of params.backTransparentBackfill) {
-      await backfillBackTransparentImageUrl(entry.orderIds, entry.url);
-    }
-  }
 
   return invokePaymentRedirect({
     paymentMethod: params.paymentMethod,
@@ -141,5 +128,6 @@ export async function submitOrder(params: SubmitOrderParams): Promise<string> {
     amount: params.amount,
     description: params.description,
     cartId: params.cartId,
+    backTransparentBackfill: params.backTransparentBackfill,
   });
 }
