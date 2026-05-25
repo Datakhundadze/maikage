@@ -9,126 +9,144 @@ import {
   slugifyTitle,
 } from "@/components/admin/catalog/designUploadHelpers";
 import { runTransparencyPipeline } from "@/lib/generation";
-import type { CategorySlug } from "@/lib/categories";
+import { CATEGORIES, type CategorySlug } from "@/lib/categories";
 import { Sparkles, Check, X, AlertCircle, Loader2, Save, AlertTriangle } from "lucide-react";
 
-// ---- THEMES ------------------------------------------------------------
+// ---- THEMES → CATALOG CATEGORIES (1:1) --------------------------------
 //
-// Every prompt is wrapped with a "no-copyright" guard. Georgian themes get
-// an extra-strict guard (no Pirosmani-style copies, no real Georgian public
-// figures, no real logos / sports team emblems) because Georgian cultural
-// themes more often tempt the model toward reproductions of real artists or
-// institutions.
+// One theme button per catalog category slug (see src/lib/categories.ts).
+// theme.key IS the catalog category slug — on save we use it directly,
+// so the agent's output lands in the catalog row with the right category
+// with zero translation. Custom-text prompts fall back to "various".
 //
-// Each theme produces ORIGINAL designs. Humor + Various themes generate
-// English copy; Georgian themes generate Georgian copy where text applies.
-
-type ThemeGroup = "humor" | "various" | "georgian";
+// Copyright guards come in three tiers:
+//   GUARD_BASE     — applied to every prompt
+//   GUARD_IP       — extra-strict for music/movies/sports (highest IP risk)
+//   GUARD_KA       — extra-strict for georgian/patriotic/georgian-table
+//                    (Georgian cultural categories — temptation to copy real
+//                    artists / public figures / institutional emblems)
+//
+// Language: georgian / patriotic / georgian-table prompts ask for Georgian
+// text where text applies. All other categories use English copy.
 
 interface ThemeDef {
-  key: string;
+  /** key === catalog category slug, so category-on-save is the slug directly. */
+  key: CategorySlug;
   label: string;
-  group: ThemeGroup;
   /** Returns the character prompt for variation index `i`. The variation
    *  hint is appended so a batch of N designs from the same theme isn't
    *  N identical outputs. */
   buildPrompt: (variationHint: string) => string;
 }
 
-const COPYRIGHT_GUARD_EN =
+const GUARD_BASE =
   "no real brands, no real logos, no real or famous people, " +
   "no movie/TV/anime/cartoon characters, no band or musician names, " +
   "no sports teams or franchises, no copyrighted phrases or slogans";
 
-const COPYRIGHT_GUARD_KA =
+const GUARD_IP =
+  "absolutely NO real bands, artists, albums, song titles, movie titles, " +
+  "film characters, actors, athletes, team names, jerseys, or logos — " +
+  "only generic aesthetic motifs";
+
+const GUARD_KA =
   "original Georgian-inspired motifs only, " +
   "NO reproductions of any specific artist's work (e.g. no Pirosmani-style copies), " +
-  "no real Georgian public figures, no real logos or sports team emblems, " +
-  "no copyrighted material — original design only";
+  "no real Georgian public figures, no real logos or emblems, " +
+  "original ornamental/cultural/typographic design only";
+
+// Labels lifted from CATEGORIES (src/lib/categories.ts). Stored here so
+// the button text matches what admin sees in the catalog dropdown exactly.
+const LABEL: Record<CategorySlug, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.slug, c.label_ka]),
+) as Record<CategorySlug, string>;
 
 const THEMES: ThemeDef[] = [
-  // HUMOR
+  // --- Georgian-cultural categories (GUARD_KA appended) -----------------
   {
-    key: "funny-slogans", label: "Funny slogans", group: "humor",
+    key: "georgian", label: LABEL.georgian,
     buildPrompt: (v) =>
-      `original funny English slogan typography t-shirt design, witty original text, bold lettering, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}`,
+      `original Georgian-themed design with traditional ornaments, Mkhedruli/Asomtavruli typography or culturally-inspired motifs, Georgian-language text where text applies, ${v}, transparent background. ${GUARD_BASE}. ${GUARD_KA}`,
   },
   {
-    key: "sarcastic-quotes", label: "Sarcastic quotes", group: "humor",
+    key: "patriotic", label: LABEL.patriotic,
     buildPrompt: (v) =>
-      `original sarcastic English quote typography, dry humor original text, modern lettering, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}`,
+      `original Georgian patriotic design — generic national-pride aesthetic with traditional ornaments or symbolic motifs (no real flags reproduced verbatim, no institutional emblems), Georgian-language slogan where text applies, ${v}, transparent background. ${GUARD_BASE}. ${GUARD_KA}`,
   },
   {
-    key: "office-humor", label: "Office humor", group: "humor",
+    key: "georgian-table", label: LABEL["georgian-table"],
     buildPrompt: (v) =>
-      `original office-themed funny English slogan design with simple iconic graphics, work-life humor, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}`,
-  },
-  {
-    key: "animal-puns", label: "Animal puns", group: "humor",
-    buildPrompt: (v) =>
-      `original animal pun illustration with English wordplay text, cute hand-drawn illustrated animal, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}, no named or franchise characters`,
+      `original Georgian supra (feast) themed design — khinkali, khachapuri, qvevri, vine, toasting cup or similar food/wine motifs, Georgian-language text where text applies, ${v}, transparent background. ${GUARD_BASE}. ${GUARD_KA}`,
   },
 
-  // VARIOUS
+  // --- IP-sensitive categories (GUARD_IP appended) ----------------------
   {
-    key: "minimalist-line", label: "Minimalist line art", group: "various",
+    key: "music", label: LABEL.music,
     buildPrompt: (v) =>
-      `original minimalist single-line art illustration, elegant continuous line drawing, monochrome, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}`,
+      `original music-themed design — vinyl records, headphones, sound waves, generic anonymous instruments, abstract concert vibes — ${v}, transparent background. ${GUARD_BASE}. ${GUARD_IP}`,
   },
   {
-    key: "retro-vintage", label: "Retro/vintage", group: "various",
+    key: "movies", label: LABEL.movies,
     buildPrompt: (v) =>
-      `original retro vintage-inspired design with original English slogan, 70s/80s aesthetic, faded color palette, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}`,
+      `original cinema-themed design — film reel, clapperboard, generic camera, popcorn, abstract movie aesthetic — ${v}, transparent background. ${GUARD_BASE}. ${GUARD_IP}`,
   },
   {
-    key: "abstract-geometric", label: "Abstract geometric", group: "various",
+    key: "sports", label: LABEL.sports,
     buildPrompt: (v) =>
-      `original abstract geometric composition, bold shapes and modern lines, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}`,
-  },
-  {
-    key: "nature-outdoor", label: "Nature/outdoor", group: "various",
-    buildPrompt: (v) =>
-      `original nature and outdoor adventure illustration — mountains, forests, or wildlife — hand-drawn style, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}, no real national-park or trail logos`,
-  },
-  {
-    key: "streetwear-grunge", label: "Streetwear/grunge", group: "various",
-    buildPrompt: (v) =>
-      `original streetwear grunge-style design with bold original English text, distressed textures, urban aesthetic, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}`,
-  },
-  {
-    key: "cute-characters", label: "Cute characters", group: "various",
-    buildPrompt: (v) =>
-      `original cute illustrated original character design, kawaii style, friendly original creature, ${v}, transparent background. ${COPYRIGHT_GUARD_EN}, no Disney/Pixar/Nintendo/anime franchise references, no named existing characters`,
+      `original sports-themed design — generic equipment (balls, racquets, weights, sneakers), abstract action lines, anonymous athletic silhouettes — ${v}, transparent background. ${GUARD_BASE}. ${GUARD_IP}`,
   },
 
-  // GEORGIAN — extra-strict guard
+  // --- Standard categories (GUARD_BASE only) ----------------------------
   {
-    key: "ka-ornament", label: "ქართული ორნამენტი", group: "georgian",
+    key: "humor", label: LABEL.humor,
     buildPrompt: (v) =>
-      `original Georgian-inspired ornamental pattern design, traditional-style decorative motifs, ${v}, transparent background. ${COPYRIGHT_GUARD_KA}`,
+      `original funny English slogan typography t-shirt design, witty original humor, bold lettering, ${v}, transparent background. ${GUARD_BASE}`,
   },
   {
-    key: "ka-calligraphy", label: "ქართული კალიგრაფია", group: "georgian",
+    key: "couples", label: LABEL.couples,
     buildPrompt: (v) =>
-      `original Georgian calligraphy typography design with original Georgian-language word, elegant Mkhedruli or Asomtavruli lettering, ${v}, transparent background. ${COPYRIGHT_GUARD_KA}`,
+      `original couple / love themed design — hearts, romantic motifs, original English slogan where text applies, ${v}, transparent background. ${GUARD_BASE}`,
   },
   {
-    key: "ka-landscape", label: "ქართული პეიზაჟი", group: "georgian",
+    key: "art", label: LABEL.art,
     buildPrompt: (v) =>
-      `original Georgian-inspired landscape illustration — mountains, villages, or Caucasus scenery — ${v}, transparent background. ${COPYRIGHT_GUARD_KA}`,
+      `original abstract artistic design, painterly or expressive composition, original aesthetic, ${v}, transparent background. ${GUARD_BASE}`,
   },
   {
-    key: "ka-folk-abstract", label: "ქართული ფოლკლორ-აბსტრაქტი", group: "georgian",
+    key: "animals", label: LABEL.animals,
     buildPrompt: (v) =>
-      `original abstract design inspired by Georgian folklore symbolism, bold geometric and decorative motifs, ${v}, transparent background. ${COPYRIGHT_GUARD_KA}`,
+      `original animal illustration — cute or stylized original animal subject, hand-drawn style, ${v}, transparent background. ${GUARD_BASE}, no named or franchise characters`,
+  },
+  {
+    key: "auto-moto", label: LABEL["auto-moto"],
+    buildPrompt: (v) =>
+      `original car or motorcycle themed design — generic vehicles only (no real brand grilles, badges, or logos), abstract automotive aesthetic, ${v}, transparent background. ${GUARD_BASE}`,
+  },
+  {
+    key: "professions", label: LABEL.professions,
+    buildPrompt: (v) =>
+      `original profession / occupation themed design — generic profession motifs (e.g. stethoscope, paintbrush, wrench, laptop), original English slogan where text applies, ${v}, transparent background. ${GUARD_BASE}`,
+  },
+  {
+    key: "seasonal", label: LABEL.seasonal,
+    buildPrompt: (v) =>
+      `original seasonal themed design — generic holiday or season motifs (winter, spring, summer, autumn), no real holiday brand mascots or specific commercial holiday characters, ${v}, transparent background. ${GUARD_BASE}`,
+  },
+  {
+    key: "various", label: LABEL.various,
+    buildPrompt: (v) =>
+      `original creative t-shirt design — minimalist or expressive aesthetic, original subject of your choice, ${v}, transparent background. ${GUARD_BASE}`,
   },
 ];
 
-const GROUP_LABEL: Record<ThemeGroup, string> = {
-  humor: "HUMOR",
-  various: "VARIOUS",
-  georgian: "ქართული (GEORGIAN)",
-};
+// Visual grouping for the UI only — not used for category mapping.
+// Each button still maps 1:1 to its catalog slug; this just lets the
+// admin see at a glance which categories carry the extra-strict guards.
+const THEME_DISPLAY_GROUPS: { heading: string; keys: CategorySlug[] }[] = [
+  { heading: "ქართული თემები", keys: ["georgian", "patriotic", "georgian-table"] },
+  { heading: "IP-მგრძნობიარე", keys: ["music", "movies", "sports"] },
+  { heading: "სხვა კატეგორიები", keys: ["humor", "couples", "art", "animals", "auto-moto", "professions", "seasonal", "various"] },
+];
 
 // ---- STYLES ------------------------------------------------------------
 //
@@ -214,9 +232,10 @@ interface Slot {
   index: number;
   status: "pending" | "loading" | "done" | "error";
   themeLabel: string;
-  /** Theme group is captured so the save flow can map it to a catalog
-   *  category slug. `null` for custom-text prompts. */
-  themeGroup: ThemeGroup | null;
+  /** Captured at slot-build time. themeKey is a catalog CategorySlug
+   *  when a theme button was selected, or "custom" for free-text prompts.
+   *  Save uses this directly as the catalog_designs.category column
+   *  (with "custom" mapped to "various"). */
   themeKey: string;
   styleKey: string;
   prompt: string;
@@ -263,17 +282,14 @@ function buildPromptForTheme(
   };
 }
 
-// Theme group → catalog category slug. Three of the catalog's 14 slugs
-// match the agent groups exactly; custom-prompt designs default to
-// "various". Admin can recategorize later from the catalog grid.
-const CATEGORY_BY_GROUP: Record<ThemeGroup, CategorySlug> = {
-  humor: "humor",
-  various: "various",
-  georgian: "georgian",
-};
+// Themes map 1:1 to catalog category slugs (theme.key IS the slug), so
+// category-on-save is simply the slot's themeKey. Custom-text prompts
+// pass "custom" as the key and fall back to "various". Admin can
+// recategorize later from the catalog grid.
+const VALID_SLUGS: Set<string> = new Set(CATEGORIES.map((c) => c.slug));
 
-function categoryForSlot(group: ThemeGroup | null): CategorySlug {
-  return group ? CATEGORY_BY_GROUP[group] : "various";
+function categoryForSlot(themeKey: string): CategorySlug {
+  return VALID_SLUGS.has(themeKey) ? (themeKey as CategorySlug) : "various";
 }
 
 // Slug = slugified theme label + a short base36 timestamp + slot index.
@@ -324,10 +340,12 @@ export default function AiAgent() {
     return () => { cancelled = true; };
   }, []);
 
-  const grouped = useMemo(() => {
-    const groups: Record<ThemeGroup, ThemeDef[]> = { humor: [], various: [], georgian: [] };
-    for (const t of THEMES) groups[t.group].push(t);
-    return groups;
+  // Theme lookup by category slug — used to render visual groups by
+  // iterating THEME_DISPLAY_GROUPS and pulling each slug's definition.
+  const themeByKey = useMemo(() => {
+    const m = new Map<CategorySlug, ThemeDef>();
+    for (const t of THEMES) m.set(t.key, t);
+    return m;
   }, []);
 
   const selectedTheme = useMemo(
@@ -379,7 +397,6 @@ export default function AiAgent() {
         index: i,
         status: "pending",
         themeLabel,
-        themeGroup: selectedTheme?.group ?? null,
         themeKey: selectedTheme?.key ?? "custom",
         styleKey: selectedStyle.key,
         prompt,
@@ -505,7 +522,7 @@ export default function AiAgent() {
         // (3) Upload print + thumbnail to the catalog-designs bucket.
         //     Insert the row. On a 23505 (unique slug) violation, retry
         //     once with a fresh timestamp suffix.
-        const category = categoryForSlot(slot.themeGroup);
+        const category = categoryForSlot(slot.themeKey);
         const tags = ["ai-generated", slot.themeKey, slot.styleKey];
         const aiPrompt = `${slot.themeLabel} | ${slot.stylePhrase} | variation ${slot.index}`;
         const titleKa = `${slot.themeLabel} #${slot.index + 1}`;
@@ -613,15 +630,17 @@ export default function AiAgent() {
         )}
       </div>
 
-      {/* Theme group buttons */}
+      {/* Theme buttons — one per catalog category (1:1 mapping) */}
       <div className="space-y-4 rounded-lg border border-border bg-card p-4">
-        {(["humor", "various", "georgian"] as ThemeGroup[]).map((group) => (
-          <div key={group}>
+        {THEME_DISPLAY_GROUPS.map((group) => (
+          <div key={group.heading}>
             <h3 className="text-xs font-semibold uppercase tracking-wider mb-2 text-muted-foreground">
-              {GROUP_LABEL[group]}
+              {group.heading}
             </h3>
             <div className="flex flex-wrap gap-2">
-              {grouped[group].map((theme) => {
+              {group.keys.map((key) => {
+                const theme = themeByKey.get(key);
+                if (!theme) return null;
                 const active = selectedThemeKey === theme.key;
                 return (
                   <button
