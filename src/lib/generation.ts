@@ -158,12 +158,27 @@ function removeConnectedWhiteBackground(canvas: HTMLCanvasElement, threshold = 2
   const visited = new Uint8Array(w * h);
   const queue: number[] = [];
 
-  // Seed BFS from all four corners
-  for (const seed of [0, w - 1, (h - 1) * w, (h - 1) * w + w - 1]) {
+  // Seed BFS from every pixel on the canvas border (top + bottom rows,
+  // left + right columns). Was 4 corners only — that missed white regions
+  // entering the artwork from the middle of an edge, leaving a visible
+  // off-white rectangle around designs whose background only met the canvas
+  // along an edge rather than a corner. BFS contiguity guarantees this
+  // still only flood-fills near-white pixels reachable through a chain of
+  // near-white neighbors, so non-white artwork that touches the edge is
+  // safe — only edge-connected near-white regions are zeroed.
+  const enqueueSeed = (seed: number) => {
     if (!visited[seed] && isNearWhite(seed * 4)) {
       visited[seed] = 1;
       queue.push(seed);
     }
+  };
+  for (let x = 0; x < w; x++) {
+    enqueueSeed(x);                 // top row    (y = 0)
+    enqueueSeed((h - 1) * w + x);   // bottom row (y = h - 1)
+  }
+  for (let y = 1; y < h - 1; y++) {
+    enqueueSeed(y * w);             // left col   (x = 0)
+    enqueueSeed(y * w + (w - 1));   // right col  (x = w - 1)
   }
 
   let head = 0;
@@ -465,8 +480,14 @@ export async function runGenerationPipeline(
       );
       transparentImage = fallbackCanvas.toDataURL("image/png");
     } else {
-      // Flood-fill to remove any residual white border the matting missed
-      const cleanedCanvas = removeConnectedWhiteBackground(transparentCanvas);
+      // Flood-fill to remove any residual white border the matting missed.
+      // Uses the mode-aware threshold (210 for realistic so the soft shadow
+      // penumbra Gemini-3-Pro adds under realistic subjects gets cleaned;
+      // 235 for illustration) instead of the function default. The 4-corner
+      // seed list was also widened to the full border (see
+      // removeConnectedWhiteBackground) so edge-connected off-white anywhere
+      // around the design — not only at the corners — is removed.
+      const cleanedCanvas = removeConnectedWhiteBackground(transparentCanvas, fallbackCornerThreshold);
       transparentImage = cleanedCanvas.toDataURL("image/png");
     }
   } catch (mattingError) {
