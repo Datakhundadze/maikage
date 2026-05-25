@@ -53,3 +53,25 @@ export async function makeThumbnail(file: File): Promise<Blob> {
     );
   });
 }
+
+// Run worker on items up to `concurrency` at a time. Resolves once every
+// item has finished — failures inside worker are the caller's responsibility
+// to surface (we don't reject the pool on a single failure).
+export async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T, index: number) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const runners = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    async () => {
+      while (true) {
+        const i = next++;
+        if (i >= items.length) return;
+        await worker(items[i], i);
+      }
+    },
+  );
+  await Promise.all(runners);
+}
