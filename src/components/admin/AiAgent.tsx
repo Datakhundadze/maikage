@@ -1,10 +1,16 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { runWithConcurrency } from "@/components/admin/catalog/designUploadHelpers";
-import { Sparkles, Check, X, AlertCircle, Loader2 } from "lucide-react";
+import {
+  runWithConcurrency,
+  makeThumbnail,
+  slugifyTitle,
+} from "@/components/admin/catalog/designUploadHelpers";
+import { runTransparencyPipeline } from "@/lib/generation";
+import type { CategorySlug } from "@/lib/categories";
+import { Sparkles, Check, X, AlertCircle, Loader2, Save, AlertTriangle } from "lucide-react";
 
 // ---- THEMES ------------------------------------------------------------
 //
@@ -208,6 +214,11 @@ interface Slot {
   index: number;
   status: "pending" | "loading" | "done" | "error";
   themeLabel: string;
+  /** Theme group is captured so the save flow can map it to a catalog
+   *  category slug. `null` for custom-text prompts. */
+  themeGroup: ThemeGroup | null;
+  themeKey: string;
+  styleKey: string;
   prompt: string;
   /** Captured at slot-build time so the worker uses the style chosen at
    *  generation start, not whatever the admin happens to have selected
@@ -217,6 +228,13 @@ interface Slot {
   imageDataUrl?: string;
   error?: string;
   accepted: boolean;
+  /** Save sub-state. `null` once the slot has never been saved. */
+  saveStatus: null | "transparency" | "uploading" | "saved" | "save-error";
+  savedDesignId?: string;
+  saveError?: string;
+  /** True if the transparency pipeline fell back to white-bg removal.
+   *  Surfaced as a small warning so admin verifies the print file. */
+  usedFallback?: boolean;
 }
 
 const BRAND_GREEN = "#26BB89";
@@ -245,6 +263,35 @@ function buildPromptForTheme(
   };
 }
 
+// Theme group → catalog category slug. Three of the catalog's 14 slugs
+// match the agent groups exactly; custom-prompt designs default to
+// "various". Admin can recategorize later from the catalog grid.
+const CATEGORY_BY_GROUP: Record<ThemeGroup, CategorySlug> = {
+  humor: "humor",
+  various: "various",
+  georgian: "georgian",
+};
+
+function categoryForSlot(group: ThemeGroup | null): CategorySlug {
+  return group ? CATEGORY_BY_GROUP[group] : "various";
+}
+
+// Slug = slugified theme label + a short base36 timestamp + slot index.
+// The timestamp avoids cross-batch collisions; the index avoids
+// within-batch collisions for repeated themes. If the DB still rejects
+// (race with another admin), the save flow catches the 23505 unique
+// violation and retries once with a fresh timestamp.
+function buildSlug(themeLabel: string, index: number, retryNonce?: string): string {
+  const base = slugifyTitle(themeLabel) || "ai-design";
+  const ts = (retryNonce ?? Date.now().toString(36)).slice(-4);
+  return `${base}-${ts}-${index}`.slice(0, 60);
+}
+
+interface ProductOption {
+  id: string;
+  type: string;
+}
+
 export default function AiAgent() {
   const { toast } = useToast();
   const [selectedThemeKey, setSelectedThemeKey] = useState<string | null>(null);
@@ -256,6 +303,26 @@ export default function AiAgent() {
   // Set when the admin clicks "Stop"; checked between slot completions to
   // halt the batch early. Cleared on every new Generate.
   const abortFlag = useRef(false);
+
+  // Pre-fetched products so the save flow can set default_product_id
+  // (mirrors DesignUploadDialog.tsx — first T-Shirt is the default).
+  const [defaultProductId, setDefaultProductId] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors existing admin pattern (DesignUploadDialog) where the generated Database type lags the schema
+    (supabase as any)
+      .from("products")
+      .select("id, type")
+      .eq("is_active", true)
+      .then(({ data }: { data: ProductOption[] | null }) => {
+        if (cancelled || !data) return;
+        const firstTshirt = data.find((p) => p.type === "T-Shirt");
+        setDefaultProductId(firstTshirt?.id ?? data[0]?.id ?? "");
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const grouped = useMemo(() => {
     const groups: Record<ThemeGroup, ThemeDef[]> = { humor: [], various: [], georgian: [] };
@@ -277,6 +344,14 @@ export default function AiAgent() {
     !generating && (selectedTheme !== null || customTheme.trim().length > 0);
 
   const acceptedCount = slots.filter((s) => s.accepted && s.status === "done").length;
+  // Accepted designs that haven't been saved yet — the count shown on the
+  // batch save button. Once saved, slots stay in the grid as a "saved ✓"
+  // indicator (saveStatus === "saved") and don't re-count here.
+  const savableCount = slots.filter(
+    (s) => s.accepted && s.status === "done" && s.saveStatus !== "saved",
+  ).length;
+  const savedCount = slots.filter((s) => s.saveStatus === "saved").length;
+  const canSave = !saving && !generating && savableCount > 0 && !!defaultProductId;
 
   function pickTheme(key: string) {
     setSelectedThemeKey(key);
@@ -299,10 +374,14 @@ export default function AiAgent() {
         index: i,
         status: "pending",
         themeLabel,
+        themeGroup: selectedTheme?.group ?? null,
+        themeKey: selectedTheme?.key ?? "custom",
+        styleKey: selectedStyle.key,
         prompt,
         stylePhrase: selectedStyle.phrase,
         isRealistic: selectedStyle.isRealistic,
         accepted: false,
+        saveStatus: null,
       };
     });
     setSlots(initialSlots);
@@ -383,24 +462,159 @@ export default function AiAgent() {
     setSlots((prev) => prev.map((s) => (s.index === index ? { ...s, accepted: false, status: "error", error: "უარყოფილია" } : s)));
   }
 
+  async function handleSaveBatch() {
+    if (!canSave) return;
+    setSaving(true);
+    const setSlot = (i: number, patch: Partial<Slot>) =>
+      setSlots((prev) => prev.map((s) => (s.index === i ? { ...s, ...patch } : s)));
+
+    const toSave = slots.filter(
+      (s) => s.accepted && s.status === "done" && s.saveStatus !== "saved" && s.imageDataUrl,
+    );
+
+    await runWithConcurrency(toSave, CONCURRENCY, async (slot) => {
+      try {
+        // (1) Transparency — reuse the same pipeline the customer studio uses.
+        setSlot(slot.index, { saveStatus: "transparency", saveError: undefined });
+        const { transparentImage, usedFallback } = await runTransparencyPipeline(
+          slot.imageDataUrl!,
+          { isRealistic: slot.isRealistic },
+        );
+
+        // (2) Convert the transparent data URL to a Blob/File for upload +
+        //     thumbnail. The Blob is uploaded as the print file directly;
+        //     the same File is fed to makeThumbnail.
+        setSlot(slot.index, { saveStatus: "uploading", usedFallback });
+        const printBlob = await (await fetch(transparentImage)).blob();
+        const printFile = new File([printBlob], `${slot.id}.png`, { type: "image/png" });
+        const thumbBlob = await makeThumbnail(printFile);
+
+        // (3) Upload print + thumbnail to the catalog-designs bucket.
+        //     Insert the row. On a 23505 (unique slug) violation, retry
+        //     once with a fresh timestamp suffix.
+        const category = categoryForSlot(slot.themeGroup);
+        const tags = ["ai-generated", slot.themeKey, slot.styleKey];
+        const aiPrompt = `${slot.themeLabel} | ${slot.stylePhrase} | variation ${slot.index}`;
+        const titleKa = `${slot.themeLabel} #${slot.index + 1}`;
+
+        const tryInsert = async (slug: string): Promise<{ designId: string | null; conflict: boolean; otherError?: string }> => {
+          const ts = Date.now();
+          const printPath = `prints/${slug}-${ts}.png`;
+          const { error: upErr } = await supabase.storage
+            .from("catalog-designs")
+            .upload(printPath, printBlob, { contentType: "image/png", upsert: false });
+          if (upErr) return { designId: null, conflict: false, otherError: `print upload: ${upErr.message}` };
+          const printUrl = supabase.storage.from("catalog-designs").getPublicUrl(printPath).data.publicUrl;
+
+          const thumbPath = `thumbnails/${slug}-${ts}.png`;
+          const { error: thErr } = await supabase.storage
+            .from("catalog-designs")
+            .upload(thumbPath, thumbBlob, { contentType: "image/png", upsert: false });
+          if (thErr) return { designId: null, conflict: false, otherError: `thumb upload: ${thErr.message}` };
+          const thumbUrl = supabase.storage.from("catalog-designs").getPublicUrl(thumbPath).data.publicUrl;
+
+          const designId = crypto.randomUUID();
+          // (supabase as any) cast mirrors the existing admin upload pattern —
+          // the generated Database type lags behind the schema and this insert
+          // shape exactly matches BulkDesignUploadDialog.tsx:208-222 with the
+          // two AI-specific fields appended.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: insErr } = await (supabase as any)
+            .from("catalog_designs")
+            .insert({
+              id: designId,
+              slug,
+              title_ka: titleKa,
+              title_en: null,
+              description_ka: null,
+              category,
+              tags,
+              print_file_url: printUrl,
+              thumbnail_url: thumbUrl,
+              default_product_id: defaultProductId,
+              is_published: false,
+              ai_generated: true,
+              ai_prompt: aiPrompt,
+            });
+          if (insErr) {
+            // Postgres unique violation = 23505. PostgREST surfaces it on
+            // the error code field; the supabase-js error also exposes it.
+            const code = (insErr as { code?: string }).code;
+            const isConflict = code === "23505" || insErr.message?.toLowerCase().includes("duplicate key");
+            return { designId: null, conflict: !!isConflict, otherError: isConflict ? undefined : insErr.message };
+          }
+          return { designId, conflict: false };
+        };
+
+        let slug = buildSlug(slot.themeLabel, slot.index);
+        let result = await tryInsert(slug);
+        if (result.conflict) {
+          // One-shot retry with a fresh timestamp suffix — covers the rare
+          // race where another admin's save landed the same slug between
+          // our buildSlug() and the insert.
+          slug = buildSlug(slot.themeLabel, slot.index, Date.now().toString(36) + Math.random().toString(36).slice(2, 4));
+          result = await tryInsert(slug);
+        }
+
+        if (!result.designId) {
+          throw new Error(result.otherError || "save failed (unique slug conflict after retry)");
+        }
+        setSlot(slot.index, { saveStatus: "saved", savedDesignId: result.designId });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setSlot(slot.index, { saveStatus: "save-error", saveError: msg });
+      }
+    });
+
+    setSaving(false);
+    const stillFailed = slots.filter((s) => s.saveStatus === "save-error").length;
+    toast({
+      title: stillFailed > 0
+        ? `შენახული: ${savedCount + toSave.length - stillFailed}, შეცდომა: ${stillFailed}`
+        : `${toSave.length} დიზაინი შენახულია კატალოგში`,
+      variant: stillFailed > 0 ? "destructive" : "default",
+    });
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Sparkles className="h-5 w-5" style={{ color: BRAND_GREEN }} />
             AI აგენტი
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            აირჩიე თემა, დააგენერირე N დიზაინი, მონიშნე საუკეთესოები.
-            სტადია 1 — შენახვა კატალოგში ჯერ არ ხდება.
+            აირჩიე თემა, დააგენერირე დიზაინები, მონიშნე საუკეთესოები და შეინახე კატალოგში დრაფტებად.
           </p>
         </div>
-        {slots.length > 0 && (
-          <div className="text-xs text-muted-foreground">
-            მონიშნული: <span className="font-semibold" style={{ color: BRAND_GREEN }}>{acceptedCount}</span> / {slots.filter((s) => s.status === "done").length}
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {slots.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              მონიშნული: <span className="font-semibold" style={{ color: BRAND_GREEN }}>{acceptedCount}</span> / {slots.filter((s) => s.status === "done").length}
+              {savedCount > 0 && (
+                <>
+                  {" · "}შენახული: <span className="font-semibold" style={{ color: BRAND_GREEN }}>{savedCount}</span>
+                </>
+              )}
+            </div>
+          )}
+          {savableCount > 0 && (
+            <Button onClick={handleSaveBatch} disabled={!canSave}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ინახება…
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  შენახვა კატალოგში ({savableCount})
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Theme group buttons */}
@@ -556,12 +770,30 @@ function SlotCard({ slot, onAccept, onReject }: SlotCardProps) {
   const isLoading = slot.status === "loading";
   const isPending = slot.status === "pending";
 
-  const borderColor = slot.accepted
-    ? `${BRAND_GREEN}80`
-    : isError
-      ? "rgb(239 68 68 / 0.4)"
-      : "var(--border)";
-  const bgTint = slot.accepted ? `${BRAND_GREEN}0D` : undefined;
+  const isSaving = slot.saveStatus === "transparency" || slot.saveStatus === "uploading";
+  const isSaved = slot.saveStatus === "saved";
+  const isSaveError = slot.saveStatus === "save-error";
+
+  // Saved → strong brand-green outline; accepted-not-yet-saved → soft brand
+  // green; save error → destructive; otherwise default border / error.
+  const borderColor = isSaved
+    ? BRAND_GREEN
+    : isSaveError
+      ? "rgb(239 68 68 / 0.6)"
+      : slot.accepted
+        ? `${BRAND_GREEN}80`
+        : isError
+          ? "rgb(239 68 68 / 0.4)"
+          : "var(--border)";
+  const bgTint = isSaved
+    ? `${BRAND_GREEN}1A`
+    : slot.accepted
+      ? `${BRAND_GREEN}0D`
+      : undefined;
+
+  // Accept/reject are disabled the moment a save starts or completes —
+  // we don't want admin to toggle "accepted" on a row already in the DB.
+  const actionsLocked = isSaving || isSaved;
 
   return (
     <div
@@ -589,7 +821,7 @@ function SlotCard({ slot, onAccept, onReject }: SlotCardProps) {
             <p className="text-[10px] text-destructive break-words">{slot.error}</p>
           </div>
         )}
-        {slot.accepted && isDone && (
+        {slot.accepted && isDone && !isSaved && (
           <div
             className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full flex items-center justify-center"
             style={{ backgroundColor: BRAND_GREEN }}
@@ -597,29 +829,63 @@ function SlotCard({ slot, onAccept, onReject }: SlotCardProps) {
             <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
           </div>
         )}
+        {isSaved && (
+          <div
+            className="absolute top-1.5 right-1.5 px-1.5 h-6 rounded-full flex items-center gap-1"
+            style={{ backgroundColor: BRAND_GREEN }}
+          >
+            <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+            <span className="text-[10px] font-semibold text-white">შენახული</span>
+          </div>
+        )}
+        {isSaving && (
+          <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
+            <Loader2 className="h-6 w-6 animate-spin text-white" />
+            <span className="text-[10px] text-white font-semibold">
+              {slot.saveStatus === "transparency" ? "transparency…" : "uploading…"}
+            </span>
+          </div>
+        )}
       </div>
       <div className="p-2 space-y-2">
         <div className="text-[10px] text-muted-foreground truncate" title={slot.themeLabel}>
           {slot.themeLabel}
         </div>
+        {isSaved && slot.usedFallback && (
+          <div className="flex items-start gap-1 text-[10px] text-amber-500" title="fallback transparency was used — verify the print file is clean before publishing">
+            <AlertTriangle className="h-3 w-3 flex-shrink-0 mt-0.5" />
+            <span>fallback transparency — verify print file</span>
+          </div>
+        )}
+        {isSaveError && slot.saveError && (
+          <div className="text-[10px] text-destructive break-words" title={slot.saveError}>
+            <AlertCircle className="h-3 w-3 inline-block mr-1" />
+            {slot.saveError}
+          </div>
+        )}
         {isDone && (
           <div className="flex gap-1.5">
             <button
               type="button"
               onClick={onAccept}
-              className={`flex-1 h-7 rounded text-xs font-medium border transition-colors flex items-center justify-center gap-1 ${
+              disabled={actionsLocked}
+              className={`flex-1 h-7 rounded text-xs font-medium border transition-colors flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed ${
                 slot.accepted ? "text-white" : "border-border hover:border-muted-foreground"
               }`}
               style={slot.accepted ? { backgroundColor: BRAND_GREEN, borderColor: BRAND_GREEN } : undefined}
-              title={slot.accepted ? "მონიშნულია — დააჭირე გასაუქმებლად" : "მონიშნე საუკეთესოდ"}
+              title={
+                isSaved ? "შენახულია კატალოგში" :
+                slot.accepted ? "მონიშნულია — დააჭირე გასაუქმებლად" : "მონიშნე საუკეთესოდ"
+              }
             >
               <Check className="h-3 w-3" />
-              {slot.accepted ? "მონიშნული" : "მონიშვნა"}
+              {isSaved ? "შენახული" : slot.accepted ? "მონიშნული" : "მონიშვნა"}
             </button>
             <button
               type="button"
               onClick={onReject}
-              className="h-7 w-7 rounded border border-border hover:border-destructive hover:text-destructive flex items-center justify-center"
+              disabled={actionsLocked}
+              className="h-7 w-7 rounded border border-border hover:border-destructive hover:text-destructive flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
               title="უარყოფა"
             >
               <X className="h-3.5 w-3.5" />
