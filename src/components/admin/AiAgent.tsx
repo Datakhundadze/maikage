@@ -124,6 +124,66 @@ const GROUP_LABEL: Record<ThemeGroup, string> = {
   georgian: "ქართული (GEORGIAN)",
 };
 
+// ---- STYLES ------------------------------------------------------------
+//
+// Visual style is orthogonal to theme. The selected style's `phrase` is
+// appended to every generated prompt (after the copyright guard) AND is
+// passed to gemini-proxy as the `style` param + `isRealistic` flag, so
+// the proxy can also route to the realistic model when appropriate
+// (see customer studio src/lib/generation.ts:421-438).
+//
+// NO trademarked studio names in any phrase. "Anime/manga" and "3D
+// animated movie" are generic art-style descriptors; we never reference
+// Pixar / Disney / Ghibli / specific titles or characters.
+
+interface StyleDef {
+  key: string;
+  label: string;
+  phrase: string;
+  isRealistic: boolean;
+}
+
+const STYLES: StyleDef[] = [
+  {
+    key: "sticker",
+    label: "სტიკერი",
+    phrase: "bold cartoon sticker style, thick clean outlines, vivid flat colors",
+    isRealistic: false,
+  },
+  {
+    key: "realistic",
+    label: "რეალისტური",
+    phrase: "photorealistic rendering, realistic detail and texture, natural lighting",
+    isRealistic: true,
+  },
+  {
+    key: "anime",
+    label: "ანიმე",
+    phrase: "anime/manga art style, expressive line work, dynamic shading",
+    isRealistic: false,
+  },
+  {
+    key: "3d-cartoon",
+    label: "3D კარტუნი",
+    phrase: "stylized 3D animated movie style, smooth 3D render, soft cinematic shading",
+    isRealistic: false,
+  },
+  {
+    key: "flat-vector",
+    label: "ფლეტ ვექტორი",
+    phrase: "flat vector illustration style, clean geometric shapes, solid colors, minimal gradients",
+    isRealistic: false,
+  },
+  {
+    key: "watercolor",
+    label: "აკვარელი",
+    phrase: "watercolor painting style, soft color washes, gentle paper texture, hand-painted feel",
+    isRealistic: false,
+  },
+];
+
+const DEFAULT_STYLE_KEY = "sticker";
+
 // Variation hints rotated by slot index so a batch of N from one theme
 // doesn't return N identical compositions. Keep terse — these append to
 // the prompt and over-specifying would fight the theme.
@@ -149,6 +209,11 @@ interface Slot {
   status: "pending" | "loading" | "done" | "error";
   themeLabel: string;
   prompt: string;
+  /** Captured at slot-build time so the worker uses the style chosen at
+   *  generation start, not whatever the admin happens to have selected
+   *  later (avoids race with re-runs). */
+  stylePhrase: string;
+  isRealistic: boolean;
   imageDataUrl?: string;
   error?: string;
   accepted: boolean;
@@ -157,16 +222,26 @@ interface Slot {
 const BRAND_GREEN = "#26BB89";
 const CONCURRENCY = 3;
 
-function buildPromptForTheme(theme: ThemeDef | null, custom: string, index: number): { themeLabel: string; prompt: string } {
+function buildPromptForTheme(
+  theme: ThemeDef | null,
+  custom: string,
+  style: StyleDef,
+  index: number,
+): { themeLabel: string; prompt: string } {
   const variation = VARIATION_HINTS[index % VARIATION_HINTS.length];
-  if (theme) return { themeLabel: theme.label, prompt: theme.buildPrompt(variation) };
+  // Style phrase appended AFTER the per-theme prompt + copyright guard so
+  // the guard's "no copyrighted material" sentence ends the theme block,
+  // and the style cue runs as its own clause. The same phrase is also
+  // sent to gemini-proxy as the `style` param (see the invoke call).
+  const stylePhrase = ` ${style.phrase}.`;
+  if (theme) return { themeLabel: theme.label, prompt: theme.buildPrompt(variation) + stylePhrase };
   // Custom prompt path — still wrap with the EN copyright guard since we
   // don't know the cultural context. If the admin's free-text mentions
   // Georgian themes they can pick the GEORGIAN tab buttons instead.
   const trimmed = custom.trim();
   return {
     themeLabel: trimmed.length > 40 ? trimmed.slice(0, 40) + "…" : trimmed,
-    prompt: `original t-shirt design: ${trimmed}, ${variation}, transparent background. ${COPYRIGHT_GUARD_EN}`,
+    prompt: `original t-shirt design: ${trimmed}, ${variation}, transparent background. ${COPYRIGHT_GUARD_EN}${stylePhrase}`,
   };
 }
 
@@ -174,6 +249,7 @@ export default function AiAgent() {
   const { toast } = useToast();
   const [selectedThemeKey, setSelectedThemeKey] = useState<string | null>(null);
   const [customTheme, setCustomTheme] = useState<string>("");
+  const [selectedStyleKey, setSelectedStyleKey] = useState<string>(DEFAULT_STYLE_KEY);
   const [count, setCount] = useState<CountChoice>(5);
   const [generating, setGenerating] = useState(false);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -190,6 +266,11 @@ export default function AiAgent() {
   const selectedTheme = useMemo(
     () => THEMES.find((t) => t.key === selectedThemeKey) ?? null,
     [selectedThemeKey],
+  );
+
+  const selectedStyle = useMemo(
+    () => STYLES.find((s) => s.key === selectedStyleKey) ?? STYLES[0],
+    [selectedStyleKey],
   );
 
   const canGenerate =
@@ -212,13 +293,15 @@ export default function AiAgent() {
     setGenerating(true);
 
     const initialSlots: Slot[] = Array.from({ length: count }, (_, i) => {
-      const { themeLabel, prompt } = buildPromptForTheme(selectedTheme, customTheme, i);
+      const { themeLabel, prompt } = buildPromptForTheme(selectedTheme, customTheme, selectedStyle, i);
       return {
         id: `${Date.now()}-${i}`,
         index: i,
         status: "pending",
         themeLabel,
         prompt,
+        stylePhrase: selectedStyle.phrase,
+        isRealistic: selectedStyle.isRealistic,
         accepted: false,
       };
     });
@@ -246,14 +329,19 @@ export default function AiAgent() {
               characterImages: [],
               scene: "",
               sceneImage: null,
-              style: "",
+              // Pass the style phrase as the structured `style` param too,
+              // not only inside the character prompt — mirrors the customer
+              // studio (src/lib/generation.ts:432-438) so gemini-proxy can
+              // apply its style-aware prompt building and realistic-model
+              // routing. isRealistic is the explicit flag.
+              style: slot.stylePhrase,
               styleImage: null,
               text: "",
               textImage: null,
               product: "T-Shirt",
               color: "White",
-              speed: "quality",
-              isRealistic: false,
+              speed: slot.isRealistic ? "pro" : "quality",
+              isRealistic: slot.isRealistic,
             },
           },
         });
@@ -363,6 +451,35 @@ export default function AiAgent() {
               className="flex-1"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Style picker */}
+      <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          STYLE
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {STYLES.map((style) => {
+            const active = selectedStyleKey === style.key;
+            return (
+              <button
+                key={style.key}
+                type="button"
+                onClick={() => setSelectedStyleKey(style.key)}
+                disabled={generating}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  active
+                    ? "text-white"
+                    : "border-border hover:border-muted-foreground text-foreground"
+                }`}
+                style={active ? { backgroundColor: BRAND_GREEN, borderColor: BRAND_GREEN } : undefined}
+                title={style.phrase}
+              >
+                {style.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
