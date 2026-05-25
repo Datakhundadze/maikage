@@ -351,7 +351,12 @@ export default function AiAgent() {
     (s) => s.accepted && s.status === "done" && s.saveStatus !== "saved",
   ).length;
   const savedCount = slots.filter((s) => s.saveStatus === "saved").length;
-  const canSave = !saving && !generating && savableCount > 0 && !!defaultProductId;
+  const hasAnyDone = slots.some((s) => s.status === "done");
+  // defaultProductId is intentionally NOT in this gate — we surface the
+  // button regardless so admin sees the save flow exists; if products
+  // haven't loaded by the time they click, handleSaveBatch toasts a clear
+  // error instead of silently disabling.
+  const canSave = !saving && !generating && savableCount > 0;
 
   function pickTheme(key: string) {
     setSelectedThemeKey(key);
@@ -464,6 +469,14 @@ export default function AiAgent() {
 
   async function handleSaveBatch() {
     if (!canSave) return;
+    if (!defaultProductId) {
+      toast({
+        title: "პროდუქტის ჩატვირთვა ვერ მოხერხდა",
+        description: "გადატვირთე გვერდი და სცადე თავიდან.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     const setSlot = (i: number, patch: Partial<Slot>) =>
       setSlots((prev) => prev.map((s) => (s.index === i ? { ...s, ...patch } : s)));
@@ -588,33 +601,16 @@ export default function AiAgent() {
             აირჩიე თემა, დააგენერირე დიზაინები, მონიშნე საუკეთესოები და შეინახე კატალოგში დრაფტებად.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {slots.length > 0 && (
-            <div className="text-xs text-muted-foreground">
-              მონიშნული: <span className="font-semibold" style={{ color: BRAND_GREEN }}>{acceptedCount}</span> / {slots.filter((s) => s.status === "done").length}
-              {savedCount > 0 && (
-                <>
-                  {" · "}შენახული: <span className="font-semibold" style={{ color: BRAND_GREEN }}>{savedCount}</span>
-                </>
-              )}
-            </div>
-          )}
-          {savableCount > 0 && (
-            <Button onClick={handleSaveBatch} disabled={!canSave}>
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ინახება…
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  შენახვა კატალოგში ({savableCount})
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+        {slots.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            მონიშნული: <span className="font-semibold" style={{ color: BRAND_GREEN }}>{acceptedCount}</span> / {slots.filter((s) => s.status === "done").length}
+            {savedCount > 0 && (
+              <>
+                {" · "}შენახული: <span className="font-semibold" style={{ color: BRAND_GREEN }}>{savedCount}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Theme group buttons */}
@@ -740,6 +736,35 @@ export default function AiAgent() {
           </Button>
         </div>
       </div>
+
+      {/* Dedicated save-control row — own row above the grid so layout
+          can never compress / hide it. Always renders once at least one
+          generation has completed; disabled with an explanatory label
+          when there's nothing to save yet. */}
+      {hasAnyDone && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
+          <div className="text-xs text-muted-foreground">
+            {savableCount > 0
+              ? `მზადაა ${savableCount} დიზაინი კატალოგში შესანახად.`
+              : savedCount > 0 && acceptedCount === savedCount
+                ? `ყველა მონიშნული დიზაინი შენახულია (${savedCount}).`
+                : "მონიშნე საუკეთესო დიზაინები ✓-ით და შემდეგ შეინახე კატალოგში."}
+          </div>
+          <Button onClick={handleSaveBatch} disabled={!canSave}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ინახება…
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                შენახვა კატალოგში{savableCount > 0 ? ` (${savableCount})` : ""}
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Results grid */}
       {slots.length > 0 && (
