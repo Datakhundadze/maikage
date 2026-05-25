@@ -408,6 +408,83 @@ export function compositeMockup(
   return canvas.toDataURL("image/png");
 }
 
+// Public entry point to the transparency-extraction pipeline used by both
+// the customer studio (via runGenerationPipeline below) and the admin AI
+// agent (which already has an accepted design and only needs the alpha
+// PNG, not the mockup composite).
+//
+// Mode-aware fallback thresholds. Photoreal Gemini 3 Pro output has soft
+// shadow/penumbra around the subject so "background" pixels can sit at
+// RGB ≈ 210-240 (not pure white); the illustration path from Gemini 2.5
+// Flash has pure-white background and benefits from the stricter
+// historical defaults. Keep illustration mode untouched so the existing
+// clean-matting flow doesn't regress.
+//
+// usedFallback=true means the result came from the white-bg removal path,
+// not difference matting. Callers can surface this so the admin verifies
+// the print file is acceptable.
+export interface TransparencyResult {
+  transparentImage: string;
+  usedFallback: boolean;
+}
+
+export async function runTransparencyPipeline(
+  designBase64: string,
+  opts: { isRealistic: boolean },
+): Promise<TransparencyResult> {
+  const { isRealistic } = opts;
+  const fallbackWhiteThreshold = isRealistic ? 210 : 240;
+  const fallbackCornerThreshold = isRealistic ? 210 : 235;
+
+  try {
+    // Try difference matting: convert white bg to black bg, then extract alpha
+    const blackBgResult = await callGemini("convert-bg-black", { image: designBase64 });
+    const whiteImg = await loadImage(designBase64);
+    const blackImg = await loadImage(blackBgResult.image);
+    const whiteCanvas = imageToCanvas(whiteImg);
+    const blackCanvas = imageToCanvas(blackImg);
+    const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
+
+    // Validate matting result. isMostlyTransparent catches the "everything
+    // collapsed to alpha=0" failure; isMostlyPartialAlpha catches the
+    // realistic-mode "everything stuck at mid-band alpha" failure where the
+    // subject was re-rendered between passes. Either triggers the fallback.
+    const mattingFailed =
+      isMostlyTransparent(transparentCanvas) ||
+      isMostlyPartialAlpha(transparentCanvas);
+
+    if (mattingFailed) {
+      console.warn(
+        "[Generation] Difference matting unreliable, falling back to white-bg removal",
+        { isRealistic, fallbackWhiteThreshold, fallbackCornerThreshold },
+      );
+      const fallbackCanvas = removeConnectedWhiteBackground(
+        removeWhiteBackground(whiteCanvas, fallbackWhiteThreshold),
+        fallbackCornerThreshold,
+      );
+      return { transparentImage: fallbackCanvas.toDataURL("image/png"), usedFallback: true };
+    }
+    // Flood-fill to remove any residual white border the matting missed.
+    // Uses the mode-aware threshold (210 for realistic so the soft shadow
+    // penumbra Gemini-3-Pro adds under realistic subjects gets cleaned;
+    // 235 for illustration) instead of the function default. The 4-corner
+    // seed list was also widened to the full border (see
+    // removeConnectedWhiteBackground) so edge-connected off-white anywhere
+    // around the design — not only at the corners — is removed.
+    const cleanedCanvas = removeConnectedWhiteBackground(transparentCanvas, fallbackCornerThreshold);
+    return { transparentImage: cleanedCanvas.toDataURL("image/png"), usedFallback: false };
+  } catch (mattingError) {
+    console.warn("[Generation] Difference matting failed, using white bg removal fallback:", mattingError);
+    const whiteImg = await loadImage(designBase64);
+    const whiteCanvas = imageToCanvas(whiteImg);
+    const fallbackCanvas = removeConnectedWhiteBackground(
+      removeWhiteBackground(whiteCanvas, fallbackWhiteThreshold),
+      fallbackCornerThreshold,
+    );
+    return { transparentImage: fallbackCanvas.toDataURL("image/png"), usedFallback: true };
+  }
+}
+
 export async function runGenerationPipeline(
   params: GenerateDesignParams,
   placementCoords: { x: number; y: number; scale: number; scaleY?: number },
@@ -442,64 +519,7 @@ export async function runGenerationPipeline(
   // Stage 2: Background removal via difference matting with fallback
   onStatusChange("PROCESSING_TRANSPARENCY");
 
-  // Mode-aware fallback thresholds. Photoreal Gemini 3 Pro output has soft
-  // shadow/penumbra around the subject so "background" pixels can sit at
-  // RGB ≈ 210-240 (not pure white); the illustration path from Gemini 2.5
-  // Flash has pure-white background and benefits from the stricter
-  // historical defaults. Keep illustration mode untouched so the existing
-  // clean-matting flow doesn't regress.
-  const fallbackWhiteThreshold = isRealistic ? 210 : 240;
-  const fallbackCornerThreshold = isRealistic ? 210 : 235;
-
-  let transparentImage: string;
-  try {
-    // Try difference matting: convert white bg to black bg, then extract alpha
-    const blackBgResult = await callGemini("convert-bg-black", { image: designImage });
-    const whiteImg = await loadImage(designImage);
-    const blackImg = await loadImage(blackBgResult.image);
-    const whiteCanvas = imageToCanvas(whiteImg);
-    const blackCanvas = imageToCanvas(blackImg);
-    const transparentCanvas = differenceMatting(whiteCanvas, blackCanvas);
-
-    // Validate matting result. isMostlyTransparent catches the "everything
-    // collapsed to alpha=0" failure; isMostlyPartialAlpha catches the
-    // realistic-mode "everything stuck at mid-band alpha" failure where the
-    // subject was re-rendered between passes. Either triggers the fallback.
-    const mattingFailed =
-      isMostlyTransparent(transparentCanvas) ||
-      isMostlyPartialAlpha(transparentCanvas);
-
-    if (mattingFailed) {
-      console.warn(
-        "[Generation] Difference matting unreliable, falling back to white-bg removal",
-        { isRealistic, fallbackWhiteThreshold, fallbackCornerThreshold },
-      );
-      const fallbackCanvas = removeConnectedWhiteBackground(
-        removeWhiteBackground(whiteCanvas, fallbackWhiteThreshold),
-        fallbackCornerThreshold,
-      );
-      transparentImage = fallbackCanvas.toDataURL("image/png");
-    } else {
-      // Flood-fill to remove any residual white border the matting missed.
-      // Uses the mode-aware threshold (210 for realistic so the soft shadow
-      // penumbra Gemini-3-Pro adds under realistic subjects gets cleaned;
-      // 235 for illustration) instead of the function default. The 4-corner
-      // seed list was also widened to the full border (see
-      // removeConnectedWhiteBackground) so edge-connected off-white anywhere
-      // around the design — not only at the corners — is removed.
-      const cleanedCanvas = removeConnectedWhiteBackground(transparentCanvas, fallbackCornerThreshold);
-      transparentImage = cleanedCanvas.toDataURL("image/png");
-    }
-  } catch (mattingError) {
-    console.warn("[Generation] Difference matting failed, using white bg removal fallback:", mattingError);
-    const whiteImg = await loadImage(designImage);
-    const whiteCanvas = imageToCanvas(whiteImg);
-    const fallbackCanvas = removeConnectedWhiteBackground(
-      removeWhiteBackground(whiteCanvas, fallbackWhiteThreshold),
-      fallbackCornerThreshold,
-    );
-    transparentImage = fallbackCanvas.toDataURL("image/png");
-  }
+  const { transparentImage } = await runTransparencyPipeline(designImage, { isRealistic });
 
   // Stage 3: Mockup compositing
   onStatusChange("GENERATING_MOCKUP");
