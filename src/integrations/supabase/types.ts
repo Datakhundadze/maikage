@@ -419,6 +419,7 @@ export type Database = {
       orders: {
         Row: {
           back_mockup_url: string | null
+          back_transparent_image_url: string | null
           bog_order_id: string | null
           cart_id: string | null
           color: string | null
@@ -450,6 +451,7 @@ export type Database = {
         }
         Insert: {
           back_mockup_url?: string | null
+          back_transparent_image_url?: string | null
           bog_order_id?: string | null
           cart_id?: string | null
           color?: string | null
@@ -481,6 +483,7 @@ export type Database = {
         }
         Update: {
           back_mockup_url?: string | null
+          back_transparent_image_url?: string | null
           bog_order_id?: string | null
           cart_id?: string | null
           color?: string | null
