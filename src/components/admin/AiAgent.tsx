@@ -55,6 +55,22 @@ const GUARD_KA =
   "no real Georgian public figures, no real logos or emblems, " +
   "original ornamental/cultural/typographic design only";
 
+// Anti-garment guard. Gemini will occasionally render the design composited
+// onto a folded t-shirt / hanger / product photo instead of as standalone
+// artwork — particularly when our character prompt contains the phrase
+// "t-shirt design" (which can read to the model as a literal instruction
+// to draw a t-shirt). The customer studio's gemini-proxy system prompt
+// already forbids garments, but Gemini is non-deterministic; appending
+// this reminder to OUR character prompt reinforces the constraint and
+// substantially reduces the failure rate. The wording is from the
+// task spec and is the same on EVERY prompt — theme or custom-text.
+const GUARD_NO_GARMENT =
+  "Output ONLY the standalone design artwork itself on a plain solid " +
+  "white background. Do NOT draw or include any t-shirt, hoodie, garment, " +
+  "apparel, clothing, fabric, mockup, folded shirt, hanger, or product of " +
+  "any kind. No clothing item, no product photo, no shirt — just the " +
+  "isolated graphic artwork, centered, ready to be printed.";
+
 // Labels lifted from CATEGORIES (src/lib/categories.ts). Stored here so
 // the button text matches what admin sees in the catalog dropdown exactly.
 const LABEL: Record<CategorySlug, string> = Object.fromEntries(
@@ -266,19 +282,24 @@ function buildPromptForTheme(
   index: number,
 ): { themeLabel: string; prompt: string } {
   const variation = VARIATION_HINTS[index % VARIATION_HINTS.length];
-  // Style phrase appended AFTER the per-theme prompt + copyright guard so
-  // the guard's "no copyrighted material" sentence ends the theme block,
-  // and the style cue runs as its own clause. The same phrase is also
-  // sent to gemini-proxy as the `style` param (see the invoke call).
+  // Suffix appended to every prompt: anti-garment guard first (universal),
+  // then the style cue. The style phrase is ALSO sent to gemini-proxy as
+  // the structured `style` param (see the invoke call).
   const stylePhrase = ` ${style.phrase}.`;
-  if (theme) return { themeLabel: theme.label, prompt: theme.buildPrompt(variation) + stylePhrase };
-  // Custom prompt path — still wrap with the EN copyright guard since we
-  // don't know the cultural context. If the admin's free-text mentions
-  // Georgian themes they can pick the GEORGIAN tab buttons instead.
+  const noGarment = ` ${GUARD_NO_GARMENT}`;
+  if (theme) return { themeLabel: theme.label, prompt: theme.buildPrompt(variation) + noGarment + stylePhrase };
+  // Custom prompt path — wrap with the base copyright guard since we
+  // don't know the cultural context. The previous version of this line
+  // referenced the renamed COPYRIGHT_GUARD_EN constant and silently
+  // injected the literal word "undefined" into every custom prompt
+  // (tsconfig has strict:false so undefined references compile). It
+  // also began with "original t-shirt design: ${trimmed}" — that
+  // phrasing reads to Gemini as "draw a t-shirt with this subject"
+  // and was likely the dominant cause of the folded-shirt failures.
   const trimmed = custom.trim();
   return {
     themeLabel: trimmed.length > 40 ? trimmed.slice(0, 40) + "…" : trimmed,
-    prompt: `original t-shirt design: ${trimmed}, ${variation}, transparent background. ${COPYRIGHT_GUARD_EN}${stylePhrase}`,
+    prompt: `original design — ${trimmed}, ${variation}. ${GUARD_BASE}.${noGarment}${stylePhrase}`,
   };
 }
 
