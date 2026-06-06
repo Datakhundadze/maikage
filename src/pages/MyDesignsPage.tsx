@@ -65,14 +65,18 @@ export default function MyDesignsPage() {
       setDesigns((data as Design[]) || []);
       setGuestGenerations([]);
     } else {
-      // Guest users: show generations by session
+      // Guest users: show generations by session via a sanitized
+      // SECURITY DEFINER RPC. The generations table no longer has a public
+      // SELECT policy (it exposed user_id / session_id / prompts to any
+      // anon caller); the RPC returns only this session's rows with no
+      // user_id / session_id / is_guest.
       setDesigns([]);
       const sessionId = getGuestSessionId();
-      const { data: genData } = await supabase
-        .from("generations")
-        .select("id, prompt, product, color, mockup_image_path, transparent_image_path, created_at")
-        .eq("session_id", sessionId)
-        .order("created_at", { ascending: false });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated Supabase types lag the new RPC; cast mirrors the admin (supabase as any) convention
+      const { data: genData } = await (supabase as any).rpc(
+        "get_generations_by_session",
+        { p_session_id: sessionId },
+      );
       setGuestGenerations((genData as Generation[]) || []);
     }
 
