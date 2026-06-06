@@ -16,6 +16,61 @@ serve(async (req) => {
     if (!bogClientId || !bogClientSecret) throw new Error("Missing BOG credentials");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // PAYMENT AMOUNT VALIDATION (Phase 1):
+    // The client computes the amount and sends it in the request body.
+    // Without this check, a tampered request body could pay 1 GEL for a
+    // 113 GEL order. We sum total_price across the order rows that ALREADY
+    // exist in the DB at this point (submitOrder inserts rows BEFORE
+    // invoking us) and require the client amount to match.
+    //
+    // Row build is the same in OrderDialog.tsx and CartPage.tsx: per-unit
+    // rows share one cart_id when qty>1 (delivery added to row[0] only),
+    // single row keyed by id when qty=1 / cart_id=null. SUM(total_price)
+    // across that group equals the client totalWithDelivery exactly —
+    // all GEL values are integers, no rounding drift.
+    //
+    // NOTE: this only catches naive amount-tampering. A determined attacker
+    // could also forge product_price at the .insert() step (Phase 2 — port
+    // pricing to a trusted server-side source).
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return new Response(
+        JSON.stringify({ error: "Invalid amount" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const totalsQuery = cartId
+      ? supabase.from("orders").select("total_price").eq("cart_id", cartId)
+      : supabase.from("orders").select("total_price").eq("id", orderId);
+    const { data: totalRows, error: totalsErr } = await totalsQuery;
+    if (totalsErr) {
+      console.error("[create-payment] amount validation query failed:", totalsErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify order total" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (!totalRows || totalRows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const expectedTotal = totalRows.reduce(
+      (s: number, r: { total_price: number | null }) => s + Number(r.total_price ?? 0),
+      0,
+    );
+    if (Math.abs(numericAmount - expectedTotal) >= 1) {
+      console.warn(
+        `[create-payment] amount mismatch — client=${numericAmount} expected=${expectedTotal} orderId=${orderId} cartId=${cartId ?? "null"}`,
+      );
+      return new Response(
+        JSON.stringify({ error: `Amount mismatch (expected ${expectedTotal} GEL)` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const credentials = btoa(`${bogClientId}:${bogClientSecret}`);
     const tokenRes = await fetch("https://oauth2.bog.ge/auth/realms/bog/protocol/openid-connect/token", {
       method: "POST",

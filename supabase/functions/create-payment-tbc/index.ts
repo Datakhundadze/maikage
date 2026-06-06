@@ -27,6 +27,42 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
+    // PAYMENT AMOUNT VALIDATION (Phase 1). See create-payment/index.ts for
+    // the full rationale. This function is not currently reached by any
+    // frontend code path (orderSubmission routes "tbc" payment method to
+    // create-payment-flitt), so this validation is defensive against any
+    // future re-wiring. Same sum-vs-amount check as the two live functions.
+    const totalsQuery = cartId
+      ? supabase.from("orders").select("total_price").eq("cart_id", cartId)
+      : supabase.from("orders").select("total_price").eq("id", orderId);
+    const { data: totalRows, error: totalsErr } = await totalsQuery;
+    if (totalsErr) {
+      console.error("[create-payment-tbc] amount validation query failed:", totalsErr);
+      return new Response(
+        JSON.stringify({ error: "Failed to verify order total" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (!totalRows || totalRows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const expectedTotal = totalRows.reduce(
+      (s: number, r: { total_price: number | null }) => s + Number(r.total_price ?? 0),
+      0,
+    );
+    if (Math.abs(numericAmount - expectedTotal) >= 1) {
+      console.warn(
+        `[create-payment-tbc] amount mismatch — client=${numericAmount} expected=${expectedTotal} orderId=${orderId} cartId=${cartId ?? "null"}`,
+      );
+      return new Response(
+        JSON.stringify({ error: `Amount mismatch (expected ${expectedTotal} GEL)` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // 1. Get access token
     const tokenRes = await fetch("https://api.tbcbank.ge/v1/tpay/access-token", {
       method: "POST",
