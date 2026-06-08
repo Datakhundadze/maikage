@@ -18,7 +18,13 @@
 -- The four email-queue wrappers are SECURITY DEFINER and call into the
 -- pgmq schema via fully-qualified names (pgmq.send / pgmq.read /
 -- pgmq.delete), so a fixed search_path does not affect their behavior.
--- set_updated_at_now is a plain trigger function using only now() and NEW.
+--
+-- NOTE: set_updated_at_now() is intentionally omitted here. It is defined
+-- in a migration file (20260505000000_catalog_schema.sql) but was never
+-- applied to production (Lovable does not auto-apply migration files), so
+-- ALTER FUNCTION on it errors with "function ... does not exist". If/when
+-- that catalog schema is applied to prod, harden it in the same migration
+-- that creates it.
 
 ALTER FUNCTION public.enqueue_email(TEXT, JSONB)
   SET search_path = public, pg_temp;
@@ -30,7 +36,4 @@ ALTER FUNCTION public.delete_email(TEXT, BIGINT)
   SET search_path = public, pg_temp;
 
 ALTER FUNCTION public.move_to_dlq(TEXT, TEXT, BIGINT, JSONB)
-  SET search_path = public, pg_temp;
-
-ALTER FUNCTION public.set_updated_at_now()
   SET search_path = public, pg_temp;
