@@ -234,13 +234,45 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
       throw new Error("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not configured");
     }
+    if (!ANON_KEY) {
+      throw new Error("SUPABASE_ANON_KEY is not configured");
+    }
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    // Admin-only guard. verify_jwt=true (supabase/config.toml) already drops
+    // unauthenticated traffic at the gateway; here we additionally require
+    // the caller to hold the `admin` role. Mirrors check-design-quality.
+    // Uses a caller-scoped client (the request's JWT) for identity ONLY —
+    // the catalog_designs SELECT/UPDATE below still uses the service-role
+    // client so it bypasses RLS.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const callerClient = createClient(SUPABASE_URL, ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userErr } = await callerClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthenticated" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const { data: isAdmin, error: roleErr } = await callerClient.rpc(
+      "has_role",
+      { _user_id: user.id, _role: "admin" },
+    );
+    if (roleErr || !isAdmin) {
+      return new Response(
+        JSON.stringify({ error: "Admin role required" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     let limit = DEFAULT_LIMIT;
