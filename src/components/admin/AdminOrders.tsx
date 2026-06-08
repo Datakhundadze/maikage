@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -147,37 +147,69 @@ function renderTextDataUrl(rawPrompt: string): string | null {
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Expanded card is keyed by GROUP key (cart_id, or `single-${id}` for
+  // ungrouped single-unit orders), not by a row id.
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [originalPhotos, setOriginalPhotos] = useState<Record<string, { name: string; url: string }[]>>({});
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
-  // Load full-resolution originals uploaded to order-originals/{orderId}/ when a row expands
+  // Group orders for display. Multi-unit checkouts (qty>1 or multi-item
+  // cart) insert N rows sharing one cart_id; we collapse them into one card
+  // here (display-only — no schema/checkout/payment change). Single-unit
+  // orders (cart_id null) form a one-row group keyed by `single-${id}`.
+  // `orders` is already sorted created_at DESC and a cart's rows share one
+  // timestamp, so they're adjacent — Map insertion order preserves DESC.
+  const groups = useMemo(() => {
+    const map = new Map<string, Order[]>();
+    for (const o of orders) {
+      const key = o.cart_id ?? `single-${o.id}`;
+      const arr = map.get(key);
+      if (arr) arr.push(o);
+      else map.set(key, [o]);
+    }
+    return Array.from(map.entries()).map(([key, rows]) => ({
+      key,
+      head: rows[0],
+      rows,
+      quantity: rows.length,
+      groupTotal: rows.reduce((s, r) => s + (r.total_price ?? 0), 0),
+      deliveryTotal: rows.reduce((s, r) => s + (r.delivery_price ?? 0), 0),
+    }));
+  }, [orders]);
+
+  // Load full-resolution originals for EVERY row in the expanded group
+  // (each unit's originals live under order-originals/{rowId}/).
   useEffect(() => {
-    if (!expandedId || originalPhotos[expandedId]) return;
+    if (!expandedKey) return;
+    const group = groups.find((g) => g.key === expandedKey);
+    if (!group) return;
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase.storage
-        .from("designs")
-        .list(`order-originals/${expandedId}`, { limit: 50 });
-      if (cancelled) return;
-      if (error || !data) {
-        setOriginalPhotos((prev) => ({ ...prev, [expandedId]: [] }));
-        return;
+      for (const row of group.rows) {
+        if (originalPhotos[row.id]) continue;
+        const { data, error } = await supabase.storage
+          .from("designs")
+          .list(`order-originals/${row.id}`, { limit: 50 });
+        if (cancelled) return;
+        if (error || !data) {
+          setOriginalPhotos((prev) => ({ ...prev, [row.id]: [] }));
+          continue;
+        }
+        const files = data
+          .filter((f) => f.name && !f.name.startsWith("."))
+          .map((f) => {
+            const { data: pub } = supabase.storage
+              .from("designs")
+              .getPublicUrl(`order-originals/${row.id}/${f.name}`);
+            return { name: f.name, url: pub.publicUrl };
+          });
+        setOriginalPhotos((prev) => ({ ...prev, [row.id]: files }));
       }
-      const files = data
-        .filter((f) => f.name && !f.name.startsWith("."))
-        .map((f) => {
-          const { data: pub } = supabase.storage
-            .from("designs")
-            .getPublicUrl(`order-originals/${expandedId}/${f.name}`);
-          return { name: f.name, url: pub.publicUrl };
-        });
-      setOriginalPhotos((prev) => ({ ...prev, [expandedId]: files }));
     })();
     return () => { cancelled = true; };
-  }, [expandedId, originalPhotos]);
+  }, [expandedKey, groups, originalPhotos]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -272,14 +304,17 @@ export default function AdminOrders() {
     }
   }
 
-  async function checkPayment(orderId: string, provider?: string) {
-    setCheckingPayment(orderId);
+  // checkPayment runs once per group (the edge function looks the order up
+  // then flips the whole cart in the DB by cart_id). `groupRows` lets us
+  // mirror the result onto every unit in local state.
+  async function checkPayment(head: Order, groupRows: Order[]) {
+    setCheckingPayment(head.id);
     try {
-      const fn = (provider === "tbc" || provider === "tbc_credit")
+      const fn = (head.payment_provider === "tbc" || head.payment_provider === "tbc_credit")
         ? "check-payment-flitt"
         : "check-payment";
       const { data, error } = await supabase.functions.invoke(fn, {
-        body: { orderId },
+        body: { orderId: head.id },
       });
 
       let payload: any = data;
@@ -296,11 +331,12 @@ export default function AdminOrders() {
         return;
       }
 
+      const ids = new Set(groupRows.map((r) => r.id));
       if (payload?.status === "paid") {
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: "paid", status: "confirmed", paid_at: new Date().toISOString() } : o));
+        setOrders(prev => prev.map(o => ids.has(o.id) ? { ...o, payment_status: "paid", status: "confirmed", paid_at: o.paid_at || new Date().toISOString() } : o));
         toast({ title: "გადახდა დადასტურდა ✓" });
       } else if (payload?.status === "failed") {
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, payment_status: "failed" } : o));
+        setOrders(prev => prev.map(o => ids.has(o.id) ? { ...o, payment_status: "failed" } : o));
         toast({ title: "გადახდა ვერ განხორციელდა", variant: "destructive" });
       } else {
         toast({ title: "სტატუსი", description: `${payload?.bog_status || payload?.tbc_status || payload?.status || "unknown"}` });
@@ -311,22 +347,30 @@ export default function AdminOrders() {
     setCheckingPayment(null);
   }
 
-  async function updateOrder(id: string, field: string, value: string) {
-    const { data, error } = await (supabase.rpc as any)("admin_update_order", {
-      p_order_id: id,
-      p_field: field,
-      p_value: value,
-    });
-    if (error) {
-      toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
+  // Status / payment changes apply to the WHOLE group — every row of the
+  // cart gets the same value via the existing admin_update_order RPC
+  // (one call per row, run in parallel). Display-only grouping means the
+  // units are still separate rows in the DB, so each must be updated.
+  async function updateOrderGroup(rows: Order[], field: string, value: string) {
+    const results = await Promise.all(
+      rows.map((r) =>
+        (supabase.rpc as any)("admin_update_order", {
+          p_order_id: r.id,
+          p_field: field,
+          p_value: value,
+        }),
+      ),
+    );
+    const firstErr = results.find((r) => r.error);
+    if (firstErr?.error) {
+      toast({ title: "შეცდომა", description: firstErr.error.message, variant: "destructive" });
       return;
     }
-    if (!data) {
-      toast({ title: "შეკვეთა ვერ მოიძებნა", variant: "destructive" });
-      return;
-    }
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, ...(data as any) } : o));
-    toast({ title: "განახლდა" });
+    const ids = new Set(rows.map((r) => r.id));
+    setOrders((prev) =>
+      prev.map((o) => (ids.has(o.id) ? { ...o, [field]: value } : o)),
+    );
+    toast({ title: rows.length > 1 ? `განახლდა (${rows.length} ერთეული)` : "განახლდა" });
   }
 
   const paymentBadgeVariant = (s: string) => {
@@ -353,7 +397,7 @@ export default function AdminOrders() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">შეკვეთები ({orders.length})</h2>
+        <h2 className="text-lg font-semibold">შეკვეთები ({groups.length})</h2>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted-foreground">ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
           <Button variant="outline" size="sm" onClick={fetchOrders}>განახლება</Button>
@@ -361,16 +405,17 @@ export default function AdminOrders() {
       </div>
 
       <div className="space-y-3">
-        {orders.map((order, i) => {
-          const isExpanded = expandedId === order.id;
+        {groups.map((group, i) => {
+          const order = group.head;
+          const isExpanded = expandedKey === group.key;
           return (
-            <div key={order.id} className="rounded-lg border border-border bg-card overflow-hidden">
+            <div key={group.key} className="rounded-lg border border-border bg-card overflow-hidden">
               {/* Summary row */}
               <button
-                onClick={() => setExpandedId(isExpanded ? null : order.id)}
+                onClick={() => setExpandedKey(isExpanded ? null : group.key)}
                 className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
               >
-                <span className="text-xs font-mono text-muted-foreground w-8">#{orders.length - i}</span>
+                <span className="text-xs font-mono text-muted-foreground w-8">#{groups.length - i}</span>
                 {order.front_mockup_url ? (
                   <div className="w-10 h-10 rounded border border-border bg-muted overflow-hidden flex-shrink-0">
                     <img src={order.front_mockup_url} alt="" className="w-full h-full object-contain" />
@@ -381,9 +426,9 @@ export default function AdminOrders() {
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm flex items-center gap-1.5">
                     {order.first_name} {order.last_name}
-                    {order.cart_id && (
-                      <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded" title={`Cart: ${order.cart_id}`}>
-                        კალათა
+                    {group.quantity > 1 && (
+                      <span className="text-[10px] font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded">
+                        × {group.quantity}
                       </span>
                     )}
                   </div>
@@ -392,7 +437,7 @@ export default function AdminOrders() {
                     {order.size ? ` • ${order.size}` : <span className="text-destructive"> • ზომა არ არის არჩეული</span>}
                   </div>
                 </div>
-                <div className="text-sm font-semibold">{order.total_price} ₾</div>
+                <div className="text-sm font-semibold">{group.groupTotal} ₾</div>
                 <Badge variant={paymentBadgeVariant(order.payment_status) as any} className="text-[10px]">
                   {PAYMENT_LABELS[order.payment_status] || order.payment_status}
                 </Badge>
@@ -505,147 +550,170 @@ export default function AdminOrders() {
                     </div>
                   )}
 
-                  {/* Design mockups */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">დიზაინი</h4>
-                    {order.front_mockup_url || order.back_mockup_url ? (
-                      <div className="flex gap-4 flex-wrap">
-                        {order.front_mockup_url && (
-                          <div className="space-y-1.5">
-                            <p className="text-xs text-muted-foreground">წინა მხარე</p>
-                            <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                              <img src={order.front_mockup_url} alt="წინა მხარე" className="w-full h-full object-contain" />
-                            </div>
-                            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
-                              onClick={() => downloadImage(order.front_mockup_url!, `order-${order.id}-front.png`)}>
-                              <Download className="h-3 w-3" /> ჩამოტვირთვა
-                            </Button>
-                          </div>
-                        )}
-                        {order.back_mockup_url && (
-                          <div className="space-y-1.5">
-                            <p className="text-xs text-muted-foreground">უკანა მხარე</p>
-                            <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                              <img src={order.back_mockup_url} alt="უკანა მხარე" className="w-full h-full object-contain" />
-                            </div>
-                            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
-                              onClick={() => downloadImage(order.back_mockup_url!, `order-${order.id}-back.png`)}>
-                              <Download className="h-3 w-3" /> ჩამოტვირთვა
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">პრევიუ არ არის</p>
-                    )}
-                    {!order.is_studio && order.prompt && (() => {
-                      const dataUrl = renderTextDataUrl(order.prompt);
-                      return dataUrl ? (
-                        <div className="mt-3 pt-3 border-t border-border">
-                          <p className="text-xs text-muted-foreground mb-1.5">სრული წარწერა (ცალკე ფაილი)</p>
-                          <div className="space-y-1.5 inline-block">
-                            <div className="w-64 h-40 rounded-lg border border-border bg-white overflow-hidden flex items-center justify-center">
-                              <img src={dataUrl} alt="სრული წარწერა" className="max-w-full max-h-full object-contain" />
-                            </div>
-                            <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
-                              onClick={() => downloadTextAsPng(order.prompt || "", `order-${order.id}-text.png`)}>
-                              <Download className="h-3 w-3" /> წარწერა PNG
-                            </Button>
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
-                    {(order.transparent_image_url || order.back_transparent_image_url) && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs text-muted-foreground mb-1.5">პრინტ ფაილი (placement zone-ით cropped)</p>
-                        <div className="flex gap-4 flex-wrap">
-                          {order.transparent_image_url && (
-                            <div className="space-y-1.5">
-                              <p className="text-xs text-muted-foreground">წინა მხარე</p>
-                              <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                                <img src={order.transparent_image_url} alt="წინა პრინტი" className="w-full h-full object-contain" />
-                              </div>
-                              <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
-                                onClick={() => downloadImage(order.transparent_image_url!, `order-${order.id}-print-front.png`)}>
-                                <Download className="h-3 w-3" /> პრინტ ფაილი
-                              </Button>
-                            </div>
-                          )}
-                          {order.back_transparent_image_url && (
-                            <div className="space-y-1.5">
-                              <p className="text-xs text-muted-foreground">უკანა მხარე</p>
-                              <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                                <img src={order.back_transparent_image_url} alt="უკანა პრინტი" className="w-full h-full object-contain" />
-                              </div>
-                              <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
-                                onClick={() => downloadImage(order.back_transparent_image_url!, `order-${order.id}-print-back.png`)}>
-                                <Download className="h-3 w-3" /> პრინტ ფაილი
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {/* Regenerate print file from saved design_state. Available
-                        for orders placed after 2026-05-15 (the design_state
-                        migration). For older orders the saved mockup is the
-                        only artifact and this section stays hidden. */}
-                    {isDesignState(order.design_state) && (order.design_state.front || order.design_state.back) && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs text-muted-foreground mb-1.5">
-                          პრინტ ფაილის გენერაცია (design_state-ით)
-                          {!order.transparent_image_url && !order.back_transparent_image_url && (
-                            <span className="text-destructive"> — გადახდის დროს ვერ ატვირთა</span>
-                          )}
-                        </p>
-                        <div className="flex gap-2 flex-wrap">
-                          {order.design_state.front && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs gap-1.5"
-                              disabled={regenerating === `${order.id}:front`}
-                              onClick={() => regeneratePrintFile(order, "front")}
-                            >
-                              <RefreshCw className={`h-3 w-3 ${regenerating === `${order.id}:front` ? "animate-spin" : ""}`} />
-                              {regenerating === `${order.id}:front` ? "გენერდება..." : "წინა მხარის გადაგენერაცია"}
-                            </Button>
-                          )}
-                          {order.design_state.back && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs gap-1.5"
-                              disabled={regenerating === `${order.id}:back`}
-                              onClick={() => regeneratePrintFile(order, "back")}
-                            >
-                              <RefreshCw className={`h-3 w-3 ${regenerating === `${order.id}:back` ? "animate-spin" : ""}`} />
-                              {regenerating === `${order.id}:back` ? "გენერდება..." : "უკანა მხარის გადაგენერაცია"}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {originalPhotos[order.id] && originalPhotos[order.id].length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs text-muted-foreground mb-1.5">ორიგინალი ფოტოები (სრული რეზოლუცია)</p>
-                        <div className="flex gap-3 flex-wrap">
-                          {originalPhotos[order.id].map((photo, i) => (
-                            <div key={photo.name} className="space-y-1.5">
-                              <p className="text-xs text-muted-foreground">{photo.name.startsWith("back") ? "უკანა" : "წინა"} #{i + 1}</p>
-                              <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
-                                <img src={photo.url} alt={photo.name} className="w-full h-full object-contain" />
-                              </div>
-                              <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
-                                onClick={() => downloadImage(photo.url, `order-${order.id}-${photo.name}`)}>
-                                <Download className="h-3 w-3" /> ორიგინალი
-                              </Button>
+                  {/* Design / artwork — one block per DISTINCT design in the
+                      group. For qty=N of a single design all rows share the
+                      same artwork → deduped to one block. For a multi-item
+                      cart the units differ → one block per unit. Mockups,
+                      print files, regenerate and originals stay per-ROW
+                      (keyed by that unit's order id). */}
+                  {(() => {
+                    const seen = new Set<string>();
+                    const uniqueRows = group.rows.filter((r) => {
+                      const sig = [r.front_mockup_url, r.back_mockup_url, r.transparent_image_url, r.back_transparent_image_url, r.prompt].join("|");
+                      if (seen.has(sig)) return false;
+                      seen.add(sig);
+                      return true;
+                    });
+                    const multi = uniqueRows.length > 1;
+                    return (
+                      <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">დიზაინი</h4>
+                        <div className="space-y-4">
+                          {uniqueRows.map((unit, ui) => (
+                            <div key={unit.id} className={multi ? "pt-2 border-t border-border first:border-t-0 first:pt-0" : ""}>
+                              {multi && <p className="text-xs font-semibold mb-2">ნივთი #{ui + 1}</p>}
+                              {unit.front_mockup_url || unit.back_mockup_url ? (
+                                <div className="flex gap-4 flex-wrap">
+                                  {unit.front_mockup_url && (
+                                    <div className="space-y-1.5">
+                                      <p className="text-xs text-muted-foreground">წინა მხარე</p>
+                                      <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
+                                        <img src={unit.front_mockup_url} alt="წინა მხარე" className="w-full h-full object-contain" />
+                                      </div>
+                                      <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                        onClick={() => downloadImage(unit.front_mockup_url!, `order-${unit.id}-front.png`)}>
+                                        <Download className="h-3 w-3" /> ჩამოტვირთვა
+                                      </Button>
+                                    </div>
+                                  )}
+                                  {unit.back_mockup_url && (
+                                    <div className="space-y-1.5">
+                                      <p className="text-xs text-muted-foreground">უკანა მხარე</p>
+                                      <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
+                                        <img src={unit.back_mockup_url} alt="უკანა მხარე" className="w-full h-full object-contain" />
+                                      </div>
+                                      <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                        onClick={() => downloadImage(unit.back_mockup_url!, `order-${unit.id}-back.png`)}>
+                                        <Download className="h-3 w-3" /> ჩამოტვირთვა
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">პრევიუ არ არის</p>
+                              )}
+                              {!unit.is_studio && unit.prompt && (() => {
+                                const dataUrl = renderTextDataUrl(unit.prompt);
+                                return dataUrl ? (
+                                  <div className="mt-3 pt-3 border-t border-border">
+                                    <p className="text-xs text-muted-foreground mb-1.5">სრული წარწერა (ცალკე ფაილი)</p>
+                                    <div className="space-y-1.5 inline-block">
+                                      <div className="w-64 h-40 rounded-lg border border-border bg-white overflow-hidden flex items-center justify-center">
+                                        <img src={dataUrl} alt="სრული წარწერა" className="max-w-full max-h-full object-contain" />
+                                      </div>
+                                      <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                        onClick={() => downloadTextAsPng(unit.prompt || "", `order-${unit.id}-text.png`)}>
+                                        <Download className="h-3 w-3" /> წარწერა PNG
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
+                              {(unit.transparent_image_url || unit.back_transparent_image_url) && (
+                                <div className="mt-3 pt-3 border-t border-border">
+                                  <p className="text-xs text-muted-foreground mb-1.5">პრინტ ფაილი (placement zone-ით cropped)</p>
+                                  <div className="flex gap-4 flex-wrap">
+                                    {unit.transparent_image_url && (
+                                      <div className="space-y-1.5">
+                                        <p className="text-xs text-muted-foreground">წინა მხარე</p>
+                                        <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
+                                          <img src={unit.transparent_image_url} alt="წინა პრინტი" className="w-full h-full object-contain" />
+                                        </div>
+                                        <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                          onClick={() => downloadImage(unit.transparent_image_url!, `order-${unit.id}-print-front.png`)}>
+                                          <Download className="h-3 w-3" /> პრინტ ფაილი
+                                        </Button>
+                                      </div>
+                                    )}
+                                    {unit.back_transparent_image_url && (
+                                      <div className="space-y-1.5">
+                                        <p className="text-xs text-muted-foreground">უკანა მხარე</p>
+                                        <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
+                                          <img src={unit.back_transparent_image_url} alt="უკანა პრინტი" className="w-full h-full object-contain" />
+                                        </div>
+                                        <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                          onClick={() => downloadImage(unit.back_transparent_image_url!, `order-${unit.id}-print-back.png`)}>
+                                          <Download className="h-3 w-3" /> პრინტ ფაილი
+                                        </Button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {/* Regenerate print file from saved design_state.
+                                  Available for orders placed after 2026-05-15
+                                  (the design_state migration). Per-row. */}
+                              {isDesignState(unit.design_state) && (unit.design_state.front || unit.design_state.back) && (
+                                <div className="mt-3 pt-3 border-t border-border">
+                                  <p className="text-xs text-muted-foreground mb-1.5">
+                                    პრინტ ფაილის გენერაცია (design_state-ით)
+                                    {!unit.transparent_image_url && !unit.back_transparent_image_url && (
+                                      <span className="text-destructive"> — გადახდის დროს ვერ ატვირთა</span>
+                                    )}
+                                  </p>
+                                  <div className="flex gap-2 flex-wrap">
+                                    {unit.design_state.front && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs gap-1.5"
+                                        disabled={regenerating === `${unit.id}:front`}
+                                        onClick={() => regeneratePrintFile(unit, "front")}
+                                      >
+                                        <RefreshCw className={`h-3 w-3 ${regenerating === `${unit.id}:front` ? "animate-spin" : ""}`} />
+                                        {regenerating === `${unit.id}:front` ? "გენერდება..." : "წინა მხარის გადაგენერაცია"}
+                                      </Button>
+                                    )}
+                                    {unit.design_state.back && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 text-xs gap-1.5"
+                                        disabled={regenerating === `${unit.id}:back`}
+                                        onClick={() => regeneratePrintFile(unit, "back")}
+                                      >
+                                        <RefreshCw className={`h-3 w-3 ${regenerating === `${unit.id}:back` ? "animate-spin" : ""}`} />
+                                        {regenerating === `${unit.id}:back` ? "გენერდება..." : "უკანა მხარის გადაგენერაცია"}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                              {originalPhotos[unit.id] && originalPhotos[unit.id].length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-border">
+                                  <p className="text-xs text-muted-foreground mb-1.5">ორიგინალი ფოტოები (სრული რეზოლუცია)</p>
+                                  <div className="flex gap-3 flex-wrap">
+                                    {originalPhotos[unit.id].map((photo, pi) => (
+                                      <div key={photo.name} className="space-y-1.5">
+                                        <p className="text-xs text-muted-foreground">{photo.name.startsWith("back") ? "უკანა" : "წინა"} #{pi + 1}</p>
+                                        <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
+                                          <img src={photo.url} alt={photo.name} className="w-full h-full object-contain" />
+                                        </div>
+                                        <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
+                                          onClick={() => downloadImage(photo.url, `order-${unit.id}-${photo.name}`)}>
+                                          <Download className="h-3 w-3" /> ორიგინალი
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                   {/* Comment */}
                   {order.comment && (
@@ -661,15 +729,19 @@ export default function AdminOrders() {
                     <div className="text-sm space-y-1 bg-background rounded-lg p-3 border border-border max-w-xs">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">პროდუქტი:</span>
-                        <span>{order.product_price} ₾</span>
+                        <span>
+                          {group.quantity > 1
+                            ? `${order.product_price} ₾ × ${group.quantity} = ${order.product_price * group.quantity} ₾`
+                            : `${order.product_price} ₾`}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">მიწოდება:</span>
-                        <span>{order.delivery_price === 0 ? "უფასო" : `${order.delivery_price} ₾`}</span>
+                        <span>{group.deliveryTotal === 0 ? "უფასო" : `${group.deliveryTotal} ₾`}</span>
                       </div>
                       <div className="flex justify-between border-t border-border pt-1 font-bold">
                         <span>სულ:</span>
-                        <span>{order.total_price} ₾</span>
+                        <span>{group.groupTotal} ₾</span>
                       </div>
                     </div>
                   </div>
@@ -686,7 +758,7 @@ export default function AdminOrders() {
                   <div className="flex gap-3 items-end flex-wrap pt-2 border-t border-border">
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">გადახდა</span>
-                      <Select value={order.payment_status} onValueChange={v => updateOrder(order.id, "payment_status", v)}>
+                      <Select value={order.payment_status} onValueChange={v => updateOrderGroup(group.rows, "payment_status", v)}>
                         <SelectTrigger className="h-8 w-48"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {PAYMENT_OPTIONS.map(o => <SelectItem key={o} value={o}>{PAYMENT_LABELS[o] || o}</SelectItem>)}
@@ -695,7 +767,7 @@ export default function AdminOrders() {
                     </div>
                     <div className="space-y-1">
                       <span className="text-xs text-muted-foreground">სტატუსი</span>
-                      <Select value={order.status} onValueChange={v => updateOrder(order.id, "status", v)}>
+                      <Select value={order.status} onValueChange={v => updateOrderGroup(group.rows, "status", v)}>
                         <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {STATUS_OPTIONS.map(o => <SelectItem key={o} value={o}>{STATUS_LABELS[o] || o}</SelectItem>)}
@@ -708,7 +780,7 @@ export default function AdminOrders() {
                         variant="outline"
                         className="h-8 gap-1.5 text-xs"
                         disabled={checkingPayment === order.id}
-                        onClick={() => checkPayment(order.id, order.payment_provider)}
+                        onClick={() => checkPayment(order, group.rows)}
                       >
                         <RefreshCw className={`h-3 w-3 ${checkingPayment === order.id ? "animate-spin" : ""}`} />
                         გადახდის შემოწმება
