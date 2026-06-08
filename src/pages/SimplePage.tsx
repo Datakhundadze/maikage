@@ -6,7 +6,7 @@ import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, Globe, ShoppingBag } from "lucide-react";
+import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, ShoppingBag } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -20,7 +20,6 @@ import PriceDisplay from "@/components/PriceDisplay";
 // OrderDialog ships ~21 KB (radix dialog + form code) and never renders on
 // initial paint — wait until the customer actually opens it.
 const OrderDialog = lazy(() => import("@/components/OrderDialog"));
-import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
@@ -451,11 +450,9 @@ export default function SimplePage() {
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
   const { user } = useAuth();
-  const { saveDesign, togglePublish } = useDesignStorage();
   const { addItem: addToCart, adding: addingToCart } = useCart();
   const { toast } = useToast();
 
-  const [publishing, setPublishing] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [sizeError, setSizeError] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);
@@ -1097,25 +1094,6 @@ export default function SimplePage() {
     }
   }, [user, productConfig]);
 
-  const handlePublish = useCallback(async (frontMockupUrl: string | null) => {
-    if (!user) { return; }
-    if (!frontMockupUrl) return;
-    setPublishing(true);
-    const id = await saveDesign({
-      title: "Simple Design",
-      prompt: null,
-      product: productConfig.config.product,
-      color: productConfig.config.color,
-      placementX: productConfig.config.placementCoords.x,
-      placementY: productConfig.config.placementCoords.y,
-      placementScale: productConfig.config.placementCoords.scale,
-      transparentImageDataUrl: frontMockupUrl,
-      mockupImageDataUrl: frontMockupUrl,
-    });
-    if (id) await togglePublish(id, false);
-    setPublishing(false);
-  }, [user, productConfig, saveDesign, togglePublish]);
-
   // Memoized mockup data URLs for order
   const [frontMockup, setFrontMockup] = useState<string | null>(null);
   const [backMockup, setBackMockup] = useState<string | null>(null);
@@ -1508,14 +1486,6 @@ export default function SimplePage() {
                     </>
                   );
                 })()}
-                {/* Quick actions */}
-                {(frontMockup || backMockup) && (
-                  <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => handlePublish(frontMockup!)} disabled={publishing} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-primary border border-primary/30 hover:bg-primary/10 transition-colors disabled:opacity-50">
-                      <Globe className="h-3.5 w-3.5" /> {publishing ? "..." : (lang === "en" ? "Publish" : "გამოქვეყნება")}
-                    </button>
-                  </div>
-                )}
               </>
             );
           })()}

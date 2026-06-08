@@ -46,7 +46,6 @@ interface DesignRow {
 const STATIC_URLS: { loc: string; priority: string; changefreq: string }[] = [
   { loc: "/",          priority: "1.0", changefreq: "daily" },
   { loc: "/designs",   priority: "0.9", changefreq: "daily" },
-  { loc: "/community", priority: "0.6", changefreq: "monthly" },
   { loc: "/corporate", priority: "0.6", changefreq: "monthly" },
 ];
 

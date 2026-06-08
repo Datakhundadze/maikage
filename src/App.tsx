@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { Suspense, lazy } from "react";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
@@ -20,7 +20,6 @@ const CartPage = lazy(() => import("./pages/CartPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const StudioPage = lazy(() => import("./pages/StudioPage"));
 const MyDesignsPage = lazy(() => import("./pages/MyDesignsPage"));
-const CommunityPage = lazy(() => import("./pages/CommunityPage"));
 const CatalogPage = lazy(() => import("./pages/CatalogPage"));
 const DesignDetailPage = lazy(() => import("./pages/DesignDetailPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
@@ -47,6 +46,8 @@ const queryClient = new QueryClient();
 // view (landing, simple, cart, etc.). Without this, a first-time visitor —
 // whose mode defaults to "landing" — would see the landing page when they
 // open /designs, /my-designs, /community, /design/<slug>, etc. directly.
+// (/community is retired — its route below redirects to /designs — but it
+// stays in ALWAYS_ROUTED so the redirect runs instead of the landing page.)
 const ALWAYS_ROUTED: RegExp[] = [
   /^\/designs(\/|$)/,
   /^\/design\//,
@@ -105,7 +106,9 @@ function AppRoutes() {
       <Route path="/designs" element={<CatalogPage />} />
       <Route path="/design/:slug" element={<DesignDetailPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />
-      <Route path="/community" element={<CommunityPage />} />
+      {/* /community gallery retired — redirect old URL to the catalog so it
+          doesn't dead-end (client-side; Lovable has no server redirects). */}
+      <Route path="/community" element={<Navigate to="/designs" replace />} />
       <Route path="/corporate" element={<CorporatePage />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="*" element={<NotFound />} />

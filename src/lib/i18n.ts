@@ -23,7 +23,6 @@ const translations = {
       studio: "Studio",
       simple: "Simple",
       myDesigns: "My Designs",
-      community: "Samples",
       catalog: "Catalog",
       logout: "Logout",
     },
@@ -93,12 +92,6 @@ const translations = {
       empty: "No designs yet",
       emptyHint: "Generate your first design in the Studio!",
       deleteConfirm: "Delete this design?",
-    },
-    community: {
-      title: "Samples",
-      subtitle: "Discover designs from the maika.ge community.",
-      empty: "No published designs yet",
-      emptyHint: "Be the first to publish!",
     },
     config: {
       product: "Product",
@@ -176,7 +169,6 @@ const translations = {
       studio: "სტუდია",
       simple: "მარტივი",
       myDesigns: "ჩემი დიზაინები",
-      community: "მაგალითები",
       catalog: "კატალოგი",
       logout: "გამოსვლა",
     },
@@ -246,12 +238,6 @@ const translations = {
       empty: "დიზაინები ჯერ არ არის",
       emptyHint: "შექმენით პირველი დიზაინი სტუდიაში!",
       deleteConfirm: "წაშალოთ ეს დიზაინი?",
-    },
-    community: {
-      title: "მაგალითები",
-      subtitle: "აღმოაჩინეთ maika.ge-ს საზოგადოების დიზაინები.",
-      empty: "გამოქვეყნებული დიზაინები ჯერ არ არის",
-      emptyHint: "იყავი პირველი!",
     },
     config: {
       product: "პროდუქტი",
