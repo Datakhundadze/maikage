@@ -670,6 +670,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_order: {
+        Args: { p_field: string; p_order_id: string; p_value: string }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -677,6 +681,19 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      get_generations_by_session: {
+        Args: { p_session_id: string }
+        Returns: {
+          color: string
+          created_at: string
+          id: string
+          mockup_image_path: string
+          product: string
+          prompt: string
+          style: string
+          transparent_image_path: string
+        }[]
       }
       has_role: {
         Args: {
