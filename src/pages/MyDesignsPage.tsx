@@ -7,7 +7,7 @@ import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getGuestSessionId } from "@/lib/guestSession";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Trash2, Globe, GlobeLock, Eye } from "lucide-react";
+import { Trash2, Eye } from "lucide-react";
 const Lightbox = lazy(() => import("@/components/Lightbox"));
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
@@ -46,7 +46,7 @@ function resolveImageUrl(path: string | null) {
 export default function MyDesignsPage() {
   const { user } = useAuth();
   const { lang } = useAppState();
-  const { deleteDesign, togglePublish } = useDesignStorage();
+  const { deleteDesign } = useDesignStorage();
   const [designs, setDesigns] = useState<Design[]>([]);
   const [guestGenerations, setGuestGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,11 +89,6 @@ export default function MyDesignsPage() {
     if (!confirm(t(lang, "myDesigns.deleteConfirm"))) return;
     const ok = await deleteDesign(d.id, d.transparent_image_path, d.mockup_image_path);
     if (ok) setDesigns((prev) => prev.filter((x) => x.id !== d.id));
-  };
-
-  const handleTogglePublish = async (d: Design) => {
-    const ok = await togglePublish(d.id, d.is_published);
-    if (ok) setDesigns((prev) => prev.map((x) => x.id === d.id ? { ...x, is_published: !x.is_published } : x));
   };
 
   const totalCount = designs.length + guestGenerations.length;
@@ -147,9 +142,6 @@ export default function MyDesignsPage() {
                         <Button size="sm" variant="secondary" onClick={() => { const u = resolveImageUrl(d.mockup_image_path); if (u) setLightboxSrc(u); }}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="secondary" onClick={() => handleTogglePublish(d)}>
-                          {d.is_published ? <GlobeLock className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
-                        </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleDelete(d)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -160,7 +152,6 @@ export default function MyDesignsPage() {
                       <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-muted-foreground">{d.product} · {d.color}</span>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          {d.is_published && <Globe className="h-3 w-3 text-primary" />}
                           <span>♥ {d.likes_count}</span>
                         </div>
                       </div>

@@ -3,7 +3,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { Paintbrush, FolderOpen, Globe, ShieldCheck, LogIn, LogOut, ShoppingCart, Images } from "lucide-react";
+import { Paintbrush, FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
@@ -18,7 +18,6 @@ import { useCart } from "@/hooks/useCart";
 const PRELOAD_BY_PATH: Record<string, () => Promise<unknown>> = {
   "/designs": () => import("@/pages/CatalogPage"),
   "/my-designs": () => import("@/pages/MyDesignsPage"),
-  "/community": () => import("@/pages/CommunityPage"),
   "/admin": () => import("@/pages/AdminPage"),
 };
 
@@ -37,15 +36,12 @@ export default function AppHeader() {
     { path: "/", label: t(lang, "nav.studio"), icon: Paintbrush },
     { path: "/designs", label: t(lang, "nav.catalog"), icon: Images },
     { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
-    { path: "/community", label: t(lang, "nav.community"), icon: Globe },
     ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
 
   // Small badge showing current section
   const pageBadge = location.pathname === "/my-designs"
     ? (lang === "en" ? "My Designs" : "ჩემი დიzaინები")
-    : location.pathname === "/community"
-    ? (lang === "en" ? "Samples" : "მაგალითები")
     : (lang === "en" ? "AI Studio" : "AI სტუდია");
 
   return (

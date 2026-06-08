@@ -5,7 +5,7 @@ import { upscaleImage } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
-import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Globe, Shirt } from "lucide-react";
+import { Download, Eye, Copy, Package, Maximize, ShoppingBag, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResultViewProps {
@@ -17,12 +17,9 @@ interface ResultViewProps {
   placementCoords?: { x: number; y: number; scale: number };
   onResultUpdate?: (result: GenerationResult) => void;
   onOrder?: () => void;
-  onShareToCommunity?: () => void;
-  sharing?: boolean;
-  isShared?: boolean;
 }
 
-export default function ResultView({ result, onViewImage, productName = "design", subType = "", colorName = "", placementCoords, onResultUpdate, onOrder, onShareToCommunity, sharing, isShared }: ResultViewProps) {
+export default function ResultView({ result, onViewImage, productName = "design", subType = "", colorName = "", placementCoords, onResultUpdate, onOrder }: ResultViewProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const navigate = useNavigate();
@@ -153,23 +150,6 @@ export default function ResultView({ result, onViewImage, productName = "design"
             <Shirt className="h-5 w-5" /> გასახდელი
           </Button>
         </div>
-
-        {onShareToCommunity && !isShared && (
-          <Button
-            onClick={onShareToCommunity}
-            disabled={sharing}
-            variant="outline"
-            className="w-full h-11 gap-2 font-medium"
-          >
-            <Globe className="h-4 w-4" />
-            {sharing ? "..." : "გაზიარება მაგალითებში"}
-          </Button>
-        )}
-        {isShared && (
-          <div className="w-full text-center text-sm text-green-500 font-medium py-2">
-            ✓ გაზიარებულია მაგალითებში
-          </div>
-        )}
       </div>
 
       {/* Print File Card */}

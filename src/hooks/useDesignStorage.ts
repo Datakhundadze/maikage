@@ -90,18 +90,6 @@ export function useDesignStorage() {
     }
   }, [toast]);
 
-  const togglePublish = useCallback(async (designId: string, currentlyPublished: boolean) => {
-    try {
-      const { error } = await supabase.from("designs").update({ is_published: !currentlyPublished }).eq("id", designId);
-      if (error) throw error;
-      toast({ title: currentlyPublished ? "Unpublished" : "Published to community!" });
-      return true;
-    } catch (err: any) {
-      toast({ title: "Update failed", description: err.message, variant: "destructive" });
-      return false;
-    }
-  }, [toast]);
-
   const toggleLike = useCallback(async (designId: string, isLiked: boolean) => {
     if (!user) return false;
     try {
@@ -120,5 +108,5 @@ export function useDesignStorage() {
     return supabase.storage.from("designs").getPublicUrl(path).data.publicUrl;
   }, []);
 
-  return { saveDesign, deleteDesign, togglePublish, toggleLike, getPublicUrl };
+  return { saveDesign, deleteDesign, toggleLike, getPublicUrl };
 }
