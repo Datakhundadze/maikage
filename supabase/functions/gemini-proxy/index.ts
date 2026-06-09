@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,6 +7,11 @@ const corsHeaders = {
 };
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
+// Actions that each cost a paid image call at the gateway → rate-limited per
+// caller. convert-bg-black (internal second half of a generate-design) and
+// randomize-prompt (cheap text) are intentionally exempt.
+const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale"]);
 
 /** Extract base64 image from various response formats the gateway might return */
 function extractImage(data: any): string | null {
@@ -214,6 +220,72 @@ serve(async (req) => {
     const { action, params } = await req.json();
     console.log(`[gemini-proxy] Action: ${action}`);
 
+    // --- Rate limiting (billable actions only) ---
+    // Keyed on user_id for authed callers, IP for anon. Admins (trusted batch
+    // generation) are exempt. Enforced BEFORE any gateway call so blocked
+    // requests cost nothing. verify_jwt stays false — anon Studio must work.
+    if (BILLABLE_ACTIONS.has(action)) {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+      });
+
+      // null/err for anon (no user JWT); a real user object when logged in.
+      const { data: { user } } = await client.auth.getUser();
+
+      // Admins bypass the limit entirely (mirrors check-design-quality's
+      // has_role gate). On any rpc error, treat as non-admin (still limited).
+      let isAdmin = false;
+      if (user) {
+        const { data: adminFlag } = await client.rpc("has_role", {
+          _user_id: user.id,
+          _role: "admin",
+        });
+        isAdmin = adminFlag === true;
+      }
+
+      if (!isAdmin) {
+        const requiresLogin = !user;
+        let key: string;
+        if (user) {
+          key = `gen:user:${user.id}`;
+        } else {
+          const ip = req.headers.get("cf-connecting-ip")
+            ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+            ?? "unknown";
+          key = `gen:ip:${ip}`;
+        }
+        const hourLimit = user ? 30 : 10;
+        const dayLimit = user ? 100 : 30;
+
+        const { data: allowed, error: rlError } = await client.rpc(
+          "check_and_increment_rate_limit",
+          { p_key: key, p_hour_limit: hourLimit, p_day_limit: dayLimit },
+        );
+
+        if (rlError) {
+          // Fail open: never block real users on an infra hiccup.
+          console.error("[gemini-proxy] rate-limit check failed — failing open:", rlError);
+        } else if (allowed === false) {
+          console.log(`[gemini-proxy] rate limit reached for ${key}`);
+          return new Response(
+            JSON.stringify({
+              error: requiresLogin
+                ? "უფასო გენერაციის ლიმიტი ამოიწურა — გასაგრძელებლად გაიარეთ ავტორიზაცია. (Free generation limit reached — sign in to continue.)"
+                : "გენერაციის ლიმიტი ამოიწურა — სცადეთ მოგვიანებით. (Generation limit reached — please try again later.)",
+              code: "RATE_LIMITED",
+              requiresLogin,
+            }),
+            {
+              status: 429,
+              headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" },
+            },
+          );
+        }
+      }
+    }
+
     let model: string;
     let messages: any[];
 
@@ -318,8 +390,8 @@ Output: one photorealistic composite photo.`;
       });
     }
 
-    // Retry logic — up to 2 retries for image actions
-    const maxAttempts = action === "randomize-prompt" ? 1 : 3;
+    // Retry logic — one retry for image actions (4xx is never retried).
+    const maxAttempts = action === "randomize-prompt" ? 1 : 2;
     let lastError = "";
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -340,6 +412,14 @@ Output: one photorealistic composite photo.`;
           if (status === 402) {
             return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
               status: 402,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          // Other 4xx are request/client errors — retrying won't help. Fail fast.
+          if (status >= 400 && status < 500) {
+            return new Response(JSON.stringify({ error: "AI generation failed. Please try again." }), {
+              status: 500,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
