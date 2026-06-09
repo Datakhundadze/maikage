@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 interface Inquiry {
   id: string;
@@ -24,6 +25,7 @@ export default function AdminCorporate() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const { toast } = useToast();
 
   const fetchInquiries = useCallback(async (bg = false) => {
     if (!bg) setInitialLoading(true);
@@ -48,6 +50,24 @@ export default function AdminCorporate() {
   const updateStatus = async (id: string, status: string) => {
     await supabase.from("corporate_inquiries").update({ status }).eq("id", id);
     setInquiries((prev) => prev.map((i) => i.id === id ? { ...i, status } : i));
+  };
+
+  // Open the logo via a short-lived signed URL (generated on click) rather
+  // than getPublicUrl. Signed URLs work while the bucket is still public and
+  // will keep working once corporate-logos is flipped private (Step 2).
+  const openLogo = async (logoPath: string) => {
+    const { data, error } = await supabase.storage
+      .from("corporate-logos")
+      .createSignedUrl(logoPath, 300);
+    if (error || !data?.signedUrl) {
+      toast({
+        title: "ლოგოს გახსნა ვერ მოხერხდა",
+        description: error?.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   };
 
   if (initialLoading) {
@@ -96,14 +116,13 @@ export default function AdminCorporate() {
             </div>
             {inq.comment && <p className="text-sm text-muted-foreground">{inq.comment}</p>}
             {inq.logo_path && (
-              <a
-                href={supabase.storage.from("corporate-logos").getPublicUrl(inq.logo_path).data.publicUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary underline"
+              <button
+                type="button"
+                onClick={() => openLogo(inq.logo_path!)}
+                className="text-xs text-primary underline cursor-pointer"
               >
                 ლოგოს ნახვა
-              </a>
+              </button>
             )}
             <div className="flex gap-2 pt-1">
               {inq.status === "new" && (
