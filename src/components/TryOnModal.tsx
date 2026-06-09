@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Upload, X, Download, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAppState } from "@/hooks/useAppState";
+import { t } from "@/lib/i18n";
 
 interface TryOnModalProps {
   open: boolean;
@@ -13,6 +15,7 @@ interface TryOnModalProps {
 
 export default function TryOnModal({ open, onClose, designImage }: TryOnModalProps) {
   const { toast } = useToast();
+  const { lang } = useAppState();
   const [personImage, setPersonImage] = useState<string | null>(null);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -56,15 +59,23 @@ export default function TryOnModal({ open, onClose, designImage }: TryOnModalPro
         },
       });
 
-      let errorMsg: string | null = null;
       if (error) {
+        let body: { code?: string; requiresLogin?: boolean; error?: string } | null = null;
         try {
           if (error.context && typeof error.context.json === "function") {
-            const body = await error.context.json();
-            errorMsg = body?.error || error.message;
+            body = await error.context.json();
           }
-        } catch { errorMsg = error.message; }
-        throw new Error(errorMsg || "Virtual try-on ვერ მოხერხდა");
+        } catch { /* ignore parse errors */ }
+        // Rate limited (429): toast the limit message and stop — don't fall
+        // through to the generic "try-on failed" error.
+        if (body?.code === "RATE_LIMITED") {
+          toast({
+            title: t(lang, body.requiresLogin ? "rateLimit.signInTitle" : "rateLimit.slowDownTitle"),
+            description: t(lang, body.requiresLogin ? "rateLimit.signIn" : "rateLimit.slowDown"),
+          });
+          return;
+        }
+        throw new Error(body?.error || error.message || "Virtual try-on ვერ მოხერხდა");
       }
       if (!data?.image) throw new Error("AI-მ სურათი ვერ დააბრუნა");
       setResultImage(data.image);

@@ -6,6 +6,7 @@ import { ArrowLeft, Upload, X, Download, Shirt } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { COLORS } from "@/lib/catalog";
 import { useAppState } from "@/hooks/useAppState";
+import { t } from "@/lib/i18n";
 import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
 import SeoHead from "@/components/SeoHead";
@@ -120,7 +121,7 @@ export default function TryOnPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { setMode } = useAppState();
+  const { setMode, lang } = useAppState();
   const { user } = useAuth();
 
   const goBack = () => {
@@ -228,17 +229,23 @@ export default function TryOnPage() {
         },
       });
 
-      let errorMsg: string | null = null;
       if (error) {
+        let body: { code?: string; requiresLogin?: boolean; error?: string } | null = null;
         try {
           if (error.context && typeof error.context.json === "function") {
-            const body = await error.context.json();
-            errorMsg = body?.error || error.message;
+            body = await error.context.json();
           }
-        } catch {
-          errorMsg = error.message;
+        } catch { /* ignore parse errors */ }
+        // Rate limited (429): toast the limit message and stop — don't fall
+        // through to the generic "try-on failed" error.
+        if (body?.code === "RATE_LIMITED") {
+          toast({
+            title: t(lang, body.requiresLogin ? "rateLimit.signInTitle" : "rateLimit.slowDownTitle"),
+            description: t(lang, body.requiresLogin ? "rateLimit.signIn" : "rateLimit.slowDown"),
+          });
+          return;
         }
-        throw new Error(errorMsg || "ვირტუალური გასინჯვა ვერ მოხერხდა");
+        throw new Error(body?.error || error.message || "ვირტუალური გასინჯვა ვერ მოხერხდა");
       }
       if (!data?.image) throw new Error("AI-მ სურათი ვერ დააბრუნა. სცადეთ ხელახლა.");
 

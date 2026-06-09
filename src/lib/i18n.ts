@@ -86,6 +86,12 @@ const translations = {
       upscale: "Upscale 4K",
       upscaling: "Upscaling...",
     },
+    rateLimit: {
+      signInTitle: "Limit reached",
+      signIn: "Free generation limit reached — sign in to keep creating.",
+      slowDownTitle: "Slow down",
+      slowDown: "Generation limit reached — please try again shortly.",
+    },
     myDesigns: {
       title: "My Designs",
       count: (n: number) => `${n} design${n !== 1 ? "s" : ""} saved`,
@@ -231,6 +237,12 @@ const translations = {
       downloadPng: "PNG ჩამოტვირთვა",
       upscale: "4K გადიდება",
       upscaling: "იზრდება...",
+    },
+    rateLimit: {
+      signInTitle: "ლიმიტი ამოიწურა",
+      signIn: "უფასო გენერაციის ლიმიტი ამოიწურა — გასაგრძელებლად გაიარეთ ავტორიზაცია.",
+      slowDownTitle: "ნელ-ნელა",
+      slowDown: "გენერაციის ლიმიტი ამოიწურა — გთხოვთ სცადოთ მოგვიანებით.",
     },
     myDesigns: {
       title: "ჩემი დიზაინები",
