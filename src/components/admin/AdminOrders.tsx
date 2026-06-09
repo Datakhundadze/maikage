@@ -169,14 +169,34 @@ export default function AdminOrders() {
       if (arr) arr.push(o);
       else map.set(key, [o]);
     }
-    return Array.from(map.entries()).map(([key, rows]) => ({
-      key,
-      head: rows[0],
-      rows,
-      quantity: rows.length,
-      groupTotal: rows.reduce((s, r) => s + (r.total_price ?? 0), 0),
-      deliveryTotal: rows.reduce((s, r) => s + (r.delivery_price ?? 0), 0),
-    }));
+    return Array.from(map.entries()).map(([key, rows]) => {
+      // Collapse rows into display "units": rows identical across
+      // product + sub_product + color + size + front/back mockup + prompt
+      // become ONE block with a ×count; any difference splits into its own
+      // block so each line item shows its own size/brand/color/design and is
+      // fulfillable. (Print-file URLs are derived from the design, so they're
+      // intentionally NOT part of the identity key.)
+      const unitMap = new Map<string, { rep: Order; count: number }>();
+      for (const r of rows) {
+        const sig = JSON.stringify([
+          r.product, r.sub_product, r.color, r.size,
+          r.front_mockup_url, r.back_mockup_url, r.prompt,
+        ]);
+        const existing = unitMap.get(sig);
+        if (existing) existing.count += 1;
+        else unitMap.set(sig, { rep: r, count: 1 });
+      }
+      return {
+        key,
+        head: rows[0],
+        rows,
+        units: Array.from(unitMap.values()),
+        quantity: rows.length,
+        groupTotal: rows.reduce((s, r) => s + (r.total_price ?? 0), 0),
+        deliveryTotal: rows.reduce((s, r) => s + (r.delivery_price ?? 0), 0),
+        productSubtotal: rows.reduce((s, r) => s + (r.product_price ?? 0), 0),
+      };
+    });
   }, [orders]);
 
   // Load full-resolution originals for EVERY row in the expanded group
@@ -480,98 +500,99 @@ export default function AdminOrders() {
                     </div>
                   </div>
 
-                  {/* Product info */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">პროდუქტი</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">ტიპი:</span>
-                        <p className="font-medium">{order.product}</p>
-                      </div>
-                      {order.sub_product && (
-                        <div>
-                          <span className="text-muted-foreground">ბრენდი:</span>
-                          <p className="font-medium">{order.sub_product}</p>
-                        </div>
-                      )}
-                      <div>
-                        <span className="text-muted-foreground">ფერი:</span>
-                        <p className="font-medium">{order.color || "—"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">რეჟიმი:</span>
-                        <p className="font-medium">{order.is_studio ? "Studio" : "Simple"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">
-                          {order.product === "Phone Case" ? "მოდელი:" : "ზომა:"}
-                        </span>
-                        <p className={`font-medium ${!order.size ? "text-destructive" : ""}`}>
-                          {order.size || "არ არის არჩეული"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Prompt / design text */}
-                  {order.prompt && (
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">{order.is_studio ? "პრომპტი" : "დიზაინის ტექსტი"}</h4>
-                        <div className="flex gap-2">
-                          {!order.is_studio && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs gap-1"
-                              onClick={() => downloadTextAsPng(order.prompt || "", `order-${order.id}-text.png`)}
-                            >
-                              <Download className="h-3 w-3" /> ტექსტი PNG
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs gap-1"
-                            onClick={async () => {
-                              try {
-                                await navigator.clipboard.writeText(order.prompt || "");
-                                toast({ title: "დაკოპირდა" });
-                              } catch {
-                                toast({ title: "ვერ დაკოპირდა", variant: "destructive" });
-                              }
-                            }}
-                          >
-                            დაკოპირება
-                          </Button>
-                        </div>
-                      </div>
-                      <pre className="text-sm bg-background rounded-lg p-3 border border-border whitespace-pre-wrap font-sans">{order.prompt}</pre>
-                    </div>
-                  )}
-
-                  {/* Design / artwork — one block per DISTINCT design in the
-                      group. For qty=N of a single design all rows share the
-                      same artwork → deduped to one block. For a multi-item
-                      cart the units differ → one block per unit. Mockups,
-                      print files, regenerate and originals stay per-ROW
-                      (keyed by that unit's order id). */}
+                  {/* Items — per-unit product details + design/artwork.
+                      Identical units (product + sub_product + color + size +
+                      front/back mockup + prompt all equal) collapse into one
+                      ×count block; any difference becomes its own "ნივთი #i"
+                      block so every line item shows its OWN size/brand/color/
+                      price/design. Mockups, print files, regenerate and
+                      originals stay per-ROW (keyed by that unit's order id). */}
                   {(() => {
-                    const seen = new Set<string>();
-                    const uniqueRows = group.rows.filter((r) => {
-                      const sig = [r.front_mockup_url, r.back_mockup_url, r.transparent_image_url, r.back_transparent_image_url, r.prompt].join("|");
-                      if (seen.has(sig)) return false;
-                      seen.add(sig);
-                      return true;
-                    });
-                    const multi = uniqueRows.length > 1;
+                    const units = group.units;
+                    const multi = units.length > 1;
                     return (
                       <div>
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">დიზაინი</h4>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">ნივთები</h4>
                         <div className="space-y-4">
-                          {uniqueRows.map((unit, ui) => (
-                            <div key={unit.id} className={multi ? "pt-2 border-t border-border first:border-t-0 first:pt-0" : ""}>
-                              {multi && <p className="text-xs font-semibold mb-2">ნივთი #{ui + 1}</p>}
+                          {units.map(({ rep: unit, count }, ui) => (
+                            <div key={unit.id} className={multi ? "pt-3 border-t border-border first:border-t-0 first:pt-0" : ""}>
+                              {(multi || count > 1) && (
+                                <div className="flex items-center gap-2 mb-2">
+                                  {multi && <p className="text-xs font-semibold">ნივთი #{ui + 1}</p>}
+                                  {count > 1 && (
+                                    <span className="text-[10px] font-semibold bg-primary/15 text-primary px-1.5 py-0.5 rounded">× {count}</span>
+                                  )}
+                                </div>
+                              )}
+                              {/* Per-unit product details (type / brand / color / mode / size / price) */}
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                                <div>
+                                  <span className="text-muted-foreground">ტიპი:</span>
+                                  <p className="font-medium">{unit.product}</p>
+                                </div>
+                                {unit.sub_product && (
+                                  <div>
+                                    <span className="text-muted-foreground">ბრენდი:</span>
+                                    <p className="font-medium">{unit.sub_product}</p>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-muted-foreground">ფერი:</span>
+                                  <p className="font-medium">{unit.color || "—"}</p>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">რეჟიმი:</span>
+                                  <p className="font-medium">{unit.is_studio ? "Studio" : "Simple"}</p>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">
+                                    {unit.product === "Phone Case" ? "მოდელი:" : "ზომა:"}
+                                  </span>
+                                  <p className={`font-medium ${!unit.size ? "text-destructive" : ""}`}>
+                                    {unit.size || "არ არის არჩეული"}
+                                  </p>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">ფასი:</span>
+                                  <p className="font-medium">{count > 1 ? `${unit.product_price} ₾ × ${count}` : `${unit.product_price} ₾`}</p>
+                                </div>
+                              </div>
+                              {/* Per-unit prompt / design text */}
+                              {unit.prompt && (
+                                <div className="mb-3">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase">{unit.is_studio ? "პრომპტი" : "დიზაინის ტექსტი"}</h5>
+                                    <div className="flex gap-2">
+                                      {!unit.is_studio && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs gap-1"
+                                          onClick={() => downloadTextAsPng(unit.prompt || "", `order-${unit.id}-text.png`)}
+                                        >
+                                          <Download className="h-3 w-3" /> ტექსტი PNG
+                                        </Button>
+                                      )}
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-7 text-xs gap-1"
+                                        onClick={async () => {
+                                          try {
+                                            await navigator.clipboard.writeText(unit.prompt || "");
+                                            toast({ title: "დაკოპირდა" });
+                                          } catch {
+                                            toast({ title: "ვერ დაკოპირდა", variant: "destructive" });
+                                          }
+                                        }}
+                                      >
+                                        დაკოპირება
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  <pre className="text-sm bg-background rounded-lg p-3 border border-border whitespace-pre-wrap font-sans">{unit.prompt}</pre>
+                                </div>
+                              )}
                               {unit.front_mockup_url || unit.back_mockup_url ? (
                                 <div className="flex gap-4 flex-wrap">
                                   {unit.front_mockup_url && (
@@ -730,9 +751,9 @@ export default function AdminOrders() {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">პროდუქტი:</span>
                         <span>
-                          {group.quantity > 1
+                          {group.units.length === 1 && group.quantity > 1
                             ? `${order.product_price} ₾ × ${group.quantity} = ${order.product_price * group.quantity} ₾`
-                            : `${order.product_price} ₾`}
+                            : `${group.productSubtotal} ₾`}
                         </span>
                       </div>
                       <div className="flex justify-between">
