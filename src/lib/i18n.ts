@@ -26,6 +26,11 @@ const translations = {
       catalog: "Catalog",
       logout: "Logout",
     },
+    notFound: {
+      title: "Page not found",
+      subtitle: "The page you're looking for doesn't exist or has moved.",
+      home: "Home",
+    },
     theme: {
       light: "☀️",
       dark: "🌙",
@@ -177,6 +182,11 @@ const translations = {
       myDesigns: "ჩემი დიზაინები",
       catalog: "კატალოგი",
       logout: "გამოსვლა",
+    },
+    notFound: {
+      title: "გვერდი ვერ მოიძებნა",
+      subtitle: "გვერდი, რომელსაც ეძებთ, არ არსებობს ან გადატანილია.",
+      home: "მთავარი",
     },
     theme: {
       light: "☀️",
