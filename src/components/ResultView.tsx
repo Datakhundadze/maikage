@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import type { GenerationResult } from "@/lib/generation";
-import { upscaleImage } from "@/lib/generation";
+import { upscaleImage, RateLimitError } from "@/lib/generation";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -57,11 +57,21 @@ export default function ResultView({ result, onViewImage, productName = "design"
       onResultUpdate?.(updated);
       toast({ title: "Upscaled to 4K!" });
     } catch (err: any) {
-      toast({ title: "Upscale failed", description: err.message, variant: "destructive" });
+      // Rate limited (429): show the limit message, not a generic failure.
+      // ResultView has no login modal, so even the anon case just toasts the
+      // (actionable) sign-in message.
+      if (err instanceof RateLimitError) {
+        toast({
+          title: t(lang, err.requiresLogin ? "rateLimit.signInTitle" : "rateLimit.slowDownTitle"),
+          description: t(lang, err.requiresLogin ? "rateLimit.signIn" : "rateLimit.slowDown"),
+        });
+      } else {
+        toast({ title: "Upscale failed", description: err.message, variant: "destructive" });
+      }
     } finally {
       setUpscaling(false);
     }
-  }, [result, onResultUpdate, toast]);
+  }, [result, onResultUpdate, toast, lang]);
 
   const handleTryOn = () => {
     navigate("/try-on", {

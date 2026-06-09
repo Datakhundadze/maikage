@@ -12,12 +12,14 @@ import ResultView from "@/components/ResultView";
 const Lightbox = lazy(() => import("@/components/Lightbox"));
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { DesignProvider, useDesign } from "@/hooks/useDesign";
-import { runGenerationPipeline, type GenerationResult } from "@/lib/generation";
+import { runGenerationPipeline, RateLimitError, type GenerationResult } from "@/lib/generation";
 import { catalog, BRAND_SIZES } from "@/lib/catalog";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppState } from "@/hooks/useAppState";
+import { t } from "@/lib/i18n";
 import { calculatePrice } from "@/lib/pricing";
 import PriceDisplay from "@/components/PriceDisplay";
 const OrderDialog = lazy(() => import("@/components/OrderDialog"));
@@ -49,6 +51,7 @@ function StudioContent() {
   const mobilePreviewRef = useRef<HTMLDivElement>(null);
 
   const { user } = useAuth();
+  const { lang } = useAppState();
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const { toast } = useToast();
   const { saveDesign } = useDesignStorage();
@@ -257,6 +260,19 @@ function StudioContent() {
         }
       }
     } catch (err: any) {
+      // Server-side rate limit (429). Don't show a generic failure — anon
+      // callers get the login modal, authed callers a slow-down toast.
+      if (err instanceof RateLimitError) {
+        dispatch({ type: "SET_STATUS", status: "IDLE" });
+        productConfig.setLocked(false);
+        if (err.requiresLogin) {
+          setLoginModalMessage(t(lang, "rateLimit.signIn"));
+          setShowLoginModal(true);
+        } else {
+          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+        }
+        return;
+      }
       console.error("Generation failed:", err);
       dispatch({ type: "SET_STATUS", status: "ERROR" });
       dispatch({ type: "SET_ERROR", error: err.message });
@@ -267,7 +283,7 @@ function StudioContent() {
         variant: "destructive",
       });
     }
-  }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration]);
+  }, [state.designParams, state.speed, productConfig, dispatch, toast, user, saveDesign, trackEvent, checkLimit, recordGeneration, lang]);
 
   const handleStartNew = useCallback(() => {
     setResult(null);

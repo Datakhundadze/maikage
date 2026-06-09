@@ -16,6 +16,21 @@ export interface GenerationResult {
   prompt: string;
 }
 
+/**
+ * Thrown when gemini-proxy returns HTTP 429 { code: "RATE_LIMITED" }. Carries
+ * `requiresLogin` so callers can pick the right UX — open the login modal for
+ * anon callers, or toast a slow-down message for authed ones. Never retried:
+ * the cap is enforced server-side, so retrying would only hammer it.
+ */
+export class RateLimitError extends Error {
+  requiresLogin: boolean;
+  constructor(message: string, requiresLogin: boolean) {
+    super(message);
+    this.name = "RateLimitError";
+    this.requiresLogin = requiresLogin;
+  }
+}
+
 async function callGemini(action: string, params: Record<string, any>, retries = 2): Promise<{ image: string; text: string }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const { data, error } = await supabase.functions.invoke("gemini-proxy", {
@@ -32,7 +47,14 @@ async function callGemini(action: string, params: Record<string, any>, retries =
       } catch { /* ignore parse errors */ }
 
       const userMessage = errorBody?.error || error.message || "AI request failed";
-      
+
+      // Rate limited (429) — short-circuit immediately, never retry (the cap
+      // is server-side, so retrying would only hammer it).
+      if (errorBody?.code === "RATE_LIMITED") {
+        console.warn(`AI rate limited (${action})`);
+        throw new RateLimitError(userMessage, errorBody.requiresLogin === true);
+      }
+
       // Don't retry content policy / safety errors — they'll fail every time
       const isContentBlock = userMessage.includes("content policy") || 
                              userMessage.includes("safety filters") || 
@@ -45,6 +67,10 @@ async function callGemini(action: string, params: Record<string, any>, retries =
       console.error(`AI call failed (${action}, attempt ${attempt + 1}):`, error);
       if (attempt === retries) throw new Error(userMessage);
       continue;
+    }
+    if (data?.code === "RATE_LIMITED") {
+      console.warn(`AI rate limited (${action})`);
+      throw new RateLimitError(data.error || "Rate limited", data.requiresLogin === true);
     }
     if (data?.error) {
       const isContentBlock = data.error.includes("content policy") || 
