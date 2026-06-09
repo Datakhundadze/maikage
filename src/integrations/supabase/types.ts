@@ -620,6 +620,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit: {
+        Row: {
+          bucket_key: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          bucket_key: string
+          created_at?: string
+          id?: never
+        }
+        Update: {
+          bucket_key?: string
+          created_at?: string
+          id?: never
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -673,6 +691,10 @@ export type Database = {
       admin_update_order: {
         Args: { p_field: string; p_order_id: string; p_value: string }
         Returns: Json
+      }
+      check_and_increment_rate_limit: {
+        Args: { p_day_limit: number; p_hour_limit: number; p_key: string }
+        Returns: boolean
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
