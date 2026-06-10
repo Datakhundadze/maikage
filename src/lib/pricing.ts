@@ -23,16 +23,16 @@ const PRICES: Record<string, PriceTier> = {
   "Khundadze":      { frontOnly: 55, backPhoto: 70, backText: 65 },
   "Polo":           { frontOnly: 45, backPhoto: 60, backText: 55 },
   "NIKE":           { frontOnly: 100, backPhoto: 115, backText: 110 },
-  "Oversize":       { frontOnly: 65, backPhoto: 80, backText: 75 },
+  "Oversize":       { frontOnly: 70, backPhoto: 85, backText: 80 },
   "GILDAN KIDS":    { frontOnly: 35, backPhoto: 50, backText: 45 },
 
   // Hoodie brands
-  "GILDAN Hoodie":       { frontOnly: 75, backPhoto: 90, backText: 85 },
+  "GILDAN Hoodie":       { frontOnly: 80, backPhoto: 95, backText: 90 },
   "Premium Washed Hoodie":      { frontOnly: 95, backPhoto: 110, backText: 105 },
-  "JEL Standard Hoodie": { frontOnly: 80, backPhoto: 95, backText: 90 },
-  "JEL Standard Zipper": { frontOnly: 85, backPhoto: 100, backText: 95 },
-  "JEL Zipper":          { frontOnly: 100, backPhoto: 115, backText: 110 },
-  "GILDAN Bomber":       { frontOnly: 70, backPhoto: 95, backText: 90 },
+  "JEL Standard Hoodie": { frontOnly: 85, backPhoto: 100, backText: 95 },
+  "JEL Standard Zipper": { frontOnly: 95, backPhoto: 110, backText: 105 },
+  "JEL Zipper":          { frontOnly: 105, backPhoto: 120, backText: 115 },
+  "GILDAN Bomber":       { frontOnly: 75, backPhoto: 90, backText: 85 },
 
   // Sport
   "Sport Set": { frontOnly: 65, backPhoto: 80, backText: 75 },
