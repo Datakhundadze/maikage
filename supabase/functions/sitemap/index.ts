@@ -47,6 +47,7 @@ const STATIC_URLS: { loc: string; priority: string; changefreq: string }[] = [
   { loc: "/",          priority: "1.0", changefreq: "daily" },
   { loc: "/designs",   priority: "0.9", changefreq: "daily" },
   { loc: "/corporate", priority: "0.6", changefreq: "monthly" },
+  { loc: "/faq",       priority: "0.6", changefreq: "monthly" },
 ];
 
 const ESCAPE: Record<string, string> = {

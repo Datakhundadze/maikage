@@ -94,23 +94,9 @@
       gtag('config', 'G-3NPL6ESFSC');
     </script>
 
-    <!-- Static OG/Twitter defaults for no-JS crawlers. SeoHead (react-helmet-async)
-         overrides these per-page when the SPA mounts. -->
-    <meta property="og:site_name" content="Maika.ge" />
-    <meta property="og:type" content="website" />
-    <meta property="og:locale" content="ka_GE" />
-    <meta property="og:locale:alternate" content="en_US" />
-    <meta property="og:title" content="Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი 15 წლის გამოცდილებით" />
-    <meta property="og:description" content="Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში." />
-    <meta property="og:url" content="https://maika.ge/" />
-    <meta property="og:image" content="https://maika.ge/og-default.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი" />
-    <meta name="twitter:description" content="Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში." />
-    <meta name="twitter:image" content="https://maika.ge/og-default.png" />
+    <!-- OG / Twitter / canonical meta are emitted per-page by SeoHead
+         (react-helmet-async) so they vary per route and don't duplicate.
+         Static copies were removed to stop each tag rendering twice. -->
 </head>
 
   <body>
