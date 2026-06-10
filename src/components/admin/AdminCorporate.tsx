@@ -16,6 +16,9 @@ interface Inquiry {
   color: string | null;
   comment: string | null;
   logo_path: string | null;
+  /** All uploaded logos. Old rows (pre multi-logo) have NULL here and only
+   *  logo_path set — render falls back to [logo_path]. */
+  logo_paths: string[] | null;
   status: string;
   created_at: string;
 }
@@ -115,15 +118,28 @@ export default function AdminCorporate() {
               {inq.color && <div><span className="text-muted-foreground">ფერი:</span> {inq.color}</div>}
             </div>
             {inq.comment && <p className="text-sm text-muted-foreground">{inq.comment}</p>}
-            {inq.logo_path && (
-              <button
-                type="button"
-                onClick={() => openLogo(inq.logo_path!)}
-                className="text-xs text-primary underline cursor-pointer"
-              >
-                ლოგოს ნახვა
-              </button>
-            )}
+            {(() => {
+              const paths = inq.logo_paths?.length
+                ? inq.logo_paths
+                : inq.logo_path
+                  ? [inq.logo_path]
+                  : [];
+              if (paths.length === 0) return null;
+              return (
+                <div className="flex flex-wrap gap-3">
+                  {paths.map((path, i) => (
+                    <button
+                      key={path}
+                      type="button"
+                      onClick={() => openLogo(path)}
+                      className="text-xs text-primary underline cursor-pointer"
+                    >
+                      {paths.length === 1 ? "ლოგოს ნახვა" : `ლოგო ${i + 1}`}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="flex gap-2 pt-1">
               {inq.status === "new" && (
                 <Button size="sm" variant="outline" onClick={() => updateStatus(inq.id, "contacted")}>
