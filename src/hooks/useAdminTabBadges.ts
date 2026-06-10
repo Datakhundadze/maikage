@@ -88,8 +88,10 @@ function writeSeenAt(map: SeenAtMap): void {
  * Tracks "new since you last looked" counts for each badge-eligible
  * admin tab. Polls every 30 s, pauses while the document is hidden.
  *
- * - `counts[tab]`: number of rows in the tab's source table created
- *   after the admin's last visit to that tab.
+ * - `counts[tab]`: number of new items in the tab's source table created
+ *   after the admin's last visit to that tab. For orders this is order
+ *   GROUPS (distinct cart_id; null-cart_id rows count individually) to
+ *   match the grouped AdminOrders view; other tabs count rows.
  * - `markSeen(tab)`: call when the admin opens that tab. Resets the
  *   local count to 0 immediately and persists `last_seen_at = now` to
  *   localStorage so the next poll continues to return 0.
@@ -113,6 +115,29 @@ export function useAdminTabBadges(): {
     const results = await Promise.all(
       TAB_IDS.map(async (tab) => {
         const table = TAB_SOURCE[tab];
+        // Orders are displayed grouped by cart_id (a qty=3 checkout inserts
+        // 3 rows sharing one cart_id), so the badge counts ORDER GROUPS:
+        // distinct cart_id plus each null-cart_id row. PostgREST can't
+        // COUNT(DISTINCT) through the JS client, so fetch the new rows'
+        // cart_ids and count groups client-side — the new-order volume in
+        // a since-last-seen window is small, so this stays cheap.
+        if (tab === "orders") {
+          const { data, error } = await supabase
+            .from("orders")
+            .select("id, cart_id")
+            .gt("created_at", seenAt[tab]);
+          if (error) {
+            console.warn(`[useAdminTabBadges] count failed for ${table}:`, error.message);
+            return [tab, 0] as const;
+          }
+          const cartIds = new Set<string>();
+          let singles = 0;
+          for (const row of data ?? []) {
+            if (row.cart_id) cartIds.add(row.cart_id);
+            else singles += 1;
+          }
+          return [tab, cartIds.size + singles] as const;
+        }
         const { count, error } = await supabase
           .from(table)
           .select("id", { count: "exact", head: true })
