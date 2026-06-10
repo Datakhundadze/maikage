@@ -41,22 +41,6 @@ void LoginPage;
 
 const queryClient = new QueryClient();
 
-// Direct-URL paths that must always go through <Routes>, even when
-// useAppState's persisted mode would otherwise short-circuit to a full-page
-// view (landing, simple, cart, etc.). Without this, a first-time visitor —
-// whose mode defaults to "landing" — would see the landing page when they
-// open /designs, /my-designs, /community, /design/<slug>, etc. directly.
-// (/community is retired — its route below redirects to /designs — but it
-// stays in ALWAYS_ROUTED so the redirect runs instead of the landing page.)
-const ALWAYS_ROUTED: RegExp[] = [
-  /^\/designs(\/|$)/,
-  /^\/design\//,
-  /^\/community(\/|$)/,
-  /^\/my-designs(\/|$)/,
-  /^\/corporate(\/|$)/,
-  /^\/faq(\/|$)/,
-];
-
 // Shared fallback for chunk-load suspensions. Mirrors the spinner used by
 // AppRoutes' auth-loading state so the visual is consistent.
 function RouteLoadingFallback() {
@@ -79,9 +63,13 @@ function AppRoutes() {
   // Try-on page is standalone — accessible from all modes
   if (pathname === "/try-on") return <Routes><Route path="/try-on" element={<TryOnPage />} /></Routes>;
 
-  const isAlwaysRouted = ALWAYS_ROUTED.some((re) => re.test(pathname));
-
-  if (!isAlwaysRouted) {
+  // Mode views (landing, simple, cart, terms, …) are URL-less surfaces that
+  // only ever live at the root — setMode never changes the URL, and every
+  // entry point into them happens at "/". Gating them on the root path means
+  // every non-root URL goes through <Routes>: known paths match their
+  // <Route>, unknown paths fall through to "*" → NotFound (previously an
+  // unknown path in landing mode soft-404'd to the landing page).
+  if (pathname === "/") {
     if (mode === "landing") return <LandingPage />;
     if (mode === "simple") return <SimplePage />;
     if (mode === "terms") return <TermsPage />;
