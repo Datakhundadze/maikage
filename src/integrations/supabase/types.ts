@@ -169,6 +169,7 @@ export type Database = {
           email: string
           id: string
           logo_path: string | null
+          logo_paths: string[] | null
           phone: string
           status: string
           tax_id: string
@@ -183,6 +184,7 @@ export type Database = {
           email: string
           id?: string
           logo_path?: string | null
+          logo_paths?: string[] | null
           phone: string
           status?: string
           tax_id: string
@@ -197,6 +199,7 @@ export type Database = {
           email?: string
           id?: string
           logo_path?: string | null
+          logo_paths?: string[] | null
           phone?: string
           status?: string
           tax_id?: string
