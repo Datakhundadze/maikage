@@ -47,12 +47,11 @@ export default function AppHeader() {
   return (
     <>
       <header className="h-14 flex items-center gap-2 px-3 border-b border-sidebar-border shrink-0 bg-sidebar text-sidebar-foreground">
-        {/* LEFT: logo — navigates home. setMode("landing") alone was
-            a no-op on routes that AppRoutes treats as ALWAYS_ROUTED
-            (/designs, /design/:slug, /community, /my-designs,
-            /corporate): mode flipped but the URL stayed put, so the
-            click had no visible effect. navigate("/") moves the URL
-            to "/" where AppRoutes then honours mode === "landing". */}
+        {/* LEFT: logo — navigates home. setMode("landing") alone is a
+            no-op on non-root routes (/designs, /design/:slug, etc.):
+            mode flips but the URL stays put, and AppRoutes only renders
+            mode views at "/". navigate("/") moves the URL to "/" where
+            AppRoutes then honours mode === "landing". */}
         <button
           onClick={() => {
             setMode("landing");
