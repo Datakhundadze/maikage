@@ -850,9 +850,7 @@ export default function SimplePage() {
           img.onerror = () => reject();
           img.src = photo.image;
         });
-        ctx.globalAlpha = 0.8;
         drawPhotoOntoCanvas(ctx, img, zoneX, zoneY, zoneW, zoneH, photo);
-        ctx.globalAlpha = 1;
       } catch { /* skip */ }
     }
 

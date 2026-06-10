@@ -120,7 +120,7 @@ function renderLayerImage(layer: DesignLayer, zone: PlacementCoords | undefined)
       <img
         src={layer.image}
         alt="Design"
-        className="absolute opacity-80 max-w-none"
+        className="absolute max-w-none"
         style={{
           width: `${srcWInWin * 100}%`,
           height: `${srcHInWin * 100}%`,
@@ -139,7 +139,7 @@ function renderLayerImage(layer: DesignLayer, zone: PlacementCoords | undefined)
       alt="Design"
       width={800}
       height={800}
-      className="w-full h-full object-cover opacity-80"
+      className="w-full h-full object-cover"
       loading="eager"
       fetchPriority="high"
     />
@@ -307,7 +307,7 @@ export default function ProductPreview({
                 alt={designAlt ?? "Design"}
                 width={800}
                 height={800}
-                className="w-full h-full object-cover opacity-80"
+                className="w-full h-full object-cover"
                 loading="eager"
                 fetchPriority="high"
               />
