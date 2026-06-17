@@ -357,6 +357,19 @@ interface SideData {
 const MAX_TEXTS = 5;
 const DEFAULT_TEXT_COORDS: PlacementCoords = { x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 };
 
+// Stagger text #1..#N diagonally (up-right) from the default position so a
+// newly-added text's placement frame doesn't land exactly on top of the
+// previous one. Keeps the default box size. index = current text count.
+function staggeredTextCoords(index: number): PlacementCoords {
+  const step = 0.07;
+  return {
+    x: Math.min(0.9, Math.max(0.1, DEFAULT_TEXT_COORDS.x + index * step)),
+    y: Math.min(0.9, Math.max(0.1, DEFAULT_TEXT_COORDS.y - index * step)),
+    scale: DEFAULT_TEXT_COORDS.scale,
+    scaleY: DEFAULT_TEXT_COORDS.scaleY ?? DEFAULT_TEXT_COORDS.scale,
+  };
+}
+
 // True when a side has at least one non-empty text element.
 const sideHasText = (s: SideData) => s.texts.some((tl) => tl.content.trim().length > 0);
 
@@ -797,10 +810,12 @@ export default function SimplePage() {
         content: "",
         font: FONTS[0],
         color: "#000000",
-        coords: { ...DEFAULT_TEXT_COORDS },
+        coords: staggeredTextCoords(prev.texts.length),
       };
       return { ...prev, texts: [...prev.texts, newText] };
     });
+    // Auto-select so the empty text's DraggablePlacement frame + handles show
+    // immediately — the user can position it first, then type into it.
     setSelectedLayerId(id);
     setOpenFontPickerId(null);
   }, [setSideData]);
@@ -933,6 +948,26 @@ export default function SimplePage() {
     [zoneForLayers],
   );
 
+  // Faint "ტექსტი" hint shown inside an EMPTY text layer's draggable frame so
+  // the user has something to grab before typing. Editor-overlay only — never
+  // composited into the mockup or print file (both skip empty texts).
+  const textPlaceholder = useMemo(() => {
+    if (typeof document === "undefined") return "";
+    const W = 800, H = 240;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = "rgba(120,120,120,0.5)";
+    ctx.font = '600 96px "Noto Sans Georgian", sans-serif';
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(lang === "en" ? "Text" : "ტექსტი", W / 2, H / 2);
+    return canvas.toDataURL("image/png");
+  }, [lang]);
+
   // Build layers array
   const layers = useMemo<DesignLayer[]>(() => {
     const result: DesignLayer[] = [];
@@ -959,7 +994,9 @@ export default function SimplePage() {
       });
     });
     sideData.texts.forEach((tl) => {
-      const img = textImages[tl.id];
+      // Empty text → faint placeholder so its DraggablePlacement frame is
+      // grabbable immediately; non-empty text → its rendered image (once ready).
+      const img = tl.content.trim() ? textImages[tl.id] : textPlaceholder;
       if (!img) return;
       result.push({
         id: tl.id,
@@ -975,7 +1012,7 @@ export default function SimplePage() {
       });
     });
     return result;
-  }, [sideData.photos, sideData.texts, textImages, setSideData, updatePhotoCoords, updatePhotoSource, coverFitSource, selectedLayerId]);
+  }, [sideData.photos, sideData.texts, textImages, textPlaceholder, setSideData, updatePhotoCoords, updatePhotoSource, coverFitSource, selectedLayerId]);
 
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
