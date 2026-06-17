@@ -1,4 +1,5 @@
 import type { DesignStateSide } from "@/lib/designState";
+import { getDesignStateTexts } from "@/lib/designState";
 
 // Renders a print-quality PNG from a saved DesignStateSide. Used by the
 // admin "Regenerate print file" button when the customer's checkout-time
@@ -79,10 +80,12 @@ export async function compositePrintFileFromDesignState(
   options: { canvasWidth?: number } = {},
 ): Promise<Blob | null> {
   const hasPhotos = side.photos.some((p) => p.url);
-  const hasText = !!side.text && side.text.content.trim().length > 0;
+  // Backward-compat: old orders have a single `text`, new orders have `texts`.
+  const texts = getDesignStateTexts(side).filter((t) => t.content.trim().length > 0);
+  const hasText = texts.length > 0;
   if (!hasPhotos && !hasText) return null;
 
-  if (hasText && side.text) await ensureFontReady(side.text.font);
+  for (const t of texts) await ensureFontReady(t.font);
 
   // Print canvas = full mockup-canvas area (square, matches the 800×800
   // source mockups) so a re-rendered design includes every layer the
@@ -196,8 +199,8 @@ export async function compositePrintFileFromDesignState(
     }
   }
 
-  if (hasText && side.text) {
-    const t = side.text;
+  // Draw EVERY text element (multi-text). A dropped text = wrong product.
+  for (const t of texts) {
     const tx = printZoneX + printZoneW * t.x;
     const ty = printZoneY + printZoneH * t.y;
     const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);

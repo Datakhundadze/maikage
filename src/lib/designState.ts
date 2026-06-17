@@ -54,7 +54,12 @@ export interface DesignStateZone {
 export interface DesignStateSide {
   side: "front" | "back";
   photos: DesignStatePhoto[];
-  text: DesignStateText | null;
+  /** All text elements on this side (multi-text). Written by current code. */
+  texts?: DesignStateText[];
+  /** @deprecated Legacy single text. Orders placed before multi-text store
+   *  one text object here; current code never writes it. Read via
+   *  getDesignStateTexts(), which falls back to [text] when `texts` is absent. */
+  text?: DesignStateText | null;
   zone: DesignStateZone;
 }
 
@@ -62,6 +67,15 @@ export interface DesignState {
   version: 1;
   front: DesignStateSide | null;
   back: DesignStateSide | null;
+}
+
+/** Backward-compatible read of a side's text elements. New orders store
+ *  `texts`; older orders store a single `text`. Returns [] when neither is
+ *  present, so callers can always iterate. */
+export function getDesignStateTexts(side: DesignStateSide): DesignStateText[] {
+  if (side.texts && side.texts.length) return side.texts;
+  if (side.text && side.text.content) return [side.text];
+  return [];
 }
 
 export function isDesignState(value: unknown): value is DesignState {
