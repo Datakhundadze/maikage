@@ -341,26 +341,40 @@ function drawPhotoOntoCanvas(
   }
 }
 
+interface TextLayer {
+  id: string;
+  content: string;
+  font: typeof FONTS[0];
+  color: string;
+  coords: PlacementCoords;
+}
+
 interface SideData {
   photos: PhotoLayer[];
-  designText: string;
-  selectedFont: typeof FONTS[0];
-  textColor: string;
-  textCoords: PlacementCoords;
+  texts: TextLayer[];
 }
+
+const MAX_TEXTS = 5;
+const DEFAULT_TEXT_COORDS: PlacementCoords = { x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 };
+
+// True when a side has at least one non-empty text element.
+const sideHasText = (s: SideData) => s.texts.some((tl) => tl.content.trim().length > 0);
 
 // Build a human-readable, copyable summary of the user's text so the admin
 // can see the exact text, font, and color without reading it off the mockup.
 function buildTextPrompt(front: SideData, back: SideData): string | null {
   const parts: string[] = [];
   const fmt = (label: string, s: SideData) => {
-    if (!s.designText.trim()) return;
-    parts.push(
-      `${label}:\n` +
-        `  ტექსტი: ${s.designText}\n` +
-        `  ფონტი: ${s.selectedFont.family}\n` +
-        `  ფერი: ${s.textColor}`
-    );
+    s.texts.forEach((tl, i) => {
+      if (!tl.content.trim()) return;
+      const suffix = s.texts.length > 1 ? ` #${i + 1}` : "";
+      parts.push(
+        `${label}${suffix}:\n` +
+          `  ტექსტი: ${tl.content}\n` +
+          `  ფონტი: ${tl.font.family}\n` +
+          `  ფერი: ${tl.color}`
+      );
+    });
   };
   fmt("წინა მხარე", front);
   fmt("უკანა მხარე", back);
@@ -378,7 +392,7 @@ function buildDesignStateInput(
   color: string,
 ): DesignState | null {
   const buildSide = (s: SideData, view: "front" | "back"): DesignStateSide | null => {
-    if (s.photos.length === 0 && !s.designText.trim()) return null;
+    if (s.photos.length === 0 && !sideHasText(s)) return null;
     const resolvedSub = subProduct || catalog.getDefaultSubProduct(product as ProductType);
     const imageResult = catalog.findImageForColor(product as ProductType, resolvedSub, color as ProductColor, view);
     const zone = imageResult?.entry.placementZone;
@@ -397,19 +411,19 @@ function buildDesignStateInput(
         source_offset_x: p.sourceOffsetX,
         source_offset_y: p.sourceOffsetY,
       })),
-      text: s.designText.trim()
-        ? {
-            content: s.designText,
-            font: s.selectedFont.family,
-            fontName: s.selectedFont.name,
-            color: s.textColor,
-            x: s.textCoords.x,
-            y: s.textCoords.y,
-            scale: s.textCoords.scale,
-            scaleY: s.textCoords.scaleY ?? s.textCoords.scale,
-            rotation: s.textCoords.rotation ?? 0,
-          }
-        : null,
+      texts: s.texts
+        .filter((tl) => tl.content.trim())
+        .map((tl) => ({
+          content: tl.content,
+          font: tl.font.family,
+          fontName: tl.font.name,
+          color: tl.color,
+          x: tl.coords.x,
+          y: tl.coords.y,
+          scale: tl.coords.scale,
+          scaleY: tl.coords.scaleY ?? tl.coords.scale,
+          rotation: tl.coords.rotation ?? 0,
+        })),
       zone: {
         x: zone?.x ?? 0.5,
         y: zone?.y ?? 0.5,
@@ -445,13 +459,11 @@ function staggeredPhotoCoords(index: number): PlacementCoords {
 
 const DEFAULT_SIDE: SideData = {
   photos: [],
-  designText: "",
-  selectedFont: FONTS[0],
-  textColor: "#000000",
-  textCoords: { x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 },
+  texts: [],
 };
 
 let photoIdCounter = 0;
+let textIdCounter = 0;
 
 export default function SimplePage() {
   const { lang, theme, toggleTheme, setMode } = useAppState();
@@ -471,7 +483,7 @@ export default function SimplePage() {
   }, [trackEvent]);
 
   // Track if generation was saved for current design session
-  const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [openFontPickerId, setOpenFontPickerId] = useState<string | null>(null);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
 
   // Where the next uploaded photo will land (zone-relative). Defaults to
@@ -775,6 +787,40 @@ export default function SimplePage() {
     if (selectedLayerId === id) setSelectedLayerId(null);
   };
 
+  // ── Text layers (multi-text) ──────────────────────────────────────────
+  const addTextLayer = useCallback(() => {
+    const id = `text-${++textIdCounter}`;
+    setSideData(prev => {
+      if (prev.texts.length >= MAX_TEXTS) return prev;
+      const newText: TextLayer = {
+        id,
+        content: "",
+        font: FONTS[0],
+        color: "#000000",
+        coords: { ...DEFAULT_TEXT_COORDS },
+      };
+      return { ...prev, texts: [...prev.texts, newText] };
+    });
+    setSelectedLayerId(id);
+    setOpenFontPickerId(null);
+  }, [setSideData]);
+
+  const updateText = useCallback((id: string, patch: Partial<Omit<TextLayer, "id">>) => {
+    setSideData(prev => ({
+      ...prev,
+      texts: prev.texts.map(tl => tl.id === id ? { ...tl, ...patch } : tl),
+    }));
+  }, [setSideData]);
+
+  const removeText = useCallback((id: string) => {
+    setSideData(prev => ({
+      ...prev,
+      texts: prev.texts.filter(tl => tl.id !== id),
+    }));
+    setSelectedLayerId(prev => (prev === id ? null : prev));
+    setOpenFontPickerId(prev => (prev === id ? null : prev));
+  }, [setSideData]);
+
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit
   // their text content normally.
@@ -785,8 +831,8 @@ export default function SimplePage() {
       const tag = target?.tagName.toLowerCase();
       if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
       if (!selectedLayerId) return;
-      if (selectedLayerId === "text") {
-        setSideData(prev => ({ ...prev, designText: "" }));
+      if (selectedLayerId.startsWith("text-")) {
+        removeText(selectedLayerId);
       } else {
         removePhoto(selectedLayerId);
       }
@@ -827,31 +873,37 @@ export default function SimplePage() {
     setSideData(prev => ({
       ...prev,
       photos: [],
-      designText: "",
+      texts: [],
     }));
   };
 
-  // Generate text as a transparent canvas image (supports multiline via \n)
-  const [textImage, setTextImage] = useState<string | null>(null);
+  // Render each text element to its own transparent canvas image, keyed by
+  // text id, for the live preview layers. Recomputes when the current side's
+  // texts change. Multiline via \n.
+  const [textImages, setTextImages] = useState<Record<string, string>>({});
   useEffect(() => {
-    if (!sideData.designText.trim()) {
-      setTextImage(null);
-      return;
-    }
+    let cancelled = false;
     document.fonts.ready.then(() => {
-      const lines = sideData.designText.split("\n").filter((l) => l.trim());
-      const lineCount = Math.max(lines.length, 1);
-      const canvasH = Math.max(200, lineCount * 120);
-      const canvas = document.createElement("canvas");
-      canvas.width = 800;
-      canvas.height = canvasH;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.clearRect(0, 0, 800, canvasH);
-      drawMultilineText(ctx, sideData.designText, 400, canvasH / 2, 760, sideData.selectedFont.family, sideData.textColor, 120);
-      setTextImage(canvas.toDataURL("image/png"));
+      if (cancelled) return;
+      const next: Record<string, string> = {};
+      for (const tl of sideData.texts) {
+        if (!tl.content.trim()) continue;
+        const lines = tl.content.split("\n").filter((l) => l.trim());
+        const lineCount = Math.max(lines.length, 1);
+        const canvasH = Math.max(200, lineCount * 120);
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = canvasH;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) continue;
+        ctx.clearRect(0, 0, 800, canvasH);
+        drawMultilineText(ctx, tl.content, 400, canvasH / 2, 760, tl.font.family, tl.color, 120);
+        next[tl.id] = canvas.toDataURL("image/png");
+      }
+      setTextImages(next);
     });
-  }, [sideData.designText, sideData.selectedFont, sideData.textColor]);
+    return () => { cancelled = true; };
+  }, [sideData.texts]);
 
   // Initial cover-fit source state for a photo whose customer hasn't yet
   // dragged an edge handle / panned. Matches what `object-cover` does
@@ -906,19 +958,24 @@ export default function SimplePage() {
         onSourceChange: (s) => updatePhotoSource(photo.id, s),
       });
     });
-    if (textImage) {
+    sideData.texts.forEach((tl) => {
+      const img = textImages[tl.id];
+      if (!img) return;
       result.push({
-        id: "text",
-        image: textImage,
-        coords: sideData.textCoords,
-        onCoordsChange: (c) => setSideData(prev => ({ ...prev, textCoords: c })),
+        id: tl.id,
+        image: img,
+        coords: tl.coords,
+        onCoordsChange: (c) => setSideData(prev => ({
+          ...prev,
+          texts: prev.texts.map((x) => x.id === tl.id ? { ...x, coords: c } : x),
+        })),
         accentClass: "bg-emerald-500",
-        selected: selectedLayerId === "text",
-        onSelect: () => setSelectedLayerId("text"),
+        selected: selectedLayerId === tl.id,
+        onSelect: () => setSelectedLayerId(tl.id),
       });
-    }
+    });
     return result;
-  }, [sideData.photos, textImage, sideData.textCoords, setSideData, updatePhotoCoords, updatePhotoSource, coverFitSource, selectedLayerId]);
+  }, [sideData.photos, sideData.texts, textImages, setSideData, updatePhotoCoords, updatePhotoSource, coverFitSource, selectedLayerId]);
 
   const hasPhotos = sideData.photos.length > 0;
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
@@ -940,8 +997,10 @@ export default function SimplePage() {
 
   // Composite layers onto product image for a given side
   const compositeSide = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
-    if (side.photos.length === 0 && !side.designText.trim()) return null;
-    if (side.designText.trim()) await ensureFontReady(side.selectedFont.family);
+    if (side.photos.length === 0 && !sideHasText(side)) return null;
+    for (const tl of side.texts) {
+      if (tl.content.trim()) await ensureFontReady(tl.font.family);
+    }
 
     const { config } = productConfig;
     const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
@@ -1028,25 +1087,15 @@ export default function SimplePage() {
     // depending on the customer's browser DevTools. Insert is fire-and-
     // forget; the compositor never blocks on it.
     {
-      const tcX = side.textCoords.x;
-      const tcY = side.textCoords.y;
-      const txDiag = zoneX + zoneW * tcX;
-      // Text width is now canvas-bounded, not zone-bounded — must match
-      // the drawing logic below or the telemetry value is misleading.
-      const maxTextWidth = Math.min(800 * 0.95, txDiag * 2, (800 - txDiag) * 2);
+      const firstText = side.texts.find((tl) => tl.content.trim());
       logCompositeEvent("compositeSide", {
         side: view,
         hasPhotos: side.photos.length > 0,
         photoCount: side.photos.length,
-        hasText: !!side.designText.trim(),
-        textLength: side.designText.length,
-        textPreview: side.designText.slice(0, 30),
-        textCoordsX: tcX,
-        textCoordsY: tcY,
-        selectedFont: side.selectedFont,
-        textColor: side.textColor,
+        hasText: sideHasText(side),
+        textCount: side.texts.filter((tl) => tl.content.trim()).length,
+        textPreview: firstText?.content.slice(0, 30) ?? "",
         zoneX, zoneY, zoneW, zoneH,
-        maxTextWidth,
         fontFaceReady:
           typeof document !== "undefined" && document.fonts
             ? document.fonts.check('bold 80px "Noto Sans Georgian"')
@@ -1055,16 +1104,14 @@ export default function SimplePage() {
       });
     }
 
-    // Draw text (multiline, constrained by the full canvas now that the
-    // zone is no longer a hard boundary — long text can flow beyond the
-    // dashed editor zone onto the t-shirt's sleeves / hem).
-    if (side.designText.trim()) {
-      const tc = side.textCoords;
+    // Draw EVERY text element (multiline, constrained by the full canvas now
+    // that the zone is no longer a hard boundary — long text can flow beyond
+    // the dashed editor zone onto the t-shirt's sleeves / hem).
+    for (const tl of side.texts) {
+      if (!tl.content.trim()) continue;
+      const tc = tl.coords;
       const tx = zoneX + zoneW * tc.x;
       const ty = zoneY + zoneH * tc.y;
-      // Center-aligned text: width must fit within the canvas given its
-      // position; the side closer to the edge still bounds maxWidth so
-      // text doesn't run off the mockup entirely.
       const fromLeft = tx * 2;
       const fromRight = (800 - tx) * 2;
       const maxTextWidth = Math.min(800 * 0.95, fromLeft, fromRight);
@@ -1074,20 +1121,20 @@ export default function SimplePage() {
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate((textRotation * Math.PI) / 180);
-        textMetrics = drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+        textMetrics = drawMultilineText(ctx, tl.content, 0, 0, maxTextWidth, tl.font.family, tl.color, 80);
         ctx.restore();
       } else {
-        textMetrics = drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, 80);
+        textMetrics = drawMultilineText(ctx, tl.content, tx, ty, maxTextWidth, tl.font.family, tl.color, 80);
       }
       if (textMetrics.overflow) {
         logCompositeEvent("textOverflow", {
           source: "compositeSide",
           side: view,
-          textPreview: side.designText.slice(0, 60),
+          textPreview: tl.content.slice(0, 60),
           maxTextWidth,
           fontSize: textMetrics.fontSize,
           widest: textMetrics.widest,
-          fontFamily: side.selectedFont.family,
+          fontFamily: tl.font.family,
         });
       }
     }
@@ -1111,8 +1158,10 @@ export default function SimplePage() {
   // square and capping at 4000 keeps the data-URL size manageable while
   // still well above print-quality at common print sizes.
   const compositeDesignOnly = useCallback(async (side: SideData, view: "front" | "back"): Promise<string | null> => {
-    if (side.photos.length === 0 && !side.designText.trim()) return null;
-    if (side.designText.trim()) await ensureFontReady(side.selectedFont.family);
+    if (side.photos.length === 0 && !sideHasText(side)) return null;
+    for (const tl of side.texts) {
+      if (tl.content.trim()) await ensureFontReady(tl.font.family);
+    }
 
     const { config } = productConfig;
     const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
@@ -1150,28 +1199,20 @@ export default function SimplePage() {
 
     // [composite-telemetry] same as compositeSide above.
     {
-      const tcX = side.textCoords.x;
-      const tcY = side.textCoords.y;
-      const txDiag = printZoneX + printZoneW * tcX;
-      const maxTextWidth = Math.min(canvasW * 0.95, txDiag * 2, (canvasW - txDiag) * 2);
+      const firstText = side.texts.find((tl) => tl.content.trim());
       logCompositeEvent("compositeDesignOnly", {
         side: view,
         hasPhotos: side.photos.length > 0,
         photoCount: side.photos.length,
-        hasText: !!side.designText.trim(),
-        textLength: side.designText.length,
-        textPreview: side.designText.slice(0, 30),
-        textCoordsX: tcX,
-        textCoordsY: tcY,
-        selectedFont: side.selectedFont,
-        textColor: side.textColor,
+        hasText: sideHasText(side),
+        textCount: side.texts.filter((tl) => tl.content.trim()).length,
+        textPreview: firstText?.content.slice(0, 30) ?? "",
         zoneX: printZoneX,
         zoneY: printZoneY,
         zoneW: printZoneW,
         zoneH: printZoneH,
         canvasW,
         canvasH,
-        maxTextWidth,
         fontFaceReady:
           typeof document !== "undefined" && document.fonts
             ? document.fonts.check('bold 80px "Noto Sans Georgian"')
@@ -1180,17 +1221,15 @@ export default function SimplePage() {
       });
     }
 
-    if (side.designText.trim()) {
-      const tc = side.textCoords;
+    // Draw EVERY text element into the print file — a dropped text = wrong product.
+    for (const tl of side.texts) {
+      if (!tl.content.trim()) continue;
+      const tc = tl.coords;
       const tx = printZoneX + printZoneW * tc.x;
       const ty = printZoneY + printZoneH * tc.y;
-      // Center-aligned text: width must fit within the full print canvas
-      // given its position. The zone is no longer a hard boundary so the
-      // limit is the canvas edge, not the dashed-rectangle edge.
       const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
-      // Scale the text font size proportionally — 10% of canvas width
-      // gives ~400 px at PRINT_MAX=4000, the same relative size as the
-      // 80 px on the 800 px mockup.
+      // 10% of canvas width ≈ 400 px at PRINT_MAX=4000, same relative size
+      // as the 80 px on the 800 px mockup.
       const fontPx = Math.round(canvasW * 0.1);
       const textRotation = tc.rotation ?? 0;
       let textMetrics: { overflow: boolean; fontSize: number; widest: number };
@@ -1198,20 +1237,20 @@ export default function SimplePage() {
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate((textRotation * Math.PI) / 180);
-        textMetrics = drawMultilineText(ctx, side.designText, 0, 0, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+        textMetrics = drawMultilineText(ctx, tl.content, 0, 0, maxTextWidth, tl.font.family, tl.color, fontPx);
         ctx.restore();
       } else {
-        textMetrics = drawMultilineText(ctx, side.designText, tx, ty, maxTextWidth, side.selectedFont.family, side.textColor, fontPx);
+        textMetrics = drawMultilineText(ctx, tl.content, tx, ty, maxTextWidth, tl.font.family, tl.color, fontPx);
       }
       if (textMetrics.overflow) {
         logCompositeEvent("textOverflow", {
           source: "compositeDesignOnly",
           side: view,
-          textPreview: side.designText.slice(0, 60),
+          textPreview: tl.content.slice(0, 60),
           maxTextWidth,
           fontSize: textMetrics.fontSize,
           widest: textMetrics.widest,
-          fontFamily: side.selectedFont.family,
+          fontFamily: tl.font.family,
         });
       }
     }
@@ -1274,8 +1313,8 @@ export default function SimplePage() {
   // anyway, so the heavyweight composite only needs to run once the user
   // stops moving.
   useEffect(() => {
-    const hasFrontDesign = frontData.photos.length > 0 || frontData.designText.trim();
-    const hasBackDesign = backData.photos.length > 0 || backData.designText.trim();
+    const hasFrontDesign = frontData.photos.length > 0 || sideHasText(frontData);
+    const hasBackDesign = backData.photos.length > 0 || sideHasText(backData);
 
     if (!hasFrontDesign) {
       setFrontMockup(null);
@@ -1341,8 +1380,8 @@ export default function SimplePage() {
               subProduct={productConfig.config.subProduct}
               colorName={productConfig.config.color}
               view={productConfig.config.view}
-              placementCoords={hasPhotos || textImage ? productConfig.config.placementCoords : nextPhotoCoords}
-              onCoordsChange={hasPhotos || textImage ? productConfig.setPlacementCoords : setNextPhotoCoords}
+              placementCoords={hasPhotos || sideHasText(sideData) ? productConfig.config.placementCoords : nextPhotoCoords}
+              onCoordsChange={hasPhotos || sideHasText(sideData) ? productConfig.setPlacementCoords : setNextPhotoCoords}
               layers={layers.length > 0 ? layers : undefined}
               onBackgroundClick={() => setSelectedLayerId(null)}
             />
@@ -1354,28 +1393,6 @@ export default function SimplePage() {
               ? `Editing: ${isFront ? "Front" : "Back"} side`
               : `რედაქტირება: ${isFront ? "წინა" : "უკანა"} მხარე`}
           </div>
-
-          {/* AI design (Phase 1) — describe a design and generate it */}
-          <SimpleAiPanel
-            lang={lang}
-            prompt={aiPrompt}
-            onPromptChange={setAiPrompt}
-            styleOptions={aiStyleOptions}
-            selectedStyle={aiStyle}
-            onSelectStyle={setAiStyle}
-            withBackground={aiWithBackground}
-            onToggleBackground={setAiWithBackground}
-            generating={aiGenerating}
-            status={aiStatus}
-            resultImage={aiResult?.resultImage ?? null}
-            transferLabel={aiTransferLabel}
-            canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
-            onGenerate={handleAiGenerate}
-            onTransfer={handleAiTransfer}
-            onRegenerate={handleAiGenerate}
-            onStartNew={handleAiStartNew}
-            onDownload={handleAiDownload}
-          />
 
           {/* Photo upload */}
           <div className="border-t border-sidebar-border pt-4 space-y-3">
@@ -1459,79 +1476,139 @@ export default function SimplePage() {
             )}
           </div>
 
-          {/* Text input */}
+          {/* Text — multiple independent text elements, each placeable separately */}
           <div className="border-t border-sidebar-border pt-4 space-y-3">
             <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <Type className="h-3.5 w-3.5" />
               {lang === "en" ? "Text" : "ტექსტი"}
+              <span className="ml-auto text-[10px] font-normal text-muted-foreground">
+                {sideData.texts.length}/{MAX_TEXTS}
+              </span>
             </h3>
-            <Textarea
-              value={sideData.designText}
-              onChange={(e) => updateField("designText", e.target.value)}
-              placeholder={lang === "en" ? "Enter your text..." : "შეიყვანეთ ტექსტი..."}
-              className="bg-card resize-none"
-              rows={2}
-            />
 
-            {/* Font picker */}
-            <div className="relative">
-              <button
-                onClick={() => setFontPickerOpen(!fontPickerOpen)}
-                className="w-full flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-primary/50 transition-colors"
+            {sideData.texts.map((tl, index) => (
+              <div
+                key={tl.id}
+                onClick={() => setSelectedLayerId(tl.id)}
+                className={`space-y-2 rounded-lg border p-2.5 transition-colors ${
+                  selectedLayerId === tl.id ? "border-primary/60 bg-primary/5" : "border-border"
+                }`}
               >
-                <span style={{ fontFamily: sideData.selectedFont.family }}>{sideData.selectedFont.name}</span>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${fontPickerOpen ? "rotate-180" : ""}`} />
-              </button>
-              {fontPickerOpen && (
-                <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-64 overflow-y-auto">
-                  {FONT_GROUPS.map((group) => (
-                    <div key={group.label}>
-                      <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 sticky top-0">
-                        {group.label}
-                      </div>
-                      {group.fonts.map((font) => (
-                        <button
-                          key={font.name}
-                          onClick={() => { updateField("selectedFont", font); setFontPickerOpen(false); }}
-                          className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between ${
-                            sideData.selectedFont.name === font.name ? "bg-accent text-accent-foreground" : "text-popover-foreground"
-                          }`}
-                        >
-                          <span style={{ fontFamily: font.family, fontSize: "14px" }}>{font.name}</span>
-                          <span style={{ fontFamily: font.family }} className="text-muted-foreground text-xs">
-                            AaBb აბ
-                          </span>
-                        </button>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-muted-foreground">
+                    {lang === "en" ? "Text" : "ტექსტი"} #{index + 1}
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeText(tl.id); }}
+                    aria-label={lang === "en" ? "Remove" : "წაშლა"}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <Textarea
+                  value={tl.content}
+                  onChange={(e) => updateText(tl.id, { content: e.target.value })}
+                  placeholder={lang === "en" ? "Enter your text..." : "შეიყვანეთ ტექსტი..."}
+                  className="bg-card resize-none"
+                  rows={2}
+                />
+
+                {/* Font picker (per text) */}
+                <div className="relative">
+                  <button
+                    onClick={() => setOpenFontPickerId(openFontPickerId === tl.id ? null : tl.id)}
+                    className="w-full flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm hover:border-primary/50 transition-colors"
+                  >
+                    <span style={{ fontFamily: tl.font.family }}>{tl.font.name}</span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openFontPickerId === tl.id ? "rotate-180" : ""}`} />
+                  </button>
+                  {openFontPickerId === tl.id && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-64 overflow-y-auto">
+                      {FONT_GROUPS.map((group) => (
+                        <div key={group.label}>
+                          <div className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider bg-muted/50 sticky top-0">
+                            {group.label}
+                          </div>
+                          {group.fonts.map((font) => (
+                            <button
+                              key={font.name}
+                              onClick={() => { updateText(tl.id, { font }); setOpenFontPickerId(null); }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center justify-between ${
+                                tl.font.name === font.name ? "bg-accent text-accent-foreground" : "text-popover-foreground"
+                              }`}
+                            >
+                              <span style={{ fontFamily: font.family, fontSize: "14px" }}>{font.name}</span>
+                              <span style={{ fontFamily: font.family }} className="text-muted-foreground text-xs">
+                                AaBb აბ
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Text color picker */}
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <Palette className="h-3 w-3" />
-                {lang === "en" ? "Text Color" : "ტექსტის ფერი"}
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {TEXT_COLORS.map((color) => (
-                  <button
-                    key={color.hex}
-                    onClick={() => updateField("textColor", color.hex)}
-                    className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
-                      sideData.textColor === color.hex ? "border-primary scale-110 ring-2 ring-primary/30" : "border-border"
-                    }`}
-                    style={{ backgroundColor: color.hex }}
-                    title={color.name}
-                  />
-                ))}
+                {/* Text color picker (per text) */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Palette className="h-3 w-3" />
+                    {lang === "en" ? "Text Color" : "ტექსტის ფერი"}
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {TEXT_COLORS.map((color) => (
+                      <button
+                        key={color.hex}
+                        onClick={() => updateText(tl.id, { color: color.hex })}
+                        className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                          tl.color === color.hex ? "border-primary scale-110 ring-2 ring-primary/30" : "border-border"
+                        }`}
+                        style={{ backgroundColor: color.hex }}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={addTextLayer}
+              disabled={sideData.texts.length >= MAX_TEXTS}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {lang === "en" ? "Add text" : "ტექსტის დამატება"}
+            </Button>
           </div>
 
-          {(hasPhotos || sideData.designText.trim()) && (
+          {/* AI design (Phase 1) — describe a design and generate it */}
+          <SimpleAiPanel
+            lang={lang}
+            prompt={aiPrompt}
+            onPromptChange={setAiPrompt}
+            styleOptions={aiStyleOptions}
+            selectedStyle={aiStyle}
+            onSelectStyle={setAiStyle}
+            withBackground={aiWithBackground}
+            onToggleBackground={setAiWithBackground}
+            generating={aiGenerating}
+            status={aiStatus}
+            resultImage={aiResult?.resultImage ?? null}
+            transferLabel={aiTransferLabel}
+            canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
+            onGenerate={handleAiGenerate}
+            onTransfer={handleAiTransfer}
+            onRegenerate={handleAiGenerate}
+            onStartNew={handleAiStartNew}
+            onDownload={handleAiDownload}
+          />
+
+          {(hasPhotos || sideHasText(sideData)) && (
             <Button variant="outline" size="sm" onClick={clearDesign}>
               {lang === "en" ? "Clear all" : "გასუფთავება"}
             </Button>
@@ -1539,8 +1616,8 @@ export default function SimplePage() {
 
           {/* Price Display & Order */}
           {(() => {
-            const hasFront = frontData.photos.length > 0 || !!frontData.designText.trim();
-            const hasBack = backData.photos.length > 0 || !!backData.designText.trim();
+            const hasFront = frontData.photos.length > 0 || sideHasText(frontData);
+            const hasBack = backData.photos.length > 0 || sideHasText(backData);
             const breakdown = calculatePrice(
               productConfig.config.product,
               productConfig.config.subProduct,
@@ -1558,8 +1635,8 @@ export default function SimplePage() {
                   // 250ms, so a quick click can race past stale state and ship
                   // a missing back print file. Re-compute synchronously here.
                   const computeFresh = async () => {
-                    const hasFront = frontData.photos.length > 0 || frontData.designText.trim();
-                    const hasBack = backData.photos.length > 0 || backData.designText.trim();
+                    const hasFront = frontData.photos.length > 0 || sideHasText(frontData);
+                    const hasBack = backData.photos.length > 0 || sideHasText(backData);
                     const [fm, bm, fdo, bdo] = await Promise.all([
                       hasFront ? compositeSide(frontData, "front") : Promise.resolve(null),
                       hasBack ? compositeSide(backData, "back") : Promise.resolve(null),
