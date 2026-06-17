@@ -25,6 +25,14 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
+import { runGenerationPipeline, callGemini, RateLimitError } from "@/lib/generation";
+import { useGenerationLimit } from "@/hooks/useGenerationLimit";
+import { useDesignStorage } from "@/hooks/useDesignStorage";
+import { getStyleOptions } from "@/lib/designStyles";
+import { t } from "@/lib/i18n";
+import type { AppStatus } from "@/hooks/useDesign";
+import LoginModal from "@/components/LoginModal";
+import SimpleAiPanel from "@/components/SimpleAiPanel";
 
 const FONT_GROUPS = [
   {
@@ -483,6 +491,21 @@ export default function SimplePage() {
   const sideData = isFront ? frontData : backData;
   const setSideData = isFront ? setFrontData : setBackData;
 
+  // ── AI design (Phase 1) ──────────────────────────────────────────────
+  // Guest quota = 2 (Studio keeps its default 5; shared hook is parameterized).
+  const { checkLimit: checkAiLimit, recordGeneration: recordAiGeneration } = useGenerationLimit(2);
+  const { saveDesign } = useDesignStorage();
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiStyle, setAiStyle] = useState("");
+  const [aiWithBackground, setAiWithBackground] = useState(false); // default: without background
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiStatus, setAiStatus] = useState<AppStatus>("GENERATING_DESIGN");
+  // resultImage = shown in the panel; transferImage = injected as a layer.
+  const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string } | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
+  const aiStyleOptions = getStyleOptions(lang);
+
   // Helpers to update current side
   const updateField = <K extends keyof SideData>(key: K, value: SideData[K]) => {
     setSideData(prev => ({ ...prev, [key]: value }));
@@ -504,99 +527,245 @@ export default function SimplePage() {
     return imageResult?.entry.placementZone;
   }, [productConfig, currentView]);
 
+  // Append a photo layer from a data URL. Used by BOTH the file upload and
+  // the AI "transfer to product" action, so a generated design behaves
+  // exactly like an uploaded photo — same default coords/zone, same async
+  // contain-fit, same DraggablePlacement handles, same order/cart path.
+  const addPhotoLayer = useCallback((dataUrl: string) => {
+    const photoId = `photo-${++photoIdCounter}`;
+    setSideData(prev => {
+      if (prev.photos.length >= MAX_PHOTOS) return prev;
+      const newPhoto: PhotoLayer = {
+        id: photoId,
+        image: dataUrl,
+        // First photo: land at wherever the user dragged the empty
+        // placement frame (or zone-fill default if they never moved it).
+        // Subsequent photos: stagger at half-size so they don't cover
+        // each other completely.
+        coords:
+          prev.photos.length === 0
+            ? { ...nextPhotoCoords }
+            : staggeredPhotoCoords(prev.photos.length),
+      };
+      return { ...prev, photos: [...prev.photos, newPhoto] };
+    });
+    // Auto-select the newly added photo so the keyboard delete handler
+    // can target it without extra clicks.
+    setSelectedLayerId(photoId);
+
+    // Measure natural aspect asynchronously and apply CONTAIN-fit to the
+    // photo's window so the entire image is visible by default — no
+    // auto-crop, matching Canva / Figma / Photoshop behavior. Source state
+    // is set explicitly so renderers skip the legacy cover-fit fallback.
+    const probe = new Image();
+    probe.onload = () => {
+      if (!probe.naturalWidth || !probe.naturalHeight) return;
+      const naturalAspect = probe.naturalWidth / probe.naturalHeight;
+      const zoneW = zoneForLayers?.scale ?? 1;
+      const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
+      const zonePixelAspect = zoneW / zoneH;
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p => {
+          if (p.id !== photoId) return p;
+          const baseScale = p.coords.scale;
+          const baseScaleY = p.coords.scaleY ?? p.coords.scale;
+          let newScale: number;
+          let newScaleY: number;
+          if (naturalAspect >= zonePixelAspect) {
+            newScale = baseScale;
+            newScaleY = baseScale * zoneW / (naturalAspect * zoneH);
+          } else {
+            newScaleY = baseScaleY;
+            newScale = baseScaleY * naturalAspect * zoneH / zoneW;
+          }
+          return {
+            ...p,
+            naturalAspect,
+            coords: { ...p.coords, scale: newScale, scaleY: newScaleY },
+            sourceScale: newScale,
+            sourceOffsetX: 0,
+            sourceOffsetY: 0,
+          };
+        }),
+      }));
+    };
+    probe.src = dataUrl;
+  }, [setSideData, nextPhotoCoords, zoneForLayers]);
+
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const photoId = `photo-${++photoIdCounter}`;
-      setSideData(prev => {
-        if (prev.photos.length >= MAX_PHOTOS) return prev;
-        const newPhoto: PhotoLayer = {
-          id: photoId,
-          image: result,
-          // First photo: land at wherever the user dragged the empty
-          // placement frame (or zone-fill default if they never moved it).
-          // Subsequent photos: stagger at half-size so they don't cover
-          // each other completely.
-          coords:
-            prev.photos.length === 0
-              ? { ...nextPhotoCoords }
-              : staggeredPhotoCoords(prev.photos.length),
-        };
-        return { ...prev, photos: [...prev.photos, newPhoto] };
-      });
-      // Auto-select the newly uploaded photo so the keyboard delete handler
-      // can target it without extra clicks.
-      setSelectedLayerId(photoId);
-
-      // Measure natural aspect asynchronously and apply CONTAIN-fit to the
-      // photo's window so the entire image is visible by default — no
-      // auto-crop on upload, matching Canva / Figma / Photoshop behavior.
-      //
-      // Strategy: keep whichever box dimension is the limiting one (the
-      // larger of the user's prior scale / scaleY for that axis), derive
-      // the other dimension from naturalAspect so the box's pixel aspect
-      // equals the image's. Source state is set explicitly so renderers
-      // skip the legacy cover-fit fallback (`coverFitSource`) and draw
-      // the source 1:1 with the window — no overflow, no crop.
-      //
-      // Backward compat: this only initializes source state for FRESH
-      // uploads. Saved design_state on existing orders already has its
-      // own source fields and is rendered unchanged.
-      const probe = new Image();
-      probe.onload = () => {
-        if (!probe.naturalWidth || !probe.naturalHeight) return;
-        const naturalAspect = probe.naturalWidth / probe.naturalHeight;
-        const zoneW = zoneForLayers?.scale ?? 1;
-        const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
-        const zonePixelAspect = zoneW / zoneH;
-        setSideData(prev => ({
-          ...prev,
-          photos: prev.photos.map(p => {
-            if (p.id !== photoId) return p;
-            // Use the photo's current scale/scaleY as the "user-chosen
-            // size budget" — first upload typically gives 1×1 (zone
-            // fill), staggered uploads give 0.5×0.5, and any manual
-            // resize prior to the probe firing is also respected.
-            const baseScale = p.coords.scale;
-            const baseScaleY = p.coords.scaleY ?? p.coords.scale;
-            let newScale: number;
-            let newScaleY: number;
-            if (naturalAspect >= zonePixelAspect) {
-              // Image wider than the zone — fix width to the existing
-              // size budget, shrink height to match natural aspect.
-              newScale = baseScale;
-              newScaleY = baseScale * zoneW / (naturalAspect * zoneH);
-            } else {
-              // Image taller than the zone — fix height, shrink width.
-              newScaleY = baseScaleY;
-              newScale = baseScaleY * naturalAspect * zoneH / zoneW;
-            }
-            return {
-              ...p,
-              naturalAspect,
-              coords: {
-                ...p.coords,
-                scale: newScale,
-                scaleY: newScaleY,
-              },
-              // Source state: source width in zone-X-fractions equals the
-              // window's width in zone-X-fractions, so the source draws
-              // exactly onto the box with no overflow (contain-fit).
-              sourceScale: newScale,
-              sourceOffsetX: 0,
-              sourceOffsetY: 0,
-            };
-          }),
-        }));
-      };
-      probe.src = result;
-    };
+    reader.onload = () => addPhotoLayer(reader.result as string);
     reader.readAsDataURL(file);
     e.target.value = "";
-  }, [setSideData, nextPhotoCoords, zoneForLayers]);
+  }, [addPhotoLayer]);
+
+  // ── AI generation handlers ───────────────────────────────────────────
+  const handleAiGenerate = useCallback(async () => {
+    const text = aiPrompt.trim();
+    if (!text || aiGenerating) return;
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ('reason' in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage('message' in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
+    setAiGenerating(true);
+    setAiStatus("GENERATING_DESIGN");
+    setAiResult(null);
+    try {
+      recordAiGeneration();
+      const { config } = productConfig;
+      const resolvedSub = config.subProduct || catalog.getDefaultSubProduct(config.product as ProductType);
+      const imageResult = catalog.findImageForColor(config.product as ProductType, resolvedSub, config.color as ProductColor, config.view);
+      const productImageUrl = imageResult?.entry?.imageUrl ?? null;
+      const isExactColor = imageResult?.isExact ?? false;
+      const zone = imageResult?.entry?.placementZone;
+      const placementCoords = config.placementCoords;
+      const isRealistic = /realistic|photo|რეალ/i.test(aiStyle || "");
+
+      let resultImage: string;
+      let transferImage: string;
+      let transparentImage: string | null;
+      let mockupImage: string | null;
+
+      if (!aiWithBackground) {
+        // WITHOUT background → full existing pipeline incl. runTransparencyPipeline.
+        const gen = await runGenerationPipeline(
+          {
+            designParams: { character: text, scene: "", style: aiStyle, text: "", characterImages: [], sceneImage: null, styleImage: null, textImage: null },
+            product: config.product,
+            color: config.color,
+            speed: "fast",
+          },
+          placementCoords,
+          productImageUrl,
+          (s) => setAiStatus(s as AppStatus),
+          isExactColor,
+          zone,
+        );
+        resultImage = gen.mockupImage;
+        transferImage = gen.transparentImage;
+        transparentImage = gen.transparentImage;
+        mockupImage = gen.mockupImage;
+      } else {
+        // WITH background → bare generate-design, SKIP the transparency stage.
+        // Simple's own layer compositing places it on the product on transfer,
+        // so no Stage-3 composite is needed here. The `isRealistic` flag (not a
+        // style-string override) selects the verbatim realistic prompt branch
+        // in the proxy — identical prompt to runGenerationPipeline's realistic path.
+        const { image: rawImage } = await callGemini("generate-design", {
+          character: text, scene: "", style: aiStyle, text: "",
+          characterImages: [], sceneImage: null, styleImage: null, textImage: null,
+          product: config.product, color: config.color,
+          speed: isRealistic ? "pro" : "fast", isRealistic,
+        });
+        resultImage = rawImage;
+        transferImage = rawImage;
+        transparentImage = null;
+        mockupImage = rawImage;
+      }
+
+      setAiResult({ resultImage, transferImage });
+
+      // Analytics generations row — mirrors Studio's generation-time insert.
+      void (async () => {
+        try {
+          const genId = crypto.randomUUID();
+          const upload = async (dataUrl: string | null, suffix: string) => {
+            if (!dataUrl) return null;
+            const blob = await fetch(dataUrl).then(r => r.blob());
+            const path = `generations/${genId}-${suffix}.png`;
+            const { error } = await supabase.storage.from("designs").upload(path, blob, { contentType: "image/png" });
+            return error ? null : path;
+          };
+          const [mockupPath, transparentPath] = await Promise.all([
+            upload(mockupImage, "mockup"),
+            upload(transparentImage, "transparent"),
+          ]);
+          await supabase.from("generations").insert({
+            user_id: user?.id ?? null,
+            session_id: !user ? getGuestSessionId() : null,
+            is_guest: !user,
+            product: config.product,
+            color: config.color,
+            style: aiStyle || "simple-ai",
+            prompt: text,
+            mockup_image_path: mockupPath,
+            transparent_image_path: transparentPath,
+          });
+        } catch (e) {
+          console.error("[Simple AI] generations insert failed:", e);
+        }
+      })();
+
+      // Auto-save to "My Designs" (logged-in only; guests skip).
+      if (user) {
+        void saveDesign({
+          title: text.slice(0, 60) || "AI Design",
+          prompt: text,
+          product: config.product,
+          color: config.color,
+          placementX: placementCoords.x,
+          placementY: placementCoords.y,
+          placementScale: placementCoords.scale,
+          transparentImageDataUrl: transparentImage ?? transferImage,
+          mockupImageDataUrl: mockupImage ?? transferImage,
+        }).catch((e) => console.error("[Simple AI] My Designs save failed:", e));
+      }
+
+      trackEvent("design_generated", { product: config.product, mode: "simple-ai" });
+    } catch (err) {
+      // Server-side rate limit (429): anon → login modal, authed → toast.
+      if (err instanceof RateLimitError) {
+        if (err.requiresLogin) {
+          setLoginModalMessage(t(lang, "rateLimit.signIn"));
+          setShowLoginModal(true);
+        } else {
+          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+        }
+      } else {
+        toast({ title: t(lang, "simpleAi.error"), description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      }
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [aiPrompt, aiStyle, aiWithBackground, aiGenerating, checkAiLimit, recordAiGeneration, productConfig, user, saveDesign, trackEvent, toast, lang]);
+
+  const handleAiTransfer = useCallback(() => {
+    if (!aiResult) return;
+    if (sideData.photos.length >= MAX_PHOTOS) {
+      toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
+      return;
+    }
+    addPhotoLayer(aiResult.transferImage);
+    toast({ title: t(lang, "simpleAi.transferred") });
+  }, [aiResult, sideData.photos.length, addPhotoLayer, toast, lang]);
+
+  const handleAiStartNew = useCallback(() => {
+    setAiResult(null);
+    setAiPrompt("");
+  }, []);
+
+  const handleAiDownload = useCallback(() => {
+    if (!aiResult) return;
+    const a = document.createElement("a");
+    a.href = aiResult.resultImage;
+    a.download = "maika-ai-design.png";
+    a.click();
+  }, [aiResult]);
+
+  const aiTransferLabel = (() => {
+    const p = productConfig.config.product;
+    if (p === "T-Shirt") return t(lang, "simpleAi.transferTshirt");
+    if (p === "Hoodie") return t(lang, "simpleAi.transferHoodie");
+    if (p === "Tote Bag") return t(lang, "simpleAi.transferBag");
+    return t(lang, "simpleAi.transferDefault");
+  })();
 
   const removePhoto = (id: string) => {
     setSideData(prev => ({
@@ -1141,6 +1310,11 @@ export default function SimplePage() {
       />
       <AppHeader />
       <ContactBar />
+      <LoginModal
+        open={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        message={loginModalMessage}
+      />
       {/* Sidebar + Main wrapper */}
       <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
       {/* Sidebar */}
@@ -1180,6 +1354,28 @@ export default function SimplePage() {
               ? `Editing: ${isFront ? "Front" : "Back"} side`
               : `რედაქტირება: ${isFront ? "წინა" : "უკანა"} მხარე`}
           </div>
+
+          {/* AI design (Phase 1) — describe a design and generate it */}
+          <SimpleAiPanel
+            lang={lang}
+            prompt={aiPrompt}
+            onPromptChange={setAiPrompt}
+            styleOptions={aiStyleOptions}
+            selectedStyle={aiStyle}
+            onSelectStyle={setAiStyle}
+            withBackground={aiWithBackground}
+            onToggleBackground={setAiWithBackground}
+            generating={aiGenerating}
+            status={aiStatus}
+            resultImage={aiResult?.resultImage ?? null}
+            transferLabel={aiTransferLabel}
+            canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
+            onGenerate={handleAiGenerate}
+            onTransfer={handleAiTransfer}
+            onRegenerate={handleAiGenerate}
+            onStartNew={handleAiStartNew}
+            onDownload={handleAiDownload}
+          />
 
           {/* Photo upload */}
           <div className="border-t border-sidebar-border pt-4 space-y-3">
