@@ -1,6 +1,7 @@
 import { useDesign } from "@/hooks/useDesign";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
+import { getStyleOptions } from "@/lib/designStyles";
 import DesignSection from "@/components/DesignSection";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,9 +23,7 @@ export default function DesignStudioPanel({ onViewImage, onGenerate, hasResult, 
 
   const isProcessing = appStatus !== "IDLE" && appStatus !== "COMPLETE" && appStatus !== "ERROR";
 
-  const styleOptions = lang === "en"
-    ? ["Realistic", "Animated", "Illustration", "Oil Art", "Anime", "Comics", "Line Art", "Graphic"]
-    : ["რეალისტური", "ანიმაციური", "ილუსტრაცია", "ოილ არტი", "ანიმე", "კომიქსი", "Line Art", "გრაფიკა"];
+  const styleOptions = getStyleOptions(lang);
 
 
   const steps = [

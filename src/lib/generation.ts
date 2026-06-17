@@ -31,7 +31,10 @@ export class RateLimitError extends Error {
   }
 }
 
-async function callGemini(action: string, params: Record<string, any>, retries = 2): Promise<{ image: string; text: string }> {
+// Exported so the Simple-mode "with background" path can run a bare
+// generate-design (skipping the transparency stage) while still reusing the
+// exact same gemini-proxy invoke + RateLimitError handling. Body unchanged.
+export async function callGemini(action: string, params: Record<string, any>, retries = 2): Promise<{ image: string; text: string }> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const { data, error } = await supabase.functions.invoke("gemini-proxy", {
       body: { action, params },

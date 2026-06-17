@@ -42,11 +42,13 @@ export type LimitCheckResult =
   | { allowed: false; reason: "guest_limit"; message: string }
   | { allowed: false; reason: "user_limit"; message: string };
 
-export function useGenerationLimit() {
+// `guestLimit` defaults to the historical 5 so existing callers (Studio)
+// are byte-for-byte unchanged; Simple-mode AI passes 2.
+export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
   const { user } = useAuth();
 
   const checkLimit = useCallback((): LimitCheckResult => {
-    // Guest user — 5 per 24h, then login required
+    // Guest user — `guestLimit` per 24h, then login required
     if (!user) {
       const data = getGuestLimit();
       const now = Date.now();
@@ -55,11 +57,11 @@ export function useGenerationLimit() {
         setGuestLimit({ count: 0, firstGenAt: 0 });
         return { allowed: true };
       }
-      if (data.count >= GUEST_LIMIT) {
+      if (data.count >= guestLimit) {
         return {
           allowed: false,
           reason: "guest_limit",
-          message: "სტუმრის ლიმიტი ამოიწურა (5 გენერაცია 24 საათში). გასაგრძელებლად გთხოვთ დარეგისტრირდეთ.",
+          message: `სტუმრის ლიმიტი ამოიწურა (${guestLimit} გენერაცია 24 საათში). გასაგრძელებლად გთხოვთ დარეგისტრირდეთ.`,
         };
       }
       return { allowed: true };
@@ -67,7 +69,7 @@ export function useGenerationLimit() {
 
     // Logged-in users have no generation limit
     return { allowed: true };
-  }, [user]);
+  }, [user, guestLimit]);
 
   const recordGeneration = useCallback(() => {
     if (!user) {

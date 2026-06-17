@@ -1,0 +1,163 @@
+import { Sparkles, RefreshCw, Download, Maximize, Shirt, ArrowDownToLine } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import GenerationLoader from "@/components/GenerationLoader";
+import { t } from "@/lib/i18n";
+import type { Lang } from "@/lib/i18n";
+import type { AppStatus } from "@/hooks/useDesign";
+
+interface SimpleAiPanelProps {
+  lang: Lang;
+  prompt: string;
+  onPromptChange: (v: string) => void;
+  styleOptions: string[];
+  selectedStyle: string;
+  onSelectStyle: (s: string) => void;
+  withBackground: boolean;
+  onToggleBackground: (v: boolean) => void;
+  generating: boolean;
+  status: AppStatus;
+  /** Image to show in the result panel (transparent design on without-bg,
+   *  raw generation on with-bg). null until a generation completes. */
+  resultImage: string | null;
+  /** Product-adaptive primary CTA label (e.g. "მაისურზე გადატანა"). */
+  transferLabel: string;
+  canGenerate: boolean;
+  onGenerate: () => void;
+  onTransfer: () => void;
+  onRegenerate: () => void;
+  onStartNew: () => void;
+  onDownload: () => void;
+}
+
+export default function SimpleAiPanel({
+  lang, prompt, onPromptChange, styleOptions, selectedStyle, onSelectStyle,
+  withBackground, onToggleBackground, generating, status, resultImage,
+  transferLabel, canGenerate, onGenerate, onTransfer, onRegenerate, onStartNew, onDownload,
+}: SimpleAiPanelProps) {
+  return (
+    <div className="border-t border-sidebar-border pt-4 space-y-3">
+      <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        {t(lang, "simpleAi.heading")}
+      </h3>
+
+      {generating ? (
+        <div className="rounded-xl border border-border bg-card">
+          <GenerationLoader status={status} />
+        </div>
+      ) : resultImage ? (
+        /* ── Result panel ── */
+        <div className="space-y-2">
+          <div className="rounded-xl border border-border bg-background p-2 flex items-center justify-center">
+            <img
+              src={resultImage}
+              alt="AI design"
+              className="max-h-56 w-auto object-contain rounded-lg"
+            />
+          </div>
+
+          {/* PRIMARY: transfer onto the product */}
+          <Button
+            onClick={onTransfer}
+            className="w-full h-12 gap-2 font-semibold text-base bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+          >
+            <ArrowDownToLine className="h-4 w-4" />
+            {transferLabel}
+          </Button>
+
+          {/* Secondary actions */}
+          <div className="grid grid-cols-3 gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onRegenerate}>
+              <RefreshCw className="h-3.5 w-3.5" /> {t(lang, "simpleAi.regenerate")}
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onDownload}>
+              <Download className="h-3.5 w-3.5" /> {t(lang, "simpleAi.download")}
+            </Button>
+            <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={onStartNew}>
+              {t(lang, "simpleAi.startNew")}
+            </Button>
+          </div>
+
+          {/* Reserved for Phase 2 — upscale + try-on (intentionally disabled) */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <Button variant="outline" size="sm" className="gap-1 text-xs opacity-50" disabled>
+              <Maximize className="h-3.5 w-3.5" /> {t(lang, "simpleAi.upscale")}
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1 text-xs opacity-50" disabled>
+              <Shirt className="h-3.5 w-3.5" /> {t(lang, "simpleAi.tryOn")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* ── Form ── */
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">{t(lang, "simpleAi.promptLabel")}</label>
+            <Textarea
+              value={prompt}
+              onChange={(e) => onPromptChange(e.target.value)}
+              rows={3}
+              placeholder={t(lang, "simpleAi.promptPlaceholder")}
+            />
+          </div>
+
+          {/* Style chips (shared with Studio via getStyleOptions) */}
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">{t(lang, "simpleAi.styleLabel")}</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {styleOptions.map((opt) => {
+                const active = selectedStyle === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => onSelectStyle(active ? "" : opt)}
+                    className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Background toggle (default: without background) */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => onToggleBackground(false)}
+              className={`rounded-lg px-2 py-1.5 text-xs font-medium border transition-colors ${
+                !withBackground ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t(lang, "simpleAi.withoutBackground")}
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleBackground(true)}
+              className={`rounded-lg px-2 py-1.5 text-xs font-medium border transition-colors ${
+                withBackground ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t(lang, "simpleAi.withBackground")}
+            </button>
+          </div>
+
+          <Button
+            onClick={onGenerate}
+            disabled={!canGenerate}
+            className="w-full h-11 gap-2 font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+          >
+            <Sparkles className="h-4 w-4" />
+            {t(lang, "simpleAi.generate")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
