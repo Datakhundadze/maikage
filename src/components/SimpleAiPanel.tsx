@@ -36,12 +36,16 @@ export default function SimpleAiPanel({
   transferLabel, canGenerate, onGenerate, onTransfer, onRegenerate, onStartNew, onDownload,
 }: SimpleAiPanelProps) {
   return (
-    <div className="border-t border-sidebar-border pt-4 space-y-3">
-      <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
-        {t(lang, "simpleAi.heading")}
-      </h3>
+    <div className="rounded-2xl border-2 border-[#26BB89]/40 bg-[#26BB89]/[0.06] overflow-hidden shadow-sm">
+      {/* Accent header strip — brand-green highlight so the AI feature pops */}
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-[#26BB89]/10 border-b border-[#26BB89]/25">
+        <Sparkles className="h-4 w-4" style={{ color: "#26BB89" }} />
+        <h3 className="text-sm font-bold" style={{ color: "#26BB89" }}>
+          {t(lang, "simpleAi.heading")}
+        </h3>
+      </div>
 
+      <div className="p-3 space-y-3">
       {generating ? (
         <div className="rounded-xl border border-border bg-card">
           <GenerationLoader status={status} />
@@ -158,6 +162,7 @@ export default function SimpleAiPanel({
           </Button>
         </div>
       )}
+      </div>
     </div>
   );
 }

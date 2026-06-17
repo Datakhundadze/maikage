@@ -98,9 +98,9 @@ const translations = {
       slowDown: "Generation limit reached — please try again shortly.",
     },
     simpleAi: {
-      heading: "AI design",
+      heading: "✨ Create a design with AI",
       promptLabel: "Tell me what design to create",
-      promptPlaceholder: "e.g. a fire-breathing dragon over a neon city",
+      promptPlaceholder: "e.g. a cat in a chokha on Tbilisi rooftops",
       styleLabel: "Style",
       withBackground: "With background",
       withoutBackground: "Without background",
@@ -277,9 +277,9 @@ const translations = {
       slowDown: "გენერაციის ლიმიტი ამოიწურა — გთხოვთ სცადოთ მოგვიანებით.",
     },
     simpleAi: {
-      heading: "AI დიზაინი",
+      heading: "✨ AI-ით შექმენი დიზაინი",
       promptLabel: "მითხარი როგორი დიზაინი შევქმნა",
-      promptPlaceholder: "მაგ: ცეცხლისმფრქვეველი დრაკონი ნეონის ქალაქზე",
+      promptPlaceholder: "მაგ: ჩოხიანი კატა თბილისის სახურავებზე",
       styleLabel: "სტილი",
       withBackground: "ფონით",
       withoutBackground: "უფონოდ",
