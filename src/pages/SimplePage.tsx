@@ -25,13 +25,14 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, callGemini, RateLimitError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, upscaleImage, RateLimitError } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
 import { t } from "@/lib/i18n";
 import type { AppStatus } from "@/hooks/useDesign";
 import LoginModal from "@/components/LoginModal";
+import TryOnModal from "@/components/TryOnModal";
 import SimpleAiPanel from "@/components/SimpleAiPanel";
 
 const FONT_GROUPS = [
@@ -527,6 +528,8 @@ export default function SimplePage() {
   const [aiStatus, setAiStatus] = useState<AppStatus>("GENERATING_DESIGN");
   // resultImage = shown in the panel; transferImage = injected as a layer.
   const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string } | null>(null);
+  const [aiUpscaling, setAiUpscaling] = useState(false);
+  const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   const aiStyleOptions = getStyleOptions(lang);
@@ -782,6 +785,41 @@ export default function SimplePage() {
     a.href = aiResult.resultImage;
     a.download = "maika-ai-design.png";
     a.click();
+  }, [aiResult]);
+
+  // Upscale the generated design to 4K via the EXISTING upscale path
+  // (upscaleImage → callGemini "upscale"), mirroring Studio's ResultView.
+  // The 4K design becomes what's transferred onto the product. Billable →
+  // 429 handled the same as generation (anon → login modal, authed → toast).
+  const handleAiUpscale = useCallback(async () => {
+    if (!aiResult || aiUpscaling) return;
+    setAiUpscaling(true);
+    try {
+      const upscaled = await upscaleImage(aiResult.transferImage);
+      setAiResult(prev => prev ? { ...prev, transferImage: upscaled } : prev);
+      toast({ title: t(lang, "simpleAi.upscaled") });
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        if (err.requiresLogin) {
+          setLoginModalMessage(t(lang, "rateLimit.signIn"));
+          setShowLoginModal(true);
+        } else {
+          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+        }
+      } else {
+        toast({ title: t(lang, "simpleAi.upscaleFailed"), description: err instanceof Error ? err.message : undefined, variant: "destructive" });
+      }
+    } finally {
+      setAiUpscaling(false);
+    }
+  }, [aiResult, aiUpscaling, toast, lang]);
+
+  // Open the inline virtual try-on modal with the generated design. TryOnModal
+  // owns the whole flow (person upload → gemini-proxy "virtual-tryon" → result)
+  // including its own 429 handling, so the user stays inside Simple.
+  const handleAiTryOn = useCallback(() => {
+    if (!aiResult) return;
+    setShowTryOn(true);
   }, [aiResult]);
 
   const aiTransferLabel = (() => {
@@ -1393,6 +1431,13 @@ export default function SimplePage() {
         onClose={() => setShowLoginModal(false)}
         message={loginModalMessage}
       />
+      {aiResult && (
+        <TryOnModal
+          open={showTryOn}
+          onClose={() => setShowTryOn(false)}
+          designImage={aiResult.transferImage}
+        />
+      )}
       {/* Sidebar + Main wrapper */}
       <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
       {/* Sidebar */}
@@ -1645,6 +1690,9 @@ export default function SimplePage() {
             onRegenerate={handleAiGenerate}
             onStartNew={handleAiStartNew}
             onDownload={handleAiDownload}
+            onUpscale={handleAiUpscale}
+            upscaling={aiUpscaling}
+            onTryOn={handleAiTryOn}
           />
 
           {(hasPhotos || sideHasText(sideData)) && (
