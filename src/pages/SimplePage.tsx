@@ -1357,28 +1357,6 @@ export default function SimplePage() {
               : `რედაქტირება: ${isFront ? "წინა" : "უკანა"} მხარე`}
           </div>
 
-          {/* AI design (Phase 1) — describe a design and generate it */}
-          <SimpleAiPanel
-            lang={lang}
-            prompt={aiPrompt}
-            onPromptChange={setAiPrompt}
-            styleOptions={aiStyleOptions}
-            selectedStyle={aiStyle}
-            onSelectStyle={setAiStyle}
-            withBackground={aiWithBackground}
-            onToggleBackground={setAiWithBackground}
-            generating={aiGenerating}
-            status={aiStatus}
-            resultImage={aiResult?.resultImage ?? null}
-            transferLabel={aiTransferLabel}
-            canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
-            onGenerate={handleAiGenerate}
-            onTransfer={handleAiTransfer}
-            onRegenerate={handleAiGenerate}
-            onStartNew={handleAiStartNew}
-            onDownload={handleAiDownload}
-          />
-
           {/* Photo upload */}
           <div className="border-t border-sidebar-border pt-4 space-y-3">
             <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
@@ -1532,6 +1510,28 @@ export default function SimplePage() {
               </div>
             </div>
           </div>
+
+          {/* AI design (Phase 1) — describe a design and generate it */}
+          <SimpleAiPanel
+            lang={lang}
+            prompt={aiPrompt}
+            onPromptChange={setAiPrompt}
+            styleOptions={aiStyleOptions}
+            selectedStyle={aiStyle}
+            onSelectStyle={setAiStyle}
+            withBackground={aiWithBackground}
+            onToggleBackground={setAiWithBackground}
+            generating={aiGenerating}
+            status={aiStatus}
+            resultImage={aiResult?.resultImage ?? null}
+            transferLabel={aiTransferLabel}
+            canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
+            onGenerate={handleAiGenerate}
+            onTransfer={handleAiTransfer}
+            onRegenerate={handleAiGenerate}
+            onStartNew={handleAiStartNew}
+            onDownload={handleAiDownload}
+          />
 
           {(hasPhotos || sideData.designText.trim()) && (
             <Button variant="outline" size="sm" onClick={clearDesign}>
