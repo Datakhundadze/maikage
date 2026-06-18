@@ -25,6 +25,7 @@ const DesignDetailPage = lazy(() => import("./pages/DesignDetailPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const SimplePage = lazy(() => import("./pages/SimplePage"));
+const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmationPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const CorporatePage = lazy(() => import("./pages/CorporatePage"));
@@ -55,7 +56,16 @@ function AppRoutes() {
   const { user, loading } = useAuth();
   const { mode } = useAppState();
   useAutoLogout();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+
+  // Post-payment redirect: the bank returns the user to /?payment=success&orderId=…
+  // (or payment=fail). Mode is persisted in sessionStorage, so after a Simple/
+  // Cart checkout the root would otherwise render that mode's page and miss the
+  // result. Catch it here — independent of mode — and route to the persistent
+  // confirmation view, preserving the query string.
+  if (pathname === "/" && new URLSearchParams(search).has("payment")) {
+    return <Navigate to={`/order-confirmation${search}`} replace />;
+  }
 
   // Admin route is standalone — bypass mode checks
   if (pathname === "/admin") return <Routes><Route path="/admin" element={<AdminPage />} /></Routes>;
@@ -94,6 +104,7 @@ function AppRoutes() {
       <Route path="/designs" element={<CatalogPage />} />
       <Route path="/design/:slug" element={<DesignDetailPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />
+      <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
       {/* /community gallery retired — redirect old URL to the catalog so it
           doesn't dead-end (client-side; Lovable has no server redirects). */}
       <Route path="/community" element={<Navigate to="/designs" replace />} />

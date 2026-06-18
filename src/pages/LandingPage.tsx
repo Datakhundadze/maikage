@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
-import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
-import { supabase } from "@/integrations/supabase/client";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 
@@ -17,8 +16,6 @@ const SPORT_PHOTOS = [
 export default function LandingPage() {
   const { setMode, theme, toggleTheme, lang, toggleLang } = useAppState();
   const [sportPhotoIdx, setSportPhotoIdx] = useState(0);
-  const [paymentBanner, setPaymentBanner] = useState<"success" | "fail" | "checking" | null>(null);
-  const pollingRef = useRef(false);
 
   const isGreen = theme === "green";
   // Colors used in green theme
@@ -32,89 +29,9 @@ export default function LandingPage() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const paymentResult = params.get("payment");
-    if (!paymentResult) return;
-
-    window.history.replaceState({}, "", window.location.pathname);
-
-    if (paymentResult === "fail") {
-      setPaymentBanner("fail");
-      const hideTimer = setTimeout(() => setPaymentBanner(null), 8000);
-      return () => clearTimeout(hideTimer);
-    }
-
-    if (paymentResult !== "success") return;
-
-    // Read orderId from URL (set by create-payment redirect) or localStorage (legacy)
-    const pendingOrderId = params.get("orderId") || localStorage.getItem("maika_pending_order_id");
-    localStorage.removeItem("maika_pending_order_id");
-
-    if (!pendingOrderId) {
-      setPaymentBanner("success");
-      const hideTimer = setTimeout(() => setPaymentBanner(null), 8000);
-      return () => clearTimeout(hideTimer);
-    }
-
-    console.log("[LandingPage] Starting payment verification for order:", pendingOrderId);
-    setPaymentBanner("checking");
-    pollingRef.current = true;
-
-    let attempts = 0;
-    const MAX_ATTEMPTS = 20;
-    const INTERVAL_MS = 3000;
-
-    const checkPayment = async (): Promise<{ status?: string; error?: string } | null> => {
-      try {
-        const { data, error } = await supabase.functions.invoke("check-payment", {
-          body: { orderId: pendingOrderId },
-        });
-        if (error) {
-          console.error("[LandingPage] check-payment invoke error:", error);
-          // Try to extract data from error context (Supabase wraps non-2xx responses)
-          try {
-            const ctx = (error as any).context;
-            if (ctx && typeof ctx.json === "function") {
-              return await ctx.json();
-            }
-          } catch {}
-          return null;
-        }
-        return data;
-      } catch (err) {
-        console.error("[LandingPage] check-payment fetch error:", err);
-        return null;
-      }
-    };
-
-    const poll = async () => {
-      while (pollingRef.current && attempts < MAX_ATTEMPTS) {
-        attempts++;
-        const data = await checkPayment();
-        console.log(`[LandingPage] check-payment attempt ${attempts}/${MAX_ATTEMPTS}:`, data);
-
-        if (data?.status === "paid") {
-          setPaymentBanner("success");
-          setTimeout(() => setPaymentBanner(null), 8000);
-          return;
-        }
-        if (data?.status === "failed") {
-          setPaymentBanner("fail");
-          setTimeout(() => setPaymentBanner(null), 8000);
-          return;
-        }
-        await new Promise((r) => setTimeout(r, INTERVAL_MS));
-      }
-      // BOG confirmed redirect as success; trust it even if our DB hasn't caught up
-      console.log("[LandingPage] Polling exhausted — showing success based on BOG redirect");
-      setPaymentBanner("success");
-      setTimeout(() => setPaymentBanner(null), 8000);
-    };
-
-    poll();
-    return () => { pollingRef.current = false; };
-  }, []);
+  // Note: the post-payment redirect (/?payment=…) is handled app-wide in
+  // AppRoutes, which routes to the persistent /order-confirmation view. The
+  // old transient banner that lived here has been removed.
 
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
@@ -124,27 +41,6 @@ export default function LandingPage() {
         url={`${SITE_URL}/`}
         schemas={[LOCAL_BUSINESS_SCHEMA]}
       />
-      {/* Payment result banner */}
-      {paymentBanner && (
-        <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium shadow-lg transition-all ${
-          paymentBanner === "success"
-            ? "bg-emerald-600 text-white"
-            : paymentBanner === "checking"
-            ? "bg-amber-600 text-white"
-            : "bg-red-600 text-white"
-        }`}>
-          {paymentBanner === "success" ? (
-            <><CheckCircle className="h-5 w-5" /> {lang === "en" ? "Payment successful! Your order is being processed." : "გადახდა წარმატებით შესრულდა! შეკვეთა მუშავდება."}</>
-          ) : paymentBanner === "checking" ? (
-            <><Loader2 className="h-5 w-5 animate-spin" /> {lang === "en" ? "Verifying payment..." : "გადახდა მოწმდება..."}</>
-          ) : (
-            <><XCircle className="h-5 w-5" /> {lang === "en" ? "Payment failed. Please try again." : "გადახდა ვერ განხორციელდა. სცადეთ თავიდან."}</>
-          )}
-          {paymentBanner !== "checking" && (
-            <button onClick={() => setPaymentBanner(null)} className="ml-4 text-white/70 hover:text-white">✕</button>
-          )}
-        </div>
-      )}
       {/* Background radial glow */}
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] rounded-full bg-white/[0.02] blur-[150px] pointer-events-none" />
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[200px] bg-amber-500/[0.03] blur-[100px] pointer-events-none" />
