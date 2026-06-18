@@ -147,8 +147,8 @@ export default function LandingPage() {
               </h2>
               <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
                 {lang === "en"
-                  ? "Upload a photo, add text, or describe it and AI creates it. No sign-up needed."
-                  : "ატვირთე ფოტო, დაწერე ტექსტი, ან აღწერე და AI შეგიქმნის. რეგისტრაცია არ სჭირდება."}
+                  ? "Upload a photo, add text, or describe it and AI creates it."
+                  : "ატვირთე ფოტო, დაწერე ტექსტი, ან აღწერე და AI შეგიქმნის."}
               </p>
               <div className="flex items-center justify-between w-full">
                 <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-white/[0.06] border border-white/[0.08] text-white/50"}`}>
