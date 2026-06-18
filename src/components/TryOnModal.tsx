@@ -183,23 +183,26 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
             </Button>
           )}
 
-          {/* Action button */}
-          <Button
-            onClick={handleTryOn}
-            disabled={!personImage || loading}
-            className="w-full h-12 text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <span className="animate-spin h-4 w-4 border-2 border-black/30 border-t-black rounded-full" />
-                მუშავდება...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Shirt className="h-4 w-4" /> {t(lang, "tryOn.run")}
-              </span>
-            )}
-          </Button>
+          {/* Run button — only before a result exists. After a successful
+              try-on the result reads as final, so only the Order CTA shows. */}
+          {!resultImage && (
+            <Button
+              onClick={handleTryOn}
+              disabled={!personImage || loading}
+              className="w-full h-12 text-base font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black rounded-xl"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin h-4 w-4 border-2 border-black/30 border-t-black rounded-full" />
+                  მუშავდება...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Shirt className="h-4 w-4" /> {t(lang, "tryOn.run")}
+                </span>
+              )}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

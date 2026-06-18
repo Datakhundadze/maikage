@@ -1,10 +1,22 @@
 import { Sparkles, RefreshCw, Download, Maximize, Shirt, ArrowDownToLine } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import GenerationLoader from "@/components/GenerationLoader";
 import { t } from "@/lib/i18n";
 import type { Lang } from "@/lib/i18n";
 import type { AppStatus } from "@/hooks/useDesign";
+
+// Checkerboard backdrop for the transparent (without-background) result so the
+// cut-out artwork reads clearly. With-background results are opaque on-white,
+// so they keep the plain panel background instead.
+const CHECKER_STYLE: CSSProperties = {
+  backgroundColor: "#ffffff",
+  backgroundImage:
+    "linear-gradient(45deg, #d4d4d8 25%, transparent 25%), linear-gradient(-45deg, #d4d4d8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d4d4d8 75%), linear-gradient(-45deg, transparent 75%, #d4d4d8 75%)",
+  backgroundSize: "16px 16px",
+  backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0",
+};
 
 interface SimpleAiPanelProps {
   lang: Lang;
@@ -59,7 +71,10 @@ export default function SimpleAiPanel({
       ) : resultImage ? (
         /* ── Result panel ── */
         <div className="space-y-2">
-          <div className="rounded-xl border border-border bg-background p-2 flex items-center justify-center">
+          <div
+            className={`rounded-xl border border-border p-2 flex items-center justify-center ${withBackground ? "bg-background" : ""}`}
+            style={withBackground ? undefined : CHECKER_STYLE}
+          >
             <img
               src={resultImage}
               alt="AI design"

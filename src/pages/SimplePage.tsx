@@ -694,7 +694,11 @@ export default function SimplePage() {
           isExactColor,
           zone,
         );
-        resultImage = gen.mockupImage;
+        // Result panel shows the STANDALONE design (bg-removed artwork), not
+        // the watermarked product mockup — the mockup is for the product
+        // preview / post-transfer. transferImage stays the transparent artwork
+        // so transfer / upscale / try-on operate on the cut-out.
+        resultImage = gen.transparentImage;
         transferImage = gen.transparentImage;
         transparentImage = gen.transparentImage;
         mockupImage = gen.mockupImage;
