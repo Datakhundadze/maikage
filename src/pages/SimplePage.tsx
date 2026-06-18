@@ -542,7 +542,7 @@ export default function SimplePage() {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState<AppStatus>("GENERATING_DESIGN");
   // resultImage = shown in the panel; transferImage = injected as a layer.
-  const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string } | null>(null);
+  const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string; downloadImage: string } | null>(null);
   const [aiUpscaling, setAiUpscaling] = useState(false);
   const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -720,7 +720,10 @@ export default function SimplePage() {
         mockupImage = rawImage;
       }
 
-      setAiResult({ resultImage, transferImage });
+      // Panel DISPLAY = standalone design (resultImage); DOWNLOAD = the
+      // watermarked product mockup (downloadImage = mockupImage). With-bg has
+      // no separate mockup, so downloadImage is the raw on-white image.
+      setAiResult({ resultImage, transferImage, downloadImage: mockupImage });
 
       // Analytics generations row — mirrors Studio's generation-time insert.
       void (async () => {
@@ -804,7 +807,7 @@ export default function SimplePage() {
   const handleAiDownload = useCallback(() => {
     if (!aiResult) return;
     const a = document.createElement("a");
-    a.href = aiResult.resultImage;
+    a.href = aiResult.downloadImage;
     a.download = "maika-ai-design.png";
     a.click();
   }, [aiResult]);
