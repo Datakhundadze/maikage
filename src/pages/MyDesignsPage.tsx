@@ -149,6 +149,7 @@ export default function MyDesignsPage() {
         noindex
       />
       <AppLayout
+        mainOnMobile
         sidebar={
           <div className="space-y-4">
             <h2 className="text-lg font-bold">{t(lang, "myDesigns.title")}</h2>

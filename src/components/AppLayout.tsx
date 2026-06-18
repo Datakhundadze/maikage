@@ -8,9 +8,17 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 interface AppLayoutProps {
   sidebar: ReactNode;
   main: ReactNode;
+  /** When true, the main column also renders below the `lg` breakpoint
+   *  (stacked under the sidebar) instead of being desktop-only. Default
+   *  false preserves the editor layout: StudioPage shows its big preview
+   *  canvas in `main` on desktop but embeds a separate `lg:hidden` preview
+   *  inside the sidebar on mobile, so a mobile `main` would double it.
+   *  Content pages (My Designs / My Orders) have no mobile-sidebar copy and
+   *  opt in so their grids actually render on phones. */
+  mainOnMobile?: boolean;
 }
 
-export default function AppLayout({ sidebar, main }: AppLayoutProps) {
+export default function AppLayout({ sidebar, main, mainOnMobile = false }: AppLayoutProps) {
   const { setMode, lang, theme, toggleTheme } = useAppState();
 
   return (
@@ -61,8 +69,9 @@ export default function AppLayout({ sidebar, main }: AppLayoutProps) {
           </div>
         </aside>
 
-        {/* Main content — desktop only */}
-        <main className="hidden lg:flex flex-1 bg-background overflow-y-auto flex-col">
+        {/* Main content — desktop only by default; content pages opt in to
+            render it on mobile too (stacked below the sidebar). */}
+        <main className={`${mainOnMobile ? "flex min-h-0" : "hidden lg:flex"} flex-1 bg-background overflow-y-auto flex-col`}>
           {main}
         </main>
       </div>
