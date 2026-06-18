@@ -8,7 +8,7 @@ const translations = {
       guestMode: "Guest Mode",
     },
     login: {
-      title: "maika.ge Studio",
+      title: "maika.ge",
       subtitle: "Sign in to generate and save your designs.",
       google: "Sign in with Google",
       guest: "Continue as Guest",
@@ -20,7 +20,6 @@ const translations = {
       or: "or",
     },
     nav: {
-      studio: "Studio",
       simple: "Simple",
       myDesigns: "My Designs",
       catalog: "Catalog",
@@ -34,49 +33,6 @@ const translations = {
     theme: {
       light: "☀️",
       dark: "🌙",
-    },
-    studio: {
-      guide: {
-        character: "Character",
-        characterHint: "Who/what is in the design?",
-        scene: "Scene",
-        sceneHint: "Where & what are they doing?",
-        style: "Style",
-        styleHint: "Visual look & feel",
-        generate: "Generate",
-        generateHint: "Create your design!",
-        paste: "Ctrl+V to paste images",
-      },
-      character: {
-        title: "Characters",
-        subtitle: "The Subject/Actor. Defines WHO is in the shot.",
-        placeholder: "e.g., cyberpunk samurai · angry gorilla · fire dragon · neon tiger · wolf skull",
-      },
-      scene: {
-        title: "Scene / Action",
-        subtitle: "The SET. Defines the environment and pose.",
-        placeholder: "e.g., rooftop at sunset · running through fire · dark forest · lightning storm",
-      },
-      style: {
-        title: "Artistic Style",
-        subtitle: "The LENS. Defines the visual art direction.",
-        placeholder: "e.g., synthwave · watercolor · pixel art · manga · tattoo flash",
-      },
-      typography: {
-        title: "Text",
-        subtitle: "Text to include in the design.",
-        placeholder: "Text to render on the design...",
-      },
-      speed: {
-        fast: "Fast",
-        pro: "Pro",
-      },
-      generate: "Generate Merchandise",
-      regenerate: "Regenerate",
-      processing: "Processing...",
-      startNew: "Start New Design",
-      randomize: "Magic Randomizer ✨",
-      randomizing: "Randomizing...",
     },
     result: {
       preview: "Preview",
@@ -130,7 +86,7 @@ const translations = {
       title: "My Designs",
       count: (n: number) => `${n} design${n !== 1 ? "s" : ""} saved`,
       empty: "No designs yet",
-      emptyHint: "Generate your first design in the Studio!",
+      emptyHint: "Create your first design in Simple mode!",
       deleteConfirm: "Delete this design?",
     },
     orders: {
@@ -233,7 +189,7 @@ const translations = {
       guestMode: "სტუმრის რეჟიმი",
     },
     login: {
-      title: "maika.ge სტუდია",
+      title: "maika.ge",
       subtitle: "შედით სისტემაში დიზაინების შესაქმნელად და შესანახად.",
       google: "შესვლა Google-ით",
       guest: "გაგრძელება სტუმრად",
@@ -245,7 +201,6 @@ const translations = {
       or: "ან",
     },
     nav: {
-      studio: "სტუდია",
       simple: "მარტივი",
       myDesigns: "ჩემი დიზაინები",
       catalog: "კატალოგი",
@@ -259,49 +214,6 @@ const translations = {
     theme: {
       light: "☀️",
       dark: "🌙",
-    },
-    studio: {
-      guide: {
-        character: "პერსონაჟი",
-        characterHint: "ვინ/რა არის დიზაინში?",
-        scene: "სცენა",
-        sceneHint: "სად და რას აკეთებს?",
-        style: "სტილი",
-        styleHint: "ვიზუალური მიმართულება",
-        generate: "გენერაცია",
-        generateHint: "შექმენი დიზაინი!",
-        paste: "Ctrl+V სურათის ჩასასმელად",
-      },
-      character: {
-        title: "პერსონაჟები",
-        subtitle: "სუბიექტი/აქტორი. განსაზღვრავს ვინ არის კადრში.",
-        placeholder: "მაგ., კიბერ სამურაი · გორილა კოსტიუმში · ცეცხლოვანი დრაკონი · ნეონის ვეფხვი",
-      },
-      scene: {
-        title: "სცენა / მოქმედება",
-        subtitle: "გარემო. განსაზღვრავს პოზას და ადგილს.",
-        placeholder: "მაგ., სახურავზე · ცეცხლში გარბის · ქარიშხლის ფონზე · ტყეში ღამე",
-      },
-      style: {
-        title: "მხატვრული სტილი",
-        subtitle: "ვიზუალური მიმართულება.",
-        placeholder: "მაგ., სინთვეივი · აქვარელი · პიქსელ არტი · ანიმე · ტატუ",
-      },
-      typography: {
-        title: "წარწერა",
-        subtitle: "ტექსტი დიზაინში ჩასართავად.",
-        placeholder: "ტექსტი დიზაინზე...",
-      },
-      speed: {
-        fast: "სწრაფი",
-        pro: "პრო",
-      },
-      generate: "დიზაინის გენერაცია",
-      regenerate: "ხელახლა გენერაცია",
-      processing: "მუშავდება...",
-      startNew: "ახალი დიზაინი",
-      randomize: "მაგიური რანდომაიზერი ✨",
-      randomizing: "რანდომიზაცია...",
     },
     result: {
       preview: "გადახედვა",
@@ -355,7 +267,7 @@ const translations = {
       title: "ჩემი დიზაინები",
       count: (n: number) => `${n} დიზაინი შენახულია`,
       empty: "დიზაინები ჯერ არ არის",
-      emptyHint: "შექმენით პირველი დიზაინი სტუდიაში!",
+      emptyHint: "შექმენი პირველი დიზაინი მარტივ რეჟიმში!",
       deleteConfirm: "წაშალოთ ეს დიზაინი?",
     },
     orders: {

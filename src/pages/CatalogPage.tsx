@@ -63,7 +63,7 @@ export default function CatalogPage() {
   );
 
   const goToDesign = (slug: string) => {
-    setMode("studio");
+    setMode("simple");
     navigate(`/design/${slug}`);
   };
 

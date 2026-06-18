@@ -127,7 +127,7 @@ export default function SimpleAiPanel({
             />
           </div>
 
-          {/* Style chips (shared with Studio via getStyleOptions) */}
+          {/* Style chips (via getStyleOptions) */}
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground">{t(lang, "simpleAi.styleLabel")}</label>
             <div className="grid grid-cols-4 gap-1.5">

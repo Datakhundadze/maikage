@@ -6,7 +6,7 @@ import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Type, X, Sparkles, ChevronDown, Palette, Plus, ShoppingBag } from "lucide-react";
+import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -495,7 +495,7 @@ let photoIdCounter = 0;
 let textIdCounter = 0;
 
 export default function SimplePage() {
-  const { lang, theme, toggleTheme, setMode } = useAppState();
+  const { lang, theme, toggleTheme } = useAppState();
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
   const { user } = useAuth();
@@ -1897,15 +1897,8 @@ export default function SimplePage() {
 
         </div>
 
-        {/* Footer: AI Studio + theme switcher */}
-        <div className="shrink-0 border-t border-sidebar-border p-3 flex items-center gap-2">
-          <button
-            onClick={() => setMode("studio")}
-            className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-sidebar-accent border border-sidebar-border hover:opacity-90 text-sidebar-foreground font-semibold text-sm py-2.5 transition-all"
-          >
-            <Sparkles className="h-4 w-4" />
-            {lang === "en" ? "AI Studio" : "AI სტუდია"}
-          </button>
+        {/* Footer: theme switcher */}
+        <div className="shrink-0 border-t border-sidebar-border p-3 flex items-center justify-end gap-2">
           <div className="flex items-center gap-1.5 px-2">
             <button
               onClick={() => theme !== "dark" && toggleTheme()}

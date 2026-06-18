@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from "react";
 import type { Lang } from "@/lib/i18n";
 
-export type AppMode = "landing" | "simple" | "studio" | "terms" | "privacy" | "corporate" | "sport" | "about" | "cart";
+export type AppMode = "landing" | "simple" | "terms" | "privacy" | "corporate" | "sport" | "about" | "cart";
 
 export type AppTheme = "dark" | "green";
 
@@ -31,7 +31,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
 
   const [mode, setModeState] = useState<AppMode>(() => {
     const saved = sessionStorage.getItem("maika-mode") as AppMode;
-    return saved === "simple" || saved === "studio" ? saved : "landing";
+    return saved === "simple" ? saved : "landing";
   });
 
   // Stack of modes visited before the current one. Pop on browser-back.

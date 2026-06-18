@@ -8,9 +8,9 @@ import SeoHead from "@/components/SeoHead";
 
 const NotFound = () => {
   const location = useLocation();
-  // The Studio lives at "/" behind a mode switch (not a distinct URL), so the
-  // back-to-Studio / back-to-Home links point at "/" and set the mode on click
-  // (mirrors AppHeader's logo). The href stays real for crawlers either way.
+  // The creation tools live at "/" behind a mode switch (not a distinct URL),
+  // so the back-to-Home / back-to-Simple links point at "/" and set the mode
+  // on click (mirrors AppHeader's logo). The href stays real for crawlers.
   const { lang, setMode } = useAppState();
 
   useEffect(() => {
@@ -50,8 +50,8 @@ const NotFound = () => {
           </Link>
         </Button>
         <Button asChild size="lg" variant="outline">
-          <Link to="/" onClick={() => setMode("studio")}>
-            <Paintbrush /> {t(lang, "nav.studio")}
+          <Link to="/" onClick={() => setMode("simple")}>
+            <Paintbrush /> {t(lang, "nav.simple")}
           </Link>
         </Button>
         <Button asChild size="lg" variant="outline">
