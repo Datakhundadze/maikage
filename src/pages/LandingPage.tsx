@@ -143,16 +143,16 @@ export default function LandingPage() {
                 <Shirt className="h-6 w-6" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.8)" }} />
               </div>
               <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>
-                {lang === "en" ? "MAIKA.GE Simple Mode" : "MAIKA.GE მარტივი რეჟიმი"}
+                {lang === "en" ? "Create a design" : "შექმენი დიზაინი"}
               </h2>
               <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
                 {lang === "en"
-                  ? "Upload a photo or write text. No registration required."
-                  : "ატვირთე ფოტო ან დაწერე ტექსტი. რეგისტრაცია საჭირო არ არის."}
+                  ? "Upload a photo, add text, or describe it and AI creates it. No sign-up needed."
+                  : "ატვირთე ფოტო, დაწერე ტექსტი, ან აღწერე და AI შეგიქმნის. რეგისტრაცია არ სჭირდება."}
               </p>
               <div className="flex items-center justify-between w-full">
                 <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-white/[0.06] border border-white/[0.08] text-white/50"}`}>
-                  {lang === "en" ? "Free • Fast" : "უფასო • სწრაფი"}
+                  {lang === "en" ? "✨ AI · Free · Fast" : "✨ AI · უფასო · სწრაფი"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.5)" }}>
                   {lang === "en" ? "Start" : "დაწყება"} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
