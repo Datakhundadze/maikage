@@ -3,7 +3,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { Paintbrush, FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images } from "lucide-react";
+import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
@@ -13,8 +13,7 @@ import { useCart } from "@/hooks/useCart";
 // Hover-preload map: when the customer hovers a nav button we kick off
 // the route's chunk fetch so the click-to-render gap shrinks from
 // "wait for the chunk to download" to ~0 ms. Vite's module cache
-// dedupes repeat calls, so hovering twice is free. The studio route
-// "/" lives in the main bundle, so no entry here.
+// dedupes repeat calls, so hovering twice is free.
 const PRELOAD_BY_PATH: Record<string, () => Promise<unknown>> = {
   "/designs": () => import("@/pages/CatalogPage"),
   "/my-designs": () => import("@/pages/MyDesignsPage"),
@@ -33,16 +32,10 @@ export default function AppHeader() {
   const isLoggedIn = !!user && !isAnonymous;
 
   const navItems = [
-    { path: "/", label: t(lang, "nav.studio"), icon: Paintbrush },
     { path: "/designs", label: t(lang, "nav.catalog"), icon: Images },
     { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
     ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
-
-  // Small badge showing current section
-  const pageBadge = location.pathname === "/my-designs"
-    ? (lang === "en" ? "My Designs" : "ჩემი დიzaინები")
-    : (lang === "en" ? "AI Studio" : "AI სტუდია");
 
   return (
     <>
@@ -80,11 +73,10 @@ export default function AppHeader() {
               <button
                 key={path}
                 onClick={() => {
-                  // Modes "cart"/"simple"/"landing" hijack rendering before
-                  // the Routes block in App.tsx, so navigate() alone doesn't
-                  // leave them. Reset mode to "studio" (the default Routes
-                  // mode) before navigating.
-                  setMode("studio");
+                  // Every nav target here is a non-root path, which always
+                  // renders through <Routes> regardless of mode (the mode
+                  // short-circuit in App.tsx only applies at "/"), so a plain
+                  // navigate() is enough — no setMode needed.
                   navigate(path);
                 }}
                 onMouseEnter={preload}

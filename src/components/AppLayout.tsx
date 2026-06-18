@@ -10,11 +10,11 @@ interface AppLayoutProps {
   main: ReactNode;
   /** When true, the main column also renders below the `lg` breakpoint
    *  (stacked under the sidebar) instead of being desktop-only. Default
-   *  false preserves the editor layout: StudioPage shows its big preview
-   *  canvas in `main` on desktop but embeds a separate `lg:hidden` preview
-   *  inside the sidebar on mobile, so a mobile `main` would double it.
-   *  Content pages (My Designs / My Orders) have no mobile-sidebar copy and
-   *  opt in so their grids actually render on phones. */
+   *  false keeps a desktop-only `main` for editor-style layouts whose
+   *  sidebar carries its own `lg:hidden` mobile preview (a mobile `main`
+   *  would then double that preview). Content pages (My Designs / My
+   *  Orders) have no mobile-sidebar copy and opt in so their grids render
+   *  on phones. */
   mainOnMobile?: boolean;
 }
 

@@ -13,12 +13,11 @@ import { RouteChangeTracker } from "@/components/RouteChangeTracker";
 
 // Each route component is a separate JS chunk after Vite build. Customers
 // visiting the landing page no longer download the admin / catalog /
-// studio code unless they navigate there. Suspense renders a small
+// simple-mode code unless they navigate there. Suspense renders a small
 // spinner while the next chunk loads (typically < 200 ms on a warm
 // cache, ~1 s cold over 4G).
 const CartPage = lazy(() => import("./pages/CartPage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
-const StudioPage = lazy(() => import("./pages/StudioPage"));
 const MyDesignsPage = lazy(() => import("./pages/MyDesignsPage"));
 const CatalogPage = lazy(() => import("./pages/CatalogPage"));
 const DesignDetailPage = lazy(() => import("./pages/DesignDetailPage"));
@@ -31,7 +30,6 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const CorporatePage = lazy(() => import("./pages/CorporatePage"));
 const SportPage = lazy(() => import("./pages/SportPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
-const TryOnPage = lazy(() => import("./pages/TryOnPage"));
 const FaqPage = lazy(() => import("./pages/FaqPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -70,9 +68,6 @@ function AppRoutes() {
   // Admin route is standalone — bypass mode checks
   if (pathname === "/admin") return <Routes><Route path="/admin" element={<AdminPage />} /></Routes>;
 
-  // Try-on page is standalone — accessible from all modes
-  if (pathname === "/try-on") return <Routes><Route path="/try-on" element={<TryOnPage />} /></Routes>;
-
   // Mode views (landing, simple, cart, terms, …) are URL-less surfaces that
   // only ever live at the root — setMode never changes the URL, and every
   // entry point into them happens at "/". Gating them on the root path means
@@ -100,7 +95,7 @@ function AppRoutes() {
 
   return (
     <Routes>
-      <Route path="/" element={<StudioPage />} />
+      <Route path="/" element={<SimplePage />} />
       <Route path="/designs" element={<CatalogPage />} />
       <Route path="/design/:slug" element={<DesignDetailPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />

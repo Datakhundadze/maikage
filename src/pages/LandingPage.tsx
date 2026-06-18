@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
-import { Shirt, Sparkles, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
+import { Shirt, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
@@ -123,8 +123,9 @@ export default function LandingPage() {
           </p>
         </div>
 
-        {/* Mode Cards */}
-        <div className="grid w-full max-w-2xl gap-5 sm:grid-cols-2 mb-16 sm:mb-20">
+        {/* Single creation entry → Simple (which now carries the full AI
+            generation tool; the separate AI Studio card was retired). */}
+        <div className="grid w-full max-w-md gap-5 mx-auto mb-16 sm:mb-20">
 
           {/* Card 1 — Simple Mode */}
           <button
@@ -155,40 +156,6 @@ export default function LandingPage() {
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.5)" }}>
                   {lang === "en" ? "Start" : "დაწყება"} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </span>
-              </div>
-            </div>
-          </button>
-
-          {/* Card 2 — AI Studio (FEATURED) */}
-          <button
-            onClick={() => setMode("studio")}
-            className={`group relative flex flex-col rounded-2xl border p-8 sm:p-10 text-left transition-all duration-300 hover:scale-[1.03] overflow-hidden ${
-              isGreen
-                ? "bg-white border-white/80 shadow-lg hover:shadow-xl"
-                : "border-primary/30 bg-card hover:border-primary/50"
-            }`}
-          >
-            {!isGreen && <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary/[0.08] via-transparent to-primary/[0.04] pointer-events-none" />}
-            {!isGreen && <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent pointer-events-none" />}
-            <div className="relative z-10 flex flex-col h-full">
-              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl mb-6 transition-colors ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20" : "bg-primary/10 border border-primary/20 group-hover:border-primary/40"}`}>
-                <Sparkles className="h-6 w-6" style={{ color: isGreen ? GREEN : undefined }} />
-              </div>
-              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>
-                {lang === "en" ? "MAIKA.GE AI Studio" : "MAIKA.GE AI სტუდიო"}
-              </h2>
-              <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
-                {lang === "en"
-                  ? "Create professional designs with the help of artificial intelligence"
-                  : "შექმენი პროფესიონალური დიზაინი ხელოვნური ინტელექტის დახმარებით"}
-              </p>
-              <div className="flex items-center justify-between w-full">
-                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-primary/15 border border-primary/20 text-primary"}`}>
-                  AI Powered ✨
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : undefined }}>
-                  {lang === "en" ? "Enter Studio" : "სტუდიოში შესვლა"} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
             </div>

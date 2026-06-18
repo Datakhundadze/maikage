@@ -62,7 +62,7 @@ export default function LoginModal({ open, onClose, message }: LoginModalProps) 
                 M
               </div>
               <div>
-                <h2 className="text-lg font-bold text-foreground">maika.ge Studio</h2>
+                <h2 className="text-lg font-bold text-foreground">maika.ge</h2>
                 <p className="text-xs text-muted-foreground">
                   {message || (lang === "ge"
                     ? "გაიარეთ ავტორიზაცია გასაგრძელებლად"
