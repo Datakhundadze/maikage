@@ -822,6 +822,29 @@ export default function SimplePage() {
     setShowTryOn(true);
   }, [aiResult]);
 
+  // Proceed from a try-on RESULT straight to the order flow. Ensures the
+  // tried-on design is actually placed on the product (reusing the same
+  // addPhotoLayer path as transfer; it self-guards MAX_PHOTOS), then opens
+  // the existing Simple OrderDialog. Mockups are rebuilt by the debounced
+  // recompute effect from the updated design and read live by OrderDialog
+  // at submit time. Wired into TryOnModal via its optional onOrder prop.
+  const handleAiOrder = useCallback(() => {
+    if (!aiResult) return;
+    const alreadyPlaced = sideData.photos.some(p => p.image === aiResult.transferImage);
+    if (!alreadyPlaced) addPhotoLayer(aiResult.transferImage);
+    setShowTryOn(false);
+    // Size gate mirrors the main order button: brand-sized products (and
+    // phone cases) need a size before the order form can open.
+    const needsSize = (BRAND_SIZES[productConfig.config.subProduct]?.length > 0) || productConfig.config.product === "Phone Case";
+    if (needsSize && !productConfig.config.size) {
+      setSizeError(true);
+      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setSizeError(false);
+    setOrderDialogOpen(true);
+  }, [aiResult, sideData.photos, addPhotoLayer, productConfig.config.subProduct, productConfig.config.product, productConfig.config.size]);
+
   const aiTransferLabel = (() => {
     const p = productConfig.config.product;
     if (p === "T-Shirt") return t(lang, "simpleAi.transferTshirt");
@@ -1436,6 +1459,7 @@ export default function SimplePage() {
           open={showTryOn}
           onClose={() => setShowTryOn(false)}
           designImage={aiResult.transferImage}
+          onOrder={handleAiOrder}
         />
       )}
       {/* Sidebar + Main wrapper */}

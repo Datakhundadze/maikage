@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Upload, X, Download, Shirt } from "lucide-react";
+import { Upload, X, Download, Shirt, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
@@ -11,9 +11,13 @@ interface TryOnModalProps {
   open: boolean;
   onClose: () => void;
   designImage: string; // transparent design or mockup data URL
+  /** Optional — when provided, an "Order" CTA appears below the try-on
+   *  result so the user can proceed straight to the order flow with this
+   *  design. Omitted by generic callers (e.g. Studio), hiding the button. */
+  onOrder?: () => void;
 }
 
-export default function TryOnModal({ open, onClose, designImage }: TryOnModalProps) {
+export default function TryOnModal({ open, onClose, designImage, onOrder }: TryOnModalProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [personImage, setPersonImage] = useState<string | null>(null);
@@ -168,6 +172,17 @@ export default function TryOnModal({ open, onClose, designImage }: TryOnModalPro
             </div>
           )}
 
+          {/* Order this design — only when invoked from a flow that supplies
+              onOrder (Simple). Generic callers (Studio) omit it, hiding this. */}
+          {resultImage && onOrder && (
+            <Button
+              onClick={onOrder}
+              className="w-full h-12 text-base font-bold rounded-xl gap-2"
+            >
+              <ShoppingBag className="h-4 w-4" /> {t(lang, "tryOn.order")}
+            </Button>
+          )}
+
           {/* Action button */}
           <Button
             onClick={handleTryOn}
@@ -181,7 +196,7 @@ export default function TryOnModal({ open, onClose, designImage }: TryOnModalPro
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                <Shirt className="h-4 w-4" /> გასინჯვა
+                <Shirt className="h-4 w-4" /> {t(lang, "tryOn.run")}
               </span>
             )}
           </Button>
