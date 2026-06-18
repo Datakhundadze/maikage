@@ -3,7 +3,7 @@ import { Phone, Smartphone, Mail, MapPin } from "lucide-react";
 
 export default function ContactBar() {
   return (
-    <div className="flex items-center justify-end px-4 py-1 bg-sidebar border-b border-sidebar-border text-sidebar-foreground/70 text-[11px] shrink-0 gap-3">
+    <div className="flex flex-wrap items-center justify-end px-4 py-1 bg-sidebar border-b border-sidebar-border text-sidebar-foreground/70 text-[11px] shrink-0 gap-x-3 gap-y-1">
       {/* Contact icons with tooltips */}
       <Tooltip delayDuration={100}>
         <TooltipTrigger asChild>
