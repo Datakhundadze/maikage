@@ -113,6 +113,21 @@ const LAYER_COLORS = [
 
 const MAX_PHOTOS = 5;
 
+// Simple funnels the customer's whole sentence into the `character` param, so
+// garment-priming words in their text (e.g. "a cat on a t-shirt") fight the
+// shared prompt's no-garment guard — and the realistic branch has no explicit
+// no-garment rule at all. Append this reinforcement to `character` on BOTH
+// generation paths (with-bg and without-bg). Verbatim copy of the admin Trend
+// Agent's GUARD_NO_GARMENT (src/components/admin/AiAgent.tsx) — the proven
+// wording — kept Simple-local so the shared gemini-proxy prompt and the admin
+// agent stay untouched. The customer's text is preserved as-is before this.
+const GUARD_NO_GARMENT =
+  "Output ONLY the standalone design artwork itself on a plain solid " +
+  "white background. Do NOT draw or include any t-shirt, hoodie, garment, " +
+  "apparel, clothing, fabric, mockup, folded shirt, hanger, or product of " +
+  "any kind. No clothing item, no product photo, no shirt — just the " +
+  "isolated graphic artwork, centered, ready to be printed.";
+
 // Stable per-tab session id so all composite events from one customer's
 // design session can be correlated when triaging an incident. Stored in
 // sessionStorage so a page reload preserves the id across navigations.
@@ -655,6 +670,9 @@ export default function SimplePage() {
       const zone = imageResult?.entry?.placementZone;
       const placementCoords = config.placementCoords;
       const isRealistic = /realistic|photo|რეალ/i.test(aiStyle || "");
+      // Reinforce the no-garment constraint, mirroring the admin Trend Agent.
+      // The user's intent is preserved verbatim; the guard is appended after.
+      const characterWithGuard = `${text} ${GUARD_NO_GARMENT}`;
 
       let resultImage: string;
       let transferImage: string;
@@ -665,7 +683,7 @@ export default function SimplePage() {
         // WITHOUT background → full existing pipeline incl. runTransparencyPipeline.
         const gen = await runGenerationPipeline(
           {
-            designParams: { character: text, scene: "", style: aiStyle, text: "", characterImages: [], sceneImage: null, styleImage: null, textImage: null },
+            designParams: { character: characterWithGuard, scene: "", style: aiStyle, text: "", characterImages: [], sceneImage: null, styleImage: null, textImage: null },
             product: config.product,
             color: config.color,
             speed: "fast",
@@ -687,7 +705,7 @@ export default function SimplePage() {
         // style-string override) selects the verbatim realistic prompt branch
         // in the proxy — identical prompt to runGenerationPipeline's realistic path.
         const { image: rawImage } = await callGemini("generate-design", {
-          character: text, scene: "", style: aiStyle, text: "",
+          character: characterWithGuard, scene: "", style: aiStyle, text: "",
           characterImages: [], sceneImage: null, styleImage: null, textImage: null,
           product: config.product, color: config.color,
           speed: isRealistic ? "pro" : "fast", isRealistic,
