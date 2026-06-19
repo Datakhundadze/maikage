@@ -6,7 +6,7 @@ import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag } from "lucide-react";
+import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Sparkles, Maximize, Loader2 } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -544,6 +544,8 @@ export default function SimplePage() {
   // resultImage = shown in the panel; transferImage = injected as a layer.
   const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string; downloadImage: string } | null>(null);
   const [aiUpscaling, setAiUpscaling] = useState(false);
+  // Per-layer "Edit with AI": id of the photo currently being enhanced (null = none).
+  const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
@@ -839,6 +841,41 @@ export default function SimplePage() {
     }
   }, [aiResult, aiUpscaling, toast, lang]);
 
+  // Per-layer "Edit with AI" → Enhance (4K). Reuses the EXISTING billable
+  // upscale action (upscaleImage → callGemini "upscale"); no new proxy action.
+  // Replaces the selected photo layer's image with the 4K result, which flows
+  // through the same layer-update + debounced re-composite path as any edit.
+  // 429 handled like generation: anon → login modal, authed → slow-down toast.
+  const handleEnhancePhoto = useCallback(async (photo: PhotoLayer) => {
+    if (editingPhotoId) return;
+    setEditingPhotoId(photo.id);
+    try {
+      const enhanced = await upscaleImage(photo.image);
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: enhanced } : p)),
+      }));
+      toast({ title: lang === "en" ? "Enhanced to 4K ✓" : "გაუმჯობესდა 4K-მდე ✓" });
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        if (err.requiresLogin) {
+          setLoginModalMessage(t(lang, "rateLimit.signIn"));
+          setShowLoginModal(true);
+        } else {
+          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+        }
+      } else {
+        toast({
+          title: lang === "en" ? "Enhance failed" : "გაუმჯობესება ვერ მოხერხდა",
+          description: err instanceof Error ? err.message : undefined,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setEditingPhotoId(null);
+    }
+  }, [editingPhotoId, setSideData, toast, lang]);
+
   // Open the inline virtual try-on modal with the generated design. TryOnModal
   // owns the whole flow (person upload → gemini-proxy "virtual-tryon" → result)
   // including its own 429 handling, so the user stays inside Simple.
@@ -1101,6 +1138,9 @@ export default function SimplePage() {
   }, [sideData.photos, sideData.texts, textImages, textPlaceholder, setSideData, updatePhotoCoords, updatePhotoSource, coverFitSource, selectedLayerId]);
 
   const hasPhotos = sideData.photos.length > 0;
+  // The currently-selected PHOTO layer (undefined when nothing or a text layer
+  // is selected) — drives the per-layer "Edit with AI" affordance.
+  const selectedPhoto = sideData.photos.find(p => p.id === selectedLayerId);
   const canAddMore = sideData.photos.length < MAX_PHOTOS;
 
   // Wait for the user-selected font to actually be loaded before drawing
@@ -1464,6 +1504,37 @@ export default function SimplePage() {
     return () => clearTimeout(timer);
   }, [frontData, backData, productConfig.config.product, productConfig.config.subProduct, productConfig.config.color]);
 
+  // The AI design panel is rendered in two responsive slots: under the mobile
+  // inline preview (lg:hidden) and in the desktop main column below the
+  // product preview (hidden lg:flex). It's fully controlled, so a single
+  // shared element rendered in both slots stays in sync — only one is visible
+  // per breakpoint. Mirrors StudioPage's mobile-preview-in-sidebar pattern.
+  const aiPanel = (
+    <SimpleAiPanel
+      lang={lang}
+      prompt={aiPrompt}
+      onPromptChange={setAiPrompt}
+      styleOptions={aiStyleOptions}
+      selectedStyle={aiStyle}
+      onSelectStyle={setAiStyle}
+      withBackground={aiWithBackground}
+      onToggleBackground={setAiWithBackground}
+      generating={aiGenerating}
+      status={aiStatus}
+      resultImage={aiResult?.resultImage ?? null}
+      transferLabel={aiTransferLabel}
+      canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
+      onGenerate={handleAiGenerate}
+      onTransfer={handleAiTransfer}
+      onRegenerate={handleAiGenerate}
+      onStartNew={handleAiStartNew}
+      onDownload={handleAiDownload}
+      onUpscale={handleAiUpscale}
+      upscaling={aiUpscaling}
+      onTryOn={handleAiTryOn}
+    />
+  );
+
   return (
     <div className="flex flex-col h-screen">
       <SeoHead
@@ -1518,6 +1589,10 @@ export default function SimplePage() {
             />
           </div>
 
+          {/* AI design panel — mobile: directly under the inline preview.
+              Hidden on desktop, where it renders in the main column instead. */}
+          <div className="lg:hidden">{aiPanel}</div>
+
           {/* Side indicator */}
           <div className="text-xs text-muted-foreground text-center">
             {lang === "en"
@@ -1540,7 +1615,11 @@ export default function SimplePage() {
             {hasPhotos && (
               <div className="flex flex-wrap gap-2">
                 {sideData.photos.map((photo, index) => (
-                  <div key={photo.id} className="relative group">
+                  <div
+                    key={photo.id}
+                    onClick={() => setSelectedLayerId(photo.id)}
+                    className="relative group cursor-pointer"
+                  >
                     <div className={`absolute -top-1 -left-1 h-4 w-4 rounded-full ${LAYER_COLORS[index % LAYER_COLORS.length]} flex items-center justify-center z-10`}>
                       <span className="text-[9px] text-white font-bold">{index + 1}</span>
                     </div>
@@ -1549,11 +1628,13 @@ export default function SimplePage() {
                       alt={`photo ${index + 1}`}
                       width={64}
                       height={64}
-                      className="h-16 w-16 rounded-lg object-cover border border-border"
+                      className={`h-16 w-16 rounded-lg object-cover border transition-colors ${
+                        selectedLayerId === photo.id ? "border-primary ring-2 ring-primary/40" : "border-border"
+                      }`}
                       loading="lazy"
                     />
                     <button
-                      onClick={() => removePhoto(photo.id)}
+                      onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
                       className="absolute -top-1.5 -right-1.5 rounded-full bg-destructive text-destructive-foreground h-5 w-5 flex items-center justify-center hover:scale-110 transition-transform"
                       aria-label="წაშლა"
                     >
@@ -1561,6 +1642,30 @@ export default function SimplePage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Per-layer "Edit with AI" — only when a PHOTO layer is selected.
+                A1: one operation (Enhance/4K) reusing the existing upscale. */}
+            {selectedPhoto && (
+              <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2">
+                <p className="text-[11px] font-semibold text-card-foreground flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  {lang === "en" ? "Edit with AI" : "AI-ით რედაქტირება"}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 text-xs"
+                  onClick={() => handleEnhancePhoto(selectedPhoto)}
+                  disabled={editingPhotoId === selectedPhoto.id}
+                >
+                  {editingPhotoId === selectedPhoto.id ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {lang === "en" ? "Enhancing…" : "მუშავდება…"}</>
+                  ) : (
+                    <><Maximize className="h-3.5 w-3.5" /> {lang === "en" ? "Enhance (4K)" : "ხარისხის გაუმჯობესება (4K)"}</>
+                  )}
+                </Button>
               </div>
             )}
 
@@ -1716,31 +1821,6 @@ export default function SimplePage() {
               {lang === "en" ? "Add text" : "ტექსტის დამატება"}
             </Button>
           </div>
-
-          {/* AI design (Phase 1) — describe a design and generate it */}
-          <SimpleAiPanel
-            lang={lang}
-            prompt={aiPrompt}
-            onPromptChange={setAiPrompt}
-            styleOptions={aiStyleOptions}
-            selectedStyle={aiStyle}
-            onSelectStyle={setAiStyle}
-            withBackground={aiWithBackground}
-            onToggleBackground={setAiWithBackground}
-            generating={aiGenerating}
-            status={aiStatus}
-            resultImage={aiResult?.resultImage ?? null}
-            transferLabel={aiTransferLabel}
-            canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
-            onGenerate={handleAiGenerate}
-            onTransfer={handleAiTransfer}
-            onRegenerate={handleAiGenerate}
-            onStartNew={handleAiStartNew}
-            onDownload={handleAiDownload}
-            onUpscale={handleAiUpscale}
-            upscaling={aiUpscaling}
-            onTryOn={handleAiTryOn}
-          />
 
           {(hasPhotos || sideHasText(sideData)) && (
             <Button variant="outline" size="sm" onClick={clearDesign}>
@@ -1914,18 +1994,25 @@ export default function SimplePage() {
         </div>
       </aside>
 
-      {/* Main preview — desktop only; mobile uses inline preview in sidebar */}
+      {/* Main column — desktop only; mobile uses inline preview in sidebar.
+          Vertical stack: product preview (flexes to fill), then the AI panel
+          below it. The whole column scrolls if the panel is tall. */}
       <main className="hidden lg:flex flex-1 bg-background overflow-y-auto flex-col">
-        <ProductPreview
-          productName={productConfig.config.product}
-          subProduct={productConfig.config.subProduct}
-          colorName={productConfig.config.color}
-          view={productConfig.config.view}
-          placementCoords={productConfig.config.placementCoords}
-          onCoordsChange={productConfig.setPlacementCoords}
-          layers={layers.length > 0 ? layers : undefined}
-          onBackgroundClick={() => setSelectedLayerId(null)}
-        />
+        <div className="flex-1 min-h-0">
+          <ProductPreview
+            productName={productConfig.config.product}
+            subProduct={productConfig.config.subProduct}
+            colorName={productConfig.config.color}
+            view={productConfig.config.view}
+            placementCoords={productConfig.config.placementCoords}
+            onCoordsChange={productConfig.setPlacementCoords}
+            layers={layers.length > 0 ? layers : undefined}
+            onBackgroundClick={() => setSelectedLayerId(null)}
+          />
+        </div>
+        <div className="shrink-0 border-t border-border p-4">
+          <div className="max-w-2xl mx-auto w-full">{aiPanel}</div>
+        </div>
       </main>
       </div>
     </div>
