@@ -11,11 +11,11 @@ import type { AppStatus } from "@/hooks/useDesign";
 // cut-out artwork reads clearly. With-background results are opaque on-white,
 // so they keep the plain panel background instead.
 const CHECKER_STYLE: CSSProperties = {
-  backgroundColor: "#ffffff",
+  backgroundColor: "#f7f7f8",
   backgroundImage:
-    "linear-gradient(45deg, #d4d4d8 25%, transparent 25%), linear-gradient(-45deg, #d4d4d8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d4d4d8 75%), linear-gradient(-45deg, transparent 75%, #d4d4d8 75%)",
-  backgroundSize: "16px 16px",
-  backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0",
+    "linear-gradient(45deg, #e6e8ec 25%, transparent 25%), linear-gradient(-45deg, #e6e8ec 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e6e8ec 75%), linear-gradient(-45deg, transparent 75%, #e6e8ec 75%)",
+  backgroundSize: "12px 12px",
+  backgroundPosition: "0 0, 0 6px, 6px -6px, -6px 0",
 };
 
 interface SimpleAiPanelProps {
