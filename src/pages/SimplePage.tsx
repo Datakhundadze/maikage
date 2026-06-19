@@ -128,6 +128,23 @@ const GUARD_NO_GARMENT =
   "any kind. No clothing item, no product photo, no shirt — just the " +
   "isolated graphic artwork, centered, ready to be printed.";
 
+// WITHOUT-background mode only. The customer's free-text often implies a scene
+// ("…on Tbilisi rooftops"), which the model renders as a full-frame
+// environment — leaving no plain background for runTransparencyPipeline to
+// isolate, so the result comes back as a rectangular scene WITH background.
+// This steers generation toward a single isolated subject on solid white so
+// the cut-out is clean. NOT applied in with-background mode (scenes are fine
+// there). Simple-side only — the shared gemini-proxy prompt and the
+// transparency pipeline internals stay untouched.
+const GUARD_ISOLATE_BG =
+  "CRITICAL: render the subject as a SINGLE ISOLATED design element on a PLAIN " +
+  "SOLID WHITE (#FFFFFF) background. Do NOT draw any scenery, environment, " +
+  "landscape, room, sky, ground, floor, wall, building, rooftop, city, street " +
+  "or any background setting — even if the description mentions a place or " +
+  "location, treat it ONLY as theme/style inspiration, NEVER as a literal " +
+  "background. No full-frame scene, no rectangular photo, no border. The " +
+  "background must be empty pure white so the artwork can be cleanly cut out.";
+
 // Stable per-tab session id so all composite events from one customer's
 // design session can be correlated when triaging an incident. Stored in
 // sessionStorage so a page reload preserves the id across navigations.
@@ -683,9 +700,12 @@ export default function SimplePage() {
 
       if (!aiWithBackground) {
         // WITHOUT background → full existing pipeline incl. runTransparencyPipeline.
+        // Append GUARD_ISOLATE_BG so the subject is rendered on plain white with
+        // no scenery — otherwise a scene-y prompt fills the frame and there's
+        // nothing for the transparency pipeline to cleanly isolate.
         const gen = await runGenerationPipeline(
           {
-            designParams: { character: characterWithGuard, scene: "", style: aiStyle, text: "", characterImages: [], sceneImage: null, styleImage: null, textImage: null },
+            designParams: { character: `${characterWithGuard} ${GUARD_ISOLATE_BG}`, scene: "", style: aiStyle, text: "", characterImages: [], sceneImage: null, styleImage: null, textImage: null },
             product: config.product,
             color: config.color,
             speed: "fast",
