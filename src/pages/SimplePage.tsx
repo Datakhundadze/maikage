@@ -1994,21 +1994,26 @@ export default function SimplePage() {
         </div>
       </aside>
 
-      {/* Main column — desktop only; mobile uses inline preview in sidebar.
-          Vertical stack: product preview (flexes to fill), then the AI panel
-          below it. The whole column scrolls if the panel is tall. */}
+      {/* Main column — desktop only; mobile/tablet use the inline preview in
+          the sidebar. Vertical stack: product preview, then the AI panel below.
+          The preview is an AUTO-HEIGHT, width-capped, centered block (NOT
+          flex-1): its card is aspect-square, so its height comes from its
+          width — a flex-1 box shorter than the square clipped it at the top
+          and overlapped the panel. The column scrolls if both exceed height. */}
       <main className="hidden lg:flex flex-1 bg-background overflow-y-auto flex-col">
-        <div className="flex-1 min-h-0">
-          <ProductPreview
-            productName={productConfig.config.product}
-            subProduct={productConfig.config.subProduct}
-            colorName={productConfig.config.color}
-            view={productConfig.config.view}
-            placementCoords={productConfig.config.placementCoords}
-            onCoordsChange={productConfig.setPlacementCoords}
-            layers={layers.length > 0 ? layers : undefined}
-            onBackgroundClick={() => setSelectedLayerId(null)}
-          />
+        <div className="shrink-0 flex justify-center pt-2">
+          <div className="w-full max-w-lg">
+            <ProductPreview
+              productName={productConfig.config.product}
+              subProduct={productConfig.config.subProduct}
+              colorName={productConfig.config.color}
+              view={productConfig.config.view}
+              placementCoords={productConfig.config.placementCoords}
+              onCoordsChange={productConfig.setPlacementCoords}
+              layers={layers.length > 0 ? layers : undefined}
+              onBackgroundClick={() => setSelectedLayerId(null)}
+            />
+          </div>
         </div>
         <div className="shrink-0 border-t border-border p-4">
           <div className="max-w-2xl mx-auto w-full">{aiPanel}</div>
