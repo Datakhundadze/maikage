@@ -25,10 +25,11 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, runTransparencyPipeline, callGemini, upscaleImage, RateLimitError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, upscaleImage, RateLimitError } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
+import { chromaKeyGreen } from "@/lib/chromaKey";
 import { t } from "@/lib/i18n";
 import type { AppStatus } from "@/hooks/useDesign";
 import LoginModal from "@/components/LoginModal";
@@ -941,18 +942,20 @@ export default function SimplePage() {
     probe.src = dataUrl;
   }, [setSideData, zoneForLayers]);
 
-  // Per-layer "Edit with AI" → Remove background (A2). New gemini-proxy
-  // "isolate-subject" action puts the subject on pure white, then the EXISTING
-  // runTransparencyPipeline (called, not modified) cuts it out to a transparent
-  // PNG. Replaces the layer image + re-fits (cutout aspect may differ). 429 →
-  // login modal / slow-down toast, like the other AI calls.
+  // Per-layer "Edit with AI" → Remove background (A2, photo-appropriate path).
+  // gemini-proxy "isolate-subject" puts the subject on a GREEN chroma screen,
+  // then chromaKeyGreen keys the green to transparency client-side. Photos are
+  // deliberately NOT sent through the design pipeline's convert-bg-black +
+  // difference matting (runTransparencyPipeline), which returns a silhouette/
+  // mask for photographic subjects. Replaces the layer image + re-fits (cutout
+  // aspect may differ). 429 → login modal / slow-down toast like other AI calls.
   const handleRemoveBgPhoto = useCallback(async (photo: PhotoLayer) => {
     if (editingPhotoId) return;
     setEditingPhotoId(photo.id);
     setEditingOp("removebg");
     try {
-      const { image: whiteBg } = await callGemini("isolate-subject", { image: photo.image });
-      const { transparentImage } = await runTransparencyPipeline(whiteBg, { isRealistic: true });
+      const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
+      const transparentImage = await chromaKeyGreen(greenBg);
       setSideData(prev => ({
         ...prev,
         photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: transparentImage } : p)),
