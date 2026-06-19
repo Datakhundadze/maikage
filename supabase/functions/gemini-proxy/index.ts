@@ -328,25 +328,29 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       }];
 
     } else if (action === "isolate-subject") {
-      // A2: isolate the main subject of an arbitrary UPLOADED photo onto a pure
-      // white background (img2img segmentation). The white-bg result is fed into
-      // the existing client-side runTransparencyPipeline for the final
-      // transparent cutout — the same difference-matting path used for designs,
-      // which is why the white background must be uniform and shadow-free.
+      // A2 (photo background removal): isolate the main subject of an arbitrary
+      // UPLOADED photo onto a solid GREEN CHROMA-KEY background. The client then
+      // chroma-keys the green to transparent (src/lib/chromaKey.ts). Photos must
+      // NOT go through the design-oriented convert-bg-black + difference-matting
+      // path (runTransparencyPipeline): on a photograph convert-bg-black returns
+      // a silhouette/mask, which matting collapses into a binary mask. Green
+      // keys far more reliably than white (which punches holes in white/skin/
+      // highlight regions), so we ask for a green screen and key it client-side.
       model = "google/gemini-3-pro-image-preview";
       messages = [{
         role: "user",
         content: [
           {
             type: "text",
-            text: `Isolate the MAIN SUBJECT (the primary foreground person, animal, or object) from this photo and place it on a PURE SOLID WHITE (#FFFFFF) background. Completely remove the original background and everything that is not the main subject — no scenery, no environment, no other objects.
+            text: `Isolate the MAIN SUBJECT (the primary foreground person, animal, or object) from this photo and place it on a SOLID BRIGHT GREEN CHROMA-KEY background (pure green screen, #00FF00). Completely remove the original background and everything that is not the main subject — no scenery, no environment, no other objects.
 
 CRITICAL:
-- Keep the main subject EXACTLY as it is: same shape, silhouette, colors, textures, details, proportions and pose. Do NOT redraw, restyle, re-light, or regenerate the subject — this is a background-removal/segmentation operation, not a re-shoot. Every subject pixel must match the input.
-- The new background must be uniformly PURE WHITE #FFFFFF, edge to edge, with NO shadow, gradient, texture, reflection, or off-white tint anywhere. The subject must cast NO shadow onto the white backdrop. (A downstream pipeline difference-mattes the subject against this white, so any non-white background pixel leaves a visible halo.)
+- Keep the main subject EXACTLY as it is: same shape, colors, textures, photographic detail, proportions and pose. Do NOT redraw, restyle, re-light, silhouette, or regenerate the subject — this is a background-replacement/segmentation operation, NOT a re-shoot and NOT a mask. Preserve every photographic detail and the original colors of the real subject. Do NOT output a flat solid silhouette or a black/white mask.
+- The new background must be uniformly PURE BRIGHT GREEN #00FF00, edge to edge, with NO shadow, gradient, texture, reflection, or any other color anywhere. The subject must cast NO shadow onto the green backdrop. (A downstream chroma-key removes exactly this green, so any non-green background pixel stays visible.)
+- Do NOT let the green spill onto or tint the subject — keep the subject's original colors with clean edges.
 - Keep the subject fully inside the frame, roughly centered, at a similar scale to the input.
 
-Output: a single image of the isolated main subject on a pure solid white (#FFFFFF) background.`,
+Output: a single photographic image of the isolated main subject (full detail, original colors) on a pure solid bright green (#00FF00) chroma-key background.`,
           },
           { type: "image_url", image_url: { url: params.image } },
         ],
