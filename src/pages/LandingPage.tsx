@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
 import { Shirt, Mail, Phone, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
+import PartnerLogosMarquee from "@/components/PartnerLogosMarquee";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 
@@ -217,6 +218,9 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+
+        {/* Partner logos — trust marquee (renders nothing until logos exist) */}
+        <PartnerLogosMarquee />
 
         {/* Sports Section */}
         <div className="w-full max-w-4xl mb-12 sm:mb-16">
