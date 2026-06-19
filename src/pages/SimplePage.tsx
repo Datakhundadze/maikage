@@ -6,7 +6,7 @@ import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Sparkles, Maximize, Loader2, Eraser } from "lucide-react";
+import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Sparkles, Loader2, Eraser } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -562,10 +562,9 @@ export default function SimplePage() {
   // resultImage = shown in the panel; transferImage = injected as a layer.
   const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string; downloadImage: string } | null>(null);
   const [aiUpscaling, setAiUpscaling] = useState(false);
-  // Per-layer "Edit with AI": which photo is busy + which op (so only the
-  // active button shows a spinner; both are disabled while either runs).
+  // Per-layer "Edit with AI": which photo's background removal is in flight
+  // (null = none) — drives the button's loading/disabled state.
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
-  const [editingOp, setEditingOp] = useState<"enhance" | "removebg" | null>(null);
   const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
@@ -864,43 +863,6 @@ export default function SimplePage() {
     }
   }, [aiResult, aiUpscaling, toast, lang]);
 
-  // Per-layer "Edit with AI" → Enhance (4K). Reuses the EXISTING billable
-  // upscale action (upscaleImage → callGemini "upscale"); no new proxy action.
-  // Replaces the selected photo layer's image with the 4K result, which flows
-  // through the same layer-update + debounced re-composite path as any edit.
-  // 429 handled like generation: anon → login modal, authed → slow-down toast.
-  const handleEnhancePhoto = useCallback(async (photo: PhotoLayer) => {
-    if (editingPhotoId) return;
-    setEditingPhotoId(photo.id);
-    setEditingOp("enhance");
-    try {
-      const enhanced = await upscaleImage(photo.image);
-      setSideData(prev => ({
-        ...prev,
-        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: enhanced } : p)),
-      }));
-      toast({ title: lang === "en" ? "Enhanced to 4K ✓" : "გაუმჯობესდა 4K-მდე ✓" });
-    } catch (err) {
-      if (err instanceof RateLimitError) {
-        if (err.requiresLogin) {
-          setLoginModalMessage(t(lang, "rateLimit.signIn"));
-          setShowLoginModal(true);
-        } else {
-          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
-        }
-      } else {
-        toast({
-          title: lang === "en" ? "Enhance failed" : "გაუმჯობესება ვერ მოხერხდა",
-          description: err instanceof Error ? err.message : undefined,
-          variant: "destructive",
-        });
-      }
-    } finally {
-      setEditingPhotoId(null);
-      setEditingOp(null);
-    }
-  }, [editingPhotoId, setSideData, toast, lang]);
-
   // Measure a (possibly new) image's natural aspect and re-apply CONTAIN-fit to
   // an EXISTING photo layer — keeps the layer's position, recomputes scale for
   // the new aspect. Mirrors addPhotoLayer's probe; used by background removal,
@@ -952,7 +914,6 @@ export default function SimplePage() {
   const handleRemoveBgPhoto = useCallback(async (photo: PhotoLayer) => {
     if (editingPhotoId) return;
     setEditingPhotoId(photo.id);
-    setEditingOp("removebg");
     try {
       const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
       const transparentImage = await chromaKeyGreen(greenBg);
@@ -979,7 +940,6 @@ export default function SimplePage() {
       }
     } finally {
       setEditingPhotoId(null);
-      setEditingOp(null);
     }
   }, [editingPhotoId, applyContainFit, setSideData, toast, lang]);
 
@@ -1753,42 +1713,26 @@ export default function SimplePage() {
             )}
 
             {/* Per-layer "Edit with AI" — only when a PHOTO layer is selected.
-                A1: Enhance (4K, existing upscale). A2: Remove background
-                (isolate-subject → existing transparency pipeline). */}
+                Remove background (isolate-subject → green chroma-key). */}
             {selectedPhoto && (
               <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2">
                 <p className="text-[11px] font-semibold text-card-foreground flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 text-primary" />
                   {lang === "en" ? "Edit with AI" : "AI-ით რედაქტირება"}
                 </p>
-                <div className="grid grid-cols-1 gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-1.5 text-xs"
-                    onClick={() => handleEnhancePhoto(selectedPhoto)}
-                    disabled={editingPhotoId === selectedPhoto.id}
-                  >
-                    {editingPhotoId === selectedPhoto.id && editingOp === "enhance" ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {lang === "en" ? "Enhancing…" : "მუშავდება…"}</>
-                    ) : (
-                      <><Maximize className="h-3.5 w-3.5" /> {lang === "en" ? "Enhance (4K)" : "ხარისხის გაუმჯობესება (4K)"}</>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-1.5 text-xs"
-                    onClick={() => handleRemoveBgPhoto(selectedPhoto)}
-                    disabled={editingPhotoId === selectedPhoto.id}
-                  >
-                    {editingPhotoId === selectedPhoto.id && editingOp === "removebg" ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {lang === "en" ? "Removing…" : "მუშავდება…"}</>
-                    ) : (
-                      <><Eraser className="h-3.5 w-3.5" /> {lang === "en" ? "Remove background" : "ფონის მოხსნა"}</>
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-1.5 text-xs"
+                  onClick={() => handleRemoveBgPhoto(selectedPhoto)}
+                  disabled={editingPhotoId === selectedPhoto.id}
+                >
+                  {editingPhotoId === selectedPhoto.id ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {lang === "en" ? "Removing…" : "მუშავდება…"}</>
+                  ) : (
+                    <><Eraser className="h-3.5 w-3.5" /> {lang === "en" ? "Remove background" : "ფონის მოხსნა"}</>
+                  )}
+                </Button>
               </div>
             )}
 
