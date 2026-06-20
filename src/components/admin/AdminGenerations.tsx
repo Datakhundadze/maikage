@@ -25,7 +25,7 @@ interface GenRow {
   is_guest: boolean;
   user_email: string | null;
   user_display_name: string | null;
-  user_paid: boolean;
+  user_paid_order_count: number;
   user_gen_count: number;
 }
 
@@ -65,7 +65,11 @@ export default function AdminGenerations() {
       setError(err.message);
       if (offset === 0) setRows([]);
     } else {
-      const page = ((data as GenRow[]) || []).map((r) => ({ ...r, user_gen_count: Number(r.user_gen_count) }));
+      const page = ((data as GenRow[]) || []).map((r) => ({
+        ...r,
+        user_gen_count: Number(r.user_gen_count),
+        user_paid_order_count: Number(r.user_paid_order_count),
+      }));
       setRows((prev) => (offset === 0 ? page : [...prev, ...page]));
       setHasMore(page.length === PAGE_SIZE);
     }
@@ -119,12 +123,16 @@ export default function AdminGenerations() {
                   <span className="text-[11px] text-muted-foreground">{g.product} · {g.color}{g.style ? ` · ${g.style}` : ""}</span>
                   {!g.is_guest && g.user_id && (
                     <>
-                      <Badge variant="outline" className="text-[10px]">{g.user_gen_count} გენ.</Badge>
-                      {g.user_paid ? (
-                        <Badge variant="outline" className="text-[10px] text-green-600 border-green-600/30">გადახდილი</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-600/30">გადაუხდელი</Badge>
-                      )}
+                      {/* Per-USER totals (not this generation): cumulative
+                          generations + how many PAID orders the user has. */}
+                      <Badge variant="outline" className="text-[10px]" title="მომხმარებლის გენერაციები სულ">{g.user_gen_count} გენ.</Badge>
+                      <Badge
+                        variant="outline"
+                        title="მომხმარებლის გადახდილი შეკვეთები სულ"
+                        className={`text-[10px] ${g.user_paid_order_count > 0 ? "text-green-600 border-green-600/30" : "text-muted-foreground"}`}
+                      >
+                        🛒 {g.user_paid_order_count} შეკვეთა
+                      </Badge>
                     </>
                   )}
                 </div>

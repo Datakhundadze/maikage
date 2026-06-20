@@ -1,4 +1,4 @@
--- Admin generations history with user email (feature B).
+-- Admin generations history with user email (feature B) — status fix.
 --
 -- ⚠️ APPLY MANUALLY in the Lovable SQL Editor — Lovable does NOT auto-apply
 -- migrations; this file is the repo record. Read-only: a SECURITY DEFINER RPC,
@@ -6,8 +6,13 @@
 --
 -- admin_list_generations(p_limit, p_offset) returns the FULL generations
 -- history (paginated, created_at DESC) joined to auth.users.email and
--- profiles.display_name, plus per-user context for the upcoming anti-abuse
--- block: user_gen_count (cumulative) and user_paid (has a paid order).
+-- profiles.display_name, plus per-user context: user_gen_count (cumulative
+-- generations) and user_paid_order_count (how many PAID orders the user has).
+--
+-- Fix: the prior version returned user_paid (boolean) which the admin tab
+-- rendered as a "paid" badge per generation — misleading, since generations are
+-- free and only ORDERS are paid. Replaced with user_paid_order_count (bigint) so
+-- the UI can show a clear per-user "{n} orders" figure.
 --
 -- Admin-gated in-body via has_role(auth.uid(), 'admin') — auth.uid() inside a
 -- SECURITY DEFINER function returns the CALLER's uid (from the JWT), not the
@@ -15,8 +20,13 @@
 -- SECURITY DEFINER is required to read the auth.users schema, which PostgREST
 -- can't expose directly. search_path is pinned per the project convention; all
 -- cross-schema refs (auth.users, public.*) are fully qualified.
+--
+-- The RETURNS TABLE columns changed (user_paid boolean → user_paid_order_count
+-- bigint), so DROP the old function first, then CREATE.
 
-CREATE OR REPLACE FUNCTION public.admin_list_generations(p_limit int, p_offset int)
+DROP FUNCTION IF EXISTS public.admin_list_generations(int, int);
+
+CREATE FUNCTION public.admin_list_generations(p_limit int, p_offset int)
 RETURNS TABLE (
   id uuid,
   user_id uuid,
@@ -29,7 +39,7 @@ RETURNS TABLE (
   is_guest boolean,
   user_email text,
   user_display_name text,
-  user_paid boolean,
+  user_paid_order_count bigint,
   user_gen_count bigint
 )
 LANGUAGE plpgsql
@@ -55,10 +65,10 @@ BEGIN
     g.is_guest,
     u.email::text AS user_email,
     p.display_name AS user_display_name,
-    EXISTS (
-      SELECT 1 FROM public.orders o
+    (
+      SELECT count(*) FROM public.orders o
       WHERE o.user_id = g.user_id AND o.payment_status = 'paid'
-    ) AS user_paid,
+    ) AS user_paid_order_count,
     (
       SELECT count(*) FROM public.generations g2
       WHERE g2.user_id = g.user_id
@@ -81,10 +91,11 @@ NOTIFY pgrst, 'reload schema';
 
 -- VERIFY (run in the SQL Editor; it runs as owner so catalog checks work even
 -- though calling the function as owner would hit the admin guard):
---   SELECT p.proname, p.prosecdef AS security_definer,
+--   SELECT p.proname, pg_get_function_result(p.oid) AS returns,
+--          p.prosecdef AS security_definer,
 --          has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authed_can_exec
 --   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 --   WHERE n.nspname = 'public' AND p.proname = 'admin_list_generations';
---   -- expect: security_definer = true, authed_can_exec = true
--- The data path (email join + pagination) is verified by opening the
--- "გენერაციები" admin tab while signed in as an admin.
+--   -- expect: returns includes "user_paid_order_count bigint" (and NO user_paid),
+--   --         security_definer = true, authed_can_exec = true
+-- The data path is verified by opening the "გენერაციები" admin tab as an admin.
