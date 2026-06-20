@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, callGemini, upscaleImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, upscaleImage, loadImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
@@ -145,6 +145,43 @@ const GUARD_ISOLATE_BG =
   "location, treat it ONLY as theme/style inspiration, NEVER as a literal " +
   "background. No full-frame scene, no rectangular photo, no border. The " +
   "background must be empty pure white so the artwork can be cleanly cut out.";
+
+// Display-only watermark: draw "maika.ge" bottom-right (white + drop-shadow,
+// mirroring compositeMockup's style) onto a copy of the image, preserving
+// transparency. Used to brand the AI result shown in the panel and the shared
+// image — NEVER the transferImage that goes onto the product/order. Separate
+// from the byte-stable compositeMockup / runGenerationPipeline. Falls back to
+// the original on any failure so a watermark hiccup never breaks the result.
+async function watermarkForDisplay(dataUrl: string): Promise<string> {
+  try {
+    const img = await loadImage(dataUrl);
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return dataUrl;
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0);
+
+    const fontSize = Math.max(14, Math.round(w * 0.032));
+    ctx.font = `600 ${fontSize}px "BPG Nino Mtavruli", "Noto Sans Georgian", "Segoe UI", sans-serif`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.shadowColor = "rgba(0,0,0,0.55)";
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("maika.ge", w - fontSize * 0.8, h - fontSize * 0.6);
+
+    return canvas.toDataURL("image/png");
+  } catch {
+    return dataUrl;
+  }
+}
 
 // Stable per-tab session id so all composite events from one customer's
 // design session can be correlated when triaging an incident. Stored in
@@ -747,10 +784,14 @@ export default function SimplePage() {
         mockupImage = rawImage;
       }
 
-      // Panel DISPLAY = standalone design (resultImage); DOWNLOAD = the
-      // watermarked product mockup (downloadImage = mockupImage). With-bg has
-      // no separate mockup, so downloadImage is the raw on-white image.
-      setAiResult({ resultImage, transferImage, downloadImage: mockupImage });
+      // DISPLAY (resultImage) gets a "maika.ge" watermark baked in (display-only
+      // — transferImage stays clean for transfer/order/upscale/try-on). The
+      // SHARE image (downloadImage) must also be watermarked: without-bg's mockup
+      // already is (compositeMockup bakes it), but with-bg's mockup is the raw
+      // generation, so stamp it here.
+      const displayImage = await watermarkForDisplay(resultImage);
+      const shareImage = aiWithBackground ? await watermarkForDisplay(mockupImage) : mockupImage;
+      setAiResult({ resultImage: displayImage, transferImage, downloadImage: shareImage });
       setAiBlocked(false); // a successful generation means we're not blocked
 
       // Analytics generations row — mirrors Studio's generation-time insert.
@@ -836,13 +877,42 @@ export default function SimplePage() {
     setAiPrompt("");
   }, []);
 
-  const handleAiDownload = useCallback(() => {
+  // Share the (already-watermarked) result image via the native share sheet on
+  // mobile. downloadImage is the watermarked mockup (without-bg) / watermarked
+  // raw (with-bg) — never the clean transferImage. Falls back to a Web-Share
+  // text/url, then to a plain download, on platforms without file sharing.
+  const handleAiShare = useCallback(async () => {
     if (!aiResult) return;
-    const a = document.createElement("a");
-    a.href = aiResult.downloadImage;
-    a.download = "maika-ai-design.png";
-    a.click();
-  }, [aiResult]);
+    const src = aiResult.downloadImage;
+    const title = "maika.ge";
+    const text = lang === "en" ? "Check out my design on maika.ge" : "ნახე ჩემი დიზაინი maika.ge-ზე";
+    try {
+      const blob = await fetch(src).then((r) => r.blob());
+      const file = new File([blob], "maika-design.png", { type: "image/png" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title, text });
+        return;
+      }
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title, text, url: window.location.origin });
+        return;
+      }
+      // No Web Share API (most desktops) → download the watermarked image.
+      const a = document.createElement("a");
+      a.href = src;
+      a.download = "maika-design.png";
+      a.click();
+      toast({ title: lang === "en" ? "Image saved" : "სურათი შენახულია" });
+    } catch (err) {
+      // User-cancelled the native sheet → no-op. Other errors → toast.
+      if (err instanceof Error && err.name === "AbortError") return;
+      toast({
+        title: lang === "en" ? "Share failed" : "გაზიარება ვერ მოხერხდა",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    }
+  }, [aiResult, lang, toast]);
 
   // Upscale the generated design to 4K via the EXISTING upscale path
   // (upscaleImage → callGemini "upscale"), mirroring Studio's ResultView.
@@ -1603,7 +1673,7 @@ export default function SimplePage() {
       onTransfer={handleAiTransfer}
       onRegenerate={handleAiGenerate}
       onStartNew={handleAiStartNew}
-      onDownload={handleAiDownload}
+      onShare={handleAiShare}
       onUpscale={handleAiUpscale}
       upscaling={aiUpscaling}
       onTryOn={handleAiTryOn}
