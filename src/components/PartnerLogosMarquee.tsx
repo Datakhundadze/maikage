@@ -63,8 +63,8 @@ export default function PartnerLogosMarquee() {
               <img
                 src={logo.url}
                 alt={logo.name}
-                className="max-h-9 sm:max-h-10 w-auto max-w-full object-contain grayscale opacity-70 transition duration-300 hover:grayscale-0 hover:opacity-100"
-                loading="lazy"
+                className="h-9 sm:h-10 w-auto max-w-full object-contain grayscale opacity-70 transition duration-300 hover:grayscale-0 hover:opacity-100"
+                loading="eager"
                 draggable={false}
               />
             </div>
