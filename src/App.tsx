@@ -31,6 +31,7 @@ const CorporatePage = lazy(() => import("./pages/CorporatePage"));
 const SportPage = lazy(() => import("./pages/SportPage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
 const FaqPage = lazy(() => import("./pages/FaqPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // LoginPage is currently unused at the routing layer (no <LoginPage />
@@ -105,6 +106,7 @@ function AppRoutes() {
       <Route path="/community" element={<Navigate to="/designs" replace />} />
       <Route path="/corporate" element={<CorporatePage />} />
       <Route path="/faq" element={<FaqPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
