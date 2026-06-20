@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, callGemini, upscaleImage, RateLimitError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, upscaleImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
@@ -568,6 +568,9 @@ export default function SimplePage() {
   const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
+  // Anti-abuse generation block (server-enforced): true → persistent "place an
+  // order / contact us" notice in the AI panel. Cleared on a successful generate.
+  const [aiBlocked, setAiBlocked] = useState(false);
   const aiStyleOptions = getStyleOptions(lang);
 
   // Helpers to update current side
@@ -748,6 +751,7 @@ export default function SimplePage() {
       // watermarked product mockup (downloadImage = mockupImage). With-bg has
       // no separate mockup, so downloadImage is the raw on-white image.
       setAiResult({ resultImage, transferImage, downloadImage: mockupImage });
+      setAiBlocked(false); // a successful generation means we're not blocked
 
       // Analytics generations row — mirrors Studio's generation-time insert.
       void (async () => {
@@ -797,8 +801,12 @@ export default function SimplePage() {
 
       trackEvent("design_generated", { product: config.product, mode: "simple-ai" });
     } catch (err) {
-      // Server-side rate limit (429): anon → login modal, authed → toast.
-      if (err instanceof RateLimitError) {
+      // Anti-abuse block (403): persistent "place an order / contact us" notice
+      // in the panel — NOT the login modal (the user is already logged in).
+      if (err instanceof GenerationBlockedError) {
+        setAiBlocked(true);
+      } else if (err instanceof RateLimitError) {
+        // Server-side rate limit (429): anon → login modal, authed → toast.
         if (err.requiresLogin) {
           setLoginModalMessage(t(lang, "rateLimit.signIn"));
           setShowLoginModal(true);
@@ -1599,6 +1607,7 @@ export default function SimplePage() {
       onUpscale={handleAiUpscale}
       upscaling={aiUpscaling}
       onTryOn={handleAiTryOn}
+      blocked={aiBlocked}
     />
   );
 

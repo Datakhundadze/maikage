@@ -246,6 +246,32 @@ serve(async (req) => {
       }
 
       if (!isAdmin) {
+        // Block check for a logged-in REAL (non-anonymous) caller, on EVERY
+        // billable action, before any gateway call (so a blocked request costs
+        // nothing). The RPC blocks when profiles.is_blocked (manual admin block
+        // — applies to ALL billable actions) OR, for generate-design only, the
+        // >15-generations-and-no-paid-order anti-abuse rule. Anonymous sessions
+        // and admins are unaffected. Fails open on RPC error.
+        if (user && user.is_anonymous !== true) {
+          const { data: blocked, error: blockErr } = await client.rpc(
+            "check_generation_block",
+            { p_user_id: user.id, p_action: action },
+          );
+          if (blockErr) {
+            // Fail open: never block real users on an infra hiccup.
+            console.error("[gemini-proxy] generation-block check failed — failing open:", blockErr);
+          } else if (blocked === true) {
+            console.log(`[gemini-proxy] blocked: user ${user.id} action ${action}`);
+            return new Response(
+              JSON.stringify({
+                error: "უფასო გენერაციების ლიმიტი ამოიწურა. გასაგრძელებლად გააფორმე შეკვეთა ან დაგვიკავშირდი. (You've reached the free generation limit. Place an order to continue, or contact us.)",
+                code: "GENERATION_BLOCKED",
+              }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+        }
+
         const requiresLogin = !user;
         let key: string;
         if (user) {

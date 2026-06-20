@@ -1,4 +1,4 @@
-import { Sparkles, RefreshCw, Download, Maximize, Shirt, ArrowDownToLine } from "lucide-react";
+import { Sparkles, RefreshCw, Download, Maximize, Shirt, ArrowDownToLine, Mail } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,13 +45,16 @@ interface SimpleAiPanelProps {
   upscaling: boolean;
   /** Phase 2 — open the inline virtual try-on modal with the design. */
   onTryOn: () => void;
+  /** Anti-abuse block: when true, show a persistent "place an order / contact
+   *  us" notice (free generation limit reached, no paid order). */
+  blocked?: boolean;
 }
 
 export default function SimpleAiPanel({
   lang, prompt, onPromptChange, styleOptions, selectedStyle, onSelectStyle,
   withBackground, onToggleBackground, generating, status, resultImage,
   transferLabel, canGenerate, onGenerate, onTransfer, onRegenerate, onStartNew, onDownload,
-  onUpscale, upscaling, onTryOn,
+  onUpscale, upscaling, onTryOn, blocked,
 }: SimpleAiPanelProps) {
   return (
     <div className="rounded-2xl border-2 border-[#26BB89]/40 bg-[#26BB89]/[0.06] overflow-hidden shadow-sm">
@@ -64,6 +67,19 @@ export default function SimpleAiPanel({
       </div>
 
       <div className="p-3 space-y-3">
+      {/* Anti-abuse block notice — persistent until a paid order unblocks. */}
+      {blocked && (
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm space-y-2">
+          <p className="font-medium text-foreground">
+            {lang === "en"
+              ? "You've reached the free generation limit. Place an order to continue, or contact us."
+              : "უფასო გენერაციების ლიმიტი ამოიწურა. გასაგრძელებლად გააფორმე შეკვეთა ან დაგვიკავშირდი."}
+          </p>
+          <a href="mailto:maika@maika.ge" className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
+            <Mail className="h-3.5 w-3.5" /> maika@maika.ge
+          </a>
+        </div>
+      )}
       {generating ? (
         <div className="rounded-xl border border-border bg-card">
           <GenerationLoader status={status} />
