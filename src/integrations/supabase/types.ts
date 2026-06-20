@@ -721,12 +721,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_generations: {
+        Args: { p_limit: number; p_offset: number }
+        Returns: {
+          color: string
+          created_at: string
+          id: string
+          is_guest: boolean
+          mockup_image_path: string
+          product: string
+          prompt: string
+          style: string
+          user_display_name: string
+          user_email: string
+          user_gen_count: number
+          user_id: string
+          user_paid: boolean
+        }[]
+      }
       admin_update_order: {
         Args: { p_field: string; p_order_id: string; p_value: string }
         Returns: Json
       }
       check_and_increment_rate_limit: {
         Args: { p_day_limit: number; p_hour_limit: number; p_key: string }
+        Returns: boolean
+      }
+      check_generation_block: {
+        Args: { p_action: string; p_user_id: string }
         Returns: boolean
       }
       delete_email: {
