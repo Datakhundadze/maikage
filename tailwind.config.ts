@@ -94,7 +94,7 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "spin-slow": "spin 3s linear infinite",
         "pulse-fast": "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        marquee: "marquee 40s linear infinite",
+        marquee: "marquee 70s linear infinite",
       },
     },
   },
