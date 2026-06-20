@@ -1,4 +1,4 @@
-import { Sparkles, RefreshCw, Download, Maximize, Shirt, ArrowDownToLine, Mail } from "lucide-react";
+import { Sparkles, RefreshCw, Share2, Maximize, Shirt, ArrowDownToLine, Mail } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +39,7 @@ interface SimpleAiPanelProps {
   onTransfer: () => void;
   onRegenerate: () => void;
   onStartNew: () => void;
-  onDownload: () => void;
+  onShare: () => void;
   /** Phase 2 — upscale the generated design to 4K (mirrors Studio). */
   onUpscale: () => void;
   upscaling: boolean;
@@ -53,7 +53,7 @@ interface SimpleAiPanelProps {
 export default function SimpleAiPanel({
   lang, prompt, onPromptChange, styleOptions, selectedStyle, onSelectStyle,
   withBackground, onToggleBackground, generating, status, resultImage,
-  transferLabel, canGenerate, onGenerate, onTransfer, onRegenerate, onStartNew, onDownload,
+  transferLabel, canGenerate, onGenerate, onTransfer, onRegenerate, onStartNew, onShare,
   onUpscale, upscaling, onTryOn, blocked,
 }: SimpleAiPanelProps) {
   return (
@@ -94,7 +94,9 @@ export default function SimpleAiPanel({
             <img
               src={resultImage}
               alt="AI design"
-              className="max-h-56 w-auto object-contain rounded-lg"
+              className="max-h-56 w-auto object-contain rounded-lg select-none"
+              onContextMenu={(e) => e.preventDefault()}
+              draggable={false}
             />
           </div>
 
@@ -112,8 +114,8 @@ export default function SimpleAiPanel({
             <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onRegenerate}>
               <RefreshCw className="h-3.5 w-3.5" /> {t(lang, "simpleAi.regenerate")}
             </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onDownload}>
-              <Download className="h-3.5 w-3.5" /> {t(lang, "simpleAi.download")}
+            <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onShare}>
+              <Share2 className="h-3.5 w-3.5" /> {t(lang, "simpleAi.share")}
             </Button>
             <Button variant="ghost" size="sm" className="text-xs text-primary" onClick={onStartNew}>
               {t(lang, "simpleAi.startNew")}
