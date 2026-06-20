@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2 } from "lucide-react";
 // Each admin tab is large (full-page CRUD UIs with their own forms,
 // tables, and supabase fetchers). Lazy-load them so visiting /admin
 // only ships the active tab's bundle — switching tabs fetches the
@@ -12,6 +12,7 @@ import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock
 const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
 const AdminOrders = lazy(() => import("@/components/admin/AdminOrders"));
 const AdminDesigns = lazy(() => import("@/components/admin/AdminDesigns"));
+const AdminGenerations = lazy(() => import("@/components/admin/AdminGenerations"));
 const AdminUsers = lazy(() => import("@/components/admin/AdminUsers"));
 const AdminAnalytics = lazy(() => import("@/components/admin/AdminAnalytics"));
 const AdminCorporate = lazy(() => import("@/components/admin/AdminCorporate"));
@@ -25,7 +26,7 @@ import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
 
-type Tab = "dashboard" | "orders" | "designs" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners";
+type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners";
 type Mode = "login" | "signup" | "forgot";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -33,6 +34,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "orders", label: "შეკვეთები", icon: ShoppingCart },
   { id: "users", label: "მომხმარებლები", icon: Users },
   { id: "designs", label: "დიზაინები", icon: Image },
+  { id: "generations", label: "გენერაციები", icon: Wand2 },
   { id: "catalog", label: "📦 კატალოგი", icon: Package },
   { id: "seo", label: "SEO", icon: Search },
   { id: "ai-agent", label: "AI აგენტი", icon: Sparkles },
@@ -44,7 +46,7 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);
   const v = params.get("tab");
-  if (v === "orders" || v === "designs" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners") return v;
+  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners") return v;
   return "dashboard";
 }
 
@@ -397,6 +399,7 @@ export default function AdminPage() {
           {activeTab === "dashboard" && <AdminDashboard />}
           {activeTab === "orders" && <AdminOrders />}
           {activeTab === "designs" && <AdminDesigns />}
+          {activeTab === "generations" && <AdminGenerations />}
           {activeTab === "users" && <AdminUsers />}
           {activeTab === "catalog" && <AdminCatalog />}
           {activeTab === "seo" && <AdminSEO />}
