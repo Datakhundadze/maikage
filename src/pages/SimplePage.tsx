@@ -1656,10 +1656,6 @@ export default function SimplePage() {
             />
           </div>
 
-          {/* AI design panel — mobile: directly under the inline preview.
-              Hidden on desktop, where it renders in the main column instead. */}
-          <div className="lg:hidden">{aiPanel}</div>
-
           {/* Side indicator */}
           <div className="text-xs text-muted-foreground text-center">
             {lang === "en"
@@ -1889,6 +1885,10 @@ export default function SimplePage() {
             </Button>
           </div>
 
+          {/* AI design panel — mobile: after the photo + text sections (AI
+              last). Hidden on desktop, where it renders in the main column. */}
+          <div className="lg:hidden">{aiPanel}</div>
+
           {(hasPhotos || sideHasText(sideData)) && (
             <Button variant="outline" size="sm" onClick={clearDesign}>
               {lang === "en" ? "Clear all" : "გასუფთავება"}
@@ -2082,8 +2082,10 @@ export default function SimplePage() {
             />
           </div>
         </div>
-        <div className="shrink-0 border-t border-border p-4">
-          <div className="max-w-2xl mx-auto w-full">{aiPanel}</div>
+        {/* AI panel below the preview — capped narrower than the default so it
+            reads as a compact secondary tool, not a second hero. Desktop only. */}
+        <div className="shrink-0 border-t border-border p-3">
+          <div className="max-w-md mx-auto w-full text-sm">{aiPanel}</div>
         </div>
       </main>
       </div>

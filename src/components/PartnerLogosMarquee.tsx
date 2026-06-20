@@ -50,17 +50,24 @@ export default function PartnerLogosMarquee() {
       {/* Edge fade + hover-pause. The track is width:max-content (2× the logos);
           animate-marquee shifts it left by 50% for a seamless loop. */}
       <div className="group relative overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
-        <div className="flex w-max items-center gap-10 sm:gap-14 animate-marquee group-hover:[animation-play-state:paused]">
+        <div className="flex w-max items-center gap-5 sm:gap-7 animate-marquee group-hover:[animation-play-state:paused]">
           {track.map((logo, i) => (
-            <img
+            // Each logo sits on a uniform WHITE rounded tile so any logo —
+            // dark, light, transparent, or white-bg — reads clearly against the
+            // dark marquee. Grayscale by default, full colour on hover.
+            <div
               key={`${logo.name}-${i}`}
-              src={logo.url}
-              alt={logo.name}
-              className="h-9 sm:h-11 w-auto max-w-[140px] object-contain grayscale opacity-60 transition-all duration-300 hover:grayscale-0 hover:opacity-100"
-              loading="lazy"
-              draggable={false}
               aria-hidden={i >= logos.length ? true : undefined}
-            />
+              className="flex h-14 w-28 sm:h-16 sm:w-32 shrink-0 items-center justify-center rounded-xl bg-white px-4 shadow-sm"
+            >
+              <img
+                src={logo.url}
+                alt={logo.name}
+                className="max-h-9 sm:max-h-10 w-auto max-w-full object-contain grayscale opacity-70 transition duration-300 hover:grayscale-0 hover:opacity-100"
+                loading="lazy"
+                draggable={false}
+              />
+            </div>
           ))}
         </div>
       </div>
