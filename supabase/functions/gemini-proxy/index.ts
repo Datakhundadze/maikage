@@ -246,6 +246,31 @@ serve(async (req) => {
       }
 
       if (!isAdmin) {
+        // Anti-abuse block (generate-design only): a logged-in REAL
+        // (non-anonymous) user with >15 generations and ZERO paid orders is
+        // blocked until they place an order. Edits (upscale/isolate-subject/
+        // virtual-tryon), anonymous sessions, and admins are unaffected.
+        // Checked before any gateway call so a blocked request costs nothing.
+        if (action === "generate-design" && user && user.is_anonymous !== true) {
+          const { data: blocked, error: blockErr } = await client.rpc(
+            "check_generation_block",
+            { p_user_id: user.id },
+          );
+          if (blockErr) {
+            // Fail open: never block real users on an infra hiccup.
+            console.error("[gemini-proxy] generation-block check failed — failing open:", blockErr);
+          } else if (blocked === true) {
+            console.log(`[gemini-proxy] generation blocked for user ${user.id}`);
+            return new Response(
+              JSON.stringify({
+                error: "უფასო გენერაციების ლიმიტი ამოიწურა. გასაგრძელებლად გააფორმე შეკვეთა ან დაგვიკავშირდი. (You've reached the free generation limit. Place an order to continue, or contact us.)",
+                code: "GENERATION_BLOCKED",
+              }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+        }
+
         const requiresLogin = !user;
         let key: string;
         if (user) {

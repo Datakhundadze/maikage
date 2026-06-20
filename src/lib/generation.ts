@@ -31,6 +31,19 @@ export class RateLimitError extends Error {
   }
 }
 
+/**
+ * Thrown when gemini-proxy returns HTTP 403 { code: "GENERATION_BLOCKED" } —
+ * the anti-abuse block for a logged-in (non-anonymous) user over the free
+ * generation limit with no paid order. Carries the server's bilingual message.
+ * Never retried (the block is server-side; a paid order or contact unblocks).
+ */
+export class GenerationBlockedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GenerationBlockedError";
+  }
+}
+
 // Exported so the Simple-mode "with background" path can run a bare
 // generate-design (skipping the transparency stage) while still reusing the
 // exact same gemini-proxy invoke + RateLimitError handling. Body unchanged.
@@ -58,6 +71,13 @@ export async function callGemini(action: string, params: Record<string, any>, re
         throw new RateLimitError(userMessage, errorBody.requiresLogin === true);
       }
 
+      // Anti-abuse block (403) — short-circuit, never retry; a paid order or
+      // contacting us unblocks (server-side).
+      if (errorBody?.code === "GENERATION_BLOCKED") {
+        console.warn(`AI generation blocked (${action})`);
+        throw new GenerationBlockedError(userMessage);
+      }
+
       // Don't retry content policy / safety errors — they'll fail every time
       const isContentBlock = userMessage.includes("content policy") || 
                              userMessage.includes("safety filters") || 
@@ -74,6 +94,10 @@ export async function callGemini(action: string, params: Record<string, any>, re
     if (data?.code === "RATE_LIMITED") {
       console.warn(`AI rate limited (${action})`);
       throw new RateLimitError(data.error || "Rate limited", data.requiresLogin === true);
+    }
+    if (data?.code === "GENERATION_BLOCKED") {
+      console.warn(`AI generation blocked (${action})`);
+      throw new GenerationBlockedError(data.error || "Generation blocked");
     }
     if (data?.error) {
       const isContentBlock = data.error.includes("content policy") || 
