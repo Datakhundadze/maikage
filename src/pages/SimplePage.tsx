@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, callGemini, upscaleImage, loadImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, loadImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
@@ -598,7 +598,6 @@ export default function SimplePage() {
   const [aiStatus, setAiStatus] = useState<AppStatus>("GENERATING_DESIGN");
   // resultImage = shown in the panel; transferImage = injected as a layer.
   const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string; downloadImage: string } | null>(null);
-  const [aiUpscaling, setAiUpscaling] = useState(false);
   // Per-layer "Edit with AI": which photo's background removal is in flight
   // (null = none) — drives the button's loading/disabled state.
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -913,33 +912,6 @@ export default function SimplePage() {
       });
     }
   }, [aiResult, lang, toast]);
-
-  // Upscale the generated design to 4K via the EXISTING upscale path
-  // (upscaleImage → callGemini "upscale"), mirroring Studio's ResultView.
-  // The 4K design becomes what's transferred onto the product. Billable →
-  // 429 handled the same as generation (anon → login modal, authed → toast).
-  const handleAiUpscale = useCallback(async () => {
-    if (!aiResult || aiUpscaling) return;
-    setAiUpscaling(true);
-    try {
-      const upscaled = await upscaleImage(aiResult.transferImage);
-      setAiResult(prev => prev ? { ...prev, transferImage: upscaled } : prev);
-      toast({ title: t(lang, "simpleAi.upscaled") });
-    } catch (err) {
-      if (err instanceof RateLimitError) {
-        if (err.requiresLogin) {
-          setLoginModalMessage(t(lang, "rateLimit.signIn"));
-          setShowLoginModal(true);
-        } else {
-          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
-        }
-      } else {
-        toast({ title: t(lang, "simpleAi.upscaleFailed"), description: err instanceof Error ? err.message : undefined, variant: "destructive" });
-      }
-    } finally {
-      setAiUpscaling(false);
-    }
-  }, [aiResult, aiUpscaling, toast, lang]);
 
   // Measure a (possibly new) image's natural aspect and re-apply CONTAIN-fit to
   // an EXISTING photo layer — keeps the layer's position, recomputes scale for
@@ -1674,8 +1646,6 @@ export default function SimplePage() {
       onRegenerate={handleAiGenerate}
       onStartNew={handleAiStartNew}
       onShare={handleAiShare}
-      onUpscale={handleAiUpscale}
-      upscaling={aiUpscaling}
       onTryOn={handleAiTryOn}
       blocked={aiBlocked}
     />

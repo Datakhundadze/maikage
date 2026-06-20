@@ -1,4 +1,4 @@
-import { Sparkles, RefreshCw, Share2, Maximize, Shirt, ArrowDownToLine, Mail } from "lucide-react";
+import { Sparkles, RefreshCw, Share2, Shirt, ArrowDownToLine, Mail } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,9 +40,6 @@ interface SimpleAiPanelProps {
   onRegenerate: () => void;
   onStartNew: () => void;
   onShare: () => void;
-  /** Phase 2 — upscale the generated design to 4K (mirrors Studio). */
-  onUpscale: () => void;
-  upscaling: boolean;
   /** Phase 2 — open the inline virtual try-on modal with the design. */
   onTryOn: () => void;
   /** Anti-abuse block: when true, show a persistent "place an order / contact
@@ -54,7 +51,7 @@ export default function SimpleAiPanel({
   lang, prompt, onPromptChange, styleOptions, selectedStyle, onSelectStyle,
   withBackground, onToggleBackground, generating, status, resultImage,
   transferLabel, canGenerate, onGenerate, onTransfer, onRegenerate, onStartNew, onShare,
-  onUpscale, upscaling, onTryOn, blocked,
+  onTryOn, blocked,
 }: SimpleAiPanelProps) {
   return (
     <div className="rounded-2xl border-2 border-[#26BB89]/40 bg-[#26BB89]/[0.06] overflow-hidden shadow-sm">
@@ -122,15 +119,10 @@ export default function SimpleAiPanel({
             </Button>
           </div>
 
-          {/* Upscale + virtual try-on */}
-          <div className="grid grid-cols-2 gap-1.5">
-            <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onUpscale} disabled={upscaling}>
-              <Maximize className="h-3.5 w-3.5" /> {upscaling ? t(lang, "simpleAi.upscaling") : t(lang, "simpleAi.upscale")}
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onTryOn}>
-              <Shirt className="h-3.5 w-3.5" /> {t(lang, "simpleAi.tryOn")}
-            </Button>
-          </div>
+          {/* Virtual try-on */}
+          <Button variant="outline" size="sm" className="w-full gap-1 text-xs" onClick={onTryOn}>
+            <Shirt className="h-3.5 w-3.5" /> {t(lang, "simpleAi.tryOn")}
+          </Button>
         </div>
       ) : (
         /* ── Form ── */

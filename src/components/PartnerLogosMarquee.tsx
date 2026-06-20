@@ -58,12 +58,12 @@ export default function PartnerLogosMarquee() {
             <div
               key={`${logo.name}-${i}`}
               aria-hidden={i >= logos.length ? true : undefined}
-              className="flex h-16 w-24 sm:h-20 sm:w-28 shrink-0 items-center justify-center rounded-xl bg-white px-2 shadow-sm"
+              className="flex h-20 w-28 sm:h-24 sm:w-32 shrink-0 items-center justify-center rounded-xl bg-white px-2 shadow-sm"
             >
               <img
                 src={logo.url}
                 alt={logo.name}
-                className="h-14 sm:h-16 w-auto max-w-full object-contain transition duration-300 hover:scale-105"
+                className="h-16 sm:h-20 w-auto max-w-full object-contain transition duration-300 hover:scale-105"
                 loading="eager"
                 draggable={false}
               />
