@@ -14,10 +14,11 @@ const MAPS_PLACE_URL =
 // Keyless interactive embed centered on the pin.
 const MAPS_EMBED_URL = `https://www.google.com/maps?q=${LAT},${LNG}&z=17&hl=ka&output=embed`;
 
-// Phones: shown verbatim; the tel: href is the "+" plus the digits shown.
+// Phones: friendly display text + a dialable E.164 tel: href (mobile carries
+// the full +995 country code even though it's shown locally).
 const PHONES = [
-  { display: "+(995 32) 2 05 06 20", tel: "+995322050620" },
-  { display: "+599 05 08 07", tel: "+599050807" },
+  { display: "+(995 32) 2 05 06 20", tel: "+995322050620", mobile: false },
+  { display: "+599 05 08 07", tel: "+995599050807", mobile: true },
 ];
 
 // LocalBusiness schema — mirrors the FAQPage / Organization JSON-LD pattern
@@ -149,7 +150,7 @@ export default function ContactPage() {
                 {PHONES.map((p) => (
                   <li key={p.tel}>
                     <a href={`tel:${p.tel}`} className="font-medium hover:underline inline-flex items-center gap-1.5">
-                      {p.tel === "+599050807" && <Smartphone className="h-3.5 w-3.5 text-gray-400" />}
+                      {p.mobile && <Smartphone className="h-3.5 w-3.5 text-gray-400" />}
                       {p.display}
                     </a>
                   </li>
