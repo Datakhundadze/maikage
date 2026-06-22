@@ -310,6 +310,10 @@ export default function LandingPage() {
             <Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors text-xs">
               {lang === "en" ? "FAQ" : "ხშირად დასმული კითხვები"}
             </Link>
+            <span className="text-muted-foreground/30">•</span>
+            <Link to="/contact" className="text-muted-foreground hover:text-foreground transition-colors text-xs">
+              {lang === "en" ? "Contact" : "კონტაქტი"}
+            </Link>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 maika.ge</p>
         </div>
