@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images } from "lucide-react";
 // Each admin tab is large (full-page CRUD UIs with their own forms,
 // tables, and supabase fetchers). Lazy-load them so visiting /admin
 // only ships the active tab's bundle — switching tabs fetches the
@@ -20,6 +20,7 @@ const AdminCatalog = lazy(() => import("@/components/admin/AdminCatalog"));
 const AdminSEO = lazy(() => import("@/components/admin/AdminSEO"));
 const AdminPartners = lazy(() => import("@/components/admin/AdminPartners"));
 const AdminShowroom = lazy(() => import("@/components/admin/AdminShowroom"));
+const AdminPortfolio = lazy(() => import("@/components/admin/AdminPortfolio"));
 const AiAgent = lazy(() => import("@/components/admin/AiAgent"));
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
@@ -27,7 +28,7 @@ import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
 
-type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom";
+type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio";
 type Mode = "login" | "signup" | "forgot";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -43,12 +44,13 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "corporate", label: "კორპორატიული", icon: Building2 },
   { id: "partners", label: "პარტნიორები", icon: Handshake },
   { id: "showroom", label: "შოურუმი", icon: Store },
+  { id: "portfolio", label: "პორტფოლიო", icon: Images },
 ];
 
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);
   const v = params.get("tab");
-  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom") return v;
+  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio") return v;
   return "dashboard";
 }
 
@@ -410,6 +412,7 @@ export default function AdminPage() {
           {activeTab === "corporate" && <AdminCorporate />}
           {activeTab === "partners" && <AdminPartners />}
           {activeTab === "showroom" && <AdminShowroom />}
+          {activeTab === "portfolio" && <AdminPortfolio />}
         </Suspense>
       </div>
     </div>
