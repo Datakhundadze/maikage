@@ -136,7 +136,7 @@ export default function ContactPage() {
               <ul className="text-sm space-y-0.5">
                 <li>ორშ–პარ <span className="font-medium">11:00–19:00</span></li>
                 <li>შაბ <span className="font-medium">11:00–18:00</span></li>
-                <li className="text-gray-500 dark:text-white/50">კვირა დახურული</li>
+                <li className="text-gray-500 dark:text-white/50">კვირა დაკეტილი</li>
               </ul>
             </div>
           </div>
