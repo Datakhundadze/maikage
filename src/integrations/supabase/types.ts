@@ -548,6 +548,42 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_items: {
+        Row: {
+          active: boolean | null
+          alt_text: string | null
+          category: string | null
+          created_at: string | null
+          id: string
+          image_path: string
+          sort_order: number | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          alt_text?: string | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          image_path: string
+          sort_order?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          alt_text?: string | null
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          image_path?: string
+          sort_order?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           base_price: number | null
@@ -671,6 +707,36 @@ export type Database = {
         }
         Relationships: []
       }
+      showroom_photos: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          id: string
+          name: string | null
+          photo_path: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          photo_path: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          photo_path?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -736,7 +802,7 @@ export type Database = {
           user_email: string
           user_gen_count: number
           user_id: string
-          user_paid: boolean
+          user_paid_order_count: number
         }[]
       }
       admin_update_order: {
