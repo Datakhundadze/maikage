@@ -611,3 +611,12 @@ export async function upscaleImage(imageBase64: string): Promise<string> {
   const result = await callGemini("upscale", { image: imageBase64 });
   return result.image;
 }
+
+// Phase B (photo restyle): re-render an uploaded photo in an artistic style.
+// `instruction` is the user-chosen style (preset or free text); the gemini-proxy
+// "restyle" action wraps it in a fixed subject-preserving GUARD. Mirrors
+// upscaleImage — billable, so 429 / generation-block surface via callGemini.
+export async function restyleImage(imageBase64: string, instruction: string): Promise<string> {
+  const result = await callGemini("restyle", { image: imageBase64, instruction });
+  return result.image;
+}

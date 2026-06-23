@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, callGemini, loadImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, loadImage, restyleImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
@@ -113,6 +113,26 @@ const LAYER_COLORS = [
 ];
 
 const MAX_PHOTOS = 5;
+
+// Phase B restyle presets — shown as chips in the photo "Edit with AI" panel.
+// Each `instruction` is style-only + subject-preserving; the gemini-proxy
+// "restyle" action prepends a fixed server-side GUARD. Free-text overrides a
+// chip. The preset list lives here in the frontend (not the proxy) so it can be
+// tuned without redeploying the edge function.
+const RESTYLE_PRESETS: { key: string; ge: string; en: string; instruction: string }[] = [
+  { key: "anime", ge: "ანიმე", en: "Anime",
+    instruction: "Repaint this photo in modern Japanese anime style — clean cel-shading, bold ink outlines, expressive eyes, vibrant flat color. Keep the same subject, pose, composition and background layout." },
+  { key: "watercolor", ge: "აკვარელი", en: "Watercolor",
+    instruction: "Repaint this photo as a soft watercolor painting — visible paper texture, bleeding pigments, gentle washes and light brush strokes. Preserve the same subject, pose and composition." },
+  { key: "oil", ge: "ზეთის ფერწერა", en: "Oil",
+    instruction: "Render this photo as a classical oil painting — thick impasto brush strokes, rich layered color, painterly lighting on canvas. Keep the subject's identity, pose and composition unchanged." },
+  { key: "popart", ge: "პოპ-არტი", en: "Pop art",
+    instruction: "Restyle this photo as bold pop-art — high-contrast flat color blocks, halftone dots, thick outlines, Warhol/Lichtenstein aesthetic. Keep the same subject, pose and layout." },
+  { key: "sketch", ge: "ესკიზი", en: "Pencil sketch",
+    instruction: "Convert this photo into a detailed hand-drawn graphite pencil sketch — fine cross-hatching, soft shading, white-paper background. Preserve the subject, proportions and composition." },
+  { key: "comic", ge: "კომიქსი", en: "Comic",
+    instruction: "Restyle this photo as Western comic-book art — bold inked linework, cel shading, dramatic flat colors and subtle halftone. Keep the same subject, pose, expression and composition." },
+];
 
 // Simple funnels the customer's whole sentence into the `character` param, so
 // garment-priming words in their text (e.g. "a cat on a t-shirt") fight the
@@ -601,6 +621,11 @@ export default function SimplePage() {
   // Per-layer "Edit with AI": which photo's background removal is in flight
   // (null = none) — drives the button's loading/disabled state.
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
+  // Phase B restyle: which photo's restyle is in flight + the active style text
+  // (preset instruction or free text). Separate lock from bg-removal so each
+  // control shows its own spinner; both disable each other while either runs.
+  const [restylingId, setRestylingId] = useState<string | null>(null);
+  const [restyleInstruction, setRestyleInstruction] = useState("");
   const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
@@ -992,6 +1017,46 @@ export default function SimplePage() {
       setEditingPhotoId(null);
     }
   }, [editingPhotoId, applyContainFit, setSideData, toast, lang]);
+
+  // Per-layer "Edit with AI" → Restyle (Phase B). Re-renders the uploaded photo
+  // in the chosen artistic style via gemini-proxy "restyle" (a fixed server-side
+  // GUARD keeps the subject/pose/composition; the frontend supplies the style as
+  // free text). Writes the styled image back into the SAME clean p.image slot as
+  // bg-removal — never watermarked, flows straight to transfer/order — and
+  // re-fits since the output aspect may differ. No chroma-key step. 429 / block
+  // handled exactly like bg-removal.
+  const handleRestylePhoto = useCallback(async (photo: PhotoLayer, instruction: string) => {
+    if (editingPhotoId || restylingId) return;
+    const styleText = instruction.trim();
+    if (!styleText) return;
+    setRestylingId(photo.id);
+    try {
+      const styled = await restyleImage(photo.image, styleText);
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: styled } : p)),
+      }));
+      applyContainFit(photo.id, styled);
+      toast({ title: lang === "en" ? "Restyled ✓" : "სტილი შეიცვალა ✓" });
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        if (err.requiresLogin) {
+          setLoginModalMessage(t(lang, "rateLimit.signIn"));
+          setShowLoginModal(true);
+        } else {
+          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+        }
+      } else {
+        toast({
+          title: lang === "en" ? "Restyle failed" : "სტილის შეცვლა ვერ მოხერხდა",
+          description: err instanceof Error ? err.message : undefined,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setRestylingId(null);
+    }
+  }, [editingPhotoId, restylingId, applyContainFit, setSideData, toast, lang]);
 
   // Open the inline virtual try-on modal with the generated design. TryOnModal
   // owns the whole flow (person upload → gemini-proxy "virtual-tryon" → result)
@@ -1770,7 +1835,7 @@ export default function SimplePage() {
                   size="sm"
                   className="w-full gap-1.5 text-xs"
                   onClick={() => handleRemoveBgPhoto(selectedPhoto)}
-                  disabled={editingPhotoId === selectedPhoto.id}
+                  disabled={editingPhotoId === selectedPhoto.id || restylingId === selectedPhoto.id}
                 >
                   {editingPhotoId === selectedPhoto.id ? (
                     <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {lang === "en" ? "Removing…" : "მუშავდება…"}</>
@@ -1778,6 +1843,56 @@ export default function SimplePage() {
                     <><Eraser className="h-3.5 w-3.5" /> {lang === "en" ? "Remove background" : "ფონის მოხსნა"}</>
                   )}
                 </Button>
+
+                {/* Restyle (Phase B) — preset chips + free text + Apply. Selecting
+                    a chip fills the instruction; free-text overrides. */}
+                <div className="pt-2 mt-1 border-t border-primary/15 space-y-2">
+                  <p className="text-[11px] font-medium text-card-foreground flex items-center gap-1.5">
+                    <Palette className="h-3.5 w-3.5 text-primary" />
+                    {t(lang, "simpleAi.restyleHeading")}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {RESTYLE_PRESETS.map((preset) => {
+                      const active = restyleInstruction === preset.instruction;
+                      return (
+                        <button
+                          key={preset.key}
+                          type="button"
+                          disabled={editingPhotoId === selectedPhoto.id || restylingId === selectedPhoto.id}
+                          onClick={() => setRestyleInstruction(preset.instruction)}
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors disabled:opacity-50 ${
+                            active
+                              ? "border-primary bg-primary/15 text-primary"
+                              : "border-border text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {lang === "en" ? preset.en : preset.ge}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Input
+                    value={restyleInstruction}
+                    onChange={(e) => setRestyleInstruction(e.target.value)}
+                    placeholder={t(lang, "simpleAi.restylePlaceholder")}
+                    className="h-8 text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full gap-1.5 text-xs"
+                    onClick={() => handleRestylePhoto(selectedPhoto, restyleInstruction)}
+                    disabled={!restyleInstruction.trim() || editingPhotoId === selectedPhoto.id || restylingId === selectedPhoto.id}
+                  >
+                    {restylingId === selectedPhoto.id ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t(lang, "simpleAi.restyling")}</>
+                    ) : (
+                      <><Palette className="h-3.5 w-3.5" /> {t(lang, "simpleAi.restyleApply")}</>
+                    )}
+                  </Button>
+                  <p className="text-[10px] leading-snug text-muted-foreground">
+                    {t(lang, "simpleAi.restyleHint")}
+                  </p>
+                </div>
               </div>
             )}
 
