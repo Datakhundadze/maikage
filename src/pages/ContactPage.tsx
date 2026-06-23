@@ -107,7 +107,7 @@ export default function ContactPage() {
 
         <h1 className="text-3xl font-bold mb-2">კონტაქტი და შოურუმი</h1>
         <p className="text-gray-500 dark:text-white/50 leading-relaxed mb-10">
-          მოგვაკითხეთ ადგილზე ან დაგვიკავშირდით — სიამოვნებით დაგეხმარებით.
+          {"\n"}
         </p>
 
         {/* Contact details */}
