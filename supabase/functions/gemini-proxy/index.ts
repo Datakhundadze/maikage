@@ -11,7 +11,7 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // Actions that each cost a paid image call at the gateway → rate-limited per
 // caller. convert-bg-black (internal second half of a generate-design) and
 // randomize-prompt (cheap text) are intentionally exempt.
-const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject"]);
+const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle"]);
 
 /** Extract base64 image from various response formats the gateway might return */
 function extractImage(data: any): string | null {
@@ -378,6 +378,28 @@ CRITICAL:
 
 Output: a single photographic image of the isolated main subject (full detail, original colors) on a pure solid bright green (#00FF00) chroma-key background.`,
           },
+          { type: "image_url", image_url: { url: params.image } },
+        ],
+      }];
+
+    } else if (action === "restyle") {
+      // Phase B (photo restyle): re-render an UPLOADED photo in an artistic
+      // style/medium chosen by the user (preset chip or free text). Mirrors
+      // isolate-subject's single-image + instruction shape. The preset list
+      // lives in the frontend; the client passes the chosen style as a
+      // free-text params.instruction. A fixed server-side GUARD keeps every
+      // request subject-preserving (identity/pose/composition unchanged) even
+      // for free-text input.
+      const GUARD =
+        "This is an artistic style transfer, not a re-shoot. Preserve the " +
+        "subject's identity, pose, count, framing and composition exactly; " +
+        "change ONLY the artistic medium/style; do not add text, watermarks " +
+        "or new objects.";
+      model = "google/gemini-3-pro-image-preview";
+      messages = [{
+        role: "user",
+        content: [
+          { type: "text", text: `${GUARD} ${params.instruction}` },
           { type: "image_url", image_url: { url: params.image } },
         ],
       }];
