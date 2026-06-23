@@ -23,6 +23,8 @@ const translations = {
       simple: "Simple",
       myDesigns: "My Designs",
       catalog: "Catalog",
+      portfolio: "Portfolio",
+      contact: "Contact",
       logout: "Logout",
     },
     notFound: {
@@ -205,6 +207,8 @@ const translations = {
       simple: "მარტივი",
       myDesigns: "ჩემი დიზაინები",
       catalog: "კატალოგი",
+      portfolio: "პორტფოლიო",
+      contact: "კონტაქტი",
       logout: "გამოსვლა",
     },
     notFound: {

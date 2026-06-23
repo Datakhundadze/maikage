@@ -74,6 +74,14 @@ export default function LandingPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Page nav — surface Portfolio + Contact above the footer. */}
+          <Link to="/portfolio" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+            {lang === "en" ? "Portfolio" : "პორტფოლიო"}
+          </Link>
+          <Link to="/contact" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+            {lang === "en" ? "Contact" : "კონტაქტი"}
+          </Link>
+          <span className="hidden sm:inline text-muted-foreground/30">|</span>
           <a href="tel:+995322050620" className="text-xs text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex items-center gap-1">
             <Phone className="h-3 w-3" /> 032 2 05 06 20
           </a>
