@@ -106,9 +106,6 @@ export default function ContactPage() {
         </button>
 
         <h1 className="text-3xl font-bold mb-2">კონტაქტი და შოურუმი</h1>
-        <p className="text-gray-500 dark:text-white/50 leading-relaxed mb-10">
-          {"\n"}
-        </p>
 
         {/* Contact details */}
         <div className="grid gap-4 sm:grid-cols-2 mb-10">
