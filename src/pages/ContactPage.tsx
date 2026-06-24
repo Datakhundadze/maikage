@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAppState } from "@/hooks/useAppState";
 import { ArrowLeft, MapPin, Phone, Smartphone, Mail, Clock } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +67,7 @@ interface ShowroomPhoto {
 
 export default function ContactPage() {
   const navigate = useNavigate();
+  const { lang } = useAppState();
   const [photos, setPhotos] = useState<ShowroomPhoto[]>([]);
 
   useEffect(() => {
@@ -107,7 +109,9 @@ export default function ContactPage() {
 
         <h1 className="text-3xl font-bold mb-2">კონტაქტი და შოურუმი</h1>
         <p className="text-gray-500 dark:text-white/50 leading-relaxed mb-10">
-          {"\n"}
+          {lang === "en"
+            ? "Visit us in person or get in touch — we're happy to help."
+            : "მოგვაკითხეთ ადგილზე ან დაგვიკავშირდით — სიამოვნებით დაგეხმარებით."}
         </p>
 
         {/* Contact details */}
