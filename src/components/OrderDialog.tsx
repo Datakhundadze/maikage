@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ShoppingBag } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { trackEvent } from "@/lib/gtag";
 
 import type { PriceBreakdown } from "@/lib/pricing";
 import type { DesignState } from "@/lib/designState";
@@ -141,6 +142,26 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const productSubtotal = breakdown.total * qty;
   const totalWithDelivery = productSubtotal + deliveryPrice;
+
+  // GA4 funnel: begin_checkout fires once each time the dialog opens (delivery
+  // isn't chosen yet, so value = product subtotal). Ref guards re-renders while
+  // open; resets on close so a re-open re-fires. Defensive — no-ops if no gtag.
+  const checkoutTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!open) { checkoutTrackedRef.current = false; return; }
+    if (checkoutTrackedRef.current) return;
+    checkoutTrackedRef.current = true;
+    trackEvent("begin_checkout", {
+      currency: "GEL",
+      value: productSubtotal,
+      items: [{
+        item_name: [product, subProduct, color].filter(Boolean).join(" "),
+        item_category: product,
+        price: breakdown.total,
+        quantity: qty,
+      }],
+    });
+  }, [open, productSubtotal, product, subProduct, color, breakdown.total, qty]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
