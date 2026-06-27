@@ -251,63 +251,87 @@ function logCompositeEvent(
     });
 }
 
-function drawMultilineText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  cx: number,
-  cy: number,
-  maxWidth: number,
+// Render a text string to a TIGHT raster canvas (sized to the glyph box, with
+// a little padding for accents/descenders), so the word can be scaled as one
+// unit like a photo. `aspect` = canvas.width / canvas.height. Returns null for
+// empty content. Used by the live editor preview AND both compositors, so the
+// raster (hence its aspect) is produced identically everywhere.
+function renderTextRasterCanvas(
+  content: string,
   fontFamily: string,
   color: string,
-  maxFontSize: number,
-): { overflow: boolean; fontSize: number; widest: number } {
-  const lines = text.split("\n").filter((l) => l.trim());
-  if (lines.length === 0) return { overflow: false, fontSize: 0, widest: 0 };
-
+  fontSize: number,
+): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  const lines = content.split("\n").filter((l) => l.trim());
+  if (lines.length === 0) return null;
+  const measureCtx = document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return null;
+  measureCtx.font = `bold ${fontSize}px ${fontFamily}`;
+  let widest = 0;
+  for (const line of lines) {
+    const w = measureCtx.measureText(line).width;
+    if (w > widest) widest = w;
+  }
+  const lineHeight = fontSize * 1.25;
+  const pad = Math.ceil(fontSize * 0.18);
+  const w = Math.max(1, Math.ceil(widest) + pad * 2);
+  const h = Math.max(1, Math.ceil(lineHeight * lines.length) + pad * 2);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
-  // Minimum legible size. Scales with maxFontSize so the 3000px print
-  // canvas keeps the floor at print resolution while the 800px preview
-  // floor stays at 8 px.
-  const MIN_FONT_SIZE = Math.max(8, maxFontSize * 0.1);
-
-  // Measure the actual rendered width at maxFontSize with the user's font,
-  // then shrink proportionally if the widest line exceeds maxWidth. The
-  // previous heuristic (length * 0.55) underestimated Noto Sans Georgian's
-  // wide glyphs, so long Georgian text rendered at full maxFontSize, then
-  // got clipped by the placement-zone ctx.clip() — only the middle of the
-  // string remained visible on the mockup.
-  let fontSize = maxFontSize;
   ctx.font = `bold ${fontSize}px ${fontFamily}`;
-  let widest = 0;
-  for (const line of lines) {
-    const w = ctx.measureText(line).width;
-    if (w > widest) widest = w;
-  }
-  if (widest > maxWidth && widest > 0) {
-    fontSize = Math.max(MIN_FONT_SIZE, fontSize * (maxWidth / widest));
-    ctx.font = `bold ${fontSize}px ${fontFamily}`;
-  }
-  const overflow = fontSize <= MIN_FONT_SIZE && widest > maxWidth;
-  if (overflow) {
-    // At the floor and still too wide: fillText's maxWidth arg will squash
-    // horizontally instead of clipping, so the user sees compressed text
-    // rather than nothing. Surface a console warning for triage.
-    console.warn(
-      "[drawMultilineText] text still exceeds maxWidth at MIN_FONT_SIZE",
-      { textPreview: text.slice(0, 30), maxWidth, fontSize, widest },
-    );
-  }
-
-  const lineHeight = fontSize * 1.25;
-  const totalHeight = lineHeight * lines.length;
-  const startY = cy - totalHeight / 2 + lineHeight / 2;
+  const startY = pad + lineHeight / 2;
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], cx, startY + i * lineHeight, maxWidth);
+    ctx.fillText(lines[i], w / 2, startY + i * lineHeight);
   }
-  return { overflow, fontSize, widest };
+  return canvas;
+}
+
+// Draw a text raster CONTAIN-fit into a window box (canvas px), centred at
+// (winCx, winCy) and honouring rotation — the SAME window-box model photos use
+// (drawPhotoOntoCanvas). The window box comes from the layer's coords.scale /
+// scaleY, so the composited text matches the editor preview's object-contain
+// render exactly (no fixed font size, no reflow, no clipping).
+function drawTextContained(
+  ctx: CanvasRenderingContext2D,
+  content: string,
+  fontFamily: string,
+  color: string,
+  fontSize: number,
+  winCx: number,
+  winCy: number,
+  winW: number,
+  winH: number,
+  rotationDeg: number,
+): void {
+  const raster = renderTextRasterCanvas(content, fontFamily, color, fontSize);
+  if (!raster || winW <= 0 || winH <= 0) return;
+  const rasterAspect = raster.width / raster.height;
+  const boxAspect = winW / winH;
+  let drawW: number;
+  let drawH: number;
+  if (rasterAspect >= boxAspect) {
+    drawW = winW;
+    drawH = winW / rasterAspect;
+  } else {
+    drawH = winH;
+    drawW = winH * rasterAspect;
+  }
+  if (rotationDeg) {
+    ctx.save();
+    ctx.translate(winCx, winCy);
+    ctx.rotate((rotationDeg * Math.PI) / 180);
+    ctx.drawImage(raster, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+  } else {
+    ctx.drawImage(raster, winCx - drawW / 2, winCy - drawH / 2, drawW, drawH);
+  }
 }
 
 interface PhotoLayer {
@@ -438,6 +462,10 @@ interface TextLayer {
   font: typeof FONTS[0];
   color: string;
   coords: PlacementCoords;
+  /** Tight text-raster aspect (rasterW / rasterH), filled in once the raster
+   *  renders. Drives aspect-locked resize (so the whole word scales as one
+   *  unit) and lets the compositors contain-fit, mirroring photo layers. */
+  naturalAspect?: number;
 }
 
 interface SideData {
@@ -527,6 +555,7 @@ function buildDesignStateInput(
           scale: tl.coords.scale,
           scaleY: tl.coords.scaleY ?? tl.coords.scale,
           rotation: tl.coords.rotation ?? 0,
+          naturalAspect: tl.naturalAspect,
         })),
       zone: {
         x: zone?.x ?? 0.5,
@@ -1206,24 +1235,39 @@ export default function SimplePage() {
     document.fonts.ready.then(() => {
       if (cancelled) return;
       const next: Record<string, string> = {};
+      const aspects: Record<string, number> = {};
       for (const tl of sideData.texts) {
         if (!tl.content.trim()) continue;
-        const lines = tl.content.split("\n").filter((l) => l.trim());
-        const lineCount = Math.max(lines.length, 1);
-        const canvasH = Math.max(200, lineCount * 120);
-        const canvas = document.createElement("canvas");
-        canvas.width = 800;
-        canvas.height = canvasH;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) continue;
-        ctx.clearRect(0, 0, 800, canvasH);
-        drawMultilineText(ctx, tl.content, 400, canvasH / 2, 760, tl.font.family, tl.color, 120);
-        next[tl.id] = canvas.toDataURL("image/png");
+        // Tight raster (same helper the compositors use) so object-contain in
+        // the preview fills the window box snugly and the word never crops.
+        const raster = renderTextRasterCanvas(tl.content, tl.font.family, tl.color, 160);
+        if (!raster) continue;
+        next[tl.id] = raster.toDataURL("image/png");
+        aspects[tl.id] = raster.width / raster.height;
       }
+      if (cancelled) return;
       setTextImages(next);
+      // Store each text's raster aspect on its layer (drives the aspect-locked
+      // resize + the compositors) and snug-fit the window height to that aspect
+      // — only when the aspect actually CHANGED, so this never loops and never
+      // fights an in-flight resize (resize keeps the aspect, so it's a no-op).
+      setSideData((prev) => {
+        const zoneW = zoneForLayers?.scale ?? 1;
+        const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
+        let changed = false;
+        const texts = prev.texts.map((tl) => {
+          const aspect = aspects[tl.id];
+          if (!aspect || aspect <= 0) return tl;
+          if (tl.naturalAspect !== undefined && Math.abs(tl.naturalAspect - aspect) < 0.002) return tl;
+          changed = true;
+          const newScaleY = zoneH > 0 ? (tl.coords.scale * zoneW) / (aspect * zoneH) : (tl.coords.scaleY ?? tl.coords.scale);
+          return { ...tl, naturalAspect: aspect, coords: { ...tl.coords, scaleY: newScaleY } };
+        });
+        return changed ? { ...prev, texts } : prev;
+      });
     });
     return () => { cancelled = true; };
-  }, [sideData.texts]);
+  }, [sideData.texts, zoneForLayers, setSideData]);
 
   // Initial cover-fit source state for a photo whose customer hasn't yet
   // dragged an edge handle / panned. Matches what `object-cover` does
@@ -1314,6 +1358,9 @@ export default function SimplePage() {
         accentClass: "bg-emerald-500",
         selected: selectedLayerId === tl.id,
         onSelect: () => setSelectedLayerId(tl.id),
+        // Text carries naturalAspect (no crop `source`) → aspect-locked resize
+        // (whole word scales as one unit) + object-contain render in the preview.
+        naturalAspect: tl.naturalAspect,
       });
     });
     return result;
@@ -1449,39 +1496,21 @@ export default function SimplePage() {
       });
     }
 
-    // Draw EVERY text element (multiline, constrained by the full canvas now
-    // that the zone is no longer a hard boundary — long text can flow beyond
-    // the dashed editor zone onto the t-shirt's sleeves / hem).
+    // Draw EVERY text element via the SAME window-box model photos use: the
+    // text raster is contain-fit into the box the user sized (coords.scale ×
+    // scaleY) at coords.x/y, so the mockup matches the editor preview exactly
+    // (no fixed font size, no reflow, no clipping). 800 = mockup canvas width.
     for (const tl of side.texts) {
       if (!tl.content.trim()) continue;
       const tc = tl.coords;
-      const tx = zoneX + zoneW * tc.x;
-      const ty = zoneY + zoneH * tc.y;
-      const fromLeft = tx * 2;
-      const fromRight = (800 - tx) * 2;
-      const maxTextWidth = Math.min(800 * 0.95, fromLeft, fromRight);
-      const textRotation = tc.rotation ?? 0;
-      let textMetrics: { overflow: boolean; fontSize: number; widest: number };
-      if (textRotation) {
-        ctx.save();
-        ctx.translate(tx, ty);
-        ctx.rotate((textRotation * Math.PI) / 180);
-        textMetrics = drawMultilineText(ctx, tl.content, 0, 0, maxTextWidth, tl.font.family, tl.color, 80);
-        ctx.restore();
-      } else {
-        textMetrics = drawMultilineText(ctx, tl.content, tx, ty, maxTextWidth, tl.font.family, tl.color, 80);
-      }
-      if (textMetrics.overflow) {
-        logCompositeEvent("textOverflow", {
-          source: "compositeSide",
-          side: view,
-          textPreview: tl.content.slice(0, 60),
-          maxTextWidth,
-          fontSize: textMetrics.fontSize,
-          widest: textMetrics.widest,
-          fontFamily: tl.font.family,
-        });
-      }
+      const winW = zoneW * tc.scale;
+      const winH = zoneH * (tc.scaleY ?? tc.scale);
+      const winCx = zoneX + zoneW * tc.x;
+      const winCy = zoneY + zoneH * tc.y;
+      drawTextContained(
+        ctx, tl.content, tl.font.family, tl.color, Math.round(800 * 0.3),
+        winCx, winCy, winW, winH, tc.rotation ?? 0,
+      );
     }
 
     return canvas.toDataURL("image/png");
@@ -1566,38 +1595,21 @@ export default function SimplePage() {
       });
     }
 
-    // Draw EVERY text element into the print file — a dropped text = wrong product.
+    // Draw EVERY text element into the print file via the same window-box
+    // contain-fit as compositeSide (a dropped/mis-sized text = wrong product),
+    // so the print file matches the editor + the mockup. Raster rendered at
+    // print resolution (canvasW * 0.3) so it stays crisp when contain-fit.
     for (const tl of side.texts) {
       if (!tl.content.trim()) continue;
       const tc = tl.coords;
-      const tx = printZoneX + printZoneW * tc.x;
-      const ty = printZoneY + printZoneH * tc.y;
-      const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
-      // 10% of canvas width ≈ 400 px at PRINT_MAX=4000, same relative size
-      // as the 80 px on the 800 px mockup.
-      const fontPx = Math.round(canvasW * 0.1);
-      const textRotation = tc.rotation ?? 0;
-      let textMetrics: { overflow: boolean; fontSize: number; widest: number };
-      if (textRotation) {
-        ctx.save();
-        ctx.translate(tx, ty);
-        ctx.rotate((textRotation * Math.PI) / 180);
-        textMetrics = drawMultilineText(ctx, tl.content, 0, 0, maxTextWidth, tl.font.family, tl.color, fontPx);
-        ctx.restore();
-      } else {
-        textMetrics = drawMultilineText(ctx, tl.content, tx, ty, maxTextWidth, tl.font.family, tl.color, fontPx);
-      }
-      if (textMetrics.overflow) {
-        logCompositeEvent("textOverflow", {
-          source: "compositeDesignOnly",
-          side: view,
-          textPreview: tl.content.slice(0, 60),
-          maxTextWidth,
-          fontSize: textMetrics.fontSize,
-          widest: textMetrics.widest,
-          fontFamily: tl.font.family,
-        });
-      }
+      const winW = printZoneW * tc.scale;
+      const winH = printZoneH * (tc.scaleY ?? tc.scale);
+      const winCx = printZoneX + printZoneW * tc.x;
+      const winCy = printZoneY + printZoneH * tc.y;
+      drawTextContained(
+        ctx, tl.content, tl.font.family, tl.color, Math.round(canvasW * 0.3),
+        winCx, winCy, winW, winH, tc.rotation ?? 0,
+      );
     }
 
     return canvas.toDataURL("image/png");
