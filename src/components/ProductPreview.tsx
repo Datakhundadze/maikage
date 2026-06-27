@@ -133,13 +133,17 @@ function renderLayerImage(layer: DesignLayer, zone: PlacementCoords | undefined)
       />
     );
   }
+  // Text layers carry a naturalAspect but NO crop `source` → render CONTAIN so
+  // the whole word always shows (never centre-cropped) and scales as one unit
+  // with its aspect-locked window. Photos keep object-cover (cover-fit).
+  const isText = naturalAspect !== undefined && naturalAspect > 0 && !source;
   return (
     <img
       src={layer.image}
       alt="Design"
       width={800}
       height={800}
-      className="w-full h-full object-cover"
+      className={`w-full h-full ${isText ? "object-contain" : "object-cover"}`}
       loading="eager"
       fetchPriority="high"
     />

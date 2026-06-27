@@ -47,10 +47,12 @@ interface DraggablePlacementProps {
    */
   zone?: PlacementCoords;
   /**
-   * Lock the corner-drag resize to this aspect ratio (width / height of the
-   * source content). When set, corner drag is proportional — both `scale`
-   * and `scaleY` change together so the displayed box keeps this aspect.
-   * Text layers omit this so they can still be stretched on either axis.
+   * Lock the resize to this aspect ratio (width / height of the layer
+   * content). When set, corner drag is proportional — both `scale` and
+   * `scaleY` change together so the displayed box keeps this aspect. Photos
+   * pass their image aspect; text layers pass their rendered-word aspect so
+   * the whole word scales as one unit (and, having no crop `source`, their
+   * edge handles are kept proportional too — see handlePointerMove).
    */
   aspectLock?: number;
   /** Current source state. Pass alongside `onSourceChange` to enable crop. */
@@ -228,6 +230,18 @@ export default function DraggablePlacement({
         const anchorLeft = startRef.current.cx - startRef.current.cs / 2;
         newX = anchorLeft + newScale / 2;
       }
+      // Text layers (aspectLock set, no crop `source`): keep the word's aspect
+      // on edge drags too, so the whole word scales uniformly instead of
+      // stretching on one axis. The dragged axis anchors its opposite edge; the
+      // other axis is derived from the aspect (grows symmetrically around centre).
+      if (aspectLock && aspectLock > 0 && !source) {
+        const aspectFactor = zoneW / (aspectLock * zoneH); // scaleY = scale * aspectFactor
+        if (dragMode === "resize-l" || dragMode === "resize-r") {
+          newScaleY = clamp(newScale * aspectFactor);
+        } else {
+          newScale = clamp(newScaleY / aspectFactor);
+        }
+      }
       onCoordsChange({ ...coords, x: newX, y: newY, scale: newScale, scaleY: newScaleY });
       if (source && onSourceChange) {
         // Window shifted by (newX - oldX, newY - oldY). Compensate the
@@ -243,10 +257,10 @@ export default function DraggablePlacement({
       }
     } else {
       // Corner handle: two-axis resize.
-      //  - Without aspectLock (text layers): free, both axes independent.
-      //  - With aspectLock (photo layers): proportional, locked to the
-      //    source image's natural aspect ratio so dragging a corner
-      //    doesn't stretch the image content.
+      //  - Without aspectLock: free, both axes independent.
+      //  - With aspectLock (photo + text layers): proportional, locked to the
+      //    layer content's natural aspect ratio so dragging a corner doesn't
+      //    stretch the image / word.
       const isLeft = dragMode.includes("l");
       const isTop = dragMode.includes("t");
       const sdx = isLeft ? -dx : dx;

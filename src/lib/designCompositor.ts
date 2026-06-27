@@ -38,40 +38,84 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   });
 }
 
-function drawTextBlock(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  cx: number,
-  cy: number,
-  maxWidth: number,
+// Render a text string to a TIGHT raster canvas (sized to the glyph box). Kept
+// in sync with renderTextRasterCanvas in SimplePage.tsx so the print-file
+// render matches the editor preview + the order mockup exactly.
+function renderTextRasterCanvas(
+  content: string,
   fontFamily: string,
   color: string,
-  maxFontSize: number,
-) {
-  const lines = text.split("\n").filter((l) => l.trim());
-  if (lines.length === 0) return;
+  fontSize: number,
+): HTMLCanvasElement | null {
+  if (typeof document === "undefined") return null;
+  const lines = content.split("\n").filter((l) => l.trim());
+  if (lines.length === 0) return null;
+  const measureCtx = document.createElement("canvas").getContext("2d");
+  if (!measureCtx) return null;
+  measureCtx.font = `bold ${fontSize}px ${fontFamily}`;
+  let widest = 0;
+  for (const line of lines) {
+    const w = measureCtx.measureText(line).width;
+    if (w > widest) widest = w;
+  }
+  const lineHeight = fontSize * 1.25;
+  const pad = Math.ceil(fontSize * 0.18);
+  const w = Math.max(1, Math.ceil(widest) + pad * 2);
+  const h = Math.max(1, Math.ceil(lineHeight * lines.length) + pad * 2);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-
-  const MIN_FONT_SIZE = Math.max(8, maxFontSize * 0.1);
-  let fontSize = maxFontSize;
   ctx.font = `bold ${fontSize}px ${fontFamily}`;
-  let widest = 0;
-  for (const line of lines) {
-    const w = ctx.measureText(line).width;
-    if (w > widest) widest = w;
-  }
-  if (widest > maxWidth && widest > 0) {
-    fontSize = Math.max(MIN_FONT_SIZE, fontSize * (maxWidth / widest));
-    ctx.font = `bold ${fontSize}px ${fontFamily}`;
-  }
-
-  const lineHeight = fontSize * 1.25;
-  const totalHeight = lineHeight * lines.length;
-  const startY = cy - totalHeight / 2 + lineHeight / 2;
+  const startY = pad + lineHeight / 2;
   for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], cx, startY + i * lineHeight, maxWidth);
+    ctx.fillText(lines[i], w / 2, startY + i * lineHeight);
+  }
+  return canvas;
+}
+
+// Contain-fit a text raster into a window box (canvas px) at (winCx, winCy),
+// honouring rotation. `storedAspect` (DesignStateText.naturalAspect) is used
+// when present; legacy orders without it fall back to the freshly-rendered
+// raster's own aspect. Mirrors drawTextContained in SimplePage.tsx.
+function drawTextContained(
+  ctx: CanvasRenderingContext2D,
+  content: string,
+  fontFamily: string,
+  color: string,
+  fontSize: number,
+  winCx: number,
+  winCy: number,
+  winW: number,
+  winH: number,
+  rotationDeg: number,
+  storedAspect?: number,
+): void {
+  const raster = renderTextRasterCanvas(content, fontFamily, color, fontSize);
+  if (!raster || winW <= 0 || winH <= 0) return;
+  const rasterAspect = storedAspect && storedAspect > 0 ? storedAspect : raster.width / raster.height;
+  const boxAspect = winW / winH;
+  let drawW: number;
+  let drawH: number;
+  if (rasterAspect >= boxAspect) {
+    drawW = winW;
+    drawH = winW / rasterAspect;
+  } else {
+    drawH = winH;
+    drawW = winH * rasterAspect;
+  }
+  if (rotationDeg) {
+    ctx.save();
+    ctx.translate(winCx, winCy);
+    ctx.rotate((rotationDeg * Math.PI) / 180);
+    ctx.drawImage(raster, -drawW / 2, -drawH / 2, drawW, drawH);
+    ctx.restore();
+  } else {
+    ctx.drawImage(raster, winCx - drawW / 2, winCy - drawH / 2, drawW, drawH);
   }
 }
 
@@ -199,21 +243,18 @@ export async function compositePrintFileFromDesignState(
     }
   }
 
-  // Draw EVERY text element (multi-text). A dropped text = wrong product.
+  // Draw EVERY text element (multi-text) via the window-box contain-fit — the
+  // box the user sized (scale × scaleY) at x/y — so the print file matches the
+  // editor preview + the order mockup. A dropped/mis-sized text = wrong product.
   for (const t of texts) {
-    const tx = printZoneX + printZoneW * t.x;
-    const ty = printZoneY + printZoneH * t.y;
-    const maxTextWidth = Math.min(canvasW * 0.95, tx * 2, (canvasW - tx) * 2);
-    const fontPx = Math.round(canvasW * 0.1);
-    if (t.rotation) {
-      ctx.save();
-      ctx.translate(tx, ty);
-      ctx.rotate((t.rotation * Math.PI) / 180);
-      drawTextBlock(ctx, t.content, 0, 0, maxTextWidth, t.font, t.color, fontPx);
-      ctx.restore();
-    } else {
-      drawTextBlock(ctx, t.content, tx, ty, maxTextWidth, t.font, t.color, fontPx);
-    }
+    const winW = printZoneW * t.scale;
+    const winH = printZoneH * (t.scaleY ?? t.scale);
+    const winCx = printZoneX + printZoneW * t.x;
+    const winCy = printZoneY + printZoneH * t.y;
+    drawTextContained(
+      ctx, t.content, t.font, t.color, Math.round(canvasW * 0.3),
+      winCx, winCy, winW, winH, t.rotation ?? 0, t.naturalAspect,
+    );
   }
 
   return new Promise<Blob | null>((resolve) => {

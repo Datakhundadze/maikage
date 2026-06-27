@@ -41,6 +41,11 @@ export interface DesignStateText {
   scale: number;
   scaleY: number;
   rotation: number;
+  /** Tight text-raster aspect (rasterW / rasterH). Lets the compositor
+   *  contain-fit the word into the window box without re-measuring. Optional —
+   *  orders placed before the text-scale fix omit it; the compositor then
+   *  re-measures by rendering the raster, so old orders still render. */
+  naturalAspect?: number;
 }
 
 /** Placement zone snapshot in canvas-fraction coordinates. */
