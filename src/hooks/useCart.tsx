@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignState } from "@/lib/designState";
 import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
+import { trackEvent } from "@/lib/gtag";
 
 export interface CartItem {
   id: string;
@@ -169,6 +170,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       };
 
       setItems((prev) => [...prev, item]);
+
+      // GA4 funnel: add_to_cart (defensive — no-ops if gtag absent, no PII).
+      trackEvent("add_to_cart", {
+        currency: "GEL",
+        value: item.productPrice * item.quantity,
+        items: [{
+          item_id: item.id,
+          item_name: [item.product, item.subProduct, item.color].filter(Boolean).join(" "),
+          item_category: item.product,
+          price: item.productPrice,
+          quantity: item.quantity,
+        }],
+      });
     } finally {
       setAdding(false);
     }

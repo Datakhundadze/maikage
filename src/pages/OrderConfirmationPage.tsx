@@ -7,6 +7,7 @@ import { t } from "@/lib/i18n";
 import { CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import OrderCard from "@/components/OrderCard";
+import { trackEvent } from "@/lib/gtag";
 import {
   groupOrdersByCart,
   shortOrderId,
@@ -112,6 +113,54 @@ export default function OrderConfirmationPage() {
     })();
     return () => { cancelled = true; };
   }, [isLoggedIn, orderId]);
+
+  // GA4 conversion: fire `purchase` ONCE per order, ONLY on confirmed success
+  // (paymentState === "paid", which is set only when check-payment returns
+  // "paid" — never on failed/pending/processing). Double-fire guard: an
+  // in-mount ref + a sessionStorage flag keyed by orderId so a page refresh
+  // can't double-count revenue. value/items come from the order rows the page
+  // already loads for logged-in users (RLS); guests can't read orders
+  // client-side, so their hit carries transaction_id + a generic item (the
+  // conversion still counts; revenue lives in the orders table / admin panel).
+  const purchaseTrackedRef = useRef(false);
+  useEffect(() => {
+    if (paymentState !== "paid" || !orderId) return;
+    if (purchaseTrackedRef.current) return;
+    // For logged-in users wait until the order rows load so value/items are real.
+    if (isLoggedIn && groups === null) return;
+
+    const flagKey = `ga4_purchase_${orderId}`;
+    try {
+      if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(flagKey)) {
+        purchaseTrackedRef.current = true;
+        return;
+      }
+    } catch { /* sessionStorage unavailable — fall back to the in-mount ref */ }
+
+    const rows = groups ? groups.flatMap((g) => g.rows) : [];
+    const value = rows.reduce((s, r) => s + (Number(r.total_price) || 0), 0);
+    const shipping = rows.reduce((s, r) => s + (Number(r.delivery_price) || 0), 0);
+    const items = rows.length
+      ? rows.map((r) => ({
+          item_id: r.id,
+          item_name: [r.product, r.sub_product, r.color, r.size].filter(Boolean).join(" "),
+          item_category: r.product,
+          price: Math.max(0, (Number(r.total_price) || 0) - (Number(r.delivery_price) || 0)),
+          quantity: 1,
+        }))
+      : [{ item_id: orderId, item_name: "maika.ge order", quantity: 1 }];
+
+    purchaseTrackedRef.current = true;
+    try { if (typeof sessionStorage !== "undefined") sessionStorage.setItem(flagKey, "1"); } catch { /* ignore */ }
+
+    trackEvent("purchase", {
+      transaction_id: orderId,
+      // currency/value only when a real total is known (logged-in). Guests
+      // still record the conversion (count) without revenue.
+      ...(value > 0 ? { value, currency: "GEL", shipping } : {}),
+      items,
+    });
+  }, [paymentState, orderId, isLoggedIn, groups]);
 
   const isFailed = paymentState === "failed";
   const isPaid = paymentState === "paid";
