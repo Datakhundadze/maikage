@@ -13,6 +13,278 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // randomize-prompt (cheap text) are intentionally exempt.
 const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle"]);
 
+// Text-only actions: they skip the image modality, run a single attempt, and
+// return { text } (no image extraction). randomize-prompt (existing) and
+// faq-chat (FAQ chatbot) share these text rails.
+const TEXT_ACTIONS = new Set(["randomize-prompt", "faq-chat"]);
+
+// FAQ chatbot knowledge base — injected verbatim as the SYSTEM prompt for the
+// "faq-chat" action. Public info (prices/hours/delivery/products). To edit it,
+// change this string and REDEPLOY the function (a GitHub merge does not deploy
+// edge functions). Behavior rules (answer only from this doc, reply in the
+// user's language, unknown → contact us) live in §0 of the document itself.
+const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
+# ცოდნის ბაზა (KA + EN)
+# Single source of truth for the website FAQ assistant.
+# Prices = exactly what the cart charges (pricing.ts). Update here when prices change.
+# Last reconciled: 2026-06-25
+
+═══════════════════════════════════════════════════════════════
+## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
+═══════════════════════════════════════════════════════════════
+
+You are maika.ge's friendly website assistant. Answer ONLY from the facts in this
+document. Reply in the SAME language the user writes in (Georgian or English).
+Keep answers short, warm, and helpful.
+
+If you don't know something or it's not in this document (custom quotes, special
+requests, exact corporate pricing, anything uncertain):
+→ KA: "ამ კითხვაზე ზუსტი პასუხისთვის დაგვიკავშირდით: +(995 32) 2 05 06 20 / 599 05 08 07, ან შემოგვიარეთ შოურუმში."
+→ EN: "For an exact answer please contact us: +(995 32) 2 05 06 20 / 599 05 08 07, or visit our showroom."
+
+Never invent prices, deadlines, or promises. Never offer discounts unless they are
+written here. For large/corporate orders → direct to contact (individual quote).
+
+═══════════════════════════════════════════════════════════════
+## 1. COMPANY / კომპანია
+═══════════════════════════════════════════════════════════════
+
+KA:
+- სახელი: maika.ge — საქართველოს ცნობილი მაისურების ბრენდი, 15+ წლის გამოცდილებით (custom apparel + ბეჭდვა).
+- მისამართი / შოურუმი: ა. წერეთლის გამზ. #2, დინამოს არენა, კარი #10, თბილისი.
+- ტელეფონი: +(995 32) 2 05 06 20 · 599 05 08 07
+- ელფოსტა: maika@maika.ge
+- საიტი: www.maika.ge
+- სამუშაო საათები: ორშაბათი–პარასკევი 11:00–19:00 · შაბათი 11:00–18:00 · კვირა დაკეტილია.
+
+EN:
+- Name: maika.ge — a well-known Georgian apparel brand with 15+ years of experience (custom apparel + printing).
+- Address / showroom: A. Tsereteli Ave #2, Dinamo Arena, Gate #10, Tbilisi.
+- Phone: +(995 32) 2 05 06 20 · 599 05 08 07
+- Email: maika@maika.ge
+- Website: www.maika.ge
+- Working hours: Monday–Friday 11:00–19:00 · Saturday 11:00–18:00 · Sunday closed.
+
+═══════════════════════════════════════════════════════════════
+## 2. PRICES — T-SHIRTS / ფასები — მაისურები
+═══════════════════════════════════════════════════════════════
+(Price = front print included. "Two-sided" = front + back, surcharge applies.
+These are the live cart prices.)
+
+KA — მაისურები (ცალმხრივი ბეჭდვა შედის ფასში):
+- GILDAN (სტანდარტი): 35₾ · ორმხრივი 50₾
+- GILDAN KIDS (საბავშვო): 35₾ · ორმხრივი 50₾
+- TH: 45₾ · ორმხრივი 60₾
+- Polo: 45₾ · ორმხრივი 60₾
+- SOL'S: 50₾ · ორმხრივი 65₾
+- Khundadze: 55₾ · ორმხრივი 70₾
+- GILDAN HUMMER (პრემიუმ მძიმე ნაჭარი): 60₾ · ორმხრივი 75₾
+- GIORDANO: 70₾ · ორმხრივი 85₾
+- JEL (მოხარშული ნაჭარი): 70₾ · ორმხრივი 85₾
+- Oversize: 70₾ · ორმხრივი 85₾
+- NIKE: 100₾ · ორმხრივი 115₾
+
+EN — T-shirts (front print included):
+- GILDAN (standard): 35₾ · two-sided 50₾
+- GILDAN KIDS: 35₾ · two-sided 50₾
+- TH: 45₾ · two-sided 60₾
+- Polo: 45₾ · two-sided 60₾
+- SOL'S: 50₾ · two-sided 65₾
+- Khundadze: 55₾ · two-sided 70₾
+- GILDAN HUMMER (premium heavy fabric): 60₾ · two-sided 75₾
+- GIORDANO: 70₾ · two-sided 85₾
+- JEL (washed fabric): 70₾ · two-sided 85₾
+- Oversize: 70₾ · two-sided 85₾
+- NIKE: 100₾ · two-sided 115₾
+
+═══════════════════════════════════════════════════════════════
+## 3. PRICES — HOODIES / ფასები — ჰუდები
+═══════════════════════════════════════════════════════════════
+
+KA — ჰუდები (ბეჭდვა შედის):
+- GILDAN Bomber: 75₾ · ორმხრივი 90₾
+- GILDAN Hoodie: 80₾ · ორმხრივი 95₾
+- JEL Standard Hoodie: 85₾ · ორმხრივი 100₾
+- Premium Washed Hoodie: 95₾ · ორმხრივი 110₾
+- JEL Standard Zipper (ელვიანი): 95₾ · ორმხრივი 110₾
+- JEL Zipper (ელვიანი): 105₾ · ორმხრივი 120₾
+
+EN — Hoodies (print included):
+- GILDAN Bomber: 75₾ · two-sided 90₾
+- GILDAN Hoodie: 80₾ · two-sided 95₾
+- JEL Standard Hoodie: 85₾ · two-sided 100₾
+- Premium Washed Hoodie: 95₾ · two-sided 110₾
+- JEL Standard Zipper: 95₾ · two-sided 110₾
+- JEL Zipper: 105₾ · two-sided 120₾
+
+═══════════════════════════════════════════════════════════════
+## 4. PRICES — OTHER PRODUCTS / ფასები — სხვა პროდუქცია
+═══════════════════════════════════════════════════════════════
+
+KA:
+- სპორტული ფორმა (მაისური + შორტი): 65₾ · ორმხრივი 80₾
+- ნაჭრის ჩანთა (Tote): 35₾
+- წინსაფარი (Apron): 45₾
+- ჭიქა (Mug): 25₾
+- კეპი (Cap): 25₾
+- მობილურის ქეისი (Phone Case): 20₾
+
+EN:
+- Sport set (shirt + shorts): 65₾ · two-sided 80₾
+- Tote bag: 35₾
+- Apron: 45₾
+- Mug: 25₾
+- Cap: 25₾
+- Phone case: 20₾
+
+═══════════════════════════════════════════════════════════════
+## 5. ADD-ONS & EXTRAS / დამატებები
+═══════════════════════════════════════════════════════════════
+
+KA:
+- ორმხრივი ბეჭდვა: +10/15₾ პრინტის ზომის მიხედვით (ზუსტი ფასი ცხრილებშია — §2/§3).
+- A4-ზე დიდი პრინტი (მაქს. A3): +10/15₾ ზომის მიხედვით.
+- სპორტულ მაისურზე გვარი + ნომერი: 20₾.
+- შენი მოტანილი მაისური/ჰუდი (ბეჭდვა): 20₾ (მოტანილ ნივთზე პასუხისმგებლობას ვერ ვიღებთ).
+- ფასში შედის: ცალმხრივი, დაახლოებით A4 ზომის ბეჭდვა.
+
+EN:
+- Two-sided printing: +10/15₾ depending on print size (exact prices in tables §2/§3).
+- Print larger than A4 (up to A3): +10/15₾ depending on size.
+- Name + number on a sports shirt: 20₾.
+- Printing on your own item: 20₾ (we can't take responsibility for items you bring).
+- Included in price: single-side print, approximately A4 size.
+
+═══════════════════════════════════════════════════════════════
+## 6. DISCOUNTS / ფასდაკლება
+═══════════════════════════════════════════════════════════════
+
+KA: 10 ცალიდან ზემოთ ვრცელდება ფასდაკლება. ზუსტი ფასი დამოკიდებულია შეკვეთის დეტალებზე —
+დაგვიკავშირდით და შემოგთავაზებთ ინდივიდუალურ ფასს. (კორპორატიული / დიდი შეკვეთა → ინდივიდუალური ფასი.)
+
+EN: Discounts apply from 10 items and up. The exact price depends on order details —
+contact us for an individual quote. (Corporate / bulk → individual pricing.)
+
+═══════════════════════════════════════════════════════════════
+## 7. PRODUCTION TIME / დამზადების ვადა
+═══════════════════════════════════════════════════════════════
+
+KA: 1–2 სამუშაო დღე. კონკრეტული დღისთვის თუ გჭირდებათ — მოგვწერეთ და დაგეხმარებით.
+დიდი შეკვეთა: 21–50ც → 3–4 დღე · 50+ → ინდივიდუალურად.
+
+EN: 1–2 working days. If you need it by a specific date, message us and we'll help.
+Large orders: 21–50 pcs → 3–4 days · 50+ → individually.
+
+═══════════════════════════════════════════════════════════════
+## 8. DELIVERY / მიწოდება
+═══════════════════════════════════════════════════════════════
+
+KA:
+- შოურუმიდან გატანა (თვითგატანა): უფასო — ა. წერეთლის #2, დინამოს არენა, კარი #10.
+- კურიერი თბილისში: 8₾.
+- კურიერი რეგიონში (თბილისს გარეთ): 12₾.
+- ექსპრეს კურიერი: 12₾ — 15:00-მდე გაფორმებული შეკვეთა იმავე დღეს იგზავნება.
+- მთელ საქართველოში ვაგზავნით, კურიერი კარზე მოგაწვდით.
+
+EN:
+- Pickup from showroom: free — A. Tsereteli #2, Dinamo Arena, Gate #10.
+- Courier in Tbilisi: 8₾.
+- Courier to regions (outside Tbilisi): 12₾.
+- Express courier: 12₾ — orders placed before 15:00 ship the same day.
+- We deliver across Georgia; the courier brings it to your door.
+
+═══════════════════════════════════════════════════════════════
+## 9. PAYMENT / გადახდა
+═══════════════════════════════════════════════════════════════
+
+KA: საბანკო გადარიცხვით, ონლაინ ბარათით (BOG / TBC საიტზე) ან ნაღდი ანგარიშსწორებით.
+ძირითადად 100% წინასწარ.
+
+EN: Bank transfer, online card payment (BOG / TBC on the site), or cash. Usually 100% upfront.
+
+═══════════════════════════════════════════════════════════════
+## 10. PRODUCTS, BRANDS & SIZES / პროდუქცია, ბრენდები, ზომები
+═══════════════════════════════════════════════════════════════
+
+KA:
+- ასორტიმენტი: მაისური · პოლო · ჰუდი · წინსაფარი · სპორტული ფორმა · კეპი · ნაჭრის ჩანთა · ჭიქა · მობილურის ქეისი.
+- ბრენდები: GILDAN (სტანდარტი), GILDAN HUMMER (პრემიუმ), TH, JEL (მოხარშული), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; ჰუდები: GILDAN, JEL, Premium Washed, Bomber, Zipper-ები.
+- ბეჭდვა: DTF · ვინილი.
+- ზომები: 3 წლის ბავშვიდან 5XL-მდე (ზოგ მოდელში S–XXL). ზუსტი ხელმისაწვდომობა მოდელზეა დამოკიდებული — დაგვიკავშირდით ან შემოგვიარეთ.
+
+EN:
+- Range: t-shirt · polo · hoodie · apron · sport set · cap · tote bag · mug · phone case.
+- Brands: GILDAN (standard), GILDAN HUMMER (premium), TH, JEL (washed), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; hoodies: GILDAN, JEL, Premium Washed, Bomber, Zippers.
+- Printing: DTF · vinyl.
+- Sizes: from age 3 (kids) up to 5XL (some models S–XXL). Exact availability depends on the model — contact us or visit the showroom.
+
+═══════════════════════════════════════════════════════════════
+## 11. PRINT QUALITY & CARE / ბეჭდვის ხარისხი და მოვლა
+═══════════════════════════════════════════════════════════════
+
+KA:
+Q: რეცხვის შემდეგ პრინტი ხომ არ წავა?
+A: არა. ვბეჭდავთ DTF ტექნოლოგიით — ფერი სტაბილურია, ბუნებრივი და ნათელი, პრინტი ქსოვილში
+ინტეგრირებული და რეცხვაგამძლეა.
+
+EN:
+Q: Will the print fade after washing?
+A: No. We print with DTF technology — the color is stable, natural and bright, the print is
+integrated into the fabric and wash-resistant.
+
+═══════════════════════════════════════════════════════════════
+## 12. AI DESIGN & HOW IT WORKS / AI დიზაინი და როგორ მუშაობს
+═══════════════════════════════════════════════════════════════
+
+KA:
+- AI დიზაინი: maika.ge-ის საიტზე უფასოდ შეგიძლიათ შექმნათ უნიკალური დიზაინი ხელოვნური
+  ინტელექტით — ატვირთეთ ფოტო, დაწერეთ ტექსტი ან აღწერეთ რა გინდათ, AI შეგიქმნით.
+  მერე დაბეჭდეთ მაისურზე, ჰუდიზე თუ სხვა ნივთზე.
+- ატვირთეთ ფოტო ან ტექსტი და შეუკვეთეთ რეგისტრაციის გარეშე.
+- Virtual Try-On: დიზაინი ვირტუალურად მაისურზე ნახეთ შეკვეთამდე.
+
+EN:
+- AI design: on maika.ge you can create a unique design with AI for free — upload a photo,
+  type text, or describe what you want, and the AI creates it. Then print it on a t-shirt,
+  hoodie or other item.
+- Upload a photo or text and order without registration.
+- Virtual Try-On: preview your design on a shirt before ordering.
+
+═══════════════════════════════════════════════════════════════
+## 13. SPORT & CORPORATE / სპორტული და კორპორატიული
+═══════════════════════════════════════════════════════════════
+
+KA:
+- სპორტული მაისურზე გვარი + ნომერი: 20₾.
+- სპორტული გუნდებისთვის ფორმებს ვკერავთ ინდივიდუალურად.
+- კორპორატიული შეკვეთა (ბრენდირებული ფორმები, საჩუქრები): ლოგოს ატვირთვით საიტზე ფორმის შევსება,
+  ან დაგვიკავშირდით ინდივიდუალური ფასისთვის. ფასდაკლება 10+ ცალიდან.
+
+EN:
+- Name + number on a sports shirt: 20₾.
+- We sew custom uniforms for sports teams individually.
+- Corporate orders (branded uniforms, gifts): fill the form on the site with your logo,
+  or contact us for an individual quote. Discounts from 10+ items.
+
+═══════════════════════════════════════════════════════════════
+## 14. EXTRA PRINTING / დამატებითი ბეჭდვა
+═══════════════════════════════════════════════════════════════
+
+KA:
+- ქეისზე ბეჭდვა: 20₾ (სასურველი პრინტით).
+- ჭიქაზე ბეჭდვა: 25₾.
+- ნაჭრის ჩანთაზე ბეჭდვა: 35₾.
+
+EN:
+- Phone case printing: 20₾ (with your chosen print).
+- Mug printing: 25₾.
+- Tote bag printing: 35₾.
+
+═══════════════════════════════════════════════════════════════
+# END — დოკუმენტი ცოცხალია; ფასი/ფაქტი შეიცვალა → აქ განაახლე.
+═══════════════════════════════════════════════════════════════
+`;
+
 /** Extract base64 image from various response formats the gateway might return */
 function extractImage(data: any): string | null {
   // Format 1: content array with image_url objects
@@ -190,7 +462,7 @@ async function callGateway(model: string, messages: any[], attempt: number, acti
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-  const needsImage = action !== "randomize-prompt";
+  const needsImage = !TEXT_ACTIONS.has(action);
 
   console.log(`[gemini-proxy] Gateway call: model=${model}, attempt=${attempt + 1}, modalities=${needsImage ? "image+text" : "text"}`);
 
@@ -302,6 +574,87 @@ serve(async (req) => {
                 : "გენერაციის ლიმიტი ამოიწურა — სცადეთ მოგვიანებით. (Generation limit reached — please try again later.)",
               code: "RATE_LIMITED",
               requiresLogin,
+            }),
+            {
+              status: 429,
+              headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" },
+            },
+          );
+        }
+      }
+    }
+
+    // --- Rate limiting (faq-chat) — SEPARATE from BILLABLE_ACTIONS so the text
+    // chatbot NEVER consumes the image-generation quota. Own `faq:` key
+    // namespace + tighter limits (anon 10/hr 30/day, authed 30/hr 100/day).
+    // Manual admin block (is_blocked) applies; the >15-image rule does NOT
+    // (check_generation_block only enforces that for action 'generate-design').
+    // Admins are exempt. Fails open on RPC error.
+    if (action === "faq-chat") {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+      });
+
+      const { data: { user } } = await client.auth.getUser();
+
+      let isAdmin = false;
+      if (user) {
+        const { data: adminFlag } = await client.rpc("has_role", {
+          _user_id: user.id,
+          _role: "admin",
+        });
+        isAdmin = adminFlag === true;
+      }
+
+      if (!isAdmin) {
+        // Manual admin block only: p_action != 'generate-design', so
+        // check_generation_block returns true ONLY when profiles.is_blocked.
+        if (user && user.is_anonymous !== true) {
+          const { data: blocked, error: blockErr } = await client.rpc(
+            "check_generation_block",
+            { p_user_id: user.id, p_action: action },
+          );
+          if (blockErr) {
+            console.error("[gemini-proxy] faq-chat block check failed — failing open:", blockErr);
+          } else if (blocked === true) {
+            console.log(`[gemini-proxy] faq-chat blocked: user ${user.id}`);
+            return new Response(
+              JSON.stringify({
+                error: "ანგარიში დაბლოკილია — დაგვიკავშირდით. (Your account is blocked — please contact us.)",
+                code: "GENERATION_BLOCKED",
+              }),
+              { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+        }
+
+        let key: string;
+        if (user) {
+          key = `faq:user:${user.id}`;
+        } else {
+          const ip = req.headers.get("cf-connecting-ip")
+            ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+            ?? "unknown";
+          key = `faq:ip:${ip}`;
+        }
+        const hourLimit = user ? 30 : 10;
+        const dayLimit = user ? 100 : 30;
+
+        const { data: allowed, error: rlError } = await client.rpc(
+          "check_and_increment_rate_limit",
+          { p_key: key, p_hour_limit: hourLimit, p_day_limit: dayLimit },
+        );
+
+        if (rlError) {
+          console.error("[gemini-proxy] faq-chat rate-limit check failed — failing open:", rlError);
+        } else if (allowed === false) {
+          console.log(`[gemini-proxy] faq-chat rate limit reached for ${key}`);
+          return new Response(
+            JSON.stringify({
+              error: "ბევრი შეტყობინება — სცადეთ მოგვიანებით. (Too many messages — please try again later.)",
+              code: "RATE_LIMITED",
             }),
             {
               status: 429,
@@ -460,6 +813,27 @@ Output: one photorealistic composite photo.`;
         ],
       }];
 
+    } else if (action === "faq-chat") {
+      // FAQ chatbot (text). SYSTEM = FAQ_KB (the knowledge base + behavior
+      // rules); the client sends the conversation in params.messages. The model
+      // replies in the user's language per §0 of the KB.
+      //
+      // SANITIZE (prompt-injection guard): accept ONLY user/assistant turns
+      // from the client — any client-supplied `system` role is dropped, so the
+      // server-side system prompt can't be overridden. Keep the last 8 turns
+      // and cap each to ~1000 chars (cost / abuse bound).
+      //
+      // TODO: switch model to "google/gemini-2.5-flash-lite" once confirmed
+      // enabled on the Lovable AI gateway. Until then use the proven text model
+      // (the same one randomize-prompt already uses successfully).
+      model = "google/gemini-3-flash-preview";
+      const incoming = Array.isArray(params.messages) ? params.messages : [];
+      const history = incoming
+        .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+        .slice(-8)
+        .map((m) => ({ role: m.role, content: m.content.slice(0, 1000) }));
+      messages = [{ role: "system", content: FAQ_KB }, ...history];
+
     } else {
       return new Response(JSON.stringify({ error: "Unknown action" }), {
         status: 400,
@@ -468,7 +842,8 @@ Output: one photorealistic composite photo.`;
     }
 
     // Retry logic — one retry for image actions (4xx is never retried).
-    const maxAttempts = action === "randomize-prompt" ? 1 : 2;
+    // Text actions (randomize-prompt, faq-chat) run a single attempt.
+    const maxAttempts = TEXT_ACTIONS.has(action) ? 1 : 2;
     let lastError = "";
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -521,9 +896,9 @@ Output: one photorealistic composite photo.`;
           ? data.choices[0].message.content
           : "";
 
-        // For randomize-prompt, just return text
-        if (action === "randomize-prompt") {
-          console.log(`[gemini-proxy] randomize-prompt success`);
+        // Text actions (randomize-prompt, faq-chat): return text, no image.
+        if (TEXT_ACTIONS.has(action)) {
+          console.log(`[gemini-proxy] ${action} success (text)`);
           return new Response(JSON.stringify({ image: null, text: textContent }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
