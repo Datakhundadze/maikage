@@ -34,6 +34,10 @@ const FaqPage = lazy(() => import("./pages/FaqPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+// Sitewide FAQ chat bubble — lazy so it never lands in the initial bundle.
+// Mounted once below (inside BrowserRouter) so it shows on every route; the
+// component itself hides on /admin.
+const ChatWidget = lazy(() => import("./components/ChatWidget"));
 
 // LoginPage is currently unused at the routing layer (no <LoginPage />
 // renders in this file) but kept as a lazy import so its bundle stays
@@ -127,6 +131,9 @@ const App = () => (
                 <RouteChangeTracker />
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <AppRoutes />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <ChatWidget />
                 </Suspense>
               </BrowserRouter>
             </TooltipProvider>
