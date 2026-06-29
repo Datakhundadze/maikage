@@ -78,9 +78,10 @@ export default function ChatWidget() {
       reply = res.text;
     } else {
       local = true;
-      reply = res.kind === "rate_limited"
+      const kind = (res as { ok: false; kind: "rate_limited" | "blocked" | "error" }).kind;
+      reply = kind === "rate_limited"
         ? t(lang, "chat.errorRate")
-        : res.kind === "blocked"
+        : kind === "blocked"
           ? t(lang, "chat.errorBlocked")
           : t(lang, "chat.errorGeneric");
     }
