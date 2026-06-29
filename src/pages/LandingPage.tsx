@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
 import { Shirt, Mail, Phone, MapPin, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
+import FeedbackModal from "@/components/FeedbackModal";
 import PartnerLogosMarquee from "@/components/PartnerLogosMarquee";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
@@ -326,6 +327,12 @@ export default function LandingPage() {
             <Link to="/portfolio" className="text-muted-foreground hover:text-foreground transition-colors text-xs">
               {lang === "en" ? "Portfolio" : "პორტფოლიო"}
             </Link>
+            <span className="text-muted-foreground/30">•</span>
+            <FeedbackModal>
+              <button className="text-muted-foreground hover:text-foreground transition-colors text-xs">
+                {lang === "en" ? "Feedback" : "შენიშვნა"}
+              </button>
+            </FeedbackModal>
           </div>
           <p className="text-xs text-muted-foreground">© 2026 maika.ge</p>
         </div>
