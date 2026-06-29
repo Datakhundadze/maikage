@@ -183,14 +183,12 @@ KA:
 - შოურუმიდან გატანა (თვითგატანა): უფასო — ა. წერეთლის #2, დინამოს არენა, კარი #10.
 - კურიერი თბილისში: 8₾.
 - კურიერი რეგიონში (თბილისს გარეთ): 12₾.
-- ექსპრეს კურიერი: 12₾ — 15:00-მდე გაფორმებული შეკვეთა იმავე დღეს იგზავნება.
 - მთელ საქართველოში ვაგზავნით, კურიერი კარზე მოგაწვდით.
 
 EN:
 - Pickup from showroom: free — A. Tsereteli #2, Dinamo Arena, Gate #10.
 - Courier in Tbilisi: 8₾.
 - Courier to regions (outside Tbilisi): 12₾.
-- Express courier: 12₾ — orders placed before 15:00 ship the same day.
 - We deliver across Georgia; the courier brings it to your door.
 
 ═══════════════════════════════════════════════════════════════
