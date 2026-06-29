@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Phone, Smartphone, Mail, Clock } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { supabase } from "@/integrations/supabase/client";
+import { transformedImageUrl, publicImageUrl, imgFallbackToOriginal } from "@/lib/imageTransform";
 
 // Showroom coordinates (also used by the Google Maps embed + LocalBusiness geo).
 const LAT = 41.7231446;
@@ -62,6 +63,8 @@ const LOCAL_BUSINESS_SCHEMA = {
 interface ShowroomPhoto {
   name: string | null;
   url: string;
+  /** Untransformed public URL — onError fallback for the transformed `url`. */
+  original: string;
 }
 
 export default function ContactPage() {
@@ -81,7 +84,9 @@ export default function ContactPage() {
       if (cancelled || !data) return;
       const rows = (data as { name: string | null; photo_path: string }[]).map((r) => ({
         name: r.name,
-        url: supabase.storage.from("showroom-photos").getPublicUrl(r.photo_path).data.publicUrl,
+        // Resized/WebP via Supabase transform; `original` is the onError fallback.
+        url: transformedImageUrl("showroom-photos", r.photo_path, { width: 800, quality: 65, resize: "contain" }),
+        original: publicImageUrl("showroom-photos", r.photo_path),
       }));
       setPhotos(rows);
     })();
@@ -207,6 +212,7 @@ export default function ContactPage() {
                     alt={p.name || "შოურუმი"}
                     className="h-full w-full object-cover transition duration-300 hover:scale-105"
                     loading="lazy"
+                    onError={(e) => imgFallbackToOriginal(e, p.original)}
                   />
                 </div>
               ))}

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { transformedImageUrl, imgFallbackToOriginal } from "@/lib/imageTransform";
 
 interface PortfolioItem {
   id: string;
@@ -172,7 +173,13 @@ export default function AdminPortfolio() {
           {items.map((p) => (
             <div key={p.id} className={`rounded-lg border border-border bg-card p-3 space-y-3 ${p.active ? "" : "opacity-60"}`}>
               <div className="h-40 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                <img src={publicUrl(p.image_path)} alt={p.alt_text || p.title || ""} className="h-full w-full object-cover" loading="lazy" />
+                <img
+                  src={transformedImageUrl("portfolio", p.image_path, { width: 400, quality: 60, resize: "contain" })}
+                  alt={p.alt_text || p.title || ""}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  onError={(e) => imgFallbackToOriginal(e, publicUrl(p.image_path))}
+                />
               </div>
               <Input
                 defaultValue={p.title || ""}
