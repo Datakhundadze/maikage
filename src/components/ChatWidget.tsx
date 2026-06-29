@@ -40,6 +40,9 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // One stable id per widget mount so the server can group this conversation
+  // in the admin chat-history log. Resets on reload (a new visit = new session).
+  const sessionIdRef = useRef<string>(crypto.randomUUID());
 
   // Keep the list pinned to the newest message / typing indicator.
   useEffect(() => {
@@ -66,7 +69,7 @@ export default function ChatWidget() {
       .filter((m) => !m.local)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    const res = await faqChat(history, lang);
+    const res = await faqChat(history, lang, sessionIdRef.current);
     setLoading(false);
 
     let reply: string;

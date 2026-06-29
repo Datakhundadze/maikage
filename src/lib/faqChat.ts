@@ -17,7 +17,7 @@ export type FaqResult =
   | { ok: true; text: string }
   | { ok: false; kind: "rate_limited" | "blocked" | "error" };
 
-export async function faqChat(messages: FaqMessage[], lang: Lang): Promise<FaqResult> {
+export async function faqChat(messages: FaqMessage[], lang: Lang, sessionId?: string): Promise<FaqResult> {
   // Send only user/assistant turns (the proxy re-sanitizes anyway), last 8,
   // each capped — mirrors the server-side bounds so payloads stay small.
   const clean = messages
@@ -26,7 +26,8 @@ export async function faqChat(messages: FaqMessage[], lang: Lang): Promise<FaqRe
     .map((m) => ({ role: m.role, content: m.content.slice(0, 1000) }));
 
   const { data, error } = await supabase.functions.invoke("gemini-proxy", {
-    body: { action: "faq-chat", params: { messages: clean, lang } },
+    // session_id groups a conversation in the admin chat-history log (server-side).
+    body: { action: "faq-chat", params: { messages: clean, lang, session_id: sessionId } },
   });
 
   // Non-2xx → FunctionsHttpError; the JSON body (with `code`) is in error.context.

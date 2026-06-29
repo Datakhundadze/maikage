@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare, MessageCircle } from "lucide-react";
 // Each admin tab is large (full-page CRUD UIs with their own forms,
 // tables, and supabase fetchers). Lazy-load them so visiting /admin
 // only ships the active tab's bundle — switching tabs fetches the
@@ -22,6 +22,7 @@ const AdminPartners = lazy(() => import("@/components/admin/AdminPartners"));
 const AdminShowroom = lazy(() => import("@/components/admin/AdminShowroom"));
 const AdminPortfolio = lazy(() => import("@/components/admin/AdminPortfolio"));
 const AdminFeedback = lazy(() => import("@/components/admin/AdminFeedback"));
+const AdminChatHistory = lazy(() => import("@/components/admin/AdminChatHistory"));
 const AiAgent = lazy(() => import("@/components/admin/AiAgent"));
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
@@ -29,7 +30,7 @@ import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
 
-type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "feedback";
+type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "feedback" | "chat-history";
 type Mode = "login" | "signup" | "forgot";
 
 const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
@@ -47,12 +48,13 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "showroom", label: "შოურუმი", icon: Store },
   { id: "portfolio", label: "პორტფოლიო", icon: Images },
   { id: "feedback", label: "შენიშვნები", icon: MessageSquare },
+  { id: "chat-history", label: "ჩატის ისტორია", icon: MessageCircle },
 ];
 
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);
   const v = params.get("tab");
-  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "feedback") return v;
+  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "feedback" || v === "chat-history") return v;
   return "dashboard";
 }
 
@@ -416,6 +418,7 @@ export default function AdminPage() {
           {activeTab === "showroom" && <AdminShowroom />}
           {activeTab === "portfolio" && <AdminPortfolio />}
           {activeTab === "feedback" && <AdminFeedback />}
+          {activeTab === "chat-history" && <AdminChatHistory />}
         </Suspense>
       </div>
     </div>

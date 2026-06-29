@@ -512,6 +512,10 @@ serve(async (req) => {
     const { action, params } = await req.json();
     console.log(`[gemini-proxy] Action: ${action}`);
 
+    // Resolved caller id for the faq-chat conversation log (null for anon).
+    // Captured in the faq-chat gate below; used at the success path.
+    let faqChatUserId: string | null = null;
+
     // --- Rate limiting (billable actions only) ---
     // Keyed on user_id for authed callers, IP for anon. Admins (trusted batch
     // generation) are exempt. Enforced BEFORE any gateway call so blocked
@@ -618,6 +622,7 @@ serve(async (req) => {
       });
 
       const { data: { user } } = await client.auth.getUser();
+      faqChatUserId = user?.id ?? null;
 
       let isAdmin = false;
       if (user) {
@@ -919,6 +924,41 @@ Output: one photorealistic composite photo.`;
         // Text actions (randomize-prompt, faq-chat): return text, no image.
         if (TEXT_ACTIONS.has(action)) {
           console.log(`[gemini-proxy] ${action} success (text)`);
+
+          // Persist the faq-chat turn (latest user message + assistant reply)
+          // via the SERVICE ROLE so it bypasses chat_logs' deny-all RLS.
+          // Awaited so it actually lands before the isolate is reclaimed, but
+          // wrapped so a log failure NEVER breaks or changes the chat response.
+          // Only faq-chat logs — randomize-prompt is untouched.
+          if (action === "faq-chat") {
+            try {
+              const sessionId = typeof params.session_id === "string" ? params.session_id : null;
+              const logLang = typeof params.lang === "string" ? params.lang : null;
+              const srUrl = Deno.env.get("SUPABASE_URL");
+              const srKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+              const msgs = Array.isArray(params.messages) ? params.messages : [];
+              const lastUser = [...msgs].reverse().find(
+                (m) => m && m.role === "user" && typeof m.content === "string",
+              );
+              if (sessionId && srUrl && srKey) {
+                const rows: Record<string, unknown>[] = [];
+                if (lastUser) {
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "user", content: String(lastUser.content).slice(0, 4000), lang: logLang });
+                }
+                if (textContent) {
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: String(textContent).slice(0, 8000), lang: logLang });
+                }
+                if (rows.length) {
+                  const logClient = createClient(srUrl, srKey);
+                  const { error: logErr } = await logClient.from("chat_logs").insert(rows);
+                  if (logErr) console.error("[gemini-proxy] chat_logs insert failed:", logErr.message);
+                }
+              }
+            } catch (e) {
+              console.error("[gemini-proxy] chat log error (ignored):", e);
+            }
+          }
+
           return new Response(JSON.stringify({ image: null, text: textContent }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
