@@ -124,6 +124,36 @@ export type Database = {
           },
         ]
       }
+      chat_logs: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          lang: string | null
+          role: string
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          lang?: string | null
+          role: string
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          lang?: string | null
+          role?: string
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       composite_events: {
         Row: {
           created_at: string
@@ -374,6 +404,36 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      feedback: {
+        Row: {
+          created_at: string
+          email: string | null
+          handled: boolean
+          id: string
+          message: string
+          page: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          handled?: boolean
+          id?: string
+          message: string
+          page?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          handled?: boolean
+          id?: string
+          message?: string
+          page?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -787,6 +847,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_chat_messages: {
+        Args: { p_session_id: string }
+        Returns: {
+          content: string
+          created_at: string
+          lang: string
+          role: string
+        }[]
+      }
+      admin_list_chat_sessions: {
+        Args: { p_limit: number; p_offset: number }
+        Returns: {
+          first_at: string
+          last_at: string
+          last_user_snippet: string
+          message_count: number
+          session_id: string
+          user_email: string
+          user_id: string
+        }[]
+      }
       admin_list_generations: {
         Args: { p_limit: number; p_offset: number }
         Returns: {
