@@ -41,3 +41,8 @@ verify_jwt = true
 
 [functions.generate-descriptions]
 verify_jwt = true
+
+# Monthly accountant report — invoked only by pg_cron with the service-role
+# Bearer, so verify_jwt stays true (no public/anon access).
+[functions.generate-monthly-brands-report]
+verify_jwt = true
