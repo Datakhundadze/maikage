@@ -246,8 +246,8 @@ Deno.serve(async (req) => {
           {
             run_id: payload.run_id,
             to: payload.to,
-            from: payload.from,
-            sender_domain: payload.sender_domain,
+            from: payload.from ?? Deno.env.get('EMAIL_FROM') ?? 'noreply@maika.ge',
+            sender_domain: payload.sender_domain ?? Deno.env.get('EMAIL_SENDER_DOMAIN') ?? 'maika.ge',
             subject: payload.subject,
             html: payload.html,
             text: payload.text,
