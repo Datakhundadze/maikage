@@ -6,7 +6,7 @@ import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag } from "lucide-react";
+import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -1769,6 +1769,51 @@ export default function SimplePage() {
     return () => clearTimeout(timer);
   }, [frontData, backData, productConfig.config.product, productConfig.config.subProduct, productConfig.config.color]);
 
+  // ── Virtual try-on (generalized) ────────────────────────────────────────
+  // The design to try on: the placed design-only composite (photos + text —
+  // covers uploads, transferred AI designs and text layers; front first,
+  // try-on renders the garment's front), falling back to a generated-but-not-
+  // yet-transferred AI result. null = nothing to try on → button hidden,
+  // modal unmounted. handleAiTryOn stays untouched for the chat's
+  // generated-message button; this path serves the persistent button below
+  // the product preview.
+  const tryOnDesignImage = frontDesignOnly ?? backDesignOnly ?? aiResult?.transferImage ?? null;
+
+  const handleTryOnOpen = useCallback(() => {
+    if (!tryOnDesignImage) return;
+    setShowTryOn(true);
+  }, [tryOnDesignImage]);
+
+  // Order from a try-on: with an aiResult delegate to the untouched
+  // handleAiOrder (which also places the generated design if needed);
+  // otherwise the design is already on the product, so run the same size
+  // gate as the main order button and open the dialog.
+  const handleTryOnOrder = useCallback(() => {
+    if (aiResult) {
+      handleAiOrder();
+      return;
+    }
+    setShowTryOn(false);
+    const needsSize = (BRAND_SIZES[productConfig.config.subProduct]?.length > 0) || productConfig.config.product === "Phone Case";
+    if (needsSize && !productConfig.config.size) {
+      setSizeError(true);
+      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setSizeError(false);
+    setOrderDialogOpen(true);
+  }, [aiResult, handleAiOrder, productConfig.config.subProduct, productConfig.config.product, productConfig.config.size]);
+
+  // Rendered in two slots — desktop main column below ProductPreview, and an
+  // lg:hidden slot below the mobile inline preview — so it sits "under the
+  // shirt" on both breakpoints. Stateless element, so sharing it is safe.
+  const tryOnButton = tryOnDesignImage ? (
+    <Button variant="outline" className="w-full gap-1.5" onClick={handleTryOnOpen}>
+      <Shirt className="h-4 w-4" />
+      {t(lang, "simpleAi.tryOn")}
+    </Button>
+  ) : null;
+
   // The AI design panel is rendered in two responsive slots: under the mobile
   // inline preview (lg:hidden) and in the desktop main column below the
   // product preview (hidden lg:flex). It's fully controlled, so a single
@@ -1822,12 +1867,12 @@ export default function SimplePage() {
         onClose={() => setShowLoginModal(false)}
         message={loginModalMessage}
       />
-      {aiResult && (
+      {tryOnDesignImage && (
         <TryOnModal
           open={showTryOn}
           onClose={() => setShowTryOn(false)}
-          designImage={aiResult.transferImage}
-          onOrder={handleAiOrder}
+          designImage={tryOnDesignImage}
+          onOrder={handleTryOnOrder}
         />
       )}
       {/* Sidebar + Main wrapper */}
@@ -1862,6 +1907,9 @@ export default function SimplePage() {
               onBackgroundClick={() => setSelectedLayerId(null)}
             />
           </div>
+
+          {/* Try-on — mobile slot, directly below the inline preview */}
+          {tryOnButton && <div className="lg:hidden">{tryOnButton}</div>}
 
           {/* Side indicator */}
           <div className="text-xs text-muted-foreground text-center">
@@ -2246,6 +2294,12 @@ export default function SimplePage() {
             />
           </div>
         </div>
+        {/* Try-on — desktop slot, directly below the product preview */}
+        {tryOnButton && (
+          <div className="shrink-0 border-t border-border p-3">
+            <div className="max-w-lg mx-auto w-full">{tryOnButton}</div>
+          </div>
+        )}
       </main>
       </div>
     </div>
