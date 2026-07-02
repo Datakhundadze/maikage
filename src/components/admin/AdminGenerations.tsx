@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ImageOff } from "lucide-react";
+import { transformedDisplayUrl } from "@/lib/imageTransform";
 
 // Full, paginated generations history attributed to the user's email. Reads via
 // the admin_list_generations SECURITY DEFINER RPC (admin-gated; joins
@@ -108,7 +109,7 @@ export default function AdminGenerations() {
             <div key={g.id} className="flex gap-3 rounded-lg border border-border bg-card p-3">
               <div className="h-16 w-16 shrink-0 rounded-md bg-muted overflow-hidden flex items-center justify-center">
                 {url ? (
-                  <img src={url} alt="" className="h-full w-full object-contain" loading="lazy" />
+                  <img src={transformedDisplayUrl(url, { width: 128 })} alt="" className="h-full w-full object-contain" loading="lazy" />
                 ) : (
                   <ImageOff className="h-5 w-5 text-muted-foreground" />
                 )}

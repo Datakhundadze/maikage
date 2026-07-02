@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download, Trash2, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { transformedDisplayUrl } from "@/lib/imageTransform";
 
 interface Generation {
   id: string;
@@ -83,7 +84,10 @@ function GenerationCard({
               </div>
             )}
             <img
-              src={imgUrl}
+              // Display-only downscale. The "მოკაპი"/"პრინტი" download
+              // buttons below must keep the RAW mockupUrl/transparentUrl —
+              // the print download is a production artifact.
+              src={transformedDisplayUrl(imgUrl, { width: 600 })}
               alt={gen.prompt || "Generated design"}
               className={`w-full h-full object-contain transition-opacity ${imgLoaded ? "opacity-100" : "opacity-0"}`}
               loading="lazy"

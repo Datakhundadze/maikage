@@ -9,6 +9,7 @@ import BulkDesignUploadDialog from "./BulkDesignUploadDialog";
 import MockupColorPicker from "./MockupColorPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { COLORS } from "@/lib/catalog";
+import { transformedDisplayUrl } from "@/lib/imageTransform";
 
 interface CatalogDesign {
   id: string;
@@ -205,7 +206,7 @@ export default function CatalogDesigns() {
               </button>
               <div className="aspect-square bg-muted/30 flex items-center justify-center">
                 {d.thumbnail_url || d.print_file_url ? (
-                  <img src={d.thumbnail_url || d.print_file_url} alt={d.title_ka} className="w-full h-full object-contain" />
+                  <img src={transformedDisplayUrl(d.thumbnail_url || d.print_file_url, { width: 400 })} alt={d.title_ka} className="w-full h-full object-contain" />
                 ) : (
                   <span className="text-xs text-muted-foreground">no image</span>
                 )}
