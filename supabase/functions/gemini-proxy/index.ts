@@ -264,17 +264,23 @@ integrated into the fabric and wash-resistant.
 
 KA:
 - AI დიზაინი: maika.ge-ის საიტზე უფასოდ შეგიძლიათ შექმნათ უნიკალური დიზაინი ხელოვნური
-  ინტელექტით — ატვირთეთ ფოტო, დაწერეთ ტექსტი ან აღწერეთ რა გინდათ, AI შეგიქმნით.
-  მერე დაბეჭდეთ მაისურზე, ჰუდიზე თუ სხვა ნივთზე.
-- ატვირთეთ ფოტო ან ტექსტი და შეუკვეთეთ რეგისტრაციის გარეშე.
-- Virtual Try-On: დიზაინი ვირტუალურად მაისურზე ნახეთ შეკვეთამდე.
+  ინტელექტით. ერთ ადგილას შეგიძლიათ: ატვირთოთ ფოტო, ან უბრალოდ დაწეროთ რა გინდათ და AI
+  შეგიქმნით. ატვირთული ფოტოს რედაქტირებაც შეგიძლიათ AI-ით — მაგ. ჩაწერეთ „გახადე შავ-თეთრი",
+  „მოაშორე ფონი", „დაუმატე ქუდი" და AI შეასრულებს. მერე დაბეჭდეთ მაისურზე, ჰუდიზე თუ სხვა ნივთზე.
+- ატვირთეთ ფოტო ან დაწერეთ ტექსტი და შეუკვეთეთ რეგისტრაციის გარეშე.
+- ვირტუალური გასახდელი (Virtual Try-On): უფასო ფუნქცია — ატვირთეთ თქვენი ფოტო და ვირტუალურად
+  მოირგეთ დიზაინი, ნახეთ როგორ გამოიყურება მაისურზე/ჰუდიზე თუ სხვა პროდუქტზე შეკვეთამდე.
+  ღილაკი „გასახდელი" პროდუქტის სურათის ქვეშაა.
 
 EN:
-- AI design: on maika.ge you can create a unique design with AI for free — upload a photo,
-  type text, or describe what you want, and the AI creates it. Then print it on a t-shirt,
-  hoodie or other item.
-- Upload a photo or text and order without registration.
-- Virtual Try-On: preview your design on a shirt before ordering.
+- AI design: on maika.ge you can create a unique design with AI for free, all in one place —
+  upload a photo, or just type what you want and the AI creates it. You can also edit an
+  uploaded photo with AI — e.g. type "make it black and white", "remove the background",
+  "add a hat", and the AI does it. Then print it on a t-shirt, hoodie or other item.
+- Upload a photo or type text and order without registration.
+- Virtual Try-On (ვირტუალური გასახდელი): a free feature — upload your photo and virtually
+  try the design on, see how it looks on the t-shirt/hoodie or other product before ordering.
+  The "გასახდელი" (Try-On) button is below the product image.
 
 ═══════════════════════════════════════════════════════════════
 ## 13. SPORT & CORPORATE / სპორტული და კორპორატიული
