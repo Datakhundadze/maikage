@@ -25,6 +25,25 @@ function getRetryAfterSeconds(error: unknown): number {
   return 60
 }
 
+// Plain-text fallback for the API's required `text` field — enqueue payloads
+// only carry html. Strips tags, decodes the common entities, collapses
+// whitespace. Returns undefined for empty/non-string input so the caller's
+// fallback chain can move on to the next source.
+function stripHtml(html?: string): string | undefined {
+  if (typeof html !== 'string' || !html) return undefined
+  const text = html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text || undefined
+}
+
 function parseJwtClaims(token: string): Record<string, unknown> | null {
   const parts = token.split('.')
   if (parts.length < 2) {
@@ -250,7 +269,9 @@ Deno.serve(async (req) => {
             sender_domain: payload.sender_domain ?? Deno.env.get('EMAIL_SENDER_DOMAIN') ?? 'maika.ge',
             subject: payload.subject,
             html: payload.html,
-            text: payload.text,
+            // `||` (not ??) so empty strings also fall through — the API
+            // requires a non-empty text part alongside html.
+            text: payload.text || stripHtml(payload.html) || payload.subject || ' ',
             purpose: payload.purpose ?? 'transactional',
             label: payload.label,
             idempotency_key: payload.idempotency_key ?? payload.message_id ?? String(msg.msg_id),
