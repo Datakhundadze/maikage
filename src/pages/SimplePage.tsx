@@ -6,7 +6,7 @@ import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Sparkles, Loader2, Eraser } from "lucide-react";
+import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, callGemini, loadImage, restyleImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, loadImage, restyleImage, editImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
@@ -34,7 +34,7 @@ import { t } from "@/lib/i18n";
 import type { AppStatus } from "@/hooks/useDesign";
 import LoginModal from "@/components/LoginModal";
 import TryOnModal from "@/components/TryOnModal";
-import SimpleAiPanel from "@/components/SimpleAiPanel";
+import SimpleAiChatPanel, { type AiChatMessage } from "@/components/SimpleAiChatPanel";
 
 const FONT_GROUPS = [
   {
@@ -596,6 +596,7 @@ const DEFAULT_SIDE: SideData = {
 };
 
 let photoIdCounter = 0;
+let chatMsgCounter = 0;
 let textIdCounter = 0;
 
 export default function SimplePage() {
@@ -650,11 +651,22 @@ export default function SimplePage() {
   // Per-layer "Edit with AI": which photo's background removal is in flight
   // (null = none) — drives the button's loading/disabled state.
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
-  // Phase B restyle: which photo's restyle is in flight + the active style text
-  // (preset instruction or free text). Separate lock from bg-removal so each
-  // control shows its own spinner; both disable each other while either runs.
-  const [restylingId, setRestylingId] = useState<string | null>(null);
-  const [restyleInstruction, setRestyleInstruction] = useState("");
+  // Chat panel state: the transcript, which photo's chat edit is in flight
+  // (edit-image / restyle — separate lock from bg-removal so each shows its
+  // own pending state; all disable each other), and the collapsed/expanded
+  // state of the generation options row (progressive disclosure).
+  const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
+  const [chatEditingId, setChatEditingId] = useState<string | null>(null);
+  const [chatOptionsOpen, setChatOptionsOpen] = useState(false);
+  // Last text-to-image prompt — the regenerate button re-runs it after the
+  // chat input has been cleared.
+  const lastGenPromptRef = useRef("");
+
+  // Append a message to the merged chat transcript (module counter mirrors
+  // photoIdCounter's id pattern).
+  const pushChat = useCallback((msg: Omit<AiChatMessage, "id">) => {
+    setChatMessages(prev => [...prev, { ...msg, id: `msg-${++chatMsgCounter}` }]);
+  }, []);
   const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
@@ -760,8 +772,8 @@ export default function SimplePage() {
   }, [addPhotoLayer]);
 
   // ── AI generation handlers ───────────────────────────────────────────
-  const handleAiGenerate = useCallback(async () => {
-    const text = aiPrompt.trim();
+  const handleAiGenerate = useCallback(async (promptOverride?: string) => {
+    const text = (promptOverride ?? aiPrompt).trim();
     if (!text || aiGenerating) return;
     const limit = checkAiLimit();
     if (!limit.allowed) {
@@ -925,10 +937,16 @@ export default function SimplePage() {
     toast({ title: t(lang, "simpleAi.transferred") });
   }, [aiResult, sideData.photos.length, addPhotoLayer, toast, lang]);
 
-  const handleAiStartNew = useCallback(() => {
-    setAiResult(null);
-    setAiPrompt("");
-  }, []);
+  // Surface each completed generation as a chat message. Keyed on the result
+  // object's identity so re-renders don't duplicate the append —
+  // handleAiGenerate's internals stay untouched.
+  const lastResultRef = useRef<typeof aiResult>(null);
+  useEffect(() => {
+    if (aiResult && aiResult !== lastResultRef.current) {
+      lastResultRef.current = aiResult;
+      pushChat({ role: "assistant", image: aiResult.resultImage, kind: "generated" });
+    }
+  }, [aiResult, pushChat]);
 
   // Share the (already-watermarked) result image via the native share sheet on
   // mobile. downloadImage is the watermarked mockup (without-bg) / watermarked
@@ -1047,28 +1065,33 @@ export default function SimplePage() {
     }
   }, [editingPhotoId, applyContainFit, setSideData, toast, lang]);
 
-  // Per-layer "Edit with AI" → Restyle (Phase B). Re-renders the uploaded photo
-  // in the chosen artistic style via gemini-proxy "restyle" (a fixed server-side
-  // GUARD keeps the subject/pose/composition; the frontend supplies the style as
-  // free text). Writes the styled image back into the SAME clean p.image slot as
-  // bg-removal — never watermarked, flows straight to transfer/order — and
-  // re-fits since the output aspect may differ. No chroma-key step. 429 / block
-  // handled exactly like bg-removal.
-  const handleRestylePhoto = useCallback(async (photo: PhotoLayer, instruction: string) => {
-    if (editingPhotoId || restylingId) return;
-    const styleText = instruction.trim();
-    if (!styleText) return;
-    setRestylingId(photo.id);
+  // Chat edit — the merged panel's free-text / chip edit path. Mirrors the
+  // retired handleRestylePhoto pattern exactly (write the result back into the
+  // SAME clean p.image slot — never watermarked, flows straight to
+  // transfer/order — and re-fit since the output aspect may differ), with the
+  // proxy action switched by mode: "edit" → edit-image (general
+  // instruction-following, e.g. "add a hat"), "restyle" → restyle
+  // (style-transfer-only guard; used by the preset chips). Appends the result
+  // (or an error note) to the chat transcript.
+  const handleChatEdit = useCallback(async (photo: PhotoLayer, instruction: string, mode: "edit" | "restyle") => {
+    if (editingPhotoId || chatEditingId || aiGenerating) return;
+    const text = instruction.trim();
+    if (!text) return;
+    setChatEditingId(photo.id);
     try {
-      const styled = await restyleImage(photo.image, styleText);
+      const edited = mode === "restyle"
+        ? await restyleImage(photo.image, text)
+        : await editImage(photo.image, text);
       setSideData(prev => ({
         ...prev,
-        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: styled } : p)),
+        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: edited } : p)),
       }));
-      applyContainFit(photo.id, styled);
-      toast({ title: lang === "en" ? "Restyled ✓" : "სტილი შეიცვალა ✓" });
+      applyContainFit(photo.id, edited);
+      pushChat({ role: "assistant", image: edited, kind: "edited" });
     } catch (err) {
-      if (err instanceof RateLimitError) {
+      if (err instanceof GenerationBlockedError) {
+        setAiBlocked(true);
+      } else if (err instanceof RateLimitError) {
         if (err.requiresLogin) {
           setLoginModalMessage(t(lang, "rateLimit.signIn"));
           setShowLoginModal(true);
@@ -1077,15 +1100,63 @@ export default function SimplePage() {
         }
       } else {
         toast({
-          title: lang === "en" ? "Restyle failed" : "სტილის შეცვლა ვერ მოხერხდა",
+          title: lang === "en" ? "Edit failed" : "რედაქტირება ვერ მოხერხდა",
           description: err instanceof Error ? err.message : undefined,
           variant: "destructive",
         });
       }
+      pushChat({
+        role: "assistant",
+        text: lang === "en" ? "Couldn't apply that — please try again." : "ვერ შესრულდა — სცადე თავიდან.",
+        kind: "error",
+      });
     } finally {
-      setRestylingId(null);
+      setChatEditingId(null);
     }
-  }, [editingPhotoId, restylingId, applyContainFit, setSideData, toast, lang]);
+  }, [editingPhotoId, chatEditingId, aiGenerating, applyContainFit, setSideData, pushChat, toast, lang]);
+
+  // ── Chat orchestration (merged panel) ──────────────────────────────────
+  // Routing rule: no photo layers → free text is a text-to-image prompt
+  // (handleAiGenerate, untouched); a photo exists → free text is an edit
+  // command for the ACTIVE layer (selected, else most recent) via edit-image.
+  // Preset chips stay on restyle; the bg chip stays on handleRemoveBgPhoto.
+  const activeChatPhoto =
+    sideData.photos.find(p => p.id === selectedLayerId) ??
+    sideData.photos[sideData.photos.length - 1] ??
+    null;
+
+  const chatBusy = aiGenerating || chatEditingId !== null || editingPhotoId !== null;
+
+  const handleChatSubmit = useCallback(() => {
+    const text = aiPrompt.trim();
+    if (!text || chatBusy) return;
+    pushChat({ role: "user", text });
+    if (activeChatPhoto) {
+      handleChatEdit(activeChatPhoto, text, "edit");
+    } else {
+      lastGenPromptRef.current = text;
+      handleAiGenerate(text);
+    }
+    setAiPrompt("");
+  }, [aiPrompt, chatBusy, activeChatPhoto, handleChatEdit, handleAiGenerate, pushChat]);
+
+  const handleChatPresetChip = useCallback((preset: { ge: string; en: string; instruction: string }) => {
+    if (!activeChatPhoto || chatBusy) return;
+    pushChat({ role: "user", text: lang === "en" ? preset.en : preset.ge });
+    handleChatEdit(activeChatPhoto, preset.instruction, "restyle");
+  }, [activeChatPhoto, chatBusy, handleChatEdit, pushChat, lang]);
+
+  const handleChatRemoveBg = useCallback(() => {
+    if (!activeChatPhoto || chatBusy) return;
+    pushChat({ role: "user", text: lang === "en" ? "Remove background" : "ფონის მოხსნა" });
+    handleRemoveBgPhoto(activeChatPhoto);
+  }, [activeChatPhoto, chatBusy, handleRemoveBgPhoto, pushChat, lang]);
+
+  const handleChatRegenerate = useCallback(() => {
+    if (chatBusy || !lastGenPromptRef.current) return;
+    pushChat({ role: "user", text: lastGenPromptRef.current });
+    handleAiGenerate(lastGenPromptRef.current);
+  }, [chatBusy, handleAiGenerate, pushChat]);
 
   // Open the inline virtual try-on modal with the generated design. TryOnModal
   // owns the whole flow (person upload → gemini-proxy "virtual-tryon" → result)
@@ -1704,24 +1775,34 @@ export default function SimplePage() {
   // shared element rendered in both slots stays in sync — only one is visible
   // per breakpoint. Mirrors StudioPage's mobile-preview-in-sidebar pattern.
   const aiPanel = (
-    <SimpleAiPanel
+    <SimpleAiChatPanel
       lang={lang}
-      prompt={aiPrompt}
-      onPromptChange={setAiPrompt}
+      messages={chatMessages}
+      input={aiPrompt}
+      onInputChange={setAiPrompt}
+      onSubmit={handleChatSubmit}
+      canSubmit={aiPrompt.trim().length > 0 && !chatBusy}
+      busy={chatBusy}
+      generating={aiGenerating}
+      status={aiStatus}
+      activePhoto={activeChatPhoto ? { id: activeChatPhoto.id, image: activeChatPhoto.image } : null}
+      hasPhotos={hasPhotos}
+      canUpload={canAddMore}
+      onUploadClick={() => fileInputRef.current?.click()}
+      restylePresets={RESTYLE_PRESETS}
+      onPresetChip={handleChatPresetChip}
+      onRemoveBg={handleChatRemoveBg}
+      optionsOpen={chatOptionsOpen}
+      onToggleOptions={setChatOptionsOpen}
       styleOptions={aiStyleOptions}
       selectedStyle={aiStyle}
       onSelectStyle={setAiStyle}
       withBackground={aiWithBackground}
       onToggleBackground={setAiWithBackground}
-      generating={aiGenerating}
-      status={aiStatus}
-      resultImage={aiResult?.resultImage ?? null}
+      hasResult={!!aiResult}
       transferLabel={aiTransferLabel}
-      canGenerate={aiPrompt.trim().length > 0 && !aiGenerating}
-      onGenerate={handleAiGenerate}
       onTransfer={handleAiTransfer}
-      onRegenerate={handleAiGenerate}
-      onStartNew={handleAiStartNew}
+      onRegenerate={handleChatRegenerate}
       onShare={handleAiShare}
       onTryOn={handleAiTryOn}
       blocked={aiBlocked}
@@ -1834,79 +1915,9 @@ export default function SimplePage() {
               </div>
             )}
 
-            {/* Per-layer "Edit with AI" — only when a PHOTO layer is selected.
-                Remove background (isolate-subject → green chroma-key). */}
-            {selectedPhoto && (
-              <div className="rounded-lg border border-primary/40 bg-primary/5 p-2.5 space-y-2">
-                <p className="text-[11px] font-semibold text-card-foreground flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  {lang === "en" ? "Edit with AI" : "AI-ით რედაქტირება"}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full gap-1.5 text-xs"
-                  onClick={() => handleRemoveBgPhoto(selectedPhoto)}
-                  disabled={editingPhotoId === selectedPhoto.id || restylingId === selectedPhoto.id}
-                >
-                  {editingPhotoId === selectedPhoto.id ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {lang === "en" ? "Removing…" : "მუშავდება…"}</>
-                  ) : (
-                    <><Eraser className="h-3.5 w-3.5" /> {lang === "en" ? "Remove background" : "ფონის მოხსნა"}</>
-                  )}
-                </Button>
-
-                {/* Restyle (Phase B) — preset chips + free text + Apply. Selecting
-                    a chip fills the instruction; free-text overrides. */}
-                <div className="pt-2 mt-1 border-t border-primary/15 space-y-2">
-                  <p className="text-[11px] font-medium text-card-foreground flex items-center gap-1.5">
-                    <Palette className="h-3.5 w-3.5 text-primary" />
-                    {t(lang, "simpleAi.restyleHeading")}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {RESTYLE_PRESETS.map((preset) => {
-                      const active = restyleInstruction === preset.instruction;
-                      return (
-                        <button
-                          key={preset.key}
-                          type="button"
-                          disabled={editingPhotoId === selectedPhoto.id || restylingId === selectedPhoto.id}
-                          onClick={() => setRestyleInstruction(preset.instruction)}
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-medium border transition-colors disabled:opacity-50 ${
-                            active
-                              ? "border-primary bg-primary/15 text-primary"
-                              : "border-border text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          {lang === "en" ? preset.en : preset.ge}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <Input
-                    value={restyleInstruction}
-                    onChange={(e) => setRestyleInstruction(e.target.value)}
-                    placeholder={t(lang, "simpleAi.restylePlaceholder")}
-                    className="h-8 text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    className="w-full gap-1.5 text-xs"
-                    onClick={() => handleRestylePhoto(selectedPhoto, restyleInstruction)}
-                    disabled={!restyleInstruction.trim() || editingPhotoId === selectedPhoto.id || restylingId === selectedPhoto.id}
-                  >
-                    {restylingId === selectedPhoto.id ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t(lang, "simpleAi.restyling")}</>
-                    ) : (
-                      <><Palette className="h-3.5 w-3.5" /> {t(lang, "simpleAi.restyleApply")}</>
-                    )}
-                  </Button>
-                  <p className="text-[10px] leading-snug text-muted-foreground">
-                    {t(lang, "simpleAi.restyleHint")}
-                  </p>
-                </div>
-              </div>
-            )}
+            {/* The per-layer "Edit with AI" block moved into the merged chat
+                panel (SimpleAiChatPanel): remove-bg + restyle presets are
+                chips there, free-text edits go through the chat input. */}
 
             {/* Handle-semantics hint. Was previously a floating tooltip
                 in DraggablePlacement that overlapped the photo's top
