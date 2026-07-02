@@ -31,8 +31,20 @@ export default function CatalogDesignCard({
   const [mockup, setMockup] = useState<string | null>(() => mockupCache.get(cacheKey) ?? null);
   const [failed, setFailed] = useState(false);
 
+  // Recomposite whenever the cache key (color/product/design) changes.
+  // Cached keys swap in instantly; uncached keys clear the previous
+  // mockup first so the loading state shows instead of the stale color.
+  // mockup/failed must NOT be deps — the effect writes them, and keying
+  // the reset on cacheKey alone is what prevents a re-render loop.
   useEffect(() => {
-    if (mockup || failed) return;
+    const cached = mockupCache.get(cacheKey);
+    if (cached) {
+      setMockup(cached);
+      setFailed(false);
+      return;
+    }
+    setMockup(null);
+    setFailed(false);
     let cancelled = false;
     (async () => {
       const url = await compositeDesignOnProduct({
@@ -51,7 +63,7 @@ export default function CatalogDesignCard({
       }
     })();
     return () => { cancelled = true; };
-  }, [cacheKey, printFileUrl, productType, subProduct, color, mockup, failed]);
+  }, [cacheKey, printFileUrl, productType, subProduct, color]);
 
   // While compositing is in flight, render nothing and let the parent
   // container's background (bg-muted/30 on the grid card, bg-card on the
