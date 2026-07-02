@@ -620,3 +620,13 @@ export async function restyleImage(imageBase64: string, instruction: string): Pr
   const result = await callGemini("restyle", { image: imageBase64, instruction });
   return result.image;
 }
+
+// Chat image editing: apply a free-text edit instruction to an uploaded image.
+// Unlike restyleImage (style-transfer-only guard), the gemini-proxy
+// "edit-image" action allows general instruction-following edits (add/remove
+// objects, change background, colors). Billable — 429 / generation-block
+// surface via callGemini. Not wired into any UI yet.
+export async function editImage(imageBase64: string, instruction: string): Promise<string> {
+  const result = await callGemini("edit-image", { image: imageBase64, instruction });
+  return result.image;
+}
