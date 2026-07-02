@@ -1870,7 +1870,18 @@ export default function SimplePage() {
               : `რედაქტირება: ${isFront ? "წინა" : "უკანა"} მხარე`}
           </div>
 
-          {/* Photo upload */}
+          {/* AI chat panel — the SINGLE slot for both breakpoints (the desktop
+              main column holds only the product preview). The chat contains
+              the only visible upload zone; the hidden input below is the real
+              upload mechanism it clicks, and it must stay mounted even with
+              zero photos (the chat's empty-state upload depends on it). */}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+          {aiPanel}
+
+          {/* Photos — selection strip only (the upload moved into the chat):
+              thumbnails pick the chat's active photo / preview layer and
+              delete layers. Hidden entirely when there are no photos. */}
+          {hasPhotos && (
           <div className="border-t border-sidebar-border pt-4 space-y-3">
             <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
               <Upload className="h-3.5 w-3.5" />
@@ -1879,7 +1890,6 @@ export default function SimplePage() {
                 {sideData.photos.length}/{MAX_PHOTOS}
               </span>
             </h3>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
 
             {/* Photo thumbnails */}
             {hasPhotos && (
@@ -1915,10 +1925,6 @@ export default function SimplePage() {
               </div>
             )}
 
-            {/* The per-layer "Edit with AI" block moved into the merged chat
-                panel (SimpleAiChatPanel): remove-bg + restyle presets are
-                chips there, free-text edits go through the chat input. */}
-
             {/* Handle-semantics hint. Was previously a floating tooltip
                 in DraggablePlacement that overlapped the photo's top
                 edge inside the print zone area (bug 2). Lifting it into
@@ -1934,33 +1940,8 @@ export default function SimplePage() {
               </p>
             )}
 
-            {/* Upload / Add more button */}
-            {canAddMore && (
-              <Button
-                variant="outline"
-                className={`w-full ${hasPhotos ? "h-10" : "h-20"} border-dashed`}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <div className="flex items-center gap-2">
-                  {hasPhotos ? (
-                    <>
-                      <Plus className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {lang === "en" ? "Add another photo" : "დაამატეთ ფოტო"}
-                      </span>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1">
-                      <Upload className="h-5 w-5 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {lang === "en" ? "Upload image" : "ატვირთეთ სურათი"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </Button>
-            )}
           </div>
+          )}
 
           {/* Text — multiple independent text elements, each placeable separately */}
           <div className="border-t border-sidebar-border pt-4 space-y-3">
@@ -2071,10 +2052,6 @@ export default function SimplePage() {
               {lang === "en" ? "Add text" : "ტექსტის დამატება"}
             </Button>
           </div>
-
-          {/* AI design panel — mobile: after the photo + text sections (AI
-              last). Hidden on desktop, where it renders in the main column. */}
-          <div className="lg:hidden">{aiPanel}</div>
 
           {(hasPhotos || sideHasText(sideData)) && (
             <Button variant="outline" size="sm" onClick={clearDesign}>
@@ -2249,11 +2226,11 @@ export default function SimplePage() {
       </aside>
 
       {/* Main column — desktop only; mobile/tablet use the inline preview in
-          the sidebar. Vertical stack: product preview, then the AI panel below.
-          The preview is an AUTO-HEIGHT, width-capped, centered block (NOT
-          flex-1): its card is aspect-square, so its height comes from its
-          width — a flex-1 box shorter than the square clipped it at the top
-          and overlapped the panel. The column scrolls if both exceed height. */}
+          the sidebar. Holds ONLY the product preview — the AI chat panel
+          lives in the sidebar on both breakpoints. The preview is an
+          AUTO-HEIGHT, width-capped, centered block (NOT flex-1): its card is
+          aspect-square, so its height comes from its width — a flex-1 box
+          shorter than the square clipped it at the top. */}
       <main className="hidden lg:flex flex-1 bg-background overflow-y-auto flex-col">
         <div className="shrink-0 flex justify-center pt-2">
           <div className="w-full max-w-lg">
@@ -2268,11 +2245,6 @@ export default function SimplePage() {
               onBackgroundClick={() => setSelectedLayerId(null)}
             />
           </div>
-        </div>
-        {/* AI panel below the preview — capped narrower than the default so it
-            reads as a compact secondary tool, not a second hero. Desktop only. */}
-        <div className="shrink-0 border-t border-border p-3">
-          <div className="max-w-md mx-auto w-full text-sm">{aiPanel}</div>
         </div>
       </main>
       </div>
