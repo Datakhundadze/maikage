@@ -8,7 +8,6 @@ import { ImageOff } from "lucide-react";
 import CatalogDesignCard from "@/components/CatalogDesignCard";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { COLORS } from "@/lib/catalog";
-import { transformedDisplayUrl } from "@/lib/imageTransform";
 
 // Map stored color (any case) to canonical COLORS.name; fallback "White".
 function normalizeColor(raw: string | null | undefined): string {
@@ -130,9 +129,7 @@ export default function CatalogPage() {
                     <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
                       {d.print_file_url ? (
                         <CatalogDesignCard
-                          // Display-only downscale of the 4000×4800 print
-                          // file; grid tiles never need full res.
-                          printFileUrl={transformedDisplayUrl(d.print_file_url, { width: 600 })}
+                          printFileUrl={d.print_file_url}
                           fallbackUrl={d.thumbnail_url}
                           alt={`${d.title_ka}${catLabel ? ` — ${catLabel}` : ""} მაისურზე`}
                           color={normalizeColor(d.default_color)}
