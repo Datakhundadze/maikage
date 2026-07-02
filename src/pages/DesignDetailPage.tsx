@@ -19,6 +19,7 @@ import {
 import { calculatePrice } from "@/lib/pricing";
 import { CATEGORIES } from "@/lib/categories";
 import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
+import { transformedDisplayUrl } from "@/lib/imageTransform";
 import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
 import { colorKa, productTypeKa } from "@/lib/i18n";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
@@ -340,7 +341,9 @@ export default function DesignDetailPage() {
                 read-only product photography here. */}
             <div className="rounded-2xl border border-border bg-card overflow-hidden aspect-square">
               <CatalogDesignCard
-                printFileUrl={design.print_file_url}
+                // Display-only downscale — buildMockup() and the cart/order
+                // payloads keep the full-res design.print_file_url.
+                printFileUrl={transformedDisplayUrl(design.print_file_url, { width: 800 })}
                 fallbackUrl={design.thumbnail_url}
                 alt={`${design.title_ka} — ${productTypeKa(product.type)} ${colorKa(selectedColor)} | Maika.ge`}
                 productType={product.type}
