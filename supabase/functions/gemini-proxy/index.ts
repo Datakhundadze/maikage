@@ -11,7 +11,7 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // Actions that each cost a paid image call at the gateway → rate-limited per
 // caller. convert-bg-black (internal second half of a generate-design) and
 // randomize-prompt (cheap text) are intentionally exempt.
-const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle"]);
+const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image"]);
 
 // Text-only actions: they skip the image modality, run a single attempt, and
 // return { text } (no image extraction). randomize-prompt (existing) and
@@ -781,6 +781,32 @@ Output: a single photographic image of the isolated main subject (full detail, o
         "subject's identity, pose, count, framing and composition exactly; " +
         "change ONLY the artistic medium/style; do not add text, watermarks " +
         "or new objects.";
+      model = "google/gemini-3-pro-image-preview";
+      messages = [{
+        role: "user",
+        content: [
+          { type: "text", text: `${GUARD} ${params.instruction}` },
+          { type: "image_url", image_url: { url: params.image } },
+        ],
+      }];
+
+    } else if (action === "edit-image") {
+      // Chat image editing: apply a free-text edit instruction to an UPLOADED
+      // image. Same { image, instruction } shape as restyle, but the GUARD
+      // allows general instruction-following edits (add/remove/modify objects,
+      // change background/colors), unlike restyle's style-transfer-only guard.
+      // restyle stays byte-identical — new behavior gets its own branch.
+      const GUARD =
+        "Edit this image following the user's instruction. This is an EDIT, " +
+        "not a re-generation: apply ONLY the requested change and keep " +
+        "everything the instruction does not ask to change — subject " +
+        "identity, pose, colors, composition, background, lighting — exactly " +
+        "as in the input. Never add text, watermarks, signatures or logos " +
+        "unless the instruction explicitly asks for them. Never produce " +
+        "sexual, violent or otherwise unsafe content, and never turn the " +
+        "subject into a recognizable copyrighted or trademarked character. " +
+        "If the instruction is unclear, apply the most reasonable " +
+        "interpretation. Instruction:";
       model = "google/gemini-3-pro-image-preview";
       messages = [{
         role: "user",
