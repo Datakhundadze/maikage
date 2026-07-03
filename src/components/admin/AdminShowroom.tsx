@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { transformedDisplayUrl } from "@/lib/imageTransform";
 
 interface ShowroomPhoto {
   id: string;
@@ -169,7 +170,7 @@ export default function AdminShowroom() {
           {photos.map((p) => (
             <div key={p.id} className={`rounded-lg border border-border bg-card p-3 space-y-3 ${p.active ? "" : "opacity-60"}`}>
               <div className="h-40 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                <img src={publicUrl(p.photo_path)} alt={p.name || ""} className="h-full w-full object-cover" loading="lazy" />
+                <img src={transformedDisplayUrl(publicUrl(p.photo_path), { width: 400 })} alt={p.name || ""} className="h-full w-full object-cover" loading="lazy" />
               </div>
               <Input
                 defaultValue={p.name || ""}
