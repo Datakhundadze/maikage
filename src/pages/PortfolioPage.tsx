@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { supabase } from "@/integrations/supabase/client";
+import { transformedDisplayUrl } from "@/lib/imageTransform";
 
 interface PortfolioItem {
   title: string | null;
@@ -30,7 +31,8 @@ export default function PortfolioPage() {
       const rows = (data as { title: string | null; image_path: string; category: string | null; alt_text: string | null }[]).map((r) => ({
         title: r.title,
         category: r.category,
-        url: supabase.storage.from("portfolio").getPublicUrl(r.image_path).data.publicUrl,
+        // Display-only downscale (aspect-preserving contain transform).
+        url: transformedDisplayUrl(supabase.storage.from("portfolio").getPublicUrl(r.image_path).data.publicUrl, { width: 800 }),
         // alt_text drives the <img> alt for SEO; fall back to title, then brand.
         alt: r.alt_text || r.title || "Maika.ge პორტფოლიო",
       }));

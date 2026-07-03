@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Phone, Smartphone, Mail, Clock } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { supabase } from "@/integrations/supabase/client";
+import { transformedDisplayUrl } from "@/lib/imageTransform";
 
 // Showroom coordinates (also used by the Google Maps embed + LocalBusiness geo).
 const LAT = 41.7231446;
@@ -81,7 +82,8 @@ export default function ContactPage() {
       if (cancelled || !data) return;
       const rows = (data as { name: string | null; photo_path: string }[]).map((r) => ({
         name: r.name,
-        url: supabase.storage.from("showroom-photos").getPublicUrl(r.photo_path).data.publicUrl,
+        // Display-only downscale (aspect-preserving contain transform).
+        url: transformedDisplayUrl(supabase.storage.from("showroom-photos").getPublicUrl(r.photo_path).data.publicUrl, { width: 800 }),
       }));
       setPhotos(rows);
     })();
