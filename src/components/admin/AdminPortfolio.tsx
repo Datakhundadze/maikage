@@ -12,12 +12,26 @@ interface PortfolioItem {
   image_path: string;
   category: string | null;
   alt_text: string | null;
-  sort_order: number;
+  // null = not manually positioned → sorts in the newest-first group.
+  sort_order: number | null;
   active: boolean;
   created_at: string;
 }
 
 const MAX_BYTES = 10 * 1024 * 1024; // mirrors the portfolio bucket file_size_limit
+
+// Hybrid order (matches the public gallery): manually pinned rows first
+// (sort_order ASC), then unpinned (sort_order NULL) newest-first.
+function hybridOrder(
+  a: { sort_order: number | null; created_at: string },
+  b: { sort_order: number | null; created_at: string },
+): number {
+  if (a.sort_order != null && b.sort_order != null) return a.sort_order - b.sort_order;
+  if (a.sort_order != null) return -1;
+  if (b.sort_order != null) return 1;
+  return b.created_at.localeCompare(a.created_at);
+}
+
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
 
 // `portfolio_items` is schema-ahead-of-types (the table exists on prod but the
@@ -42,7 +56,9 @@ export default function AdminPortfolio() {
     setError(null);
     const { data, error: err } = await itemsTable()
       .select("*")
-      .order("sort_order", { ascending: true });
+      // Hybrid: manually pinned first (sort_order ASC), then newest first.
+      .order("sort_order", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
     if (err) setError(err.message);
     else setItems((data as PortfolioItem[]) || []);
     if (!bg) setLoading(false);
@@ -65,7 +81,6 @@ export default function AdminPortfolio() {
     if (valid.length === 0) { if (fileRef.current) fileRef.current.value = ""; return; }
 
     setUploading(true);
-    const baseOrder = items.reduce((m, p) => Math.max(m, p.sort_order), 0) + 1;
     const results = await Promise.allSettled(
       valid.map(async (file, idx) => {
         const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -78,7 +93,8 @@ export default function AdminPortfolio() {
         const { error: insErr } = await itemsTable().insert({
           title,
           image_path: path,
-          sort_order: baseOrder + idx,
+          // New uploads are unpinned → they surface first (newest-first group).
+          sort_order: null,
           active: true,
         });
         if (insErr) {
@@ -105,7 +121,7 @@ export default function AdminPortfolio() {
     setItems((prev) => {
       const next = prev.map((p) => (p.id === id ? { ...p, ...fields } : p));
       // Keep the list ordered when sort_order changes.
-      return "sort_order" in fields ? [...next].sort((a, b) => a.sort_order - b.sort_order) : next;
+      return "sort_order" in fields ? [...next].sort(hybridOrder) : next;
     });
     const { error: err } = await itemsTable().update(fields).eq("id", id);
     if (err) {
@@ -198,8 +214,15 @@ export default function AdminPortfolio() {
                   თანმიმდევრობა
                   <Input
                     type="number"
-                    defaultValue={p.sort_order}
-                    onBlur={(e) => { const v = parseInt(e.target.value, 10); if (!isNaN(v) && v !== p.sort_order) patch(p.id, { sort_order: v }); }}
+                    defaultValue={p.sort_order ?? ""}
+                    placeholder="—"
+                    title="ცარიელი = ავტომატური (ახალი პირველი)"
+                    onBlur={(e) => {
+                      const raw = e.target.value.trim();
+                      if (raw === "") { if (p.sort_order !== null) patch(p.id, { sort_order: null }); return; }
+                      const v = parseInt(raw, 10);
+                      if (!isNaN(v) && v !== p.sort_order) patch(p.id, { sort_order: v });
+                    }}
                     className="h-8 w-16 text-sm"
                   />
                 </label>

@@ -26,7 +26,9 @@ export default function PortfolioPage() {
         .from("portfolio_items")
         .select("title, image_path, category, alt_text")
         .eq("active", true)
-        .order("sort_order", { ascending: true });
+        // Hybrid: manually pinned first (sort_order ASC), then newest first.
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
       if (cancelled || !data) return;
       const rows = (data as { title: string | null; image_path: string; category: string | null; alt_text: string | null }[]).map((r) => ({
         title: r.title,
