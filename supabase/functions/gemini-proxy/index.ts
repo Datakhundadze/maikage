@@ -592,8 +592,8 @@ serve(async (req) => {
             ?? "unknown";
           key = `gen:ip:${ip}`;
         }
-        const hourLimit = user ? 30 : 10;
-        const dayLimit = user ? 100 : 30;
+        const hourLimit = user ? 30 : 2;
+        const dayLimit = user ? 100 : 5;
 
         const { data: allowed, error: rlError } = await client.rpc(
           "check_and_increment_rate_limit",
