@@ -78,7 +78,9 @@ export default function ContactPage() {
         .from("showroom_photos")
         .select("name, photo_path")
         .eq("active", true)
-        .order("sort_order", { ascending: true });
+        // Hybrid: manually pinned first (sort_order ASC), then newest first.
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
       if (cancelled || !data) return;
       const rows = (data as { name: string | null; photo_path: string }[]).map((r) => ({
         name: r.name,
