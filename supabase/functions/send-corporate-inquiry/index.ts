@@ -35,28 +35,42 @@ serve(async (req) => {
 </table>
     `.trim();
 
-    // Enqueue email to transactional queue
-    const { error: enqueueError } = await supabase.rpc("enqueue_email", {
-      queue_name: "transactional_emails",
-      payload: {
-        to: "maika@maika.ge",
-        subject: `კორპორატიული მოთხოვნა: ${companyName}`,
-        html: htmlBody,
-        template_name: "corporate_inquiry",
-      },
-    });
-
-    if (enqueueError) {
-      console.error("[Corporate Inquiry] Enqueue error:", enqueueError);
-      throw enqueueError;
+    // Send via Resend directly — same proven pattern as create-payment (BOG).
+    // The Lovable email queue path failed with no_matching_sender and is being
+    // retired. Fire-and-forget via EdgeRuntime.waitUntil: an email failure is
+    // logged but no longer fails the user's form submission (the inquiry row
+    // and logo are already saved above).
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    const resendFrom = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
+    if (!resendKey) {
+      console.error("[send-corporate-inquiry] RESEND_API_KEY not set — inquiry email NOT sent");
+    } else {
+      const sendPromise = fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: resendFrom,
+          to: ["maika@maika.ge"],
+          subject: `კორპორატიული მოთხოვნა: ${companyName}`,
+          html: htmlBody,
+        }),
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const body = await res.text();
+            console.error("[send-corporate-inquiry] Resend HTTP", res.status, body);
+          } else {
+            const body = await res.json().catch(() => null);
+            console.log("[send-corporate-inquiry] Inquiry email sent for", companyName, "resend_id:", body?.id);
+          }
+        })
+        .catch((sendErr) => console.error("[send-corporate-inquiry] Resend fetch threw:", sendErr));
+      // EdgeRuntime is provided by the Supabase Edge runtime (absent from DOM types).
+      const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+      if (typeof edgeRuntime?.waitUntil === "function") {
+        edgeRuntime.waitUntil(sendPromise);
+      }
     }
-
-    console.log("[Corporate Inquiry] Email enqueued for", companyName);
-
-    // Immediately trigger the email queue processor (fire-and-forget)
-    supabase.functions.invoke("process-email-queue", { body: {} })
-      .then(res => console.log("[Corporate Inquiry] process-email-queue result:", res.data || res.error))
-      .catch(err => console.error("[Corporate Inquiry] process-email-queue invoke failed:", err));
 
     return new Response(
       JSON.stringify({ success: true }),
