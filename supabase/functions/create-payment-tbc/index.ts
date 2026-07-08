@@ -168,16 +168,41 @@ serve(async (req) => {
   <tr style="background:#f0f9f0;"><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">სულ</td><td style="padding:8px;border:1px solid #ddd;font-weight:bold;">${orderRow.total_price} ₾</td></tr>
 </table>`.trim();
 
-        await supabase.rpc("enqueue_email", {
-          queue_name: "transactional_emails",
-          payload: {
-            to: "maika@maika.ge",
-            subject: `ახალი შეკვეთა (TBC): ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
-            html: htmlBody,
-            template_name: "order_notification",
-          },
-        });
-        supabase.functions.invoke("process-email-queue", { body: {} }).catch(() => {});
+        // Send via Resend directly — same proven pattern as create-payment
+        // (BOG). The Lovable email queue path failed with no_matching_sender
+        // and is being retired. Background-send via EdgeRuntime.waitUntil so
+        // the payment response doesn't wait on the email API.
+        const resendKey = Deno.env.get("RESEND_API_KEY");
+        const resendFrom = Deno.env.get("RESEND_FROM") || "onboarding@resend.dev";
+        if (!resendKey) {
+          console.error("[create-payment-tbc] RESEND_API_KEY not set — order notification email NOT sent");
+        } else {
+          const sendPromise = fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              from: resendFrom,
+              to: ["maika@maika.ge"],
+              subject: `ახალი შეკვეთა (TBC): ${orderRow.first_name} ${orderRow.last_name} — ${orderRow.total_price} ₾`,
+              html: htmlBody,
+            }),
+          })
+            .then(async (res) => {
+              if (!res.ok) {
+                const body = await res.text();
+                console.error("[create-payment-tbc] Resend HTTP", res.status, body);
+              } else {
+                const body = await res.json().catch(() => null);
+                console.log("[create-payment-tbc] Order notification email sent for orderId:", orderId, "resend_id:", body?.id);
+              }
+            })
+            .catch((sendErr) => console.error("[create-payment-tbc] Resend fetch threw:", sendErr));
+          // EdgeRuntime is provided by the Supabase Edge runtime (absent from DOM types).
+          const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+          if (typeof edgeRuntime?.waitUntil === "function") {
+            edgeRuntime.waitUntil(sendPromise);
+          }
+        }
       }
     } catch (emailErr) {
       console.error("[create-payment-tbc] Email error:", emailErr);
