@@ -43,12 +43,20 @@ interface DesignRow {
   category: string | null;
 }
 
+interface BlogRow {
+  slug: string;
+  title_ka: string;
+  updated_at: string | null;
+  cover_path: string | null;
+}
+
 const STATIC_URLS: { loc: string; priority: string; changefreq: string }[] = [
   { loc: "/",          priority: "1.0", changefreq: "daily" },
   { loc: "/designs",   priority: "0.9", changefreq: "daily" },
   { loc: "/corporate", priority: "0.6", changefreq: "monthly" },
   { loc: "/faq",       priority: "0.6", changefreq: "monthly" },
   { loc: "/portfolio", priority: "0.7", changefreq: "weekly" },
+  { loc: "/blog",      priority: "0.7", changefreq: "weekly" },
   { loc: "/contact",   priority: "0.6", changefreq: "monthly" },
 ];
 
@@ -175,6 +183,38 @@ serve(async (req) => {
         `    <lastmod>${toDate(d.updated_at)}</lastmod>\n` +
         `    <changefreq>weekly</changefreq>\n` +
         `    <priority>0.8</priority>\n` +
+        imageBlock +
+        `  </url>`,
+      );
+    }
+
+    // Blog posts — one URL per published article, with the cover as
+    // <image:image>. A query failure degrades to a blog-less sitemap
+    // (posts may simply not exist until the blog_posts migration runs).
+    const { data: blogData, error: blogError } = await supabase
+      .from("blog_posts")
+      .select("slug, title_ka, updated_at, cover_path")
+      .eq("published", true)
+      .order("updated_at", { ascending: false });
+    if (blogError) {
+      console.error("[sitemap] blog_posts query failed (skipping blog URLs):", blogError.message);
+    }
+    for (const p of (blogData ?? []) as BlogRow[]) {
+      const coverUrl = p.cover_path
+        ? `${supabaseUrl}/storage/v1/object/public/blog/${p.cover_path}`
+        : null;
+      const imageBlock = coverUrl
+        ? `    <image:image>\n` +
+          `      <image:loc>${escapeXml(coverUrl)}</image:loc>\n` +
+          `      <image:title>${escapeXml(p.title_ka)}</image:title>\n` +
+          `    </image:image>\n`
+        : "";
+      blocks.push(
+        `  <url>\n` +
+        `    <loc>${SITE_URL}/blog/${escapeXml(p.slug)}</loc>\n` +
+        `    <lastmod>${toDate(p.updated_at)}</lastmod>\n` +
+        `    <changefreq>monthly</changefreq>\n` +
+        `    <priority>0.7</priority>\n` +
         imageBlock +
         `  </url>`,
       );

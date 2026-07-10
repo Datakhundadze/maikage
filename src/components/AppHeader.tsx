@@ -3,7 +3,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin } from "lucide-react";
+import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
@@ -18,6 +18,7 @@ const PRELOAD_BY_PATH: Record<string, () => Promise<unknown>> = {
   "/designs": () => import("@/pages/CatalogPage"),
   "/my-designs": () => import("@/pages/MyDesignsPage"),
   "/portfolio": () => import("@/pages/PortfolioPage"),
+  "/blog": () => import("@/pages/BlogPage"),
   "/contact": () => import("@/pages/ContactPage"),
   "/admin": () => import("@/pages/AdminPage"),
 };
@@ -37,6 +38,7 @@ export default function AppHeader() {
     { path: "/designs", label: t(lang, "nav.catalog"), icon: Images },
     { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
     { path: "/portfolio", label: t(lang, "nav.portfolio"), icon: GalleryVerticalEnd },
+    { path: "/blog", label: lang === "en" ? "Blog" : "ბლოგი", icon: Newspaper },
     { path: "/contact", label: t(lang, "nav.contact"), icon: MapPin },
     ...(isAdmin ? [{ path: "/admin", label: "Admin", icon: ShieldCheck }] : []),
   ];
