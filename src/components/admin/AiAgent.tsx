@@ -149,6 +149,11 @@ const THEMES: ThemeDef[] = [
       `original seasonal themed design — generic holiday or season motifs (winter, spring, summer, autumn), no real holiday brand mascots or specific commercial holiday characters, ${v}, transparent background. ${GUARD_BASE}`,
   },
   {
+    key: "travel", label: LABEL.travel,
+    buildPrompt: (v) =>
+      `original travel / wanderlust themed design — generic motifs (airplane, suitcase, compass, mountains, map, globe, generic landmarks with no real brand logos), original English slogan where text applies, ${v}, transparent background. ${GUARD_BASE}`,
+  },
+  {
     key: "various", label: LABEL.various,
     buildPrompt: (v) =>
       `original creative t-shirt design — minimalist or expressive aesthetic, original subject of your choice, ${v}, transparent background. ${GUARD_BASE}`,
@@ -161,7 +166,7 @@ const THEMES: ThemeDef[] = [
 const THEME_DISPLAY_GROUPS: { heading: string; keys: CategorySlug[] }[] = [
   { heading: "ქართული თემები", keys: ["georgian", "patriotic", "georgian-table"] },
   { heading: "IP-მგრძნობიარე", keys: ["music", "movies", "sports"] },
-  { heading: "სხვა კატეგორიები", keys: ["humor", "couples", "art", "animals", "auto-moto", "professions", "seasonal", "various"] },
+  { heading: "სხვა კატეგორიები", keys: ["humor", "couples", "art", "animals", "auto-moto", "professions", "seasonal", "travel", "various"] },
 ];
 
 // ---- STYLES ------------------------------------------------------------
