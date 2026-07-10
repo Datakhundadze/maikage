@@ -328,6 +328,10 @@ export default function LandingPage() {
               {lang === "en" ? "Portfolio" : "პორტფოლიო"}
             </Link>
             <span className="text-muted-foreground/30">•</span>
+            <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors text-xs">
+              {lang === "en" ? "Blog" : "ბლოგი"}
+            </Link>
+            <span className="text-muted-foreground/30">•</span>
             <FeedbackModal>
               <button className="text-muted-foreground hover:text-foreground transition-colors text-xs">
                 {lang === "en" ? "Feedback" : "შენიშვნა"}
