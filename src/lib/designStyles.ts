@@ -6,6 +6,6 @@ import type { Lang } from "@/lib/i18n";
 // (/realistic|photo|რეალ/i). Keep these labels verbatim.
 export function getStyleOptions(lang: Lang): string[] {
   return lang === "en"
-    ? ["Realistic", "Animated", "Illustration", "Oil Art", "Anime", "Comics", "Line Art", "Graphic"]
-    : ["რეალისტური", "ანიმაციური", "ილუსტრაცია", "ოილ არტი", "ანიმე", "კომიქსი", "Line Art", "გრაფიკა"];
+    ? ["Realistic", "Animated", "Illustration", "Oil Art", "Anime", "Comics", "Line Art", "Graphic", "Pixar 3D"]
+    : ["რეალისტური", "ანიმაციური", "ილუსტრაცია", "ოილ არტი", "ანიმე", "კომიქსი", "Line Art", "გრაფიკა", "Pixar 3D"];
 }

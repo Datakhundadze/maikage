@@ -272,7 +272,7 @@ const translations = {
       withoutBackground: "უფონოდ",
       generate: "გენერაცია",
       generating: "გენერდება…",
-      regenerate: "თავიდან გენერაცია",
+      regenerate: "თავიდან",
       startNew: "ახლიდან დაწყება",
       share: "გააზიარე",
       error: "გენერაცია ვერ მოხერხდა",
