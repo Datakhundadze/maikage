@@ -24,7 +24,10 @@ interface MagnifierLensProps {
   active: boolean;
   /** Hi-res image the lens magnifies. null → lens hidden (e.g. still building). */
   zoomSrc: string | null;
-  children: React.ReactNode;
+  /** Optional — when omitted, the component is a bare pointer-catching lens
+   *  overlay (e.g. absolutely positioned over a preview whose content is
+   *  rendered elsewhere). When provided, it wraps and renders them. */
+  children?: React.ReactNode;
 }
 
 export default function MagnifierLens({ active, zoomSrc, children }: MagnifierLensProps) {
