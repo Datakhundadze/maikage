@@ -170,6 +170,17 @@ const GUARD_ISOLATE_BG =
   "background. No full-frame scene, no rectangular photo, no border. The " +
   "background must be empty pure white so the artwork can be cleanly cut out.";
 
+// Appended to the character prompt ONLY when the user provided a quoted slogan
+// (rendered via the `text` param). The model tends to place typography on a
+// paper/card/poster surface; this keeps the lettering as standalone graphics.
+// Client-side only — the shared gemini-proxy prompt stays untouched.
+const GUARD_SLOGAN_NO_CARD =
+  "Render any text as bold STANDALONE typography/lettering floating directly " +
+  "on the plain background — NOT placed on a paper, card, poster, sign, banner, " +
+  "sticker, label, note, frame, or any rectangular backdrop surface. No sheet " +
+  "of paper, no card, no poster behind the text — just the letters as isolated " +
+  "graphic artwork.";
+
 // Display-only watermark: draw "maika.ge" bottom-right (white + drop-shadow,
 // mirroring compositeMockup's style) onto a copy of the image, preserving
 // transparency. Used to brand the AI result shown in the panel and the shared
@@ -661,7 +672,7 @@ export default function SimplePage() {
   // state of the generation options row (progressive disclosure).
   const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
   const [chatEditingId, setChatEditingId] = useState<string | null>(null);
-  const [chatOptionsOpen, setChatOptionsOpen] = useState(false);
+  const [chatOptionsOpen, setChatOptionsOpen] = useState(true);
   // Last text-to-image prompt — the regenerate button re-runs it after the
   // chat input has been cleared.
   const lastGenPromptRef = useRef("");
@@ -807,7 +818,7 @@ export default function SimplePage() {
       const isRealistic = /realistic|photo|რეალ/i.test(aiStyle || "");
       // Reinforce the no-garment constraint, mirroring the admin Trend Agent.
       // The user's intent is preserved verbatim; the guard is appended after.
-      const characterWithGuard = `${text} ${GUARD_NO_GARMENT}`;
+      const characterWithGuard = `${text} ${GUARD_NO_GARMENT}${slogan ? ` ${GUARD_SLOGAN_NO_CARD}` : ""}`;
 
       let resultImage: string;
       let transferImage: string;
