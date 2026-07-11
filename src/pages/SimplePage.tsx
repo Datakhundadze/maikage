@@ -120,6 +120,9 @@ const MAX_PHOTOS = 5;
 // chip. The preset list lives here in the frontend (not the proxy) so it can be
 // tuned without redeploying the edge function.
 const RESTYLE_PRESETS: { key: string; ge: string; en: string; instruction: string }[] = [
+  // Pixar 3D first so it sits right after the "ფონის მოხსნა" (remove-bg) chip.
+  { key: "pixar", ge: "Pixar 3D", en: "Pixar 3D",
+    instruction: "Re-render this photo in a 3D animated movie style — Pixar-like soft rendering, smooth subsurface-scattering skin, soft global illumination, big expressive eyes, rounded stylized forms. Keep the same subject, pose and composition. Do NOT reproduce any real Pixar character, film, or brand — original styling only." },
   { key: "anime", ge: "ანიმე", en: "Anime",
     instruction: "Repaint this photo in modern Japanese anime style — clean cel-shading, bold ink outlines, expressive eyes, vibrant flat color. Keep the same subject, pose, composition and background layout." },
   { key: "watercolor", ge: "აკვარელი", en: "Watercolor",
@@ -134,8 +137,6 @@ const RESTYLE_PRESETS: { key: string; ge: string; en: string; instruction: strin
     instruction: "Restyle this photo as Western comic-book art — bold inked linework, cel shading, dramatic flat colors and subtle halftone. Keep the same subject, pose, expression and composition." },
   { key: "realistic", ge: "რეალისტური", en: "Realistic",
     instruction: "Re-render this photo as a hyperrealistic photograph — natural lighting, real skin and fabric textures, photographic depth of field and fine detail, no illustration or stylization. Keep the same subject, pose and composition." },
-  { key: "pixar", ge: "Pixar 3D", en: "Pixar 3D",
-    instruction: "Re-render this photo in a 3D animated movie style — Pixar-like soft rendering, smooth subsurface-scattering skin, soft global illumination, big expressive eyes, rounded stylized forms. Keep the same subject, pose and composition. Do NOT reproduce any real Pixar character, film, or brand — original styling only." },
 ];
 
 // Simple funnels the customer's whole sentence into the `character` param, so
@@ -1925,6 +1926,9 @@ export default function SimplePage() {
               onCoordsChange={hasPhotos || sideHasText(sideData) ? productConfig.setPlacementCoords : setNextPhotoCoords}
               layers={layers.length > 0 ? layers : undefined}
               onBackgroundClick={() => setSelectedLayerId(null)}
+              // Loupe zoom source = the debounce-composited mockup for the
+              // current view (READ-only). undefined when no design → no button.
+              loupeSrc={(hasPhotos || sideHasText(sideData)) ? (isFront ? frontMockup : backMockup) : undefined}
             />
           </div>
 
@@ -2311,6 +2315,9 @@ export default function SimplePage() {
               onCoordsChange={productConfig.setPlacementCoords}
               layers={layers.length > 0 ? layers : undefined}
               onBackgroundClick={() => setSelectedLayerId(null)}
+              // Loupe zoom source = the debounce-composited mockup for the
+              // current view (READ-only). undefined when no design → no button.
+              loupeSrc={(hasPhotos || sideHasText(sideData)) ? (isFront ? frontMockup : backMockup) : undefined}
             />
           </div>
         </div>

@@ -1,7 +1,9 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import { Search, Loader2 } from "lucide-react";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import DraggablePlacement, { type SourceState } from "@/components/DraggablePlacement";
+import MagnifierLens from "@/components/MagnifierLens";
 
 export interface DesignLayer {
   id: string;
@@ -38,6 +40,12 @@ interface ProductPreviewProps {
   onBackgroundClick?: () => void;
   /** Override the alt text on the design image (for accessibility / SEO). */
   designAlt?: string;
+  /** Magnifier ("ლუპა") — display-only inspect overlay. `undefined` disables
+   *  the feature entirely (no button); a string is the hi-res zoom source
+   *  (the composited mockup); `null` means enabled-but-still-compositing (the
+   *  toggle shows a spinner). Purely READS the passed data-URL — no compositing
+   *  or order logic here. */
+  loupeSrc?: string | null;
 }
 
 // SVG placeholder outlines for products without mockup images
@@ -182,9 +190,13 @@ function colorizeImage(img: HTMLImageElement, canvas: HTMLCanvasElement, targetH
 }
 
 export default function ProductPreview({
-  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers, onBackgroundClick, designAlt,
+  productName, subProduct, colorName, view, placementCoords, onCoordsChange, designImage, disabled, layers, onBackgroundClick, designAlt, loupeSrc,
 }: ProductPreviewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Magnifier toggle (local — a pure display concern of the preview). Only
+  // meaningful when loupeSrc !== undefined (feature enabled by the parent).
+  const loupeEnabled = loupeSrc !== undefined;
+  const [loupeOn, setLoupeOn] = useState(false);
 
   const resolvedSub = subProduct || catalog.getDefaultSubProduct(productName as ProductType);
   const imageResult = catalog.findImageForColor(productName as ProductType, resolvedSub, colorName as ProductColor, view as ProductView);
@@ -317,6 +329,34 @@ export default function ProductPreview({
               />
             )}
           </DraggablePlacement>
+        )}
+
+        {/* Magnifier overlay — sits above the layers (z-20) and intercepts
+            pointer events, so a hold inspects instead of dragging a layer.
+            The lens box == this inner shirt box, so the zoom crop stays
+            aligned with what's on screen. Only rendered while active. */}
+        {loupeEnabled && loupeOn && loupeSrc && (
+          <div className="absolute inset-0 z-20">
+            <MagnifierLens active zoomSrc={loupeSrc} />
+          </div>
+        )}
+
+        {/* Magnifier toggle — top-right corner of the shirt card. */}
+        {loupeEnabled && (
+          <button
+            type="button"
+            onClick={() => setLoupeOn((v) => !v)}
+            aria-pressed={loupeOn}
+            title="ლუპა"
+            aria-label="ლუპა"
+            className={`absolute top-2 right-2 z-30 flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-colors ${
+              loupeOn
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background/90 text-foreground border-border hover:bg-accent"
+            }`}
+          >
+            {loupeOn && !loupeSrc ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          </button>
         )}
       </div>
     </div>
