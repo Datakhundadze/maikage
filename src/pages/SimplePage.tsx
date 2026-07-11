@@ -132,6 +132,10 @@ const RESTYLE_PRESETS: { key: string; ge: string; en: string; instruction: strin
     instruction: "Convert this photo into a detailed hand-drawn graphite pencil sketch — fine cross-hatching, soft shading, white-paper background. Preserve the subject, proportions and composition." },
   { key: "comic", ge: "კომიქსი", en: "Comic",
     instruction: "Restyle this photo as Western comic-book art — bold inked linework, cel shading, dramatic flat colors and subtle halftone. Keep the same subject, pose, expression and composition." },
+  { key: "realistic", ge: "რეალისტური", en: "Realistic",
+    instruction: "Re-render this photo as a hyperrealistic photograph — natural lighting, real skin and fabric textures, photographic depth of field and fine detail, no illustration or stylization. Keep the same subject, pose and composition." },
+  { key: "pixar", ge: "Pixar 3D", en: "Pixar 3D",
+    instruction: "Re-render this photo in a 3D animated movie style — Pixar-like soft rendering, smooth subsurface-scattering skin, soft global illumination, big expressive eyes, rounded stylized forms. Keep the same subject, pose and composition. Do NOT reproduce any real Pixar character, film, or brand — original styling only." },
 ];
 
 // Simple funnels the customer's whole sentence into the `character` param, so
@@ -775,6 +779,11 @@ export default function SimplePage() {
   const handleAiGenerate = useCallback(async (promptOverride?: string) => {
     const text = (promptOverride ?? aiPrompt).trim();
     if (!text || aiGenerating) return;
+    // A quoted phrase in the prompt is the slogan to render AS typography.
+    // Passed via the `text` generation param (empty when no quote → the
+    // model's default "no text" behavior is unchanged). Covers straight,
+    // curly, Georgian („…“) and guillemet quotes.
+    const slogan = text.match(/[«"„“”'`]([^«»"„“”'`]{2,120})[»"“”'`]/)?.[1]?.trim() ?? "";
     const limit = checkAiLimit();
     if (!limit.allowed) {
       if ('reason' in limit && limit.reason === "guest_limit") {
@@ -812,7 +821,7 @@ export default function SimplePage() {
         // nothing for the transparency pipeline to cleanly isolate.
         const gen = await runGenerationPipeline(
           {
-            designParams: { character: `${characterWithGuard} ${GUARD_ISOLATE_BG}`, scene: "", style: aiStyle, text: "", characterImages: [], sceneImage: null, styleImage: null, textImage: null },
+            designParams: { character: `${characterWithGuard} ${GUARD_ISOLATE_BG}`, scene: "", style: aiStyle, text: slogan, characterImages: [], sceneImage: null, styleImage: null, textImage: null },
             product: config.product,
             color: config.color,
             speed: "fast",
@@ -838,7 +847,7 @@ export default function SimplePage() {
         // style-string override) selects the verbatim realistic prompt branch
         // in the proxy — identical prompt to runGenerationPipeline's realistic path.
         const { image: rawImage } = await callGemini("generate-design", {
-          character: characterWithGuard, scene: "", style: aiStyle, text: "",
+          character: characterWithGuard, scene: "", style: aiStyle, text: slogan,
           characterImages: [], sceneImage: null, styleImage: null, textImage: null,
           product: config.product, color: config.color,
           speed: isRealistic ? "pro" : "fast", isRealistic,
