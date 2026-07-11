@@ -71,6 +71,20 @@ const GUARD_NO_GARMENT =
   "any kind. No clothing item, no product photo, no shirt — just the " +
   "isolated graphic artwork, centered, ready to be printed.";
 
+// Anti-backdrop guard — the sibling of GUARD_NO_GARMENT for NON-garment
+// surfaces. Gemini sometimes renders the design as if printed/mounted on a
+// card, sheet of paper, poster, or object instead of as raw isolated artwork.
+// Appended UNCONDITIONALLY to every agent prompt (adapts the Studio
+// GUARD_SLOGAN_NO_CARD, extended from text to the whole artwork). Client-side
+// only — the shared gemini-proxy prompt stays untouched.
+const GUARD_NO_BACKDROP =
+  "CRITICAL: output the artwork ITSELF as isolated standalone graphics on an " +
+  "empty plain background — do NOT depict the design printed, mounted, framed, " +
+  "or placed on any physical object or surface. No paper, sheet, card, poster, " +
+  "sign, banner, sticker, sticker sheet, label, note, mug, frame, canvas, " +
+  "book, box, or rectangular backdrop behind or under the artwork, and nothing " +
+  "holding or displaying it — just the raw design floating on empty background.";
+
 // Labels lifted from CATEGORIES (src/lib/categories.ts). Stored here so
 // the button text matches what admin sees in the catalog dropdown exactly.
 const LABEL: Record<CategorySlug, string> = Object.fromEntries(
@@ -292,7 +306,10 @@ function buildPromptForTheme(
   // the structured `style` param (see the invoke call).
   const stylePhrase = ` ${style.phrase}.`;
   const noGarment = ` ${GUARD_NO_GARMENT}`;
-  if (theme) return { themeLabel: theme.label, prompt: theme.buildPrompt(variation) + noGarment + stylePhrase };
+  // Universal anti-backdrop guard — appended to BOTH the theme and custom
+  // paths so no agent generation renders on a card/paper/poster/object.
+  const noBackdrop = ` ${GUARD_NO_BACKDROP}`;
+  if (theme) return { themeLabel: theme.label, prompt: theme.buildPrompt(variation) + noGarment + noBackdrop + stylePhrase };
   // Custom prompt path — wrap with the base copyright guard since we
   // don't know the cultural context. The previous version of this line
   // referenced the renamed COPYRIGHT_GUARD_EN constant and silently
@@ -304,7 +321,7 @@ function buildPromptForTheme(
   const trimmed = custom.trim();
   return {
     themeLabel: trimmed.length > 40 ? trimmed.slice(0, 40) + "…" : trimmed,
-    prompt: `original design — ${trimmed}, ${variation}. ${GUARD_BASE}.${noGarment}${stylePhrase}`,
+    prompt: `original design — ${trimmed}, ${variation}. ${GUARD_BASE}.${noGarment}${noBackdrop}${stylePhrase}`,
   };
 }
 
