@@ -760,13 +760,14 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
         content: [
           {
             type: "text",
-            text: `Isolate the MAIN SUBJECT (the primary foreground person, animal, or object) from this photo and place it on a SOLID BRIGHT GREEN CHROMA-KEY background (pure green screen, #00FF00). Completely remove the original background and everything that is not the main subject — no scenery, no environment, no other objects.
+            text: `Isolate the MAIN SUBJECT (the primary foreground person, animal, or object) from this photo and place it on a SOLID BRIGHT GREEN CHROMA-KEY background (pure green screen, #00FF00). Completely remove the original background — and the ground/floor surface the subject stands, sits, or rests on, together with any contact shadow, cast shadow, reflection, or footing beneath it — and everything that is not the main subject (no scenery, no environment, no floor, no ground plane, no other objects).
 
 CRITICAL:
 - Keep the main subject EXACTLY as it is: same shape, colors, textures, photographic detail, proportions and pose. Do NOT redraw, restyle, re-light, silhouette, or regenerate the subject — this is a background-replacement/segmentation operation, NOT a re-shoot and NOT a mask. Preserve every photographic detail and the original colors of the real subject. Do NOT output a flat solid silhouette or a black/white mask.
 - The new background must be uniformly PURE BRIGHT GREEN #00FF00, edge to edge, with NO shadow, gradient, texture, reflection, or any other color anywhere. The subject must cast NO shadow onto the green backdrop. (A downstream chroma-key removes exactly this green, so any non-green background pixel stays visible.)
 - Do NOT let the green spill onto or tint the subject — keep the subject's original colors with clean edges.
 - Keep the subject fully inside the frame, roughly centered, at a similar scale to the input.
+- Cut the subject completely away from the floor/ground: even when the subject stands, sits, or rests on a surface, do NOT keep any strip of floor, ground, grass, pavement, carpet, or platform under or around the feet/base, and do NOT keep the shadow the subject casts on that surface. The bottom edge (feet/base) must be a clean cutout against pure green #00FF00 — no ground fragment and no shadow attached. Preserve the ENTIRE subject including footwear, shoes/soles, held items, and hair — only the surrounding floor/ground and the shadow it casts are removed, never the subject itself.
 
 Output: a single photographic image of the isolated main subject (full detail, original colors) on a pure solid bright green (#00FF00) chroma-key background.`,
           },
