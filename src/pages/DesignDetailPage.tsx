@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
@@ -22,8 +22,9 @@ import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
 import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
 import { colorKa, productTypeKa } from "@/lib/i18n";
-import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff } from "lucide-react";
+import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff, Search, Loader2 } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
+import MagnifierLens from "@/components/MagnifierLens";
 
 interface CatalogDesignRow {
   id: string;
@@ -79,6 +80,15 @@ export default function DesignDetailPage() {
   const [composing, setComposing] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [orderMockup, setOrderMockup] = useState<string | null>(null);
+
+  // Magnifier ("ლუპა"): display stays on the transformed 800px mockup; the lens
+  // magnifies a HI-RES composite built once (per color) from the RAW full-res
+  // print file. Cached so re-activating / re-hovering is instant. This reuses
+  // compositeDesignOnProduct read-only — no change to its math or the order path.
+  const [loupeOn, setLoupeOn] = useState(false);
+  const [hiResMockup, setHiResMockup] = useState<string | null>(null);
+  const [hiResLoading, setHiResLoading] = useState(false);
+  const hiResCacheRef = useRef<Record<string, string>>({});
 
   // Fetch design + product on slug change
   useEffect(() => {
@@ -177,6 +187,32 @@ export default function DesignDetailPage() {
       view: "front",
     });
   };
+
+  // Build (or restore from cache) the hi-res lens source for the current color,
+  // only while the magnifier is on. Uses the RAW print_file_url so the zoom
+  // stays crisp; the on-page image keeps using the transformed 800px URL.
+  useEffect(() => {
+    if (!loupeOn || !design || !product) { setHiResMockup(null); return; }
+    const key = selectedColor;
+    const cached = hiResCacheRef.current[key];
+    if (cached) { setHiResMockup(cached); return; }
+    let cancelled = false;
+    setHiResMockup(null);
+    setHiResLoading(true);
+    (async () => {
+      const url = await compositeDesignOnProduct({
+        printFileUrl: design.print_file_url,
+        productName: product.type,
+        subProduct: product.sub_product || product.type,
+        color: selectedColor,
+        view: "front",
+      });
+      if (cancelled) return;
+      if (url) { hiResCacheRef.current[key] = url; setHiResMockup(url); }
+      setHiResLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [loupeOn, selectedColor, design, product]);
 
   const validateSize = () => {
     if (needsSize && !selectedSize) {
@@ -339,18 +375,35 @@ export default function DesignDetailPage() {
                 printable zone. The catalog flow contain-fits the print
                 inside the zone box, which is the correct behavior for
                 read-only product photography here. */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden aspect-square">
-              <CatalogDesignCard
-                // Display-only downscale — buildMockup() and the cart/order
-                // payloads keep the full-res design.print_file_url.
-                printFileUrl={transformedDisplayUrl(design.print_file_url, { width: 800 })}
-                fallbackUrl={design.thumbnail_url}
-                alt={`${design.title_ka} — ${productTypeKa(product.type)} ${colorKa(selectedColor)} | Maika.ge`}
-                productType={product.type}
-                subProduct={product.sub_product || product.type}
-                color={selectedColor}
-                priority
-              />
+            <div className="relative rounded-2xl border border-border bg-card overflow-hidden aspect-square">
+              <MagnifierLens active={loupeOn} zoomSrc={hiResMockup}>
+                <CatalogDesignCard
+                  // Display-only downscale — buildMockup() and the cart/order
+                  // payloads keep the full-res design.print_file_url.
+                  printFileUrl={transformedDisplayUrl(design.print_file_url, { width: 800 })}
+                  fallbackUrl={design.thumbnail_url}
+                  alt={`${design.title_ka} — ${productTypeKa(product.type)} ${colorKa(selectedColor)} | Maika.ge`}
+                  productType={product.type}
+                  subProduct={product.sub_product || product.type}
+                  color={selectedColor}
+                  priority
+                />
+              </MagnifierLens>
+              {/* Magnifier toggle — display-only inspect tool. */}
+              <button
+                type="button"
+                onClick={() => setLoupeOn((v) => !v)}
+                aria-pressed={loupeOn}
+                title="ლუპა"
+                aria-label="ლუპა"
+                className={`absolute top-2 right-2 z-30 flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition-colors ${
+                  loupeOn
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background/90 text-foreground border-border hover:bg-accent"
+                }`}
+              >
+                {loupeOn && hiResLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              </button>
             </div>
 
             {/* Config panel */}
