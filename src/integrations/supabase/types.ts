@@ -983,6 +983,29 @@ export type Database = {
           read_ct: number
         }[]
       }
+      report_brands_last_week: {
+        Args: never
+        Returns: {
+          avg_price: number
+          bog_items: number
+          bog_revenue: number
+          brand: string
+          other_items: number
+          other_revenue: number
+          tbc_items: number
+          tbc_revenue: number
+          total_items: number
+          total_revenue: number
+          type: string
+        }[]
+      }
+      report_week_meta: {
+        Args: never
+        Returns: {
+          total_orders: number
+          unknown_providers: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
