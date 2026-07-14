@@ -327,6 +327,27 @@ export default function SimpleAiChatPanel({
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">{t(lang, "simpleAi.styleLabel")}</label>
                       <div className="grid grid-cols-4 gap-1.5">
+                        {/* "Auto" = the empty-style default (aiStyle === ""),
+                            rendered first so the no-style state reads as a
+                            deliberate choice. Selecting it sends style: "" —
+                            byte-identical to today's default. Clicking it while
+                            active is a harmless no-op (already ""). */}
+                        {(() => {
+                          const active = selectedStyle === "";
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => onSelectStyle("")}
+                              className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                                active
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                              }`}
+                            >
+                              {lang === "en" ? "Auto" : "ავტომატური"}
+                            </button>
+                          );
+                        })()}
                         {styleOptions.map((opt) => {
                           const active = selectedStyle === opt;
                           return (
