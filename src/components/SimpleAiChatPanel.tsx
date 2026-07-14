@@ -150,6 +150,91 @@ export default function SimpleAiChatPanel({
     </div>
   );
 
+  // Generation options (style chips + background toggle). Shown whenever there
+  // is NO photo layer — i.e. text-to-image mode, INCLUDING the empty state
+  // before the first message — so the style choice is visible while the user
+  // types their prompt, not only after generating. (Edit mode shows edit chips
+  // instead; nothing here then.)
+  const generationOptions = !hasPhotos ? (
+    <div>
+      <button
+        type="button"
+        onClick={() => onToggleOptions(!optionsOpen)}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <SlidersHorizontal className="h-3 w-3" />
+        {lang === "en" ? "Options" : "პარამეტრები"}
+        <ChevronDown className={`h-3 w-3 transition-transform ${optionsOpen ? "rotate-180" : ""}`} />
+      </button>
+      {optionsOpen && (
+        <div className="mt-2 space-y-2">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">{t(lang, "simpleAi.styleLabel")}</label>
+            <div className="grid grid-cols-4 gap-1.5">
+              {/* "Auto" = the empty-style default (aiStyle === ""), rendered
+                  first so the no-style state reads as a deliberate choice.
+                  Selecting it sends style: "" — byte-identical to the default.
+                  Clicking it while active is a harmless no-op (already ""). */}
+              {(() => {
+                const active = selectedStyle === "";
+                return (
+                  <button
+                    type="button"
+                    onClick={() => onSelectStyle("")}
+                    className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    }`}
+                  >
+                    {lang === "en" ? "Auto" : "ავტომატური"}
+                  </button>
+                );
+              })()}
+              {styleOptions.map((opt) => {
+                const active = selectedStyle === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => onSelectStyle(active ? "" : opt)}
+                    className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => onToggleBackground(false)}
+              className={`rounded-lg px-2 py-1.5 text-xs font-medium border transition-colors ${
+                !withBackground ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t(lang, "simpleAi.withoutBackground")}
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleBackground(true)}
+              className={`rounded-lg px-2 py-1.5 text-xs font-medium border transition-colors ${
+                withBackground ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t(lang, "simpleAi.withBackground")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div className="rounded-2xl border-2 border-[#26BB89]/40 bg-[#26BB89]/[0.06] overflow-hidden shadow-sm">
       {/* Accent header strip — brand-green highlight, same as the old panel */}
@@ -204,6 +289,9 @@ export default function SimpleAiChatPanel({
                 {lang === "en" ? "Upload a photo" : "ატვირთე ფოტო"}
               </Button>
             )}
+            {/* Style options visible up-front (generation mode) — the one thing
+                that shapes the result, so it earns its place before generating. */}
+            {generationOptions}
             {inputRow}
           </div>
         ) : (
@@ -310,87 +398,8 @@ export default function SimpleAiChatPanel({
               </div>
             )}
 
-            {/* ── Generation options — collapsed by default, generation mode only ── */}
-            {!hasPhotos && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => onToggleOptions(!optionsOpen)}
-                  className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <SlidersHorizontal className="h-3 w-3" />
-                  {lang === "en" ? "Options" : "პარამეტრები"}
-                  <ChevronDown className={`h-3 w-3 transition-transform ${optionsOpen ? "rotate-180" : ""}`} />
-                </button>
-                {optionsOpen && (
-                  <div className="mt-2 space-y-2">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">{t(lang, "simpleAi.styleLabel")}</label>
-                      <div className="grid grid-cols-4 gap-1.5">
-                        {/* "Auto" = the empty-style default (aiStyle === ""),
-                            rendered first so the no-style state reads as a
-                            deliberate choice. Selecting it sends style: "" —
-                            byte-identical to today's default. Clicking it while
-                            active is a harmless no-op (already ""). */}
-                        {(() => {
-                          const active = selectedStyle === "";
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => onSelectStyle("")}
-                              className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
-                                active
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                              }`}
-                            >
-                              {lang === "en" ? "Auto" : "ავტომატური"}
-                            </button>
-                          );
-                        })()}
-                        {styleOptions.map((opt) => {
-                          const active = selectedStyle === opt;
-                          return (
-                            <button
-                              key={opt}
-                              type="button"
-                              onClick={() => onSelectStyle(active ? "" : opt)}
-                              className={`rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors ${
-                                active
-                                  ? "bg-primary text-primary-foreground"
-                                  : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                              }`}
-                            >
-                              {opt}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => onToggleBackground(false)}
-                        className={`rounded-lg px-2 py-1.5 text-xs font-medium border transition-colors ${
-                          !withBackground ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {t(lang, "simpleAi.withoutBackground")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onToggleBackground(true)}
-                        className={`rounded-lg px-2 py-1.5 text-xs font-medium border transition-colors ${
-                          withBackground ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {t(lang, "simpleAi.withBackground")}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Generation options (style chips + background) — generation mode. */}
+            {generationOptions}
 
             {inputRow}
           </>
