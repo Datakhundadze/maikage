@@ -763,6 +763,7 @@ export type Database = {
           id: string
           is_anonymous: boolean | null
           is_blocked: boolean
+          is_exempt: boolean
           updated_at: string
           user_id: string
         }
@@ -773,6 +774,7 @@ export type Database = {
           id?: string
           is_anonymous?: boolean | null
           is_blocked?: boolean
+          is_exempt?: boolean
           updated_at?: string
           user_id: string
         }
@@ -783,6 +785,7 @@ export type Database = {
           id?: string
           is_anonymous?: boolean | null
           is_blocked?: boolean
+          is_exempt?: boolean
           updated_at?: string
           user_id?: string
         }
@@ -983,8 +986,8 @@ export type Database = {
           read_ct: number
         }[]
       }
-      report_brands_last_week: {
-        Args: never
+      report_brands: {
+        Args: { p_from: string; p_to: string }
         Returns: {
           avg_price: number
           bog_items: number
@@ -999,8 +1002,8 @@ export type Database = {
           type: string
         }[]
       }
-      report_week_meta: {
-        Args: never
+      report_meta: {
+        Args: { p_from: string; p_to: string }
         Returns: {
           total_orders: number
           unknown_providers: string
