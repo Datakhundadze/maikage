@@ -1,12 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Weekly per-brand sales report emailed to the accountant. Triggered by pg_cron
-// (net.http_post with the service-role Bearer) every Monday morning — hence
-// verify_jwt = true (no public exposure). Reproduces the "ბრენდები" (Brands)
-// sheet for the LAST 7 DAYS of PAID orders: one row per brand×type, PER ITEM
-// (public.orders is one row per item), with a TBC/BOG bank split where
-// Flitt + tbc_credit both count under TBC. Emails an HTML table via Resend.
+// Per-brand sales report emailed to the accountant. Triggered by pg_cron
+// (net.http_post with the service-role Bearer) — hence verify_jwt = true (no
+// public exposure). Body { "period": "week" | "month" } selects the PREVIOUS
+// COMPLETE calendar period (default "week"): week = last Mon 00:00 → this Mon
+// 00:00, month = 1st of last month → 1st of this month, both in Asia/Tbilisi
+// wall-clock. Reproduces the "ბრენდები" (Brands) sheet of PAID orders: one row
+// per brand×type, PER ITEM (public.orders is one row per item), with a TBC/BOG
+// bank split where Flitt + tbc_credit both count under TBC. Emails via Resend.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,10 +50,20 @@ function esc(s: unknown): string {
   });
 }
 
-// DD.MM for the header/subject week range.
+// DD.MM of a Tbilisi-wall-clock Date (its getUTC* fields hold Tbilisi local).
 function ddmm(d: Date): string {
   return `${String(d.getUTCDate()).padStart(2, "0")}.${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+// Georgian month names for the monthly subject/label.
+const GE_MONTHS = [
+  "იანვარი", "თებერვალი", "მარტი", "აპრილი", "მაისი", "ივნისი",
+  "ივლისი", "აგვისტო", "სექტემბერი", "ოქტომბერი", "ნოემბერი", "დეკემბერი",
+];
+
+// Asia/Tbilisi is UTC+4 year-round (no DST since 2005), so a fixed offset is
+// exact. Shifting by +4h makes a Date's getUTC* fields read as Tbilisi local.
+const TB_OFFSET_MS = 4 * 60 * 60 * 1000;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -62,15 +74,41 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Rolling 7-day window ending now (matches the SQL `now() - interval '7 days'`).
-    const now = new Date();
-    const from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const rangeLabel = `${ddmm(from)}–${ddmm(now)}`;
+    // Requested period (default "week" when the body is absent/empty/invalid).
+    let period: "week" | "month" = "week";
+    try {
+      const body = await req.json();
+      if (body?.period === "month") period = "month";
+    } catch { /* no/invalid body → default "week" */ }
+
+    // Previous COMPLETE calendar period, computed in Tbilisi wall-clock, then
+    // converted to real UTC for the timestamptz filter. `toTb` is the exclusive
+    // end (start of the current period); the SQL filter is [p_from, p_to).
+    const nowTb = new Date(Date.now() + TB_OFFSET_MS); // getUTC* now read as Tbilisi local
+    let fromTb: Date;
+    let toTb: Date;
+    if (period === "month") {
+      toTb = new Date(Date.UTC(nowTb.getUTCFullYear(), nowTb.getUTCMonth(), 1));       // 1st of this month 00:00
+      fromTb = new Date(Date.UTC(nowTb.getUTCFullYear(), nowTb.getUTCMonth() - 1, 1)); // 1st of last month 00:00
+    } else {
+      const dow = (nowTb.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
+      toTb = new Date(Date.UTC(nowTb.getUTCFullYear(), nowTb.getUTCMonth(), nowTb.getUTCDate() - dow)); // this Mon 00:00
+      fromTb = new Date(toTb.getTime() - 7 * 24 * 60 * 60 * 1000);                     // last Mon 00:00
+    }
+    const pFrom = new Date(fromTb.getTime() - TB_OFFSET_MS).toISOString();
+    const pTo = new Date(toTb.getTime() - TB_OFFSET_MS).toISOString();
+
+    // Human labels (Tbilisi wall-clock). Week = Mon–Sun (last day = end − 1 day).
+    const rangeLabel = `${ddmm(fromTb)}–${ddmm(new Date(toTb.getTime() - 24 * 60 * 60 * 1000))}`;
+    const monthLabel = `${GE_MONTHS[fromTb.getUTCMonth()]} ${fromTb.getUTCFullYear()}`;
+    const periodValue = period === "month" ? monthLabel : rangeLabel;
+    const periodWord = period === "month" ? "თვე" : "კვირა";
+    const titlePrefix = period === "month" ? "თვის რეპორტი" : "კვირის რეპორტი";
 
     // Aggregations via SECURITY DEFINER SQL functions (clean FILTER support).
-    const { data: brandData, error: brandErr } = await supabase.rpc("report_brands_last_week");
+    const { data: brandData, error: brandErr } = await supabase.rpc("report_brands", { p_from: pFrom, p_to: pTo });
     if (brandErr) throw new Error(`brands aggregation failed: ${brandErr.message}`);
-    const { data: metaData, error: metaErr } = await supabase.rpc("report_week_meta");
+    const { data: metaData, error: metaErr } = await supabase.rpc("report_meta", { p_from: pFrom, p_to: pTo });
     if (metaErr) throw new Error(`meta aggregation failed: ${metaErr.message}`);
 
     const rows: BrandRow[] = ((brandData as BrandRow[]) || []).map((r) => ({
@@ -111,7 +149,7 @@ serve(async (req) => {
 
     // ── Build the HTML email ──
     const header = `<p style="font-size:14px;">
-      <strong>კვირა:</strong> ${esc(rangeLabel)} ·
+      <strong>${periodWord}:</strong> ${esc(periodValue)} ·
       <strong>შეკვეთები:</strong> ${meta.total_orders} ·
       <strong>ნივთები:</strong> ${tot.total_items} ·
       <strong>შემოსავალი:</strong> ${money(tot.total_revenue)}
@@ -120,8 +158,8 @@ serve(async (req) => {
     let html: string;
     if (rows.length === 0) {
       html = `<div style="font-family:sans-serif;">
-        <h2>კვირის რეპორტი — ${esc(rangeLabel)}</h2>
-        <p>ბოლო 7 დღეში გადახდილი შეკვეთა არ ყოფილა.</p>
+        <h2>${titlePrefix} — ${esc(periodValue)}</h2>
+        <p>ამ პერიოდში გადახდილი შეკვეთა არ ყოფილა.</p>
       </div>`;
     } else {
       const th = (label: string) =>
@@ -147,7 +185,7 @@ serve(async (req) => {
         : "";
 
       html = `<div style="font-family:sans-serif;">
-        <h2>კვირის რეპორტი — ${esc(rangeLabel)}</h2>
+        <h2>${titlePrefix} — ${esc(periodValue)}</h2>
         ${header}
         <table style="border-collapse:collapse;width:100%;max-width:920px;font-size:14px;">
           <thead>
@@ -181,7 +219,7 @@ serve(async (req) => {
             from: resendFrom,
             to: [accountant],
             cc: ["maika@maika.ge"],
-            subject: `maika.ge — კვირის რეპორტი (${rangeLabel})`,
+            subject: `maika.ge — ${titlePrefix} (${periodValue})`,
             html,
           }),
         });
@@ -199,7 +237,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ sent: emailSent, brands: rows.length, orders: meta.total_orders, items: tot.total_items, range: rangeLabel }),
+      JSON.stringify({ sent: emailSent, period, brands: rows.length, orders: meta.total_orders, items: tot.total_items, range: periodValue }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
