@@ -27,7 +27,7 @@ const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
 # ცოდნის ბაზა (KA + EN)
 # Single source of truth for the website FAQ assistant.
 # Prices = exactly what the cart charges (pricing.ts). Update here when prices change.
-# Last reconciled: 2026-06-25
+# Last reconciled: 2026-07-22
 
 ═══════════════════════════════════════════════════════════════
 ## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
@@ -51,6 +51,8 @@ Instead say we don't offer it, or that they should contact us to check. In parti
 claim we have official/licensed sports kits (national team, football clubs, etc.) — we don't.
 When unsure, under-promise and point to contact; a false "yes" causes real harm.
 
+⚠️ CRITICAL — PRICING: never quote the two-sided (ორმხრივი) price unless the customer clearly wants a print on BOTH sides. A print on the back only is SINGLE-SIDED. See §2a.
+
 ═══════════════════════════════════════════════════════════════
 ## 1. COMPANY / კომპანია
 ═══════════════════════════════════════════════════════════════
@@ -72,12 +74,41 @@ EN:
 - Working hours: Monday–Friday 11:00–19:00 · Saturday 11:00–18:00 · Sunday closed.
 
 ═══════════════════════════════════════════════════════════════
+## 2a. ⚠️ SINGLE-SIDED vs TWO-SIDED / ცალმხრივი vs ორმხრივი — READ FIRST
+═══════════════════════════════════════════════════════════════
+(This is the #1 source of pricing mistakes. Read it before quoting any price.)
+
+KA — წესი:
+- ცალმხრივი = ბეჭდვა მხოლოდ ერთ მხარეს — მხოლოდ წინ ან მხოლოდ უკან. ორივე შემთხვევაში ფასი ძირითადია, დანამატის გარეშე.
+- ორმხრივი (+15₾) = ბეჭდვა წინ და უკან ერთდროულად (ორივე მხარეს).
+- ⚠️ თუ კლიენტი ამბობს „უკან მინდა სახელი", „ზურგზე დამიწერეთ", „უკანა მხარეს ლოგო" — ეს ცალმხრივია. დანამატი არ ემატება. ნუ იტყვი ორმხრივის ფასს!
+- დანამატი ემატება მხოლოდ მაშინ, როცა კლიენტი ცხადად ითხოვს ორივე მხარეს ბეჭდვას.
+- თუ ბუნდოვანია (ვერ ხვდები ერთი მხარეა თუ ორივე) — ჰკითხე: „წინ და უკან ორივეზე გნებავთ ბეჭდვა, თუ მხოლოდ ერთ მხარეს?"
+
+მაგალითები:
+- „ნაცრისფერ Oversize-ზე უკან სახელი მინდა" → ცალმხრივი, 70₾ ✅
+- „Oversize-ზე ზურგზე წარწერა" → ცალმხრივი, 70₾ ✅
+- „Oversize-ზე წინ ლოგო და უკან სახელი" → ორმხრივი, 85₾ ✅
+- „GILDAN-ზე მხოლოდ უკან პრინტი" → ცალმხრივი, 35₾ ✅ (არა 50₾)
+
+EN — rule:
+- Single-sided = print on ONE side only — front only OR back only. In both cases the base price applies, with no surcharge.
+- Two-sided (+15₾) = print on front AND back together.
+- ⚠️ If the customer says "I want a name on the back", "print on the back" — that is single-sided. Do NOT add the surcharge, do NOT quote the two-sided price.
+- The surcharge applies only when the customer clearly wants both sides printed.
+- If unclear — ask: "Would you like the print on both front and back, or just one side?"
+
+Examples:
+- "Name on the back of a grey Oversize" → single-sided, 70₾ ✅
+- "Print on the back of a GILDAN" → single-sided, 35₾ ✅ (not 50₾)
+- "Logo on front and name on back" → two-sided, 85₾ ✅
+
+═══════════════════════════════════════════════════════════════
 ## 2. PRICES — T-SHIRTS / ფასები — მაისურები
 ═══════════════════════════════════════════════════════════════
-(Price = front print included. "Two-sided" = front + back, surcharge applies.
-These are the live cart prices.)
+(Base price = ONE side printed — front only OR back only. The "ორმხრივი / two-sided" price applies ONLY when both front AND back are printed. See §2a.)
 
-KA — მაისურები (ცალმხრივი ბეჭდვა შედის ფასში):
+KA — მაისურები (ცალმხრივი ბეჭდვა = მხოლოდ წინ ან მხოლოდ უკან, შედის ფასში):
 - GILDAN (სტანდარტი): 35₾ · ორმხრივი 50₾
 - GILDAN KIDS (საბავშვო): 35₾ · ორმხრივი 50₾
 - TH: 45₾ · ორმხრივი 60₾
@@ -90,7 +121,7 @@ KA — მაისურები (ცალმხრივი ბეჭდვ�
 - Oversize: 70₾ · ორმხრივი 85₾
 - NIKE: 100₾ · ორმხრივი 115₾
 
-EN — T-shirts (front print included):
+EN — T-shirts (single-side print — front only or back only — included):
 - GILDAN (standard): 35₾ · two-sided 50₾
 - GILDAN KIDS: 35₾ · two-sided 50₾
 - TH: 45₾ · two-sided 60₾
@@ -106,8 +137,9 @@ EN — T-shirts (front print included):
 ═══════════════════════════════════════════════════════════════
 ## 3. PRICES — HOODIES / ფასები — ჰუდები
 ═══════════════════════════════════════════════════════════════
+(Same rule: base price = one side only. See §2a.)
 
-KA — ჰუდები (ბეჭდვა შედის):
+KA — ჰუდები (ცალმხრივი ბეჭდვა შედის):
 - GILDAN Bomber: 75₾ · ორმხრივი 90₾
 - GILDAN Hoodie: 80₾ · ორმხრივი 95₾
 - JEL Standard Hoodie: 85₾ · ორმხრივი 100₾
@@ -115,7 +147,7 @@ KA — ჰუდები (ბეჭდვა შედის):
 - JEL Standard Zipper (ელვიანი): 95₾ · ორმხრივი 110₾
 - JEL Zipper (ელვიანი): 105₾ · ორმხრივი 120₾
 
-EN — Hoodies (print included):
+EN — Hoodies (single-side print included):
 - GILDAN Bomber: 75₾ · two-sided 90₾
 - GILDAN Hoodie: 80₾ · two-sided 95₾
 - JEL Standard Hoodie: 85₾ · two-sided 100₾
@@ -148,18 +180,18 @@ EN:
 ═══════════════════════════════════════════════════════════════
 
 KA:
-- ორმხრივი ბეჭდვა: +10/15₾ პრინტის ზომის მიხედვით (ზუსტი ფასი ცხრილებშია — §2/§3).
+- ორმხრივი ბეჭდვა (მხოლოდ როცა წინ და უკან ორივეზე იბეჭდება — იხ. §2a): +10/15₾ პრინტის ზომის მიხედვით (ზუსტი ფასი ცხრილებშია — §2/§3). ⚠️ მხოლოდ უკან ბეჭდვა ორმხრივი არ არის — ეს ცალმხრივია, დანამატის გარეშე.
 - A4-ზე დიდი პრინტი (მაქს. A3): +10/15₾ ზომის მიხედვით.
 - სპორტულ მაისურზე გვარი + ნომერი: 20₾.
 - შენი მოტანილი მაისური/ჰუდი (ბეჭდვა): 20₾ (მოტანილ ნივთზე პასუხისმგებლობას ვერ ვიღებთ).
-- ფასში შედის: ცალმხრივი, დაახლოებით A4 ზომის ბეჭდვა.
+- ფასში შედის: ცალმხრივი (ერთ მხარეს — წინ ან უკან), დაახლოებით A4 ზომის ბეჭდვა.
 
 EN:
-- Two-sided printing: +10/15₾ depending on print size (exact prices in tables §2/§3).
+- Two-sided printing (ONLY when both front and back are printed — see §2a): +10/15₾ depending on print size (exact prices in tables §2/§3). ⚠️ A back-only print is NOT two-sided — it is single-sided, no surcharge.
 - Print larger than A4 (up to A3): +10/15₾ depending on size.
 - Name + number on a sports shirt: 20₾.
 - Printing on your own item: 20₾ (we can't take responsibility for items you bring).
-- Included in price: single-side print, approximately A4 size.
+- Included in price: single-side print (one side — front or back), approximately A4 size.
 
 ═══════════════════════════════════════════════════════════════
 ## 6. DISCOUNTS / ფასდაკლება
