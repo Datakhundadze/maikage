@@ -484,7 +484,12 @@ export default function AiAgent() {
               textImage: null,
               product: "T-Shirt",
               color: "White",
-              speed: slot.isRealistic ? "pro" : "quality",
+              // Cost: "fast" routes non-realistic batches to the cheaper
+              // gemini-2.5-flash-image in gemini-proxy (only "fast" maps to
+              // flash there). These are internal previews we curate before
+              // publishing. Realistic themes stay on "pro" — flash skews
+              // illustrative and would break photoreal output.
+              speed: slot.isRealistic ? "pro" : "fast",
               isRealistic: slot.isRealistic,
             },
           },
