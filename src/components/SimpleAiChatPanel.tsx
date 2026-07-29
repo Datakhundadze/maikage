@@ -132,7 +132,7 @@ export default function SimpleAiChatPanel({
             ? (lang === "en" ? "Upload a photo or describe what you want" : "ატვირთე ფოტო ან აღწერე რა გინდა")
             : hasPhotos
               ? (lang === "en" ? "Describe an edit or a command…" : "აღწერე ან დაწერე ბრძანება…")
-              : (lang === "en" ? "Describe your design…" : "აღწერე შენი დიზაინი…")
+              : (lang === "en" ? 'Describe your design… (text in quotes: "moby")' : "აღწერე შენი დიზაინი… (წარწერა ბრჭყალებში: „მობი\u201C)")
         }
         maxLength={1000}
         className="h-10 text-sm"
@@ -166,6 +166,12 @@ export default function SimpleAiChatPanel({
         {lang === "en" ? "Options" : "პარამეტრები"}
         <ChevronDown className={`h-3 w-3 transition-transform ${optionsOpen ? "rotate-180" : ""}`} />
       </button>
+      {/* Quotes convention: the ONLY way to get text rendered on the design. */}
+      <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
+        {lang === "en"
+          ? 'For text on the design, put it in quotes: "moby"'
+          : "წარწერისთვის ჩასვი ბრჭყალებში: „მობი\u201C"}
+      </p>
       {optionsOpen && (
         <div className="mt-2 space-y-2">
           <div className="space-y-1">
