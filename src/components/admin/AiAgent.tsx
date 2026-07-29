@@ -37,7 +37,19 @@ interface ThemeDef {
    *  hint is appended so a batch of N designs from the same theme isn't
    *  N identical outputs. */
   buildPrompt: (variationHint: string) => string;
+  /** True for themes whose prompt inherently asks for a slogan/typography.
+   *  Without this the `text` param stayed empty and gemini-proxy emitted its
+   *  "DO NOT include any text" instruction — contradicting the theme's own
+   *  wording. When set (and no custom quoted slogan is given), a short generic
+   *  hint is sent as `text` so the proxy emits its TYPOGRAPHY instruction
+   *  instead. Additive only — no theme prompt text was changed. */
+  wantsText?: true;
 }
+
+// Generic slogan hint used for wantsText themes when the admin supplied no
+// quoted phrase. Intentionally vague: the model invents the wording (the batch
+// is curated before publishing), we only need the proxy to allow typography.
+const THEME_TEXT_HINT = "short original slogan";
 
 const GUARD_BASE =
   "no real brands, no real logos, no real or famous people, " +
@@ -109,17 +121,17 @@ const LABEL: Record<CategorySlug, string> = Object.fromEntries(
 const THEMES: ThemeDef[] = [
   // --- Georgian-cultural categories (GUARD_KA appended) -----------------
   {
-    key: "georgian", label: LABEL.georgian,
+    key: "georgian", label: LABEL.georgian, wantsText: true,
     buildPrompt: (v) =>
       `original Georgian-themed design with traditional ornaments, Mkhedruli/Asomtavruli typography or culturally-inspired motifs, Georgian-language text where text applies, ${v}, transparent background. ${GUARD_BASE}. ${GUARD_KA}`,
   },
   {
-    key: "patriotic", label: LABEL.patriotic,
+    key: "patriotic", label: LABEL.patriotic, wantsText: true,
     buildPrompt: (v) =>
       `original Georgian patriotic design — generic national-pride aesthetic with traditional ornaments or symbolic motifs (no real flags reproduced verbatim, no institutional emblems), Georgian-language slogan where text applies, ${v}, transparent background. ${GUARD_BASE}. ${GUARD_KA}`,
   },
   {
-    key: "georgian-table", label: LABEL["georgian-table"],
+    key: "georgian-table", label: LABEL["georgian-table"], wantsText: true,
     buildPrompt: (v) =>
       `original Georgian supra (feast) themed design — khinkali, khachapuri, qvevri, vine, toasting cup or similar food/wine motifs, Georgian-language text where text applies, ${v}, transparent background. ${GUARD_BASE}. ${GUARD_KA}`,
   },
@@ -143,12 +155,12 @@ const THEMES: ThemeDef[] = [
 
   // --- Standard categories (GUARD_BASE only) ----------------------------
   {
-    key: "humor", label: LABEL.humor,
+    key: "humor", label: LABEL.humor, wantsText: true,
     buildPrompt: (v) =>
       `original funny English slogan typography t-shirt design, witty original humor, bold lettering, ${v}, transparent background. ${GUARD_BASE}`,
   },
   {
-    key: "couples", label: LABEL.couples,
+    key: "couples", label: LABEL.couples, wantsText: true,
     buildPrompt: (v) =>
       `original couple / love themed design — hearts, romantic motifs, original English slogan where text applies, ${v}, transparent background. ${GUARD_BASE}`,
   },
@@ -168,7 +180,7 @@ const THEMES: ThemeDef[] = [
       `original car or motorcycle themed design — generic vehicles only (no real brand grilles, badges, or logos), abstract automotive aesthetic, ${v}, transparent background. ${GUARD_BASE}`,
   },
   {
-    key: "professions", label: LABEL.professions,
+    key: "professions", label: LABEL.professions, wantsText: true,
     buildPrompt: (v) =>
       `original profession / occupation themed design — generic profession motifs (e.g. stethoscope, paintbrush, wrench, laptop), original English slogan where text applies, ${v}, transparent background. ${GUARD_BASE}`,
   },
@@ -178,7 +190,7 @@ const THEMES: ThemeDef[] = [
       `original seasonal themed design — generic holiday or season motifs (winter, spring, summer, autumn), no real holiday brand mascots or specific commercial holiday characters, ${v}, transparent background. ${GUARD_BASE}`,
   },
   {
-    key: "travel", label: LABEL.travel,
+    key: "travel", label: LABEL.travel, wantsText: true,
     buildPrompt: (v) =>
       `original travel / wanderlust themed design — generic motifs (airplane, suitcase, compass, mountains, map, globe, generic landmarks with no real brand logos), original English slogan where text applies, ${v}, transparent background. ${GUARD_BASE}`,
   },
@@ -327,9 +339,19 @@ function buildPromptForTheme(
   // Universal anti-backdrop guard — appended to BOTH the theme and custom
   // paths so no agent generation renders on a card/paper/poster/object.
   const noBackdrop = ` ${GUARD_NO_BACKDROP}`;
-  // Theme path: no user-supplied slogan (themes describe their own art
-  // direction; any lettering they mention is left to the model).
-  if (theme) return { themeLabel: theme.label, prompt: theme.buildPrompt(variation) + noGarment + noBackdrop + stylePhrase, slogan: "" };
+  // Theme path. Themes flagged wantsText inherently ask for a slogan, so send
+  // the generic hint as `text` (→ proxy emits TYPOGRAPHY, not "no text") and
+  // append the anti-card guard like the custom path. Unflagged themes keep
+  // slogan: "" — byte-identical to before.
+  if (theme) {
+    const themeSlogan = theme.wantsText ? THEME_TEXT_HINT : "";
+    const themeSloganGuard = themeSlogan ? ` ${GUARD_SLOGAN_NO_CARD}` : "";
+    return {
+      themeLabel: theme.label,
+      prompt: theme.buildPrompt(variation) + noGarment + noBackdrop + themeSloganGuard + stylePhrase,
+      slogan: themeSlogan,
+    };
+  }
   // Custom prompt path — wrap with the base copyright guard since we
   // don't know the cultural context. The previous version of this line
   // referenced the renamed COPYRIGHT_GUARD_EN constant and silently
