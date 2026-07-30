@@ -15,8 +15,10 @@
 //      char_count, written } per success, or { slug, error, written:false }
 //      per per-row failure, plus a summary { processed, written, failed }.
 //
-// Auth: verify_jwt = false (see supabase/config.toml) — invoked during
-// dry-run testing from the admin's machine. Tighten before production use.
+// Auth: verify_jwt = true (see supabase/config.toml) — the gateway drops
+// callers without a valid JWT, and the handler additionally requires the
+// caller to hold the `admin` role via has_role (401 without a user, 403
+// without the role). Admin-only in both layers.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

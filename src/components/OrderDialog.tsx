@@ -63,7 +63,13 @@ interface OrderDialogProps {
 async function uploadMockupImage(dataUrl: string, orderId: string, side: string): Promise<string> {
   const blob = await dataUrlToBlob(dataUrl);
   console.log(`[OrderDialog] Uploading ${side} mockup: ${blob.size} bytes`);
-  const path = `order-mockups/${orderId}-${side}.png`;
+  // Random segment makes the object path unguessable: the storage INSERT
+  // policy allows any anon/authed caller to write under order-mockups/, so a
+  // predictable `${orderId}-${side}.png` could be pre-created or targeted by
+  // anyone who learned an order id. Nothing downstream parses this filename —
+  // the resulting public URL is stored in front_mockup_url / back_mockup_url
+  // and every reader (admin, order cards, emails) uses that column.
+  const path = `order-mockups/${orderId}-${side}-${crypto.randomUUID()}.png`;
   const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: "image/png" });
   console.log(`[OrderDialog] ${side} mockup uploaded:`, publicUrl);
   return publicUrl;
