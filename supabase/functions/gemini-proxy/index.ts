@@ -750,7 +750,17 @@ serve(async (req) => {
       messages = buildGenerateDesignMessages(params);
 
     } else if (action === "convert-bg-black") {
-      model = "google/gemini-3-pro-image-preview";
+      // COST GATE (revert: set this to the pro model unconditionally).
+      // Flash produces an acceptable difference-matte for FLAT ILLUSTRATION
+      // (solid colors, hard edges), which is the bulk of generations. Realistic
+      // /photo designs keep pro: their mattes need pixel-level fidelity across
+      // soft edges, hair and gradients, where flash drift causes halos.
+      // FAIL-SAFE: only an explicit isRealistic === false opts into flash, so a
+      // caller that omits the flag (older deployed client) still gets pro.
+      model = params.isRealistic === false
+        ? "google/gemini-2.5-flash-image"
+        : "google/gemini-3-pro-image-preview";
+      console.log(`[gemini-proxy] convert-bg-black: isRealistic=${params.isRealistic} model=${model}`);
       messages = [{
         role: "user",
         content: [

@@ -491,7 +491,10 @@ export async function runTransparencyPipeline(
 
   try {
     // Try difference matting: convert white bg to black bg, then extract alpha
-    const blackBgResult = await callGemini("convert-bg-black", { image: designBase64 });
+    // isRealistic is forwarded ONLY so gemini-proxy can pick the matte model
+    // (flash for flat illustration, pro for photoreal — cost gate). It does not
+    // affect the matting math, thresholds, or the fallback below.
+    const blackBgResult = await callGemini("convert-bg-black", { image: designBase64, isRealistic });
     const whiteImg = await loadImage(designBase64);
     const blackImg = await loadImage(blackBgResult.image);
     const whiteCanvas = imageToCanvas(whiteImg);
