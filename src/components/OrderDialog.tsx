@@ -132,7 +132,9 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const [comment, setComment] = useState("");
   const [delivery, setDelivery] = useState<DeliveryType>("pickup");
   const [address, setAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bog");
+  // TBC/Flitt is the only offered method (BOG removed from checkout); the
+  // "bog" type value survives for historical orders only.
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("tbc");
 
   // SAFETY INVARIANT: the displayed "სულ" below and the `amount` sent to
   // the payment edge function MUST both derive from this single variable.

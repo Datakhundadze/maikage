@@ -1,6 +1,9 @@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
+// "bog" is retained ONLY so historical orders (payment_provider = "bog") and
+// the still-live BOG callback/status code keep typechecking — Bank of Georgia
+// is no longer offered at checkout (METHODS below lists TBC/Flitt only).
 export type PaymentMethod = "bog" | "tbc";
 
 // width/height match each PNG's intrinsic aspect (scaled-down) so the
@@ -23,16 +26,6 @@ const METHODS: {
   bankLogoHeight: number;
   cards: CardLogo[];
 }[] = [
-  {
-    value: "bog",
-    label: "საქართველოს ბანკი",
-    desc: "ბარათით გადახდა",
-    bankLogo: "/payment-logos/bog.png",
-    bankAlt: "Bank of Georgia",
-    bankLogoWidth: 77,
-    bankLogoHeight: 13,
-    cards: [CARD_VISA, CARD_MC],
-  },
   {
     value: "tbc",
     label: "TBC",
