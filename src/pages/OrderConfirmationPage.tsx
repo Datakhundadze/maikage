@@ -145,7 +145,10 @@ export default function OrderConfirmationPage() {
           item_id: r.id,
           item_name: [r.product, r.sub_product, r.color, r.size].filter(Boolean).join(" "),
           item_category: r.product,
-          price: Math.max(0, (Number(r.total_price) || 0) - (Number(r.delivery_price) || 0)),
+          // product_price directly: total_price − delivery_price used to be
+          // equivalent, but total_price now also carries the once-per-order bag
+          // fee on row 0, which would inflate that item's reported price.
+          price: Number(r.product_price) || 0,
           quantity: 1,
         }))
       : [{ item_id: orderId, item_name: "maika.ge order", quantity: 1 }];
