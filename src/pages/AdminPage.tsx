@@ -34,7 +34,14 @@ import SeoHead from "@/components/SeoHead";
 type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "blog" | "feedback" | "chat-history";
 type Mode = "login" | "signup" | "forgot";
 
-const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+// Cost control — flip to true to re-enable the AI Trend Agent tab. The tab
+// button is filtered out of TABS while false, but the lazy import, the Tab
+// union member, the readTabFromUrl entry and the render line all stay live,
+// so ?tab=ai-agent still opens it (deliberate escape hatch) and the component
+// keeps compiling.
+const AI_AGENT_ENABLED = false;
+
+const ALL_TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "დეშბორდი", icon: LayoutDashboard },
   { id: "orders", label: "შეკვეთები", icon: ShoppingCart },
   { id: "users", label: "მომხმარებლები", icon: Users },
@@ -52,6 +59,8 @@ const TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "feedback", label: "შენიშვნები", icon: MessageSquare },
   { id: "chat-history", label: "ჩატის ისტორია", icon: MessageCircle },
 ];
+
+const TABS = ALL_TABS.filter((t) => t.id !== "ai-agent" || AI_AGENT_ENABLED);
 
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);

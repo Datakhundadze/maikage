@@ -151,7 +151,9 @@ export default function CartPage() {
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bog");
+  // TBC/Flitt is the only offered method (BOG removed from checkout); the
+  // "bog" type value survives for historical orders only.
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("tbc");
 
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = totalPrice + deliveryPrice;
