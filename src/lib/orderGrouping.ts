@@ -19,13 +19,16 @@ export interface CustomerOrder {
   size: string | null;
   total_price: number;
   delivery_price: number;
+  /** Per-item price excluding delivery and order-level fees — used for GA4
+   *  item pricing (total_price also carries the bag fee on the first row). */
+  product_price: number;
   front_mockup_url: string | null;
   back_mockup_url: string | null;
 }
 
 /** Columns to SELECT for the customer views — keep in sync with CustomerOrder. */
 export const CUSTOMER_ORDER_COLUMNS =
-  "id, cart_id, created_at, status, payment_status, product, sub_product, color, size, total_price, delivery_price, front_mockup_url, back_mockup_url";
+  "id, cart_id, created_at, status, payment_status, product, sub_product, color, size, total_price, delivery_price, product_price, front_mockup_url, back_mockup_url";
 
 export interface OrderGroup<T extends GroupableOrder> {
   key: string;

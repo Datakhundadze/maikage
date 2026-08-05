@@ -15,6 +15,7 @@ import type { DesignState } from "@/lib/designState";
 import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
 import { mergeDesignStateUrls, submitOrder } from "@/lib/orderSubmission";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
+import { BAG_FEE, BAG_FEE_LABEL_KA } from "@/lib/fees";
 
 type DeliveryType = "pickup" | "courier_tbilisi" | "courier_outside";
 
@@ -144,6 +145,11 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const productSubtotal = breakdown.total * qty;
   const totalWithDelivery = productSubtotal + deliveryPrice;
+  // Order total = products + delivery + the once-per-order bag fee. This is the
+  // SINGLE variable the displayed "სულ" and the payment `amount` both use, and
+  // it must equal SUM(total_price) across the inserted rows (payment validation
+  // rejects a mismatch of >= 1 GEL, and the fee is exactly 1).
+  const orderTotal = totalWithDelivery + BAG_FEE;
 
   // GA4 funnel: begin_checkout fires once each time the dialog opens (delivery
   // isn't chosen yet, so value = product subtotal). Ref guards re-renders while
@@ -249,12 +255,14 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       // Delivery is charged ONCE on the first row so the sum across rows
       // equals totalWithDelivery. Same pattern as CartPage.tsx:215-218.
       rows[0].delivery_price = deliveryPrice;
-      rows[0].total_price = rows[0].product_price + deliveryPrice;
+      // Bag fee rides on row 0 too (option A: no dedicated column), so
+      // SUM(total_price) === orderTotal exactly.
+      rows[0].total_price = rows[0].product_price + deliveryPrice + BAG_FEE;
 
       const redirectUrl = await submitOrder({
         rows,
         paymentOrderId: rows[0].id,
-        amount: totalWithDelivery,
+        amount: orderTotal,
         description: `${product} - ${subProduct} (${color})`,
         paymentMethod,
         cartId: cartId ?? undefined,
@@ -366,9 +374,13 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
                 <span>მიწოდება</span>
                 <span>{deliveryPrice === 0 ? "უფასო" : `${deliveryPrice} ₾`}</span>
               </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>{BAG_FEE_LABEL_KA}</span>
+                <span>{BAG_FEE} ₾</span>
+              </div>
               <div className="border-t border-border pt-1.5 mt-1.5 flex justify-between font-bold text-base text-card-foreground">
                 <span>სულ</span>
-                <span className="text-primary">{totalWithDelivery} ₾</span>
+                <span className="text-primary">{orderTotal} ₾</span>
               </div>
             </div>
           </div>

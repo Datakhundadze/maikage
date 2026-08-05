@@ -760,6 +760,16 @@ export default function AdminOrders() {
                         <span className="text-muted-foreground">მიწოდება:</span>
                         <span>{group.deliveryTotal === 0 ? "უფასო" : `${group.deliveryTotal} ₾`}</span>
                       </div>
+                      {/* Bag fee is folded into the first row's total_price (no
+                          dedicated column), so derive it: total − products −
+                          delivery. Renders only when non-zero, so pre-fee
+                          orders are displayed exactly as before. */}
+                      {group.groupTotal - group.productSubtotal - group.deliveryTotal > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">ჩანთა:</span>
+                          <span>{group.groupTotal - group.productSubtotal - group.deliveryTotal} ₾</span>
+                        </div>
+                      )}
                       <div className="flex justify-between border-t border-border pt-1 font-bold">
                         <span>სულ:</span>
                         <span>{group.groupTotal} ₾</span>

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import AppHeader from "@/components/AppHeader";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
+import { BAG_FEE, BAG_FEE_LABEL_KA } from "@/lib/fees";
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import SeoHead from "@/components/SeoHead";
 import { submitOrder } from "@/lib/orderSubmission";
@@ -157,6 +158,11 @@ export default function CartPage() {
 
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = totalPrice + deliveryPrice;
+  // Order total = products + delivery + the once-per-order bag fee. Both the
+  // displayed "სულ" and the payment `amount` use this, and it must equal
+  // SUM(total_price) across the inserted rows (payment validation rejects a
+  // mismatch of >= 1 GEL, and the fee is exactly 1).
+  const orderTotal = totalWithDelivery + BAG_FEE;
 
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -216,7 +222,9 @@ export default function CartPage() {
       // Charge delivery to the first order row so the sum matches totalWithDelivery
       if (rows.length > 0) {
         rows[0].delivery_price = deliveryPrice;
-        rows[0].total_price = rows[0].product_price + deliveryPrice;
+        // Bag fee rides on row 0 too (option A: no dedicated column), so
+        // SUM(total_price) === orderTotal exactly — for any cart size.
+        rows[0].total_price = rows[0].product_price + deliveryPrice + BAG_FEE;
       }
 
       const firstOrderId = rows[0].id;
@@ -235,7 +243,7 @@ export default function CartPage() {
       const redirectUrl = await submitOrder({
         rows,
         paymentOrderId: firstOrderId,
-        amount: totalWithDelivery,
+        amount: orderTotal,
         description,
         paymentMethod,
         cartId,
@@ -318,7 +326,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-base font-bold border-t border-border pt-2">
                 <span>სულ</span>
-                <span className="text-primary">{totalPrice} ₾ + მიწოდება</span>
+                <span className="text-primary">{totalPrice} ₾ + მიწოდება და {BAG_FEE_LABEL_KA}</span>
               </div>
               <Button
                 onClick={() => setShowCheckout(true)}
@@ -389,9 +397,13 @@ export default function CartPage() {
                   <span>მიწოდება</span>
                   <span>{deliveryPrice === 0 ? "უფასო" : `${deliveryPrice} ₾`}</span>
                 </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>{BAG_FEE_LABEL_KA}</span>
+                  <span>{BAG_FEE} ₾</span>
+                </div>
                 <div className="border-t border-border pt-1.5 mt-1.5 flex justify-between font-bold text-base">
                   <span>სულ</span>
-                  <span className="text-primary">{totalWithDelivery} ₾</span>
+                  <span className="text-primary">{orderTotal} ₾</span>
                 </div>
               </div>
 
