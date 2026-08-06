@@ -7,6 +7,71 @@ import { useToast } from "@/hooks/use-toast";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 
+// sessionStorage bridge to OrderDialog.uploadTryOnAssets, which reads these two
+// keys at order time and uploads them under order-originals/{orderId}/. Keys
+// MUST stay byte-identical to the reader in OrderDialog.tsx.
+const TRYON_PERSON_KEY = "maika-tryon-person";
+const TRYON_RESULT_KEY = "maika-tryon-result";
+
+// Best-effort downscale of a data URL to `maxEdge`px on the long edge, encoded
+// as JPEG at `quality`. Keeps the stashed person photo well under the ~5MB
+// sessionStorage budget. Returns the original string if anything goes wrong —
+// this is a size optimisation, never a hard requirement.
+async function downscaleDataUrl(dataUrl: string, maxEdge = 1200, quality = 0.8): Promise<string> {
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = dataUrl;
+    });
+    const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", quality);
+  } catch {
+    return dataUrl;
+  }
+}
+
+// Stash the try-on person photo + result for OrderDialog to attach to the order.
+// Quota-safe and fully best-effort: a QuotaExceededError (a phone photo can blow
+// the sessionStorage budget) is logged and swallowed so the working try-on flow
+// never breaks. The RESULT is written first and as-is — it's the artefact admin
+// needs — so if only one fits, the result wins and the person photo is dropped.
+async function persistTryOnAssets(personImage: string, resultImage: string): Promise<void> {
+  let resultStored = false;
+  try {
+    sessionStorage.setItem(TRYON_RESULT_KEY, resultImage);
+    resultStored = true;
+  } catch (e) {
+    console.warn("[TryOnModal] could not stash try-on result:", e);
+    try { sessionStorage.removeItem(TRYON_RESULT_KEY); } catch { /* ignore */ }
+  }
+
+  if (!resultStored) {
+    // Result alone didn't fit — don't leave a lone person photo behind to
+    // attach to an order with no matching result.
+    try { sessionStorage.removeItem(TRYON_PERSON_KEY); } catch { /* ignore */ }
+    return;
+  }
+
+  try {
+    const personSmall = await downscaleDataUrl(personImage, 1200, 0.8);
+    sessionStorage.setItem(TRYON_PERSON_KEY, personSmall);
+  } catch (e) {
+    // Result is already stored; drop the person photo silently rather than fail both.
+    console.warn("[TryOnModal] could not stash try-on person photo:", e);
+    try { sessionStorage.removeItem(TRYON_PERSON_KEY); } catch { /* ignore */ }
+  }
+}
+
 interface TryOnModalProps {
   open: boolean;
   onClose: () => void;
@@ -25,6 +90,9 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  // True only when the user left via the "Order" CTA, so handleClose keeps the
+  // stashed assets (the order flow needs them) instead of clearing them.
+  const orderedRef = useRef(false);
 
   const loadFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -55,6 +123,8 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
     if (!personImage) return;
     setLoading(true);
     setResultImage(null);
+    // Fresh run: any prior "ordered" intent no longer applies.
+    orderedRef.current = false;
     try {
       const { data, error } = await supabase.functions.invoke("gemini-proxy", {
         body: {
@@ -83,6 +153,13 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
       }
       if (!data?.image) throw new Error("AI-მ სურათი ვერ დააბრუნა");
       setResultImage(data.image);
+      // Stash person + result so OrderDialog.uploadTryOnAssets can attach them
+      // to the order. Only in an order-capable context (onOrder present) so a
+      // casual Studio try-on leaves no stale keys. Best-effort — persist never
+      // throws, so it can't break the working try-on flow.
+      if (onOrder) {
+        await persistTryOnAssets(personImage, data.image);
+      }
     } catch (err: any) {
       toast({ title: "შეცდომა", description: err.message, variant: "destructive" });
     } finally {
@@ -99,10 +176,25 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
   };
 
   const handleClose = () => {
+    // Closing WITHOUT ordering discards the try-on, so drop any stashed assets
+    // — they must never attach themselves to an unrelated later order. When the
+    // close is the order flow itself (orderedRef), keep them for OrderDialog.
+    if (!orderedRef.current) {
+      try { sessionStorage.removeItem(TRYON_PERSON_KEY); } catch { /* ignore */ }
+      try { sessionStorage.removeItem(TRYON_RESULT_KEY); } catch { /* ignore */ }
+    }
+    orderedRef.current = false;
     setPersonImage(null);
     setResultImage(null);
     setLoading(false);
     onClose();
+  };
+
+  // The "Order" CTA closes the modal on its way into the order flow; mark the
+  // exit as intentional so handleClose preserves the stashed try-on assets.
+  const handleOrderClick = () => {
+    orderedRef.current = true;
+    onOrder?.();
   };
 
   return (
@@ -176,7 +268,7 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
               onOrder (Simple). Generic callers (Studio) omit it, hiding this. */}
           {resultImage && onOrder && (
             <Button
-              onClick={onOrder}
+              onClick={handleOrderClick}
               className="w-full h-12 text-base font-bold rounded-xl gap-2"
             >
               <ShoppingBag className="h-4 w-4" /> {t(lang, "tryOn.order")}
