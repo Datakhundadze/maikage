@@ -836,7 +836,14 @@ export default function SimplePage() {
             designParams: { character: `${characterWithGuard} ${GUARD_ISOLATE_BG}`, scene: "", style: aiStyle, text: slogan, characterImages: [], sceneImage: null, styleImage: null, textImage: null },
             product: config.product,
             color: config.color,
-            speed: "fast",
+            // A slogan forces the pro model. "fast" selects
+            // gemini-2.5-flash-image, which garbles non-Latin scripts —
+            // Georgian slogans come back as scrambled Mtavruli capitals
+            // instead of the Mkhedruli that was asked for. This is the model
+            // the retired Studio used for text (speed defaulted to "pro"),
+            // so it restores the pre-regression behavior. Textless designs
+            // stay on flash — no cost change there.
+            speed: slogan ? "pro" : "fast",
           },
           placementCoords,
           productImageUrl,
@@ -862,7 +869,9 @@ export default function SimplePage() {
           character: characterWithGuard, scene: "", style: aiStyle, text: slogan,
           characterImages: [], sceneImage: null, styleImage: null, textImage: null,
           product: config.product, color: config.color,
-          speed: isRealistic ? "pro" : "fast", isRealistic,
+          // Slogan → pro, same reason as the without-background path above.
+          // Realistic already required pro (flash is biased toward illustration).
+          speed: slogan || isRealistic ? "pro" : "fast", isRealistic,
         });
         resultImage = rawImage;
         transferImage = rawImage;
