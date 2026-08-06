@@ -302,7 +302,7 @@ KA:
 - ატვირთეთ ფოტო ან დაწერეთ ტექსტი და შეუკვეთეთ რეგისტრაციის გარეშე.
 - ვირტუალური გასახდელი (Virtual Try-On): უფასო ფუნქცია — ატვირთეთ თქვენი ფოტო და ვირტუალურად
   მოირგეთ დიზაინი, ნახეთ როგორ გამოიყურება მაისურზე/ჰუდიზე თუ სხვა პროდუქტზე შეკვეთამდე.
-  ღილაკი „გასახდელი" პროდუქტის სურათის ქვეშაა.
+  ღილაკი „ვირტუალური გასახდელი" პროდუქტის სურათის ქვეშაა.
 
 EN:
 - AI design: on maika.ge you can create a unique design with AI for free, all in one place —
@@ -312,7 +312,7 @@ EN:
 - Upload a photo or type text and order without registration.
 - Virtual Try-On (ვირტუალური გასახდელი): a free feature — upload your photo and virtually
   try the design on, see how it looks on the t-shirt/hoodie or other product before ordering.
-  The "გასახდელი" (Try-On) button is below the product image.
+  The "ვირტუალური გასახდელი" (Try-On) button is below the product image.
 
 ═══════════════════════════════════════════════════════════════
 ## 13. SPORT & CORPORATE / სპორტული და კორპორატიული

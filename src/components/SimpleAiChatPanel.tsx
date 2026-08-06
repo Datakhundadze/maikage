@@ -341,14 +341,16 @@ export default function SimpleAiChatPanel({
                                 <ArrowDownToLine className="h-4 w-4" />
                                 {transferLabel}
                               </Button>
-                              <div className="grid grid-cols-3 gap-1.5">
-                                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onRegenerate}>
-                                  <RefreshCw className="h-3.5 w-3.5" /> {t(lang, "simpleAi.regenerate")}
-                                </Button>
-                                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onShare}>
-                                  <Share2 className="h-3.5 w-3.5" /> {t(lang, "simpleAi.share")}
-                                </Button>
-                                <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onTryOn}>
+                              <div className="space-y-1.5">
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onRegenerate}>
+                                    <RefreshCw className="h-3.5 w-3.5" /> {t(lang, "simpleAi.regenerate")}
+                                  </Button>
+                                  <Button variant="outline" size="sm" className="gap-1 text-xs" onClick={onShare}>
+                                    <Share2 className="h-3.5 w-3.5" /> {t(lang, "simpleAi.share")}
+                                  </Button>
+                                </div>
+                                <Button variant="outline" size="sm" className="w-full gap-1 text-xs" onClick={onTryOn}>
                                   <Shirt className="h-3.5 w-3.5" /> {t(lang, "simpleAi.tryOn")}
                                 </Button>
                               </div>
