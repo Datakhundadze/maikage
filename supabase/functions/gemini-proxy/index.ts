@@ -430,6 +430,17 @@ function buildGenerateDesignMessages(params: any) {
 
   const isRealistic = /realistic|photo|\u10e0\u10d4\u10d0\u10da\u10d8\u10e1\u10e2|\u10e4\u10dd\u10e2\u10dd/i.test(style || "");
 
+  // Belt-and-braces for Georgian typography. The model has been observed
+  // substituting Mtavruli capitals (U+1C90 block) in a scrambled letter order
+  // for the Mkhedruli (U+10D0 block) it was given. Naming the script only when
+  // the text actually contains Georgian codepoints keeps every other prompt
+  // byte-identical. Ranges: U+10A0-10FF (Asomtavruli + Mkhedruli),
+  // U+1C90-1CBF (Mtavruli).
+  const georgianScriptHint =
+    /[\u10a0-\u10ff\u1c90-\u1cbf]/.test(text)
+      ? " \u2014 the text is Georgian: render it in Mkhedruli script exactly as given, letter for letter; do not transliterate, do not substitute Latin or Mtavruli capital forms"
+      : "";
+
   const content: any[] = [];
 
   if (isRealistic) {
@@ -496,7 +507,7 @@ DESIGN SYSTEM:
 CHARACTER/SUBJECT: ${safeCharacter}
 ${scene ? `SCENE/ACTION: ${scene}` : ""}
 ${style ? `ARTISTIC STYLE: ${style}` : ""}
-${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated` : "DO NOT include any text, words, letters, numbers, or typography of any kind in the design. The design must be purely visual/illustrative with absolutely no written elements."}
+${text ? `TYPOGRAPHY: Include the exact text "${text}" — legibility is priority, make it stylish and integrated${georgianScriptHint}` : "DO NOT include any text, words, letters, numbers, or typography of any kind in the design. The design must be purely visual/illustrative with absolutely no written elements."}
 
 OUTPUT: A single standalone illustration with square (1:1) aspect ratio on a solid pure white (#FFFFFF) background. NO garments, NO t-shirt shapes, NO frames, NO borders, NO mockups — just the raw artwork floating on white.`,
     });
