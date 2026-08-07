@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { supabase } from "@/integrations/supabase/client";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PortfolioItem {
   title: string | null;
@@ -139,13 +140,17 @@ export default function PortfolioPage() {
             {shown.map((it, i) => (
               <figure
                 key={`${it.url}-${i}`}
-                className="group aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5"
+                className="group relative aspect-square rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-white/5"
               >
+                {/* Skeleton sits behind the lazy image; the image paints over
+                    it once it decodes, so no shift and no empty box. */}
+                <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
                 <img
                   src={it.url}
                   alt={it.alt}
-                  className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                  className="relative h-full w-full object-cover transition duration-300 group-hover:scale-105"
                   loading="lazy"
+                  decoding="async"
                 />
               </figure>
             ))}
