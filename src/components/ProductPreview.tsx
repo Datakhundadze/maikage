@@ -248,8 +248,13 @@ export default function ProductPreview({
   }, [baseImageUrl, isExactImage, effectiveColorHex]);
 
   const isDarkColor = ["Black", "Dark Navy", "Brown", "Burgundy", "Sol's Khaki", "Sol's Emerald", "Sol's Electric", "Sol's Navy", "Sol's Ultramarine"].includes(colorName);
-  const bgStyle = isDarkColor ? { backgroundColor: "#d0d0d0" } : undefined;
-  const bgClass = isDarkColor ? "" : "bg-card";
+  // Theme-independent preview backdrop so a design is always judged against a
+  // constant surface: light gray (#d0d0d0) behind dark garments, dark neutral
+  // (#1e1e1e) behind light garments. Light garments previously used bg-card,
+  // which followed the theme and turned green in the light ("green") theme.
+  // The two neutrals stay clearly distinct so light vs dark garments still read
+  // differently against them.
+  const bgStyle = { backgroundColor: isDarkColor ? "#d0d0d0" : "#1e1e1e" };
 
   // Determine which layers to render
   const hasLayers = layers && layers.length > 0;
@@ -257,7 +262,7 @@ export default function ProductPreview({
   return (
     <div className="flex h-full items-center justify-center p-8" onPointerDown={(e) => { if (e.target === e.currentTarget && onBackgroundClick) onBackgroundClick(); }}>
       <div
-        className={`relative w-full max-w-lg aspect-square rounded-2xl ${bgClass} border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300`}
+        className="relative w-full max-w-lg aspect-square rounded-2xl border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300"
         style={bgStyle}
         onPointerDown={(e) => {
           // Only fire if clicking directly on the container (background), not on a layer
