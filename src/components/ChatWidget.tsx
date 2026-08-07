@@ -99,8 +99,12 @@ export default function ChatWidget() {
         onClick={openPanel}
         aria-label={t(lang, "chat.launcher")}
         title={t(lang, "chat.launcher")}
-        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-        style={{ backgroundColor: ACCENT }}
+        // Theme-aware fill: the old hardcoded #26BB89 equals the light
+        // ("green") theme's own page background, so the launcher vanished there.
+        // bg-primary contrasts against the page in both themes (banana on black
+        // in dark, white on green in light) and primary-foreground keeps the
+        // icon legible on the fill.
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
       >
         <MessageCircle className="h-6 w-6" />
       </button>

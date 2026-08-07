@@ -131,7 +131,7 @@ export default function LandingPage() {
               {lang === "en" ? "easily" : "მარტივად"}
             </span>
           </h1>
-          <p className="text-lg sm:text-xl text-muted-foreground font-light tracking-wide">
+          <p className="text-lg sm:text-xl text-[#2a2a2a] dark:text-muted-foreground font-light tracking-wide">
             {lang === "en" ? "Design your unique products with ease" : "Create your unique design easily"}
           </p>
         </div>

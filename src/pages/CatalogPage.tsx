@@ -80,7 +80,7 @@ export default function CatalogPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 space-y-5">
           <div>
             <h1 className="text-2xl font-bold text-foreground">კატალოგი</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm text-[#2a2a2a] dark:text-muted-foreground mt-1">
               მზა დიზაინები — აირჩიე და დაიბეჭდე ნებისმიერ პროდუქტზე
             </p>
           </div>
