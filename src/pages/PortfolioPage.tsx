@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface PortfolioItem {
   title: string | null;
   url: string;
+  srcSet: string;
   category: string | null;
   alt: string;
 }
@@ -31,14 +32,22 @@ export default function PortfolioPage() {
         .order("sort_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (cancelled || !data) return;
-      const rows = (data as { title: string | null; image_path: string; category: string | null; alt_text: string | null }[]).map((r) => ({
-        title: r.title,
-        category: r.category,
-        // Display-only downscale (aspect-preserving contain transform).
-        url: transformedDisplayUrl(supabase.storage.from("portfolio").getPublicUrl(r.image_path).data.publicUrl, { width: 800 }),
-        // alt_text drives the <img> alt for SEO; fall back to title, then brand.
-        alt: r.alt_text || r.title || "Maika.ge პორტფოლიო",
-      }));
+      const rows = (data as { title: string | null; image_path: string; category: string | null; alt_text: string | null }[]).map((r) => {
+        const publicUrl = supabase.storage.from("portfolio").getPublicUrl(r.image_path).data.publicUrl;
+        // Display-only downscale (aspect-preserving contain transform). Serve a
+        // 400w/800w srcset so the ~180px mobile slot fetches 400w instead of a
+        // flat 800w; the sizes attr on the <img> matches the 2-col mobile /
+        // 3-col desktop grid. quality + resize=contain are unchanged (the
+        // helper's defaults).
+        return {
+          title: r.title,
+          category: r.category,
+          url: transformedDisplayUrl(publicUrl, { width: 400 }),
+          srcSet: `${transformedDisplayUrl(publicUrl, { width: 400 })} 400w, ${transformedDisplayUrl(publicUrl, { width: 800 })} 800w`,
+          // alt_text drives the <img> alt for SEO; fall back to title, then brand.
+          alt: r.alt_text || r.title || "Maika.ge პორტფოლიო",
+        };
+      });
       setItems(rows);
     })();
     return () => { cancelled = true; };
@@ -147,6 +156,8 @@ export default function PortfolioPage() {
                 <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
                 <img
                   src={it.url}
+                  srcSet={it.srcSet}
+                  sizes="(min-width: 1024px) 330px, (min-width: 640px) 33vw, 50vw"
                   alt={it.alt}
                   className="relative h-full w-full object-cover transition duration-300 group-hover:scale-105"
                   loading="lazy"
