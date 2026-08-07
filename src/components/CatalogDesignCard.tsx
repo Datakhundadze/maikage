@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ImageOff } from "lucide-react";
 import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Props {
   printFileUrl: string;
@@ -65,15 +66,14 @@ export default function CatalogDesignCard({
     return () => { cancelled = true; };
   }, [cacheKey, printFileUrl, productType, subProduct, color]);
 
-  // While compositing is in flight, render nothing and let the parent
-  // container's background (bg-muted/30 on the grid card, bg-card on the
-  // detail page) show through. The old fallback to fallbackUrl or
-  // printFileUrl rendered the design print PNG alone — without the
-  // t-shirt mockup behind it — which caused a visible flash on slow
-  // connections: the design appeared floating on the dark grid bg, then
-  // the composited mockup swapped in once the canvas work finished.
+  // While compositing is in flight, show a skeleton that fills the same
+  // aspect-square slot so nothing shifts when the composite lands. We do NOT
+  // fall back to fallbackUrl / printFileUrl here: that rendered the design
+  // print PNG alone — without the t-shirt mockup behind it — which caused a
+  // visible flash on slow connections (the design floating on the grid bg,
+  // then the composited mockup swapping in once the canvas work finished).
   if (!mockup && !failed) {
-    return null;
+    return <Skeleton className="w-full h-full" />;
   }
   const src = mockup ?? fallbackUrl ?? printFileUrl;
   if (!src) {
