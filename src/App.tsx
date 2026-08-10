@@ -126,6 +126,21 @@ function AppRoutes() {
   );
 }
 
+// Mount gate for the sitewide chat bubble. /chat IS a full-page chat, so the
+// floating launcher there is redundant and overlaps the page's send button on
+// mobile. Gating the MOUNT keeps ChatWidget itself untouched — it still owns
+// its own /admin self-hide. Needs to be a component so useLocation() runs
+// inside BrowserRouter.
+function ChatWidgetMount() {
+  const { pathname } = useLocation();
+  if (pathname === "/chat" || pathname.startsWith("/chat/")) return null;
+  return (
+    <Suspense fallback={null}>
+      <ChatWidget />
+    </Suspense>
+  );
+}
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -140,9 +155,7 @@ const App = () => (
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <AppRoutes />
                 </Suspense>
-                <Suspense fallback={null}>
-                  <ChatWidget />
-                </Suspense>
+                <ChatWidgetMount />
               </BrowserRouter>
             </TooltipProvider>
           </CartProvider>
