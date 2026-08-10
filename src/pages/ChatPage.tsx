@@ -9,6 +9,7 @@ import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
 import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH } from "@/lib/constructorSeed";
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
+import { TEXT_COLORS } from "@/lib/textColors";
 import { Button } from "@/components/ui/button";
 import SeoHead from "@/components/SeoHead";
 
@@ -39,9 +40,11 @@ const ATTACH_QUALITY = 0.8;
 // yields prose alone and NO button. Never a broken button, never an error.
 const MOCKUP_FENCE_RE = /```maika-mockup\b[\s\S]*?(?:```|$)/g;
 
-// useProductConfig's sessionStorage key — the constructor restores
-// product/brand/colour/side from it on mount, so seeding it is how those
-// fields travel. Must stay in sync with src/hooks/useProductConfig.ts.
+// useProductConfig's sessionStorage key. Read-only here, purely to know which
+// product THIS tab is currently on so an unresolvable field can fall back
+// sensibly during validation. The handoff itself does NOT go through this key —
+// it is sessionStorage, which the new tab would not inherit; the product
+// selection travels inside the localStorage seed instead.
 const PRODUCT_CONFIG_KEY = "maika-product-config";
 
 interface MockupSuggestion {
@@ -51,6 +54,8 @@ interface MockupSuggestion {
   color?: ProductColor;
   side?: "front" | "back";
   placement?: "center" | "left-chest" | "right-chest";
+  /** A NAME from the constructor's text-colour palette, never a raw hex. */
+  textColor?: string;
 }
 
 /** Remove every maika-mockup fence (closed OR truncated) from displayed text. */
@@ -200,6 +205,13 @@ function parseMockupSuggestion(raw: string): MockupSuggestion | null {
     if (typeof parsed.placement === "string") {
       const pl = norm(parsed.placement);
       if (pl === "center" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
+    }
+
+    // textColor — must NAME a colour in the constructor's own palette. Anything
+    // else (including a raw hex) is dropped, leaving the default black.
+    if (typeof parsed.textColor === "string") {
+      const hit = TEXT_COLORS.find((c) => norm(c.name) === norm(parsed.textColor as string));
+      if (hit) out.textColor = hit.name;
     }
 
     return out;
@@ -405,25 +417,43 @@ export default function ChatPage() {
   // didn't mention), stash the design layers, then switch to Simple mode.
   // If the seed write fails (quota / locked-down webview) we still navigate —
   // an empty constructor beats a button that does nothing.
+  // Hand the design to the constructor in a NEW TAB, so the customer keeps this
+  // conversation (messages, scroll and any attached photo are untouched — we
+  // never mutate state here).
+  //
+  // Everything the constructor needs rides in ONE localStorage seed: layers AND
+  // the product selection. sessionStorage would be wrong twice over — both
+  // `maika-mode` and `maika-product-config` live there and a new tab inherits
+  // neither. Constructor mode is signalled by the "?constructor=1" param, which
+  // useAppState honours when initialising `mode`.
   const openInConstructor = useCallback((m: MockupSuggestion) => {
+    // A product change without an explicit brand would carry a stale brand from
+    // another product; fall back to that product's catalog default.
+    const subProduct = m.subProduct ?? (m.product ? catalog.getDefaultSubProduct(m.product) : undefined);
+    writeConstructorSeed({
+      text: m.text,
+      textColor: m.textColor,
+      image: attachment ?? undefined,
+      side: m.side,
+      placement: m.placement,
+      product: m.product,
+      subProduct,
+      color: m.color,
+    });
+
+    const url = "/?constructor=1";
+    let opened: Window | null = null;
     try {
-      const raw = sessionStorage.getItem(PRODUCT_CONFIG_KEY);
-      const stored = raw ? JSON.parse(raw) : {};
-      const merged = { ...stored };
-      if (m.product) merged.product = m.product;
-      if (m.subProduct) merged.subProduct = m.subProduct;
-      if (m.color) merged.color = m.color;
-      if (m.side) merged.view = m.side;
-      // A product change without an explicit brand would leave a stale brand
-      // from another product; fall back to that product's default.
-      if (m.product && !m.subProduct) merged.subProduct = catalog.getDefaultSubProduct(m.product);
-      sessionStorage.setItem(PRODUCT_CONFIG_KEY, JSON.stringify(merged));
+      opened = window.open(url, "_blank", "noopener,noreferrer");
     } catch {
-      /* ignore — the constructor falls back to its own defaults */
+      opened = null;
     }
-    writeConstructorSeed({ text: m.text, image: attachment ?? undefined, side: m.side, placement: m.placement });
-    setMode("simple");
-    navigate("/");
+    // Popup blocked (or refused): fall back to this tab so the button is never
+    // a no-op. The seed is already stored, so either route finds it.
+    if (!opened) {
+      setMode("simple");
+      navigate(url);
+    }
   }, [attachment, setMode, navigate]);
 
   return (

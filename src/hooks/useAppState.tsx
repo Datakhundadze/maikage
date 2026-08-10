@@ -42,6 +42,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   });
 
   const [mode, setModeState] = useState<AppMode>(() => {
+    // The constructor has no URL of its own — it is a mode view at "/" gated on
+    // this state, and `maika-mode` lives in sessionStorage, which a NEW TAB does
+    // not inherit. So the "ესკიზის ნახვა" handoff opens "/?constructor=1" and we
+    // honour that param here; without it the new tab would land on the landing
+    // page and the seed would never be applied. (App.tsx only intercepts
+    // "?payment" at "/", so this param passes through to the mode gate.)
+    try {
+      if (new URLSearchParams(window.location.search).get("constructor") === "1") return "simple";
+    } catch { /* ignore — fall through to the stored mode */ }
     const saved = sessionStorage.getItem("maika-mode") as AppMode;
     return saved === "simple" ? saved : "landing";
   });
