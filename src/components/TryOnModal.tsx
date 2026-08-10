@@ -6,39 +6,15 @@ import { Upload, X, Download, Shirt, ShoppingBag } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
+// Downscale helper — extracted to src/lib so /chat's photo attachment shares
+// one implementation. Same function, same defaults, same best-effort contract.
+import { downscaleDataUrl } from "@/lib/imageDownscale";
 
 // sessionStorage bridge to OrderDialog.uploadTryOnAssets, which reads these two
 // keys at order time and uploads them under order-originals/{orderId}/. Keys
 // MUST stay byte-identical to the reader in OrderDialog.tsx.
 const TRYON_PERSON_KEY = "maika-tryon-person";
 const TRYON_RESULT_KEY = "maika-tryon-result";
-
-// Best-effort downscale of a data URL to `maxEdge`px on the long edge, encoded
-// as JPEG at `quality`. Keeps the stashed person photo well under the ~5MB
-// sessionStorage budget. Returns the original string if anything goes wrong —
-// this is a size optimisation, never a hard requirement.
-async function downscaleDataUrl(dataUrl: string, maxEdge = 1200, quality = 0.8): Promise<string> {
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = reject;
-      el.src = dataUrl;
-    });
-    const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
-    const w = Math.max(1, Math.round(img.width * scale));
-    const h = Math.max(1, Math.round(img.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return dataUrl;
-    ctx.drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", quality);
-  } catch {
-    return dataUrl;
-  }
-}
 
 // Stash the try-on person photo + result for OrderDialog to attach to the order.
 // Quota-safe and fully best-effort: a QuotaExceededError (a phone photo can blow
