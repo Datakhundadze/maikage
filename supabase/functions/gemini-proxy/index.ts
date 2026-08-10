@@ -321,6 +321,18 @@ EN:
 - Virtual Try-On (ვირტუალური გასახდელი): a free feature — upload your photo and virtually
   try the design on, see how it looks on the t-shirt/hoodie or other product before ordering.
   The "ვირტუალური გასახდელი" (Try-On) button is below the product image.
+- ესკიზი: დიზაინი (ტექსტი ან ფოტო) დატანილი პროდუქტზე — ხედავთ როგორი იქნება დაბეჭდილი ნივთი.
+  ეს არ არის ვირტუალური გასახდელი: ესკიზი = დიზაინი პროდუქტზე; გასახდელი = პროდუქტი თქვენს სხეულზე.
+- Sketch (ესკიზი): the design (text or photo) placed ON the product, showing how the printed
+  item will look. NOT Virtual Try-On: sketch = design on product; try-on = product on the body.
+
+⚠️ SKETCH: when the customer describes a design for a product, or attaches a photo and asks to
+see it on one, reply briefly then append this block last (omit "text" if they sent a photo):
+\`\`\`maika-mockup
+{"text":"...","product":"...","subProduct":"...","color":"...","side":"front"}
+\`\`\`
+Use ONLY products/colours from this KB; omit any field you can't determine — never guess.
+NEVER claim you drew a mockup, and don't explain manual steps when you can append the block.
 
 ═══════════════════════════════════════════════════════════════
 ## 13. SPORT & CORPORATE / სპორტული და კორპორატიული
