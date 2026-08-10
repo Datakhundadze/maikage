@@ -10,6 +10,7 @@ import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt } from 
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { readConstructorSeed, clearConstructorSeed } from "@/lib/constructorSeed";
 import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
@@ -1270,6 +1271,67 @@ export default function SimplePage() {
     setSelectedLayerId(prev => (prev === id ? null : prev));
     setOpenFontPickerId(prev => (prev === id ? null : prev));
   }, [setSideData]);
+
+  // ── Constructor seed intake (one-shot) ───────────────────────────────
+  // A sender (today: the /chat "ესკიზის ნახვა" button) stashes a design in
+  // sessionStorage, then navigates here with setMode("simple"). We apply it
+  // exactly once per mount and clear it, so it never replays on a later visit.
+  //
+  // Product / brand / colour / side arrive separately via `maika-product-config`,
+  // which useProductConfig already restores on mount — that is why the layers
+  // below can simply target the CURRENT view. When the seed names a side that
+  // the restored config didn't apply, we switch the view first and let this
+  // effect re-run, so a layer never lands on the side the customer isn't seeing.
+  //
+  // APPENDS ONLY: existing frontData/backData layers are never cleared or
+  // replaced, and a side already at MAX_PHOTOS / MAX_TEXTS silently skips that
+  // layer rather than dropping the customer's own work.
+  const seedAppliedRef = useRef(false);
+  useEffect(() => {
+    if (seedAppliedRef.current) return;
+    const seed = readConstructorSeed();
+    if (!seed) {
+      seedAppliedRef.current = true;
+      return;
+    }
+    // Align the view before seeding; this effect re-runs once it settles.
+    if (seed.side && seed.side !== currentView) {
+      productConfig.setView(seed.side);
+      return;
+    }
+    seedAppliedRef.current = true;
+    clearConstructorSeed();
+
+    // Photo: reuse the existing add path so the async naturalAspect probe and
+    // contain-fit behave exactly as they do for a manual upload.
+    if (seed.image) {
+      addPhotoLayer(seed.image);
+    }
+
+    // Text: same layer shape addTextLayer builds (Georgian FONTS[0], black,
+    // staggered coords) but with the seeded content, so the rasterisation
+    // effect picks it up and fills naturalAspect normally.
+    const seedText = seed.text?.trim();
+    if (seedText) {
+      const id = `text-${++textIdCounter}`;
+      let added = false;
+      setSideData((prev) => {
+        if (prev.texts.length >= MAX_TEXTS) return prev;
+        added = true;
+        const newText: TextLayer = {
+          id,
+          content: seedText,
+          font: FONTS[0],
+          color: "#000000",
+          coords: staggeredTextCoords(prev.texts.length),
+        };
+        return { ...prev, texts: [...prev.texts, newText] };
+      });
+      // Select the text last so it wins when a photo was seeded too, matching
+      // normal add behaviour (the most recently added layer is selected).
+      if (added) setSelectedLayerId(id);
+    }
+  }, [currentView, productConfig, addPhotoLayer, setSideData]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit
