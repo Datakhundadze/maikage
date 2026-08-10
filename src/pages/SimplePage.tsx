@@ -1364,6 +1364,31 @@ export default function SimplePage() {
       productConfig.setView(seed.side);
       return;
     }
+    // ── GENERATION seed (stage 1) ────────────────────────────────────
+    // Runs only AFTER the product phases above have settled, because
+    // handleAiGenerate reads productConfig.config (product/colour/view) and
+    // the aiStyle / aiWithBackground state to build its request. Each is its
+    // own phase so React has committed it before the next one reads it.
+    if (seed.generate) {
+      if (seed.generate.style !== undefined && seed.generate.style !== aiStyle) {
+        setAiStyle(seed.generate.style);
+        return;
+      }
+      const wantBg = seed.generate.withBackground === true;
+      if (wantBg !== aiWithBackground) {
+        setAiWithBackground(wantBg);
+        return;
+      }
+      seedAppliedRef.current = true;
+      // Call the EXISTING entry point with a prompt override — never the
+      // pipeline directly. handleAiGenerate owns GUARD_NO_GARMENT,
+      // GUARD_ISOLATE_BG, the slogan quote-extraction and the forced-Pro
+      // routing for Georgian slogans; bypassing it would reintroduce the
+      // Georgian typography regression. Its internals are untouched.
+      void handleAiGenerate(seed.generate.prompt);
+      return;
+    }
+
     // A chest placement for a PHOTO is applied through the constructor's own
     // mechanism: nextPhotoCoords is "where the empty frame sits", and
     // addPhotoLayer uses it verbatim for the first photo. Set it, then let this
@@ -1416,7 +1441,7 @@ export default function SimplePage() {
       // normal add behaviour (the most recently added layer is selected).
       if (added) setSelectedLayerId(id);
     }
-  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords]);
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, aiStyle, aiWithBackground, handleAiGenerate]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit

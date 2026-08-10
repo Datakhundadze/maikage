@@ -6,7 +6,8 @@
 // byte-for-byte what ChatPage ran before the extraction.
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
 import { TEXT_COLORS } from "@/lib/textColors";
-import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH } from "@/lib/constructorSeed";
+import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH, MAX_SEED_PROMPT_LENGTH } from "@/lib/constructorSeed";
+import { getStyleOptions } from "@/lib/designStyles";
 
 /** The constructor entry point — mode is signalled by the query param. */
 export const CONSTRUCTOR_URL = "/?constructor=1";
@@ -95,6 +96,74 @@ function storedProductContext(): { product: ProductType; subProduct: string } {
   } catch {
     return { product: fallback, subProduct: catalog.getDefaultSubProduct(fallback) };
   }
+}
+
+
+/**
+ * Validate the product fields shared by BOTH fenced blocks, so mockup and
+ * generate can never disagree about what a valid product/brand/colour is.
+ * Every surviving value is a real catalog entry; unresolvable fields are
+ * dropped (the constructor keeps whatever it already has).
+ */
+function parseSharedProductFields(parsed: Record<string, unknown>): {
+  product?: ProductType; subProduct?: string; color?: ProductColor; side?: "front" | "back";
+} {
+  const out: { product?: ProductType; subProduct?: string; color?: ProductColor; side?: "front" | "back" } = {};
+
+  if (typeof parsed.product === "string") {
+    const asType = resolveProductType(parsed.product);
+    if (asType) {
+      out.product = asType;
+    } else {
+      const asBrand = resolveBrand(parsed.product);
+      if (asBrand) { out.product = asBrand.product; out.subProduct = asBrand.subProduct; }
+    }
+  }
+
+  if (typeof parsed.subProduct === "string") {
+    const base = out.product ?? storedProductContext().product;
+    const hit = catalog.getSubProducts(base).find((sp) => norm(sp) === norm(parsed.subProduct as string));
+    if (hit) {
+      out.subProduct = hit;
+      if (!out.product) out.product = base;
+    } else {
+      const asBrand = resolveBrand(parsed.subProduct);
+      if (asBrand && !out.product) { out.product = asBrand.product; out.subProduct = asBrand.subProduct; }
+    }
+  }
+
+  if (typeof parsed.color === "string") {
+    const canonical = COLORS.find((c) => norm(c.name) === norm(parsed.color as string))?.name;
+    if (canonical) {
+      const ctx = storedProductContext();
+      const base = out.product ?? ctx.product;
+      const sub = out.subProduct ?? (out.product ? catalog.getDefaultSubProduct(base) : ctx.subProduct);
+      if (catalog.getAvailableColors(base, sub).includes(canonical)) out.color = canonical;
+    }
+  }
+
+  if (typeof parsed.side === "string") {
+    const sd = norm(parsed.side);
+    if (sd === "front" || sd === "back") out.side = sd;
+  }
+
+  return out;
+}
+
+/**
+ * Open the constructor in a new tab.
+ * @returns true when the tab opened; false when the popup was blocked and the
+ *   caller should fall back to navigating its own tab.
+ */
+function openConstructorTab(): boolean {
+  try {
+    // NOTE: do NOT pass "noopener"/"noreferrer" in the features string — per the
+    // HTML spec window.open() then returns null even on success, so the blocked
+    // test would always fire. Sever the opener manually instead.
+    const opened = window.open(CONSTRUCTOR_URL, "_blank");
+    if (opened) { opened.opener = null; return true; }
+  } catch { /* fall through */ }
+  return false;
 }
 
 /**
@@ -228,19 +297,95 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
     color: m.color,
   });
 
+  return openConstructorTab();
+}
+
+
+// ── Generation suggestion (maika-generate) ───────────────────────────────
+// Stage 1: the chat never generates and never shows an image. It emits this
+// block, the customer clicks, and generation runs INSIDE the constructor via
+// handleAiGenerate — which owns the no-garment / isolate-bg guards, the slogan
+// quote-extraction and the forced-Pro routing for Georgian slogans.
+const GENERATE_FENCE_RE = /```maika-generate\b[\s\S]*?(?:```|$)/g;
+
+export interface GenerateSuggestion {
+  prompt: string;
+  /** A real chip value, or "" for Auto. Never free text. */
+  style: string;
+  withBackground: boolean;
+  product?: ProductType;
+  subProduct?: string;
+  color?: ProductColor;
+  side?: "front" | "back";
+}
+
+/**
+ * Every style chip the constructor offers, both languages, as the canonical
+ * strings. Validation matches against this union case-insensitively and returns
+ * the CANONICAL value, so `isRealistic` (/realistic|photo|რეალ/i) keeps working
+ * for either language. Anything unrecognised falls back to "" (Auto) rather
+ * than injecting the raw string into the prompt.
+ */
+function allStyleOptions(): string[] {
+  return [...getStyleOptions("en"), ...getStyleOptions("ge")];
+}
+
+/** Resolve a style to a real chip value, or "" (Auto) when unrecognised. */
+export function resolveStyle(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  const key = norm(raw);
+  if (!key || key === "auto" || key === "ავტომატური") return "";
+  return allStyleOptions().find((o) => norm(o) === key) ?? "";
+}
+
+/** Remove every maika-generate fence (closed OR truncated) from displayed text. */
+export function stripGenerateFence(raw: string): string {
+  return raw.replace(GENERATE_FENCE_RE, "").trim();
+}
+
+/**
+ * Parse + validate the generation block. Same discipline as the mockup block:
+ * a closed fence only, try/catch, every field validated, and null on any
+ * failure so the prose stands alone with no button. `prompt` is required.
+ */
+export function parseGenerateSuggestion(raw: string): GenerateSuggestion | null {
   try {
-    // NOTE: do NOT pass "noopener"/"noreferrer" in the features string. Per the
-    // HTML spec window.open() returns null whenever those are set — even on
-    // success — so the popup-blocked test would ALWAYS fire and the caller's tab
-    // would navigate away too. Sever the opener manually instead: same
-    // protection, and a truthy handle we can actually test.
-    const opened = window.open(CONSTRUCTOR_URL, "_blank");
-    if (opened) {
-      opened.opener = null;
-      return true;
-    }
+    const match = raw.match(/```maika-generate\s*([\s\S]*?)```/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[1]) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const prompt = typeof parsed.prompt === "string" ? parsed.prompt.trim() : "";
+    if (!prompt || prompt.length > MAX_SEED_PROMPT_LENGTH) return null;
+
+    // Reuse the mockup validator for the shared product fields, so the two
+    // blocks can never disagree about what a valid product/colour is.
+    const shared = parseSharedProductFields(parsed);
+
+    return {
+      prompt,
+      style: resolveStyle(parsed.style),
+      // Absent → today's default (without background).
+      withBackground: parsed.withBackground === true,
+      ...shared,
+    };
   } catch {
-    /* fall through to the caller's same-tab fallback */
+    return null;
   }
-  return false;
+}
+
+/**
+ * Hand a generation to the constructor. Same seed + new-tab mechanics as the
+ * mockup handoff; the constructor runs handleAiGenerate on arrival.
+ */
+export function openGenerateInConstructor(g: GenerateSuggestion): boolean {
+  const subProduct = g.subProduct ?? (g.product ? catalog.getDefaultSubProduct(g.product) : undefined);
+  writeConstructorSeed({
+    product: g.product,
+    subProduct,
+    color: g.color,
+    side: g.side,
+    generate: { prompt: g.prompt, style: g.style, withBackground: g.withBackground },
+  });
+  return openConstructorTab();
 }

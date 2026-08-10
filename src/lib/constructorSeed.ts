@@ -32,6 +32,9 @@ const SEED_TTL_MS = 5 * 60 * 1000; // 5 minutes
  */
 export const MAX_SEED_TEXT_LENGTH = 60;
 
+/** Cap on a seeded generation prompt — generous, but bounds untrusted output. */
+export const MAX_SEED_PROMPT_LENGTH = 400;
+
 export interface ConstructorSeed {
   /** Text to place as a text layer. */
   text?: string;
@@ -51,6 +54,17 @@ export interface ConstructorSeed {
   product?: string;
   subProduct?: string;
   color?: string;
+  /**
+   * Stage-1 generation handoff. When present the constructor runs its OWN
+   * AI generation (handleAiGenerate) with this prompt instead of, or as well
+   * as, seeding layers. `style` is already validated to a real chip value (or
+   * "" for Auto) by the sender — never free text.
+   */
+  generate?: {
+    prompt: string;
+    style?: string;
+    withBackground?: boolean;
+  };
   /** Epoch ms, stamped on write; used to discard stale seeds. */
   ts?: number;
 }
@@ -61,7 +75,7 @@ export interface ConstructorSeed {
  *   should still open the constructor — it simply opens empty).
  */
 export function writeConstructorSeed(seed: ConstructorSeed): boolean {
-  if (!seed.text && !seed.image && !seed.product && !seed.color) return false;
+  if (!seed.text && !seed.image && !seed.product && !seed.color && !seed.generate?.prompt) return false;
   try {
     localStorage.setItem(SEED_KEY, JSON.stringify({ ...seed, ts: Date.now() }));
     return true;
@@ -112,8 +126,19 @@ export function consumeConstructorSeed(): ConstructorSeed | null {
     const subProduct = typeof parsed.subProduct === "string" ? parsed.subProduct : undefined;
     const color = typeof parsed.color === "string" ? parsed.color : undefined;
 
-    if (!text && !image && !product && !color) return null;
-    return { text, textColor, image, side, placement, product, subProduct, color };
+    // Generation payload — prompt is required for it to mean anything.
+    let generate: ConstructorSeed["generate"];
+    const g = parsed.generate;
+    if (g && typeof g === "object" && typeof g.prompt === "string" && g.prompt.trim()) {
+      generate = {
+        prompt: g.prompt.trim().slice(0, MAX_SEED_PROMPT_LENGTH),
+        style: typeof g.style === "string" ? g.style : "",
+        withBackground: g.withBackground === true,
+      };
+    }
+
+    if (!text && !image && !product && !color && !generate) return null;
+    return { text, textColor, image, side, placement, product, subProduct, color, generate };
   } catch {
     return null;
   }
