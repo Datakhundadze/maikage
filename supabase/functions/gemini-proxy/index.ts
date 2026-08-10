@@ -148,7 +148,7 @@ EN — T-shirts (single-side print — front only or back only — included):
 (Same rule: base price = one side only. See §2a.)
 
 KA — ჰუდები (ცალმხრივი ბეჭდვა შედის):
-- GILDAN Bomber: 75₾ · ორმხრივი 90₾
+- GILDAN Bomber: 80₾ · ორმხრივი 95₾
 - GILDAN Hoodie: 80₾ · ორმხრივი 95₾
 - JEL Standard Hoodie: 85₾ · ორმხრივი 100₾
 - Premium Washed Hoodie: 95₾ · ორმხრივი 110₾
@@ -156,7 +156,7 @@ KA — ჰუდები (ცალმხრივი ბეჭდვა შე
 - JEL Zipper (ელვიანი): 105₾ · ორმხრივი 120₾
 
 EN — Hoodies (single-side print included):
-- GILDAN Bomber: 75₾ · two-sided 90₾
+- GILDAN Bomber: 80₾ · two-sided 95₾
 - GILDAN Hoodie: 80₾ · two-sided 95₾
 - JEL Standard Hoodie: 85₾ · two-sided 100₾
 - Premium Washed Hoodie: 95₾ · two-sided 110₾
