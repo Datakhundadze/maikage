@@ -199,6 +199,11 @@ export default function ChatPage() {
   // the constructor. Never uploaded anywhere.
   const [attachment, setAttachment] = useState<string | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
+  // The thumbnail is hidden once the message is sent so the customer never
+  // thinks a second photo is riding on their next question — but `attachment`
+  // itself is deliberately kept, because the "ესკიზის ნახვა" handoff still
+  // needs that data URL. Picking a new photo shows the preview again.
+  const [attachmentSent, setAttachmentSent] = useState(false);
   // One stable id per page mount. The "chatpage-" prefix makes these
   // conversations recognizable against widget ones in the admin chat history
   // (chat_logs has no source/channel column, and this needs no schema change).
@@ -242,6 +247,7 @@ export default function ChatPage() {
       const raw = reader.result as string;
       // Downscale before it ever leaves the device.
       setAttachment(await downscaleDataUrl(raw, ATTACH_MAX_EDGE, ATTACH_QUALITY));
+      setAttachmentSent(false);
     };
     reader.onerror = () => {
       setAttachError(lang === "en" ? "Could not read that file." : "ფაილის წაკითხვა ვერ მოხერხდა.");
@@ -255,6 +261,8 @@ export default function ChatPage() {
     const next: ChatMsg[] = [...messages, { role: "user", content: text }];
     setMessages(next);
     setInput("");
+    // Hide the thumbnail; `attachment` itself is retained for the handoff.
+    setAttachmentSent(true);
     setLoading(true);
 
     // Only real (non-local) turns become conversation history for the model.
@@ -387,7 +395,7 @@ export default function ChatPage() {
         {attachError && (
           <p className="px-1 pb-1.5 text-xs text-destructive">{attachError}</p>
         )}
-        {attachment && (
+        {attachment && !attachmentSent && (
           <div className="flex items-center gap-2 px-1 pb-2">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border">
               <img src={attachment} alt="" className="h-full w-full object-cover" />
