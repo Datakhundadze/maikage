@@ -984,7 +984,30 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       // a silhouette/mask, which matting collapses into a binary mask. Green
       // keys far more reliably than white (which punches holes in white/skin/
       // highlight regions), so we ask for a green screen and key it client-side.
-      model = "google/gemini-3-pro-image-preview";
+      //
+      // COST GATE — flash. Revert this one line to
+      // "google/gemini-3-pro-image-preview" to undo it; nothing else changes.
+      //
+      // ⚠️ THIS ONE IS NOT LIKE convert-bg-black's GATE, AND THE DIFFERENCE IS
+      // AGAINST US. That gate moved only FLAT ILLUSTRATION to flash and kept
+      // pro for realistic/photographic input, on the stated grounds that
+      // photographic mattes "need pixel-level fidelity across soft edges, hair
+      // and gradients, where flash drift causes halos". isolate-subject's input
+      // is ALWAYS a photograph — it is the photo path by construction — so this
+      // is exactly the case that argument said to keep on pro.
+      //
+      // The mitigation is that the failure modes here are visible rather than
+      // subtle: the prompt below demands a uniform #00FF00 backdrop, no spill
+      // and no silhouette, and the client chroma-keys it. Green that drifts, or
+      // a subject flattened into a silhouette, shows up immediately as a ragged
+      // or hollow cut-out. It does not fail quietly.
+      //
+      // WHETHER FLASH IS GOOD ENOUGH HERE IS UNKNOWN AND CANNOT BE KNOWN FROM
+      // READING THE CODE. No side-by-side has been run on real customer photos
+      // — hair, fur, motion blur, low light, busy backgrounds. Treat this as a
+      // cost change made on a cost argument, watch the cut-outs, and revert the
+      // line above if quality drops.
+      model = "google/gemini-2.5-flash-image";
       messages = [{
         role: "user",
         content: [

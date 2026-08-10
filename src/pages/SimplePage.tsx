@@ -1110,10 +1110,30 @@ export default function SimplePage() {
   // difference matting (runTransparencyPipeline), which returns a silhouette/
   // mask for photographic subjects. Replaces the layer image + re-fits (cutout
   // aspect may differ). 429 → login modal / slow-down toast like other AI calls.
+  //
+  // GUEST LIMIT. Background removal is a billable model call, and it was the one
+  // AI action on this page with NO guest gate: only handleAiGenerate called
+  // checkAiLimit, so a guest could run isolate-subject as often as they liked.
+  // The only thing that ever stopped them was the server's shared per-IP bucket
+  // (gen:ip:*, 2/hour, 5/day) — which it spent out from under generation, with
+  // no login prompt to explain why the next generation was refused. It now takes
+  // the SAME gate and the SAME budget as a generation: the pair below is
+  // handleAiGenerate's, unchanged, so a guest has one coherent allowance across
+  // both actions instead of two unrelated ones. Logged-in users are unaffected —
+  // checkLimit always allows them.
   const handleRemoveBgPhoto = useCallback(async (photo: PhotoLayer) => {
     if (editingPhotoId) return;
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ("reason" in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage("message" in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
     setEditingPhotoId(photo.id);
     try {
+      recordAiGeneration();
       const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
       const transparentImage = await chromaKeyGreen(greenBg);
       setSideData(prev => ({
@@ -1140,7 +1160,7 @@ export default function SimplePage() {
     } finally {
       setEditingPhotoId(null);
     }
-  }, [editingPhotoId, applyContainFit, setSideData, toast, lang]);
+  }, [editingPhotoId, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, toast, lang]);
 
   // Chat edit — the merged panel's free-text / chip edit path. Mirrors the
   // retired handleRestylePhoto pattern exactly (write the result back into the
