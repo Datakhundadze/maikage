@@ -32,6 +32,35 @@ const SEED_TTL_MS = 5 * 60 * 1000; // 5 minutes
  */
 export const MAX_SEED_TEXT_LENGTH = 60;
 
+/**
+ * Cap on a seeded GENERATION prompt. Deliberately separate from — and much
+ * larger than — MAX_SEED_TEXT_LENGTH: that one bounds words PRINTED on a
+ * garment, this one bounds a description of a picture, which is a different
+ * kind of string. Still bounded, because the payload is untrusted model output.
+ */
+export const MAX_SEED_PROMPT_LENGTH = 400;
+
+/**
+ * A generation request riding along in the seed.
+ *
+ * The constructor does not generate from this directly — it hands it to
+ * SimplePage's own handleAiGenerate, which owns the no-garment guard, the
+ * isolate-background guard, slogan quote-extraction and the pro-model routing
+ * that Georgian slogans depend on. This is a REQUEST, not a pipeline call.
+ */
+export interface SeedGenerate {
+  /** What to draw. The customer's intent, in their own words. */
+  prompt: string;
+  /**
+   * A canonical ENGLISH style label from getStyleOptions("en"), or "" for Auto.
+   * English is the wire form because it is stable across the page language;
+   * the reader maps it back to its own locale's label. Validated on both sides.
+   */
+  style: string;
+  /** true → keep the generated background; false → the site default (cut out). */
+  withBackground: boolean;
+}
+
 export interface ConstructorSeed {
   /** Text to place as a text layer. */
   text?: string;
@@ -51,6 +80,11 @@ export interface ConstructorSeed {
   product?: string;
   subProduct?: string;
   color?: string;
+  /**
+   * Ask the constructor to run an AI generation once it has settled on the
+   * product selection above. Absent → today's behaviour exactly.
+   */
+  generate?: SeedGenerate;
   /** Epoch ms, stamped on write; used to discard stale seeds. */
   ts?: number;
 }
@@ -61,7 +95,7 @@ export interface ConstructorSeed {
  *   should still open the constructor — it simply opens empty).
  */
 export function writeConstructorSeed(seed: ConstructorSeed): boolean {
-  if (!seed.text && !seed.image && !seed.product && !seed.color) return false;
+  if (!seed.text && !seed.image && !seed.product && !seed.color && !seed.generate) return false;
   try {
     localStorage.setItem(SEED_KEY, JSON.stringify({ ...seed, ts: Date.now() }));
     return true;
@@ -112,8 +146,29 @@ export function consumeConstructorSeed(): ConstructorSeed | null {
     const subProduct = typeof parsed.subProduct === "string" ? parsed.subProduct : undefined;
     const color = typeof parsed.color === "string" ? parsed.color : undefined;
 
-    if (!text && !image && !product && !color) return null;
-    return { text, textColor, image, side, placement, product, subProduct, color };
+    // Generation request. Re-validated HERE as well as at write time, because
+    // localStorage is writable by anything on the origin — the reader must not
+    // trust the shape it finds. A prompt that does not survive drops the whole
+    // `generate` field; the rest of the seed still applies.
+    let generate: SeedGenerate | undefined;
+    const g = (parsed as { generate?: unknown }).generate;
+    if (g && typeof g === "object") {
+      const raw = (g as { prompt?: unknown }).prompt;
+      const prompt = typeof raw === "string" ? raw.trim().slice(0, MAX_SEED_PROMPT_LENGTH) : "";
+      if (prompt) {
+        const style = typeof (g as { style?: unknown }).style === "string"
+          ? ((g as { style: string }).style)
+          : "";
+        generate = {
+          prompt,
+          style,
+          withBackground: (g as { withBackground?: unknown }).withBackground === true,
+        };
+      }
+    }
+
+    if (!text && !image && !product && !color && !generate) return null;
+    return { text, textColor, image, side, placement, product, subProduct, color, generate };
   } catch {
     return null;
   }

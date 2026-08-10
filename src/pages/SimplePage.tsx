@@ -10,7 +10,10 @@ import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt } from 
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
-import { consumeConstructorSeed, type ConstructorSeed } from "@/lib/constructorSeed";
+import { consumeConstructorSeed, type ConstructorSeed, type SeedGenerate } from "@/lib/constructorSeed";
+// Style enum resolution for a seeded generation — shared with the chat side so
+// both validate against getStyleOptions() and neither can inject free text.
+import { styleForLang } from "@/lib/generateSuggestion";
 // Text-colour palette — shared with the /chat handoff so both validate against
 // the same list. Same values, same order as the former local constant.
 import { TEXT_COLORS, DEFAULT_TEXT_COLOR_HEX, resolveTextColorHex } from "@/lib/textColors";
@@ -1383,6 +1386,14 @@ export default function SimplePage() {
 
     seedAppliedRef.current = true;
 
+    // A seeded GENERATION is queued, not run, and queued only HERE — after the
+    // product ladder above has settled. handleAiGenerate reads
+    // productConfig.config to resolve the product image, exact-colour flag and
+    // placement zone it generates against, so starting it any earlier would
+    // generate for the product the customer was on, not the one they asked for.
+    // The queue is drained by the effect below; see it for the rest.
+    if (seed.generate) setPendingGen(seed.generate);
+
     // Photo: reuse the existing add path so the async naturalAspect probe and
     // contain-fit behave exactly as they do for a manual upload.
     if (seed.image) {
@@ -1417,6 +1428,45 @@ export default function SimplePage() {
       if (added) setSelectedLayerId(id);
     }
   }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords]);
+
+  // ── Seeded generation: run it through handleAiGenerate, never past it ─────
+  //
+  // WHY A LADDER RATHER THAN A CALL. handleAiGenerate takes only a prompt
+  // override; `style` and `withBackground` reach it through aiStyle /
+  // aiWithBackground, which are React state captured in its useCallback
+  // closure. Calling it in the same tick as setAiStyle would run the OLD
+  // closure and silently generate in the wrong style — the failure would look
+  // like the model ignoring the request. So each field is set in its own effect
+  // pass and the effect returns; React commits, handleAiGenerate is rebuilt
+  // with the new value, this effect re-runs, and only when both already match
+  // does the generation start.
+  //
+  // Ordering overall, from the seed effect above into this one:
+  //   product → subProduct → colour → side → (placement) → layers
+  //     → queue → style → withBackground → handleAiGenerate(prompt)
+  // Every arrow is a separate commit, so by the last one productConfig.config
+  // holds exactly what the chat asked for.
+  //
+  // EXACTLY ONCE: the request is cleared before the call, not after, so a
+  // re-render inside handleAiGenerate cannot start a second generation.
+  const [pendingGen, setPendingGen] = useState<SeedGenerate | null>(null);
+  useEffect(() => {
+    if (!pendingGen) return;
+    // The seed carries the canonical ENGLISH label; the panel's state holds this
+    // page's own language. styleForLang converts by index and returns "" (Auto)
+    // for anything not in the enum, so an unknown style can never reach the
+    // generation params as free text.
+    const style = styleForLang(pendingGen.style, lang);
+    if (aiStyle !== style) { setAiStyle(style); return; }
+    if (aiWithBackground !== pendingGen.withBackground) { setAiWithBackground(pendingGen.withBackground); return; }
+
+    setPendingGen(null);
+    // Mirror handleChatSubmit exactly: the prompt shows as the customer's own
+    // bubble in the panel, and the regenerate button has something to repeat.
+    pushChat({ role: "user", text: pendingGen.prompt });
+    lastGenPromptRef.current = pendingGen.prompt;
+    void handleAiGenerate(pendingGen.prompt);
+  }, [pendingGen, aiStyle, aiWithBackground, lang, handleAiGenerate, pushChat]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit
