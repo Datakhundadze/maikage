@@ -444,12 +444,19 @@ export default function ChatPage() {
     const url = "/?constructor=1";
     let opened: Window | null = null;
     try {
-      opened = window.open(url, "_blank", "noopener,noreferrer");
+      // NOTE: do NOT pass "noopener"/"noreferrer" in the features string. Per
+      // the HTML spec window.open() returns null whenever those are set — even
+      // on success — so the popup-blocked test below would ALWAYS fire and the
+      // chat tab would navigate away too. Sever the opener manually instead:
+      // same protection, and a truthy handle we can actually test.
+      opened = window.open(url, "_blank");
+      if (opened) opened.opener = null;
     } catch {
       opened = null;
     }
-    // Popup blocked (or refused): fall back to this tab so the button is never
-    // a no-op. The seed is already stored, so either route finds it.
+    // ONLY when the popup was genuinely blocked (or threw) do we fall back to
+    // this tab, so the button is never a no-op. On success we return here
+    // without touching mode, route, messages or scroll.
     if (!opened) {
       setMode("simple");
       navigate(url);
