@@ -35,6 +35,7 @@ const ContactPage = lazy(() => import("./pages/ContactPage"));
 const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 const BlogPage = lazy(() => import("./pages/BlogPage"));
 const BlogPostPage = lazy(() => import("./pages/BlogPostPage"));
+const ChatPage = lazy(() => import("./pages/ChatPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 // Sitewide FAQ chat bubble — lazy so it never lands in the initial bundle.
 // Mounted once below (inside BrowserRouter) so it shows on every route; the
@@ -117,8 +118,26 @@ function AppRoutes() {
       <Route path="/portfolio" element={<PortfolioPage />} />
       <Route path="/blog" element={<BlogPage />} />
       <Route path="/blog/:slug" element={<BlogPostPage />} />
+      {/* Standalone full-page FAQ chat, linked from the social auto-responders
+          after hours. noindex + deliberately absent from the sitemap. */}
+      <Route path="/chat" element={<ChatPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
+  );
+}
+
+// Mount gate for the sitewide chat bubble. /chat IS a full-page chat, so the
+// floating launcher there is redundant and overlaps the page's send button on
+// mobile. Gating the MOUNT keeps ChatWidget itself untouched — it still owns
+// its own /admin self-hide. Needs to be a component so useLocation() runs
+// inside BrowserRouter.
+function ChatWidgetMount() {
+  const { pathname } = useLocation();
+  if (pathname === "/chat" || pathname.startsWith("/chat/")) return null;
+  return (
+    <Suspense fallback={null}>
+      <ChatWidget />
+    </Suspense>
   );
 }
 
@@ -136,9 +155,7 @@ const App = () => (
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <AppRoutes />
                 </Suspense>
-                <Suspense fallback={null}>
-                  <ChatWidget />
-                </Suspense>
+                <ChatWidgetMount />
               </BrowserRouter>
             </TooltipProvider>
           </CartProvider>

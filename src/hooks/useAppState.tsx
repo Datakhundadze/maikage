@@ -21,12 +21,24 @@ const AppStateContext = createContext<AppStateContextType | null>(null);
 const MODE_STACK_KEY = "maika-mode-stack";
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
+  // localStorage access is wrapped throughout: inside the Facebook / Instagram
+  // in-app browsers it can THROW rather than simply return null, which would
+  // otherwise surface as a render error. Falling back to the same defaults
+  // degrades the preference silently instead. Defaults are unchanged.
   const [lang, setLang] = useState<Lang>(() => {
-    return (localStorage.getItem("maika-lang") as Lang) || "ge";
+    try {
+      return (localStorage.getItem("maika-lang") as Lang) || "ge";
+    } catch {
+      return "ge";
+    }
   });
 
   const [theme, setTheme] = useState<AppTheme>(() => {
-    return (localStorage.getItem("maika-theme") as AppTheme) || "dark";
+    try {
+      return (localStorage.getItem("maika-theme") as AppTheme) || "dark";
+    } catch {
+      return "dark";
+    }
   });
 
   const [mode, setModeState] = useState<AppMode>(() => {
@@ -54,11 +66,11 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.classList.remove("dark", "green");
     root.classList.add(theme);
-    localStorage.setItem("maika-theme", theme);
+    try { localStorage.setItem("maika-theme", theme); } catch { /* ignore */ }
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem("maika-lang", lang);
+    try { localStorage.setItem("maika-lang", lang); } catch { /* ignore */ }
   }, [lang]);
 
   useEffect(() => {
