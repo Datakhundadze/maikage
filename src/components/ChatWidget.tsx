@@ -1,19 +1,24 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { MessageCircle, X, Send, ImagePlus, Shirt } from "lucide-react";
+import { MessageCircle, X, Send, ImagePlus } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
 import {
   type MockupSuggestion,
-  stripMockupFence,
-  parseMockupSuggestion,
   openMockupInConstructor,
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
+// Shared with /chat — same parse, same precedence, same button.
+import {
+  type ChatSuggestion,
+  type GenerateSuggestion,
+  parseChatSuggestion,
+  openGenerateInConstructor,
+} from "@/lib/generateSuggestion";
+import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
-import { Button } from "@/components/ui/button";
 
 const ACCENT = "#26BB89";
 
@@ -31,8 +36,8 @@ interface ChatMsg {
   role: "user" | "assistant";
   content: string;
   local?: boolean;
-  /** Validated mockup suggestion parsed off this turn, if any. */
-  mockup?: MockupSuggestion;
+  /** The one validated suggestion parsed off this turn, if any. */
+  suggestion?: ChatSuggestion;
 }
 
 // Animated "typing…" dots shown while a reply is in flight.
@@ -115,13 +120,13 @@ export default function ChatWidget() {
     }
     // Strip the fence on ANY match FIRST so raw JSON never reaches the bubble,
     // then parse + validate separately. Same pipeline the /chat page uses.
-    let mockup: MockupSuggestion | undefined;
+    let suggestion: ChatSuggestion | undefined;
     if (!local) {
-      const suggestion = parseMockupSuggestion(reply);
-      reply = stripMockupFence(reply);
-      if (suggestion && (suggestion.text || attachment)) mockup = suggestion;
+      const parsed = parseChatSuggestion(reply, !!attachment);
+      reply = parsed.text;
+      suggestion = parsed.suggestion ?? undefined;
     }
-    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, mockup }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion }]);
   }, [input, loading, messages, lang, attachment]);
 
   // Same handoff as /chat: new tab on success, this tab only if popup-blocked.
@@ -131,6 +136,15 @@ export default function ChatWidget() {
       navigate(CONSTRUCTOR_URL);
     }
   }, [attachment, setMode, navigate]);
+
+  // Same handoff for a generation request. No attachment — a generation starts
+  // from words, not from the customer's photo.
+  const openGenerate = useCallback((g: GenerateSuggestion) => {
+    if (!openGenerateInConstructor(g)) {
+      setMode("simple");
+      navigate(CONSTRUCTOR_URL);
+    }
+  }, [setMode, navigate]);
 
   // Gate the pick BEFORE reading it: non-images and files over 10MB are
   // rejected so an oversized payload is never built. Bilingual message.
@@ -223,17 +237,13 @@ export default function ChatWidget() {
                   single newlines). User text stays plain — React escapes it. */}
               {m.role === "assistant" ? <ChatMarkdown text={m.content} /> : m.content}
               {/* Only for a fully-validated suggestion; a failed parse leaves
-                  `mockup` undefined and the prose stands alone. */}
-              {m.mockup && (
-                <Button
-                  onClick={() => openInConstructor(m.mockup!)}
-                  size="sm"
-                  className="mt-2 w-full h-9 gap-1.5 text-xs font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-                >
-                  <Shirt className="h-3.5 w-3.5" />
-                  ესკიზის ნახვა
-                </Button>
-              )}
+                  it undefined and the prose stands alone. */}
+              <ChatSuggestionActions
+                suggestion={m.suggestion}
+                compact
+                onMockup={openInConstructor}
+                onGenerate={openGenerate}
+              />
             </div>
           </div>
         ))}
