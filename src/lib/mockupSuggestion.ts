@@ -6,8 +6,36 @@
 // byte-for-byte what ChatPage ran before the extraction.
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
 import { TEXT_COLORS } from "@/lib/textColors";
-import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH, MAX_SEED_PROMPT_LENGTH } from "@/lib/constructorSeed";
+import { writeConstructorSeed, type ConstructorSeed, MAX_SEED_TEXT_LENGTH, MAX_SEED_PROMPT_LENGTH } from "@/lib/constructorSeed";
 import { getStyleOptions } from "@/lib/designStyles";
+
+/**
+ * In-place handoff channel. When the customer is ALREADY in the constructor —
+ * the floating widget is on every page, including "/" in simple mode — opening
+ * a new tab is absurd. SimplePage listens for this event and applies the
+ * payload exactly like a mount seed.
+ *
+ * DETECTION is self-synchronizing rather than a flag: the event is dispatched
+ * CANCELABLE, SimplePage's listener calls preventDefault(), and
+ * window.dispatchEvent() returns false when something prevented it. So a false
+ * return means "a live SimplePage handled it" and a true return means "nobody
+ * listened" — no mount/unmount bookkeeping to go stale.
+ */
+export const CONSTRUCTOR_APPLY_EVENT = "maika:constructor-apply";
+
+/** @returns true when a live constructor consumed it; false → use the tab. */
+function applyConstructorSeedInPlace(seed: ConstructorSeed): boolean {
+  try {
+    const ev = new CustomEvent<ConstructorSeed>(CONSTRUCTOR_APPLY_EVENT, {
+      detail: seed,
+      cancelable: true,
+    });
+    // dispatchEvent → false means preventDefault() was called → handled.
+    return window.dispatchEvent(ev) === false;
+  } catch {
+    return false;
+  }
+}
 
 /** The constructor entry point — mode is signalled by the query param. */
 export const CONSTRUCTOR_URL = "/?constructor=1";
@@ -286,7 +314,7 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
   // A product change without an explicit brand would carry a stale brand from
   // another product; fall back to that product's catalog default.
   const subProduct = m.subProduct ?? (m.product ? catalog.getDefaultSubProduct(m.product) : undefined);
-  writeConstructorSeed({
+  const seed: ConstructorSeed = {
     text: m.text,
     textColor: m.textColor,
     image: attachment ?? undefined,
@@ -295,8 +323,11 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
     product: m.product,
     subProduct,
     color: m.color,
-  });
-
+  };
+  // Already in the constructor → apply live, and do NOT persist a seed that
+  // would otherwise linger and re-apply on a later visit inside the TTL.
+  if (applyConstructorSeedInPlace(seed)) return true;
+  writeConstructorSeed(seed);
   return openConstructorTab();
 }
 
@@ -380,12 +411,14 @@ export function parseGenerateSuggestion(raw: string): GenerateSuggestion | null 
  */
 export function openGenerateInConstructor(g: GenerateSuggestion): boolean {
   const subProduct = g.subProduct ?? (g.product ? catalog.getDefaultSubProduct(g.product) : undefined);
-  writeConstructorSeed({
+  const seed: ConstructorSeed = {
     product: g.product,
     subProduct,
     color: g.color,
     side: g.side,
     generate: { prompt: g.prompt, style: g.style, withBackground: g.withBackground },
-  });
+  };
+  if (applyConstructorSeedInPlace(seed)) return true;
+  writeConstructorSeed(seed);
   return openConstructorTab();
 }

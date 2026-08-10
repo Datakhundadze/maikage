@@ -11,6 +11,7 @@ import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { consumeConstructorSeed, type ConstructorSeed } from "@/lib/constructorSeed";
+import { CONSTRUCTOR_APPLY_EVENT } from "@/lib/mockupSuggestion";
 // Text-colour palette — shared with the /chat handoff so both validate against
 // the same list. Same values, same order as the former local constant.
 import { TEXT_COLORS, DEFAULT_TEXT_COLOR_HEX, resolveTextColorHex } from "@/lib/textColors";
@@ -1334,6 +1335,27 @@ export default function SimplePage() {
   // layer rather than dropping the customer's own work.
   const seedAppliedRef = useRef(false);
   const seedRef = useRef<ConstructorSeed | null | undefined>(undefined);
+  // Bumped by the in-place listener below to re-run the applier for a payload
+  // that arrived from the floating widget while this page is already mounted.
+  const [seedNonce, setSeedNonce] = useState(0);
+
+  // IN-PLACE handoff. The floating widget is on every page, including this one,
+  // where opening a new tab would be absurd. It dispatches a cancelable event;
+  // we load the payload into the SAME ref the mount seed uses, reset the guard
+  // and bump the nonce so the existing phased applier below runs it unchanged.
+  // preventDefault() is what tells the dispatcher a live constructor took it.
+  useEffect(() => {
+    const onApply = (e: Event) => {
+      const detail = (e as CustomEvent<ConstructorSeed>).detail;
+      if (!detail) return;
+      seedRef.current = detail;
+      seedAppliedRef.current = false;
+      setSeedNonce((n) => n + 1);
+      e.preventDefault();
+    };
+    window.addEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
+    return () => window.removeEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
+  }, []);
   useEffect(() => {
     if (seedAppliedRef.current) return;
     if (seedRef.current === undefined) {
@@ -1441,7 +1463,7 @@ export default function SimplePage() {
       // normal add behaviour (the most recently added layer is selected).
       if (added) setSelectedLayerId(id);
     }
-  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, aiStyle, aiWithBackground, handleAiGenerate]);
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, aiStyle, aiWithBackground, handleAiGenerate, seedNonce]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit
