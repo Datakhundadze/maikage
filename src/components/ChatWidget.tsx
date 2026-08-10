@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { MessageCircle, X, Send, ImagePlus, Shirt } from "lucide-react";
+import { MessageCircle, X, Send, ImagePlus, Shirt, Sparkles } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
@@ -10,6 +10,10 @@ import {
   stripMockupFence,
   parseMockupSuggestion,
   openMockupInConstructor,
+  type GenerateSuggestion,
+  stripGenerateFence,
+  parseGenerateSuggestion,
+  openGenerateInConstructor,
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
 import ChatMarkdown from "@/components/ChatMarkdown";
@@ -33,6 +37,8 @@ interface ChatMsg {
   local?: boolean;
   /** Validated mockup suggestion parsed off this turn, if any. */
   mockup?: MockupSuggestion;
+  /** Validated generation suggestion parsed off this turn, if any. */
+  generate?: GenerateSuggestion;
 }
 
 // Animated "typing…" dots shown while a reply is in flight.
@@ -116,12 +122,18 @@ export default function ChatWidget() {
     // Strip the fence on ANY match FIRST so raw JSON never reaches the bubble,
     // then parse + validate separately. Same pipeline the /chat page uses.
     let mockup: MockupSuggestion | undefined;
+    let generate: GenerateSuggestion | undefined;
     if (!local) {
+      const gen = parseGenerateSuggestion(reply);
       const suggestion = parseMockupSuggestion(reply);
-      reply = stripMockupFence(reply);
-      if (suggestion && (suggestion.text || attachment)) mockup = suggestion;
+      // Strip BOTH fences whichever parsed, so raw JSON never reaches a bubble.
+      reply = stripGenerateFence(stripMockupFence(reply));
+      // A generate block wins: it is the more specific intent, and showing two
+      // buttons for one turn would be ambiguous for the customer.
+      if (gen) generate = gen;
+      else if (suggestion && (suggestion.text || attachment)) mockup = suggestion;
     }
-    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, mockup }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, mockup, generate }]);
   }, [input, loading, messages, lang, attachment]);
 
   // Same handoff as /chat: new tab on success, this tab only if popup-blocked.
@@ -131,6 +143,15 @@ export default function ChatWidget() {
       navigate(CONSTRUCTOR_URL);
     }
   }, [attachment, setMode, navigate]);
+
+  // Same handoff for a generation: the constructor runs handleAiGenerate on
+  // arrival. Popup blocked → this tab, so the button is never a no-op.
+  const openGenerate = useCallback((g: GenerateSuggestion) => {
+    if (!openGenerateInConstructor(g)) {
+      setMode("simple");
+      navigate(CONSTRUCTOR_URL);
+    }
+  }, [setMode, navigate]);
 
   // Gate the pick BEFORE reading it: non-images and files over 10MB are
   // rejected so an oversized payload is never built. Bilingual message.
@@ -232,6 +253,16 @@ export default function ChatWidget() {
                 >
                   <Shirt className="h-3.5 w-3.5" />
                   ესკიზის ნახვა
+                </Button>
+              )}
+              {m.generate && (
+                <Button
+                  onClick={() => openGenerate(m.generate!)}
+                  size="sm"
+                  className="mt-2 w-full h-9 gap-1.5 text-xs font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  დამიხატე
                 </Button>
               )}
             </div>
