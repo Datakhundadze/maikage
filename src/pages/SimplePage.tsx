@@ -612,6 +612,50 @@ const DEFAULT_SIDE: SideData = {
   texts: [],
 };
 
+// ── Chest placement for a seeded layer ───────────────────────────────────
+// Coords are ZONE-relative (see useProductConfig): x/y are fractions of the
+// printable zone, x=0.5 is its horizontal centre, and x grows to the RIGHT on
+// screen (compositeSide: winCx = zoneX + zoneW * coords.x).
+//
+// ⚠️ ORIENTATION: the product photos are FRONT views, so the garment faces the
+// viewer — the WEARER'S left chest (the heart side) is on the VIEWER'S RIGHT,
+// i.e. x > 0.5. "left-chest" therefore takes the LARGER x. Do not mirror this.
+//
+// Sizes derive from DEFAULT_TEXT_COORDS rather than being invented: a chest
+// print is CHEST_SCALE_FACTOR of a centred print, applied to scale and scaleY
+// alike so the default's aspect is preserved, and sits in the upper third of
+// the zone.
+const CHEST_SCALE_FACTOR = 0.55;
+const CHEST_Y = 0.3;
+const CHEST_X_OFFSET = 0.22;
+
+export type SeedPlacement = "center" | "left-chest" | "right-chest";
+
+/** Chest coords for a TEXT layer, scaled down from DEFAULT_TEXT_COORDS. */
+function chestTextCoords(placement: "left-chest" | "right-chest"): PlacementCoords {
+  const baseScaleY = DEFAULT_TEXT_COORDS.scaleY ?? DEFAULT_TEXT_COORDS.scale;
+  return {
+    // wearer's left = viewer's right = larger x
+    x: placement === "left-chest" ? 0.5 + CHEST_X_OFFSET : 0.5 - CHEST_X_OFFSET,
+    y: CHEST_Y,
+    scale: DEFAULT_TEXT_COORDS.scale * CHEST_SCALE_FACTOR,
+    scaleY: baseScaleY * CHEST_SCALE_FACTOR,
+  };
+}
+
+/** Chest coords for a PHOTO layer, scaled down from the zone-fill default. */
+function chestPhotoCoords(placement: "left-chest" | "right-chest"): PlacementCoords {
+  return {
+    x: placement === "left-chest" ? 0.5 + CHEST_X_OFFSET : 0.5 - CHEST_X_OFFSET,
+    y: CHEST_Y,
+    // Photos default to filling the zone (scale 1); a chest print is a fraction
+    // of that. addPhotoLayer's contain-fit probe then preserves x/y and
+    // recomputes scale/scaleY from this base, so the aspect stays correct.
+    scale: CHEST_SCALE_FACTOR * 0.5,
+    scaleY: CHEST_SCALE_FACTOR * 0.5,
+  };
+}
+
 let photoIdCounter = 0;
 let chatMsgCounter = 0;
 let textIdCounter = 0;
@@ -1299,6 +1343,23 @@ export default function SimplePage() {
       productConfig.setView(seed.side);
       return;
     }
+    // A chest placement for a PHOTO is applied through the constructor's own
+    // mechanism: nextPhotoCoords is "where the empty frame sits", and
+    // addPhotoLayer uses it verbatim for the first photo. Set it, then let this
+    // effect re-run and add the layer — deterministic, with no post-hoc patch
+    // racing addPhotoLayer's async contain-fit probe (which preserves x/y and
+    // recomputes scale from whatever base it finds).
+    const chest = seed.placement === "left-chest" || seed.placement === "right-chest"
+      ? seed.placement
+      : null;
+    if (seed.image && chest) {
+      const want = chestPhotoCoords(chest);
+      if (nextPhotoCoords.x !== want.x || nextPhotoCoords.y !== want.y || nextPhotoCoords.scale !== want.scale) {
+        setNextPhotoCoords(want);
+        return;
+      }
+    }
+
     seedAppliedRef.current = true;
     clearConstructorSeed();
 
@@ -1323,7 +1384,9 @@ export default function SimplePage() {
           content: seedText,
           font: FONTS[0],
           color: "#000000",
-          coords: staggeredTextCoords(prev.texts.length),
+          // No placement (or "center", or anything unrecognised) keeps today's
+          // behaviour byte-for-byte: staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS.
+          coords: chest ? chestTextCoords(chest) : staggeredTextCoords(prev.texts.length),
         };
         return { ...prev, texts: [...prev.texts, newText] };
       });
@@ -1331,7 +1394,7 @@ export default function SimplePage() {
       // normal add behaviour (the most recently added layer is selected).
       if (added) setSelectedLayerId(id);
     }
-  }, [currentView, productConfig, addPhotoLayer, setSideData]);
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit
