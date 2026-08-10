@@ -1,18 +1,24 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MessageCircle, Send, ImagePlus, X, Shirt } from "lucide-react";
+import { MessageCircle, Send, ImagePlus, X } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
 import {
   type MockupSuggestion,
-  stripMockupFence,
-  parseMockupSuggestion,
   openMockupInConstructor,
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
-import { Button } from "@/components/ui/button";
+// Both chats parse and render through the shared module, so the fence
+// precedence, the validation and the button can never drift between them.
+import {
+  type ChatSuggestion,
+  type GenerateSuggestion,
+  parseChatSuggestion,
+  openGenerateInConstructor,
+} from "@/lib/generateSuggestion";
+import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
 import SeoHead from "@/components/SeoHead";
 
@@ -41,8 +47,8 @@ interface ChatMsg {
   role: "user" | "assistant";
   content: string;
   local?: boolean;
-  /** Validated mockup suggestion parsed off this turn, if any. */
-  mockup?: MockupSuggestion;
+  /** The one validated suggestion parsed off this turn, if any. */
+  suggestion?: ChatSuggestion;
 }
 
 // Animated "typing…" dots shown while a reply is in flight (mirrors ChatWidget).
@@ -167,13 +173,13 @@ export default function ChatPage() {
     // Strip the fence on ANY match FIRST, so raw JSON never reaches the bubble
     // even if the parse below fails. Parse + validate separately; a suggestion
     // is only kept when it is actionable (usable text, or a photo to pair with).
-    let mockup: MockupSuggestion | undefined;
+    let suggestion: ChatSuggestion | undefined;
     if (!local) {
-      const suggestion = parseMockupSuggestion(reply);
-      reply = stripMockupFence(reply);
-      if (suggestion && (suggestion.text || attachment)) mockup = suggestion;
+      const parsed = parseChatSuggestion(reply, !!attachment);
+      reply = parsed.text;
+      suggestion = parsed.suggestion ?? undefined;
     }
-    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, mockup }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion }]);
   }, [input, loading, messages, lang, attachment]);
 
   // Hand the design to the constructor: merge ONLY the fields the model
@@ -190,6 +196,16 @@ export default function ChatPage() {
       navigate(CONSTRUCTOR_URL);
     }
   }, [attachment, setMode, navigate]);
+
+  // Same contract for the generation handoff: the new tab gets it and this tab
+  // is left alone; only a blocked popup falls back to navigating here, so the
+  // button is never a no-op. No attachment — a generation starts from words.
+  const openGenerate = useCallback((g: GenerateSuggestion) => {
+    if (!openGenerateInConstructor(g)) {
+      setMode("simple");
+      navigate(CONSTRUCTOR_URL);
+    }
+  }, [setMode, navigate]);
 
   return (
     <div className="flex h-[100dvh] flex-col bg-background text-foreground">
@@ -229,17 +245,13 @@ export default function ChatPage() {
                   single newlines inside a paragraph). User text stays plain —
                   React escapes it, and it is never parsed as markup. */}
               {m.role === "assistant" ? <ChatMarkdown text={m.content} /> : m.content}
-              {/* Only rendered for a fully-validated suggestion — a failed
-                  parse leaves `mockup` undefined and the prose stands alone. */}
-              {m.mockup && (
-                <Button
-                  onClick={() => openInConstructor(m.mockup!)}
-                  className="mt-2 w-full h-10 gap-2 font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-                >
-                  <Shirt className="h-4 w-4" />
-                  ესკიზის ნახვა
-                </Button>
-              )}
+              {/* Renders only for a fully-validated suggestion — a failed parse
+                  leaves it undefined and the prose stands alone. */}
+              <ChatSuggestionActions
+                suggestion={m.suggestion}
+                onMockup={openInConstructor}
+                onGenerate={openGenerate}
+              />
             </div>
           </div>
         ))}
