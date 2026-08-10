@@ -615,7 +615,14 @@ const DEFAULT_SIDE: SideData = {
 // print is CHEST_SCALE_FACTOR of a centred print, applied to scale and scaleY
 // alike so the default's aspect is preserved, and sits in the upper third of
 // the zone.
-const CHEST_SCALE_FACTOR = 0.55;
+// 0.55 read as a tiny mark rather than a chest print. 0.85 is the largest value
+// that still keeps chest TEXT clearly smaller than a centred print: a literal
+// 2x on the old linear size would be 0.4*0.55*2 = 0.44, which EXCEEDS the
+// centred box's own 0.40 width. 0.85 gives ~1.55x linear (~2.4x area) and stays
+// ~15% under centre. Overflow is safe at both chest positions: the hard ceiling
+// at x=0.72 is 2*(1-0.72)=0.56, and the widest box here is the photo at 0.425
+// (right edge 0.72+0.2125 = 0.9325 < 1.0).
+const CHEST_SCALE_FACTOR = 0.85;
 const CHEST_Y = 0.3;
 const CHEST_X_OFFSET = 0.22;
 
