@@ -35,6 +35,7 @@ const ContactPage = lazy(() => import("./pages/ContactPage"));
 const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 const BlogPage = lazy(() => import("./pages/BlogPage"));
 const BlogPostPage = lazy(() => import("./pages/BlogPostPage"));
+const ChatPage = lazy(() => import("./pages/ChatPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 // Sitewide FAQ chat bubble — lazy so it never lands in the initial bundle.
 // Mounted once below (inside BrowserRouter) so it shows on every route; the
@@ -117,6 +118,9 @@ function AppRoutes() {
       <Route path="/portfolio" element={<PortfolioPage />} />
       <Route path="/blog" element={<BlogPage />} />
       <Route path="/blog/:slug" element={<BlogPostPage />} />
+      {/* Standalone full-page FAQ chat, linked from the social auto-responders
+          after hours. noindex + deliberately absent from the sitemap. */}
+      <Route path="/chat" element={<ChatPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
