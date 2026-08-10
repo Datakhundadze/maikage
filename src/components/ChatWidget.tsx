@@ -17,6 +17,7 @@ import {
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
 import ChatMarkdown from "@/components/ChatMarkdown";
+import ChatStyleChips from "@/components/ChatStyleChips";
 import { Button } from "@/components/ui/button";
 
 const ACCENT = "#26BB89";
@@ -255,8 +256,12 @@ export default function ChatWidget() {
                   ესკიზის ნახვა
                 </Button>
               )}
-              {m.generate && (
-                <Button
+              {/* A style the model actually supplied → one button, as before.
+                  No style → chips, so the value is chosen from the client's own
+                  catalog and never inferred. */}
+              {m.generate && (m.generate.style
+                ? (
+                  <Button
                   onClick={() => openGenerate(m.generate!)}
                   size="sm"
                   className="mt-2 w-full h-9 gap-1.5 text-xs font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
@@ -264,6 +269,13 @@ export default function ChatWidget() {
                   <Sparkles className="h-3.5 w-3.5" />
                   დამიხატე
                 </Button>
+                ) : (
+                  <ChatStyleChips
+                    lang={lang}
+                    suggestion={m.generate}
+                    onPick={openGenerate} compact
+                  />
+                )
               )}
             </div>
           </div>

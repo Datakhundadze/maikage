@@ -18,6 +18,7 @@ import {
 } from "@/lib/mockupSuggestion";
 import { Button } from "@/components/ui/button";
 import ChatMarkdown from "@/components/ChatMarkdown";
+import ChatStyleChips from "@/components/ChatStyleChips";
 import SeoHead from "@/components/SeoHead";
 
 // Photo attachment bounds. The file is gated BEFORE it is read, so an
@@ -261,14 +262,25 @@ export default function ChatPage() {
                   ესკიზის ნახვა
                 </Button>
               )}
-              {m.generate && (
-                <Button
+              {/* A style the model actually supplied → one button, as before.
+                  No style → chips, so the value is chosen from the client's own
+                  catalog and never inferred. */}
+              {m.generate && (m.generate.style
+                ? (
+                  <Button
                   onClick={() => openGenerate(m.generate!)}
                   className="mt-2 w-full h-10 gap-2 font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
                 >
                   <Sparkles className="h-4 w-4" />
                   დამიხატე
                 </Button>
+                ) : (
+                  <ChatStyleChips
+                    lang={lang}
+                    suggestion={m.generate}
+                    onPick={openGenerate}
+                  />
+                )
               )}
             </div>
           </div>

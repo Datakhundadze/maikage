@@ -8,6 +8,7 @@ import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "
 import { TEXT_COLORS } from "@/lib/textColors";
 import { writeConstructorSeed, type ConstructorSeed, MAX_SEED_TEXT_LENGTH, MAX_SEED_PROMPT_LENGTH } from "@/lib/constructorSeed";
 import { getStyleOptions } from "@/lib/designStyles";
+import type { Lang } from "@/lib/i18n";
 
 /**
  * In-place handoff channel. When the customer is ALREADY in the constructor —
@@ -421,4 +422,18 @@ export function openGenerateInConstructor(g: GenerateSuggestion): boolean {
   if (applyConstructorSeedInPlace(seed)) return true;
   writeConstructorSeed(seed);
   return openConstructorTab();
+}
+
+
+/**
+ * The style choices offered as chips when a generate block arrives with NO
+ * style. Sourced from getStyleOptions() — never a hardcoded list — so a chip's
+ * value is valid by construction and the model never has to infer a style.
+ * "Auto" (value "") comes first so the customer can skip choosing.
+ */
+export function styleChoices(lang: Lang): { value: string; label: string }[] {
+  return [
+    { value: "", label: lang === "en" ? "Auto" : "ავტომატური" },
+    ...getStyleOptions(lang).map((o) => ({ value: o, label: o })),
+  ];
 }

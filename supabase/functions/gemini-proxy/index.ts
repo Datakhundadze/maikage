@@ -370,9 +370,18 @@ reply briefly then append this block last. Same shape every time:
 \`\`\`maika-generate
 {"prompt":"მთების პეიზაჟი","style":"Realistic","withBackground":true,"product":"Hoodie","subProduct":"GILDAN Hoodie","color":"White","side":"front"}
 \`\`\`
+3. „დამიხატე მთვარეზე მჯდომი კატა" (სტილი არ უთქვამს → style გამოტოვებულია)
+\`\`\`maika-generate
+{"prompt":"მთვარეზე მჯდომი კატა","withBackground":false,"product":"T-Shirt","subProduct":"GILDAN","color":"Black","side":"front"}
+\`\`\`
 prompt = what to draw, in the customer's own words.
-style: Realistic | Animated | Illustration | Oil Art | Anime | Comics | Line Art | Graphic | Pixar 3D
-(ქართული სახელებიც მუშაობს). თუ ვერ არჩევ — გამოტოვე style, ავტომატური აირჩევა.
+🔴 style: ჩასვი ᲛᲮᲝᲚᲝᲓ მაშინ, როცა კლიენტმა თვითონ დაასახელა სტილი. თუ არ უთქვამს — საერთოდ
+გამოტოვე ეს ველი: ᲜᲣ გამოიცნობ, ᲜᲣ აირჩევ ნაგულისხმევს და ᲜᲣ იკითხავ ტექსტში — ღილაკების ნაცვლად
+ინტერფეისი თვითონ შესთავაზებს არჩევანს.
+Include "style" ONLY when the customer named one; otherwise OMIT the field entirely — do not
+guess, do not default, do not ask about style in prose. The interface offers the choice.
+style values (when they DID name one): Realistic | Animated | Illustration | Oil Art | Anime |
+Comics | Line Art | Graphic | Pixar 3D (ქართული სახელებიც მუშაობს).
 withBackground: false = ფონის გარეშე (ნაგულისხმევი) · true = ფონით.
 product/subProduct/color/side — იგივე მნიშვნელობები, რაც ზემოთ.
 
