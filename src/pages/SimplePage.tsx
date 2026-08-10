@@ -10,7 +10,7 @@ import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt } from 
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
-import { readConstructorSeed, clearConstructorSeed } from "@/lib/constructorSeed";
+import { consumeConstructorSeed, type ConstructorSeed } from "@/lib/constructorSeed";
 import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
@@ -1318,24 +1318,48 @@ export default function SimplePage() {
 
   // ── Constructor seed intake (one-shot) ───────────────────────────────
   // A sender (today: the /chat "ესკიზის ნახვა" button) stashes a design in
-  // sessionStorage, then navigates here with setMode("simple"). We apply it
-  // exactly once per mount and clear it, so it never replays on a later visit.
+  // localStorage and opens "/?constructor=1" in a NEW TAB. localStorage is used
+  // because sessionStorage is per-tab and would be empty here.
   //
-  // Product / brand / colour / side arrive separately via `maika-product-config`,
-  // which useProductConfig already restores on mount — that is why the layers
-  // below can simply target the CURRENT view. When the seed names a side that
-  // the restored config didn't apply, we switch the view first and let this
-  // effect re-run, so a layer never lands on the side the customer isn't seeing.
+  // The seed is CONSUMED on mount — read and deleted in one step, into a ref,
+  // BEFORE anything is applied — so it can never replay, and so the phased
+  // application below can keep reading it after it is gone from storage.
+  //
+  // Product / brand / colour / side travel INSIDE the same seed (their usual
+  // home, `maika-product-config`, is sessionStorage and is likewise empty in a
+  // new tab), and are applied through useProductConfig's own setters one phase
+  // per effect run — setProduct resets brand and colour, so the order
+  // product → brand → colour → side matters and each must settle before the
+  // next. Layers are only added once the config matches.
   //
   // APPENDS ONLY: existing frontData/backData layers are never cleared or
   // replaced, and a side already at MAX_PHOTOS / MAX_TEXTS silently skips that
   // layer rather than dropping the customer's own work.
   const seedAppliedRef = useRef(false);
+  const seedRef = useRef<ConstructorSeed | null | undefined>(undefined);
   useEffect(() => {
     if (seedAppliedRef.current) return;
-    const seed = readConstructorSeed();
+    if (seedRef.current === undefined) {
+      // Reads AND deletes in one step, before any of it is applied.
+      seedRef.current = consumeConstructorSeed();
+    }
+    const seed = seedRef.current;
     if (!seed) {
       seedAppliedRef.current = true;
+      return;
+    }
+
+    // Product selection, one phase per run (each setter resets the next level).
+    if (seed.product && seed.product !== productConfig.config.product) {
+      productConfig.setProduct(seed.product as ProductType);
+      return;
+    }
+    if (seed.subProduct && seed.subProduct !== productConfig.config.subProduct) {
+      productConfig.setSubProduct(seed.subProduct);
+      return;
+    }
+    if (seed.color && seed.color !== productConfig.config.color) {
+      productConfig.setColor(seed.color as ProductColor);
       return;
     }
     // Align the view before seeding; this effect re-runs once it settles.
@@ -1361,7 +1385,6 @@ export default function SimplePage() {
     }
 
     seedAppliedRef.current = true;
-    clearConstructorSeed();
 
     // Photo: reuse the existing add path so the async naturalAspect probe and
     // contain-fit behave exactly as they do for a manual upload.
