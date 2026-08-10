@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { MessageCircle, Send, ImagePlus, X } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { MessageCircle, Send, ImagePlus, X, Shirt } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
+import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH } from "@/lib/constructorSeed";
+import { catalog, PRODUCTS, type ProductType, type ProductColor } from "@/lib/catalog";
+import { Button } from "@/components/ui/button";
 import SeoHead from "@/components/SeoHead";
 
 // Photo attachment bounds. The file is gated BEFORE it is read, so an
@@ -27,6 +30,85 @@ const ATTACH_QUALITY = 0.8;
 // browser, so the layout is viewport-height with a scrolling list and the input
 // pinned to the bottom.
 
+// ── Mockup suggestion ────────────────────────────────────────────────────
+// The model may append a fenced ```maika-mockup block after its prose. It is
+// UNTRUSTED: the fence is stripped from the text on ANY match (so raw JSON can
+// never reach the customer, even when parsing fails), parsed separately, and
+// every field validated against the real catalog. Any failure — no fence,
+// truncated fence, invalid JSON, unknown product/colour, empty payload —
+// yields prose alone and NO button. Never a broken button, never an error.
+const MOCKUP_FENCE_RE = /```maika-mockup\b[\s\S]*?(?:```|$)/g;
+
+// useProductConfig's sessionStorage key — the constructor restores
+// product/brand/colour/side from it on mount, so seeding it is how those
+// fields travel. Must stay in sync with src/hooks/useProductConfig.ts.
+const PRODUCT_CONFIG_KEY = "maika-product-config";
+
+interface MockupSuggestion {
+  text?: string;
+  product?: ProductType;
+  subProduct?: string;
+  color?: ProductColor;
+  side?: "front" | "back";
+}
+
+/** Remove every maika-mockup fence (closed OR truncated) from displayed text. */
+function stripMockupFence(raw: string): string {
+  return raw.replace(MOCKUP_FENCE_RE, "").trim();
+}
+
+/**
+ * Parse + validate the fenced block. Returns null unless the payload is fully
+ * trustworthy AND actionable (it must carry usable text, or the caller must
+ * have a photo to pair with it).
+ */
+function parseMockupSuggestion(raw: string): MockupSuggestion | null {
+  try {
+    const match = raw.match(/```maika-mockup\s*([\s\S]*?)```/); // closed fence only
+    if (!match) return null;
+    const parsed = JSON.parse(match[1]) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const out: MockupSuggestion = {};
+
+    // text — trimmed, non-empty, within the seed contract's cap.
+    if (typeof parsed.text === "string") {
+      const t = parsed.text.trim();
+      if (t && t.length <= MAX_SEED_TEXT_LENGTH) out.text = t;
+    }
+
+    // product — must be a real catalog product type.
+    if (typeof parsed.product === "string") {
+      const p = PRODUCTS.find((x) => x.type === parsed.product);
+      if (!p) return null;
+      out.product = p.type;
+    }
+
+    // subProduct — must exist for that product (needs a product to check against).
+    if (typeof parsed.subProduct === "string") {
+      const base = out.product ?? ("T-Shirt" as ProductType);
+      if (!catalog.getSubProducts(base).includes(parsed.subProduct)) return null;
+      out.subProduct = parsed.subProduct;
+    }
+
+    // colour — must be available for the resolved product + sub-product.
+    if (typeof parsed.color === "string") {
+      const base = out.product ?? ("T-Shirt" as ProductType);
+      const sub = out.subProduct ?? catalog.getDefaultSubProduct(base);
+      if (!catalog.getAvailableColors(base, sub).includes(parsed.color as ProductColor)) return null;
+      out.color = parsed.color as ProductColor;
+    }
+
+    // side — strictly front|back.
+    if (parsed.side === "front" || parsed.side === "back") out.side = parsed.side;
+    else if (parsed.side !== undefined) return null;
+
+    return out;
+  } catch {
+    return null;
+  }
+}
+
 // A chat message. `local` marks UI-only bubbles (the seed greeting + error
 // notices) so they are NOT replayed as conversation history to the model —
 // only real user questions and real bot answers are. Mirrors ChatWidget.
@@ -34,6 +116,8 @@ interface ChatMsg {
   role: "user" | "assistant";
   content: string;
   local?: boolean;
+  /** Validated mockup suggestion parsed off this turn, if any. */
+  mockup?: MockupSuggestion;
 }
 
 // Markdown renderer for ASSISTANT output only. The model writes markdown
@@ -102,7 +186,8 @@ function TypingDots() {
 }
 
 export default function ChatPage() {
-  const { lang } = useAppState();
+  const { lang, setMode } = useAppState();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -196,8 +281,43 @@ export default function ChatPage() {
           ? t(lang, "chat.errorBlocked")
           : t(lang, "chat.errorGeneric");
     }
-    setMessages((prev) => [...prev, { role: "assistant", content: reply, local }]);
+    // Strip the fence on ANY match FIRST, so raw JSON never reaches the bubble
+    // even if the parse below fails. Parse + validate separately; a suggestion
+    // is only kept when it is actionable (usable text, or a photo to pair with).
+    let mockup: MockupSuggestion | undefined;
+    if (!local) {
+      const suggestion = parseMockupSuggestion(reply);
+      reply = stripMockupFence(reply);
+      if (suggestion && (suggestion.text || attachment)) mockup = suggestion;
+    }
+    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, mockup }]);
   }, [input, loading, messages, lang, attachment]);
+
+  // Hand the design to the constructor: merge ONLY the fields the model
+  // actually specified over the stored product config (never overwrite what it
+  // didn't mention), stash the design layers, then switch to Simple mode.
+  // If the seed write fails (quota / locked-down webview) we still navigate —
+  // an empty constructor beats a button that does nothing.
+  const openInConstructor = useCallback((m: MockupSuggestion) => {
+    try {
+      const raw = sessionStorage.getItem(PRODUCT_CONFIG_KEY);
+      const stored = raw ? JSON.parse(raw) : {};
+      const merged = { ...stored };
+      if (m.product) merged.product = m.product;
+      if (m.subProduct) merged.subProduct = m.subProduct;
+      if (m.color) merged.color = m.color;
+      if (m.side) merged.view = m.side;
+      // A product change without an explicit brand would leave a stale brand
+      // from another product; fall back to that product's default.
+      if (m.product && !m.subProduct) merged.subProduct = catalog.getDefaultSubProduct(m.product);
+      sessionStorage.setItem(PRODUCT_CONFIG_KEY, JSON.stringify(merged));
+    } catch {
+      /* ignore — the constructor falls back to its own defaults */
+    }
+    writeConstructorSeed({ text: m.text, image: attachment ?? undefined, side: m.side });
+    setMode("simple");
+    navigate("/");
+  }, [attachment, setMode, navigate]);
 
   return (
     <div className="flex h-[100dvh] flex-col bg-background text-foreground">
@@ -237,6 +357,17 @@ export default function ChatPage() {
                   single newlines inside a paragraph). User text stays plain —
                   React escapes it, and it is never parsed as markup. */}
               {m.role === "assistant" ? <ChatMarkdown text={m.content} /> : m.content}
+              {/* Only rendered for a fully-validated suggestion — a failed
+                  parse leaves `mockup` undefined and the prose stands alone. */}
+              {m.mockup && (
+                <Button
+                  onClick={() => openInConstructor(m.mockup!)}
+                  className="mt-2 w-full h-10 gap-2 font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
+                >
+                  <Shirt className="h-4 w-4" />
+                  ესკიზის ნახვა
+                </Button>
+              )}
             </div>
           </div>
         ))}
