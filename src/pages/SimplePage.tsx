@@ -10,8 +10,12 @@ import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt } from 
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
-import { consumeConstructorSeed, type ConstructorSeed } from "@/lib/constructorSeed";
-import { CONSTRUCTOR_APPLY_EVENT } from "@/lib/mockupSuggestion";
+import { consumeConstructorSeed, normalizeConstructorSeed, type ConstructorSeed, type SeedGenerate } from "@/lib/constructorSeed";
+// In-place handoff from the floating chat widget when it is used on this page.
+import { CONSTRUCTOR_APPLY_EVENT, type ConstructorApplyEvent } from "@/lib/constructorBridge";
+// Style enum resolution for a seeded generation — shared with the chat side so
+// both validate against getStyleOptions() and neither can inject free text.
+import { styleForLang } from "@/lib/generateSuggestion";
 // Text-colour palette — shared with the /chat handoff so both validate against
 // the same list. Same values, same order as the former local constant.
 import { TEXT_COLORS, DEFAULT_TEXT_COLOR_HEX, resolveTextColorHex } from "@/lib/textColors";
@@ -1106,12 +1110,19 @@ export default function SimplePage() {
   // difference matting (runTransparencyPipeline), which returns a silhouette/
   // mask for photographic subjects. Replaces the layer image + re-fits (cutout
   // aspect may differ). 429 → login modal / slow-down toast like other AI calls.
+  //
+  // GUEST LIMIT. Background removal is a billable model call, and it was the one
+  // AI action on this page with NO guest gate: only handleAiGenerate called
+  // checkAiLimit, so a guest could run isolate-subject as often as they liked.
+  // The only thing that ever stopped them was the server's shared per-IP bucket
+  // (gen:ip:*, 2/hour, 5/day) — which it spent out from under generation, with
+  // no login prompt to explain why the next generation was refused. It now takes
+  // the SAME gate and the SAME budget as a generation: the pair below is
+  // handleAiGenerate's, unchanged, so a guest has one coherent allowance across
+  // both actions instead of two unrelated ones. Logged-in users are unaffected —
+  // checkLimit always allows them.
   const handleRemoveBgPhoto = useCallback(async (photo: PhotoLayer) => {
     if (editingPhotoId) return;
-    // Guest gate. isolate-subject is a BILLABLE action server-side (it shares
-    // the gen: bucket), but unlike handleAiGenerate this path had no client-side
-    // check, so a guest hit the server limit with no explanation. Same gate the
-    // generate flow uses: guests get the sign-in prompt instead of a bare 429.
     const limit = checkAiLimit();
     if (!limit.allowed) {
       if ("reason" in limit && limit.reason === "guest_limit") {
@@ -1120,9 +1131,9 @@ export default function SimplePage() {
       }
       return;
     }
-    recordAiGeneration();
     setEditingPhotoId(photo.id);
     try {
+      recordAiGeneration();
       const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
       const transparentImage = await chromaKeyGreen(greenBg);
       setSideData(prev => ({
@@ -1149,7 +1160,7 @@ export default function SimplePage() {
     } finally {
       setEditingPhotoId(null);
     }
-  }, [editingPhotoId, applyContainFit, setSideData, toast, lang, checkAiLimit, recordAiGeneration]);
+  }, [editingPhotoId, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, toast, lang]);
 
   // Chat edit — the merged panel's free-text / chip edit path. Mirrors the
   // retired handleRestylePhoto pattern exactly (write the result back into the
@@ -1348,27 +1359,9 @@ export default function SimplePage() {
   // layer rather than dropping the customer's own work.
   const seedAppliedRef = useRef(false);
   const seedRef = useRef<ConstructorSeed | null | undefined>(undefined);
-  // Bumped by the in-place listener below to re-run the applier for a payload
-  // that arrived from the floating widget while this page is already mounted.
+  // Bumped when a seed arrives IN-PLACE (see the listener below). The seed
+  // effect re-runs on it; a ref alone would not wake it.
   const [seedNonce, setSeedNonce] = useState(0);
-
-  // IN-PLACE handoff. The floating widget is on every page, including this one,
-  // where opening a new tab would be absurd. It dispatches a cancelable event;
-  // we load the payload into the SAME ref the mount seed uses, reset the guard
-  // and bump the nonce so the existing phased applier below runs it unchanged.
-  // preventDefault() is what tells the dispatcher a live constructor took it.
-  useEffect(() => {
-    const onApply = (e: Event) => {
-      const detail = (e as CustomEvent<ConstructorSeed>).detail;
-      if (!detail) return;
-      seedRef.current = detail;
-      seedAppliedRef.current = false;
-      setSeedNonce((n) => n + 1);
-      e.preventDefault();
-    };
-    window.addEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
-    return () => window.removeEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
-  }, []);
   useEffect(() => {
     if (seedAppliedRef.current) return;
     if (seedRef.current === undefined) {
@@ -1399,31 +1392,6 @@ export default function SimplePage() {
       productConfig.setView(seed.side);
       return;
     }
-    // ── GENERATION seed (stage 1) ────────────────────────────────────
-    // Runs only AFTER the product phases above have settled, because
-    // handleAiGenerate reads productConfig.config (product/colour/view) and
-    // the aiStyle / aiWithBackground state to build its request. Each is its
-    // own phase so React has committed it before the next one reads it.
-    if (seed.generate) {
-      if (seed.generate.style !== undefined && seed.generate.style !== aiStyle) {
-        setAiStyle(seed.generate.style);
-        return;
-      }
-      const wantBg = seed.generate.withBackground === true;
-      if (wantBg !== aiWithBackground) {
-        setAiWithBackground(wantBg);
-        return;
-      }
-      seedAppliedRef.current = true;
-      // Call the EXISTING entry point with a prompt override — never the
-      // pipeline directly. handleAiGenerate owns GUARD_NO_GARMENT,
-      // GUARD_ISOLATE_BG, the slogan quote-extraction and the forced-Pro
-      // routing for Georgian slogans; bypassing it would reintroduce the
-      // Georgian typography regression. Its internals are untouched.
-      void handleAiGenerate(seed.generate.prompt);
-      return;
-    }
-
     // A chest placement for a PHOTO is applied through the constructor's own
     // mechanism: nextPhotoCoords is "where the empty frame sits", and
     // addPhotoLayer uses it verbatim for the first photo. Set it, then let this
@@ -1442,6 +1410,14 @@ export default function SimplePage() {
     }
 
     seedAppliedRef.current = true;
+
+    // A seeded GENERATION is queued, not run, and queued only HERE — after the
+    // product ladder above has settled. handleAiGenerate reads
+    // productConfig.config to resolve the product image, exact-colour flag and
+    // placement zone it generates against, so starting it any earlier would
+    // generate for the product the customer was on, not the one they asked for.
+    // The queue is drained by the effect below; see it for the rest.
+    if (seed.generate) setPendingGen(seed.generate);
 
     // Photo: reuse the existing add path so the async naturalAspect probe and
     // contain-fit behave exactly as they do for a manual upload.
@@ -1476,7 +1452,78 @@ export default function SimplePage() {
       // normal add behaviour (the most recently added layer is selected).
       if (added) setSelectedLayerId(id);
     }
-  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, aiStyle, aiWithBackground, handleAiGenerate, seedNonce]);
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce]);
+
+  // ── In-place handoff from the floating chat widget ────────────────────────
+  //
+  // The widget is mounted on this route too, so a customer can ask for a design
+  // while already looking at the constructor. Opening a second tab containing
+  // the page they are on would be absurd, so we take the payload here instead.
+  //
+  // This is add-only on purpose: it does not touch any state the constructor
+  // already owns. It writes the SAME two refs the mount seed uses and bumps the
+  // nonce, so the payload then travels through the exact ladder above — same
+  // product phases, same append-only layer rules, same generation queue. There
+  // is one code path for applying a seed and this is not a second one.
+  //
+  // preventDefault() is the claim: the dispatcher checks it synchronously and
+  // opens a tab only if nobody took it. So DECLINING is a real option, and we
+  // decline a generation while one is already running — handleAiGenerate
+  // returns early when aiGenerating, and claiming a request we would then drop
+  // is exactly the "button that does nothing" this replaces. The tab it falls
+  // back to actually runs it.
+  useEffect(() => {
+    const onApply = (e: Event) => {
+      const seed = normalizeConstructorSeed((e as ConstructorApplyEvent).detail);
+      if (!seed) return;
+      if (seed.generate && aiGenerating) return; // busy → let it open a tab
+      e.preventDefault();
+      seedRef.current = seed;
+      seedAppliedRef.current = false;
+      setSeedNonce((n) => n + 1);
+    };
+    window.addEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
+    return () => window.removeEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
+  }, [aiGenerating]);
+
+  // ── Seeded generation: run it through handleAiGenerate, never past it ─────
+  //
+  // WHY A LADDER RATHER THAN A CALL. handleAiGenerate takes only a prompt
+  // override; `style` and `withBackground` reach it through aiStyle /
+  // aiWithBackground, which are React state captured in its useCallback
+  // closure. Calling it in the same tick as setAiStyle would run the OLD
+  // closure and silently generate in the wrong style — the failure would look
+  // like the model ignoring the request. So each field is set in its own effect
+  // pass and the effect returns; React commits, handleAiGenerate is rebuilt
+  // with the new value, this effect re-runs, and only when both already match
+  // does the generation start.
+  //
+  // Ordering overall, from the seed effect above into this one:
+  //   product → subProduct → colour → side → (placement) → layers
+  //     → queue → style → withBackground → handleAiGenerate(prompt)
+  // Every arrow is a separate commit, so by the last one productConfig.config
+  // holds exactly what the chat asked for.
+  //
+  // EXACTLY ONCE: the request is cleared before the call, not after, so a
+  // re-render inside handleAiGenerate cannot start a second generation.
+  const [pendingGen, setPendingGen] = useState<SeedGenerate | null>(null);
+  useEffect(() => {
+    if (!pendingGen) return;
+    // The seed carries the canonical ENGLISH label; the panel's state holds this
+    // page's own language. styleForLang converts by index and returns "" (Auto)
+    // for anything not in the enum, so an unknown style can never reach the
+    // generation params as free text.
+    const style = styleForLang(pendingGen.style, lang);
+    if (aiStyle !== style) { setAiStyle(style); return; }
+    if (aiWithBackground !== pendingGen.withBackground) { setAiWithBackground(pendingGen.withBackground); return; }
+
+    setPendingGen(null);
+    // Mirror handleChatSubmit exactly: the prompt shows as the customer's own
+    // bubble in the panel, and the regenerate button has something to repeat.
+    pushChat({ role: "user", text: pendingGen.prompt });
+    lastGenPromptRef.current = pendingGen.prompt;
+    void handleAiGenerate(pendingGen.prompt);
+  }, [pendingGen, aiStyle, aiWithBackground, lang, handleAiGenerate, pushChat]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit

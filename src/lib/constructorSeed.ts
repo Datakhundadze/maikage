@@ -32,8 +32,34 @@ const SEED_TTL_MS = 5 * 60 * 1000; // 5 minutes
  */
 export const MAX_SEED_TEXT_LENGTH = 60;
 
-/** Cap on a seeded generation prompt — generous, but bounds untrusted output. */
+/**
+ * Cap on a seeded GENERATION prompt. Deliberately separate from — and much
+ * larger than — MAX_SEED_TEXT_LENGTH: that one bounds words PRINTED on a
+ * garment, this one bounds a description of a picture, which is a different
+ * kind of string. Still bounded, because the payload is untrusted model output.
+ */
 export const MAX_SEED_PROMPT_LENGTH = 400;
+
+/**
+ * A generation request riding along in the seed.
+ *
+ * The constructor does not generate from this directly — it hands it to
+ * SimplePage's own handleAiGenerate, which owns the no-garment guard, the
+ * isolate-background guard, slogan quote-extraction and the pro-model routing
+ * that Georgian slogans depend on. This is a REQUEST, not a pipeline call.
+ */
+export interface SeedGenerate {
+  /** What to draw. The customer's intent, in their own words. */
+  prompt: string;
+  /**
+   * A canonical ENGLISH style label from getStyleOptions("en"), or "" for Auto.
+   * English is the wire form because it is stable across the page language;
+   * the reader maps it back to its own locale's label. Validated on both sides.
+   */
+  style: string;
+  /** true → keep the generated background; false → the site default (cut out). */
+  withBackground: boolean;
+}
 
 export interface ConstructorSeed {
   /** Text to place as a text layer. */
@@ -55,16 +81,10 @@ export interface ConstructorSeed {
   subProduct?: string;
   color?: string;
   /**
-   * Stage-1 generation handoff. When present the constructor runs its OWN
-   * AI generation (handleAiGenerate) with this prompt instead of, or as well
-   * as, seeding layers. `style` is already validated to a real chip value (or
-   * "" for Auto) by the sender — never free text.
+   * Ask the constructor to run an AI generation once it has settled on the
+   * product selection above. Absent → today's behaviour exactly.
    */
-  generate?: {
-    prompt: string;
-    style?: string;
-    withBackground?: boolean;
-  };
+  generate?: SeedGenerate;
   /** Epoch ms, stamped on write; used to discard stale seeds. */
   ts?: number;
 }
@@ -75,7 +95,7 @@ export interface ConstructorSeed {
  *   should still open the constructor — it simply opens empty).
  */
 export function writeConstructorSeed(seed: ConstructorSeed): boolean {
-  if (!seed.text && !seed.image && !seed.product && !seed.color && !seed.generate?.prompt) return false;
+  if (!seed.text && !seed.image && !seed.product && !seed.color && !seed.generate) return false;
   try {
     localStorage.setItem(SEED_KEY, JSON.stringify({ ...seed, ts: Date.now() }));
     return true;
@@ -92,22 +112,16 @@ export function clearConstructorSeed(): void {
 }
 
 /**
- * Read the pending seed AND delete it in the same step, so it is applied at
- * most once. Returns null when absent, unreadable, stale, or empty.
+ * Validate an arbitrary object into a seed, or null.
+ *
+ * Extracted from consumeConstructorSeed so the SAME rules apply to a seed
+ * handed over IN-PROCESS (the live-constructor handoff) as to one read back out
+ * of localStorage. A second copy of this would be a second place for the two
+ * paths to disagree about what a seed is.
  */
-export function consumeConstructorSeed(): ConstructorSeed | null {
-  let raw: string | null = null;
+export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null {
   try {
-    raw = localStorage.getItem(SEED_KEY);
-  } catch {
-    return null;
-  }
-  // Delete FIRST: even a malformed or stale seed must not linger.
-  clearConstructorSeed();
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as ConstructorSeed;
+    const parsed = input as ConstructorSeed;
     if (!parsed || typeof parsed !== "object") return null;
 
     // Staleness. A seed with no timestamp is treated as stale.
@@ -126,19 +140,51 @@ export function consumeConstructorSeed(): ConstructorSeed | null {
     const subProduct = typeof parsed.subProduct === "string" ? parsed.subProduct : undefined;
     const color = typeof parsed.color === "string" ? parsed.color : undefined;
 
-    // Generation payload — prompt is required for it to mean anything.
-    let generate: ConstructorSeed["generate"];
-    const g = parsed.generate;
-    if (g && typeof g === "object" && typeof g.prompt === "string" && g.prompt.trim()) {
-      generate = {
-        prompt: g.prompt.trim().slice(0, MAX_SEED_PROMPT_LENGTH),
-        style: typeof g.style === "string" ? g.style : "",
-        withBackground: g.withBackground === true,
-      };
+    // Generation request. Re-validated HERE as well as at write time, because
+    // localStorage is writable by anything on the origin — the reader must not
+    // trust the shape it finds. A prompt that does not survive drops the whole
+    // `generate` field; the rest of the seed still applies.
+    let generate: SeedGenerate | undefined;
+    const g = (parsed as { generate?: unknown }).generate;
+    if (g && typeof g === "object") {
+      const raw = (g as { prompt?: unknown }).prompt;
+      const prompt = typeof raw === "string" ? raw.trim().slice(0, MAX_SEED_PROMPT_LENGTH) : "";
+      if (prompt) {
+        const style = typeof (g as { style?: unknown }).style === "string"
+          ? ((g as { style: string }).style)
+          : "";
+        generate = {
+          prompt,
+          style,
+          withBackground: (g as { withBackground?: unknown }).withBackground === true,
+        };
+      }
     }
 
     if (!text && !image && !product && !color && !generate) return null;
     return { text, textColor, image, side, placement, product, subProduct, color, generate };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the pending seed AND delete it in the same step, so it is applied at
+ * most once. Returns null when absent, unreadable, stale, or empty.
+ */
+export function consumeConstructorSeed(): ConstructorSeed | null {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(SEED_KEY);
+  } catch {
+    return null;
+  }
+  // Delete FIRST: even a malformed or stale seed must not linger.
+  clearConstructorSeed();
+  if (!raw) return null;
+
+  try {
+    return normalizeConstructorSeed(JSON.parse(raw));
   } catch {
     return null;
   }

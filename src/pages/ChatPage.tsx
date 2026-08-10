@@ -1,24 +1,25 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MessageCircle, Send, ImagePlus, X, Shirt, Sparkles } from "lucide-react";
+import { MessageCircle, Send, ImagePlus, X } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
 import {
   type MockupSuggestion,
-  stripMockupFence,
-  parseMockupSuggestion,
   openMockupInConstructor,
-  type GenerateSuggestion,
-  stripGenerateFence,
-  parseGenerateSuggestion,
-  openGenerateInConstructor,
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
-import { Button } from "@/components/ui/button";
+// Both chats parse and render through the shared module, so the fence
+// precedence, the validation and the button can never drift between them.
+import {
+  type ChatSuggestion,
+  type GenerateSuggestion,
+  parseChatSuggestion,
+  openGenerateInConstructor,
+} from "@/lib/generateSuggestion";
+import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
-import ChatStyleChips from "@/components/ChatStyleChips";
 import SeoHead from "@/components/SeoHead";
 
 // Photo attachment bounds. The file is gated BEFORE it is read, so an
@@ -46,10 +47,8 @@ interface ChatMsg {
   role: "user" | "assistant";
   content: string;
   local?: boolean;
-  /** Validated mockup suggestion parsed off this turn, if any. */
-  mockup?: MockupSuggestion;
-  /** Validated generation suggestion parsed off this turn, if any. */
-  generate?: GenerateSuggestion;
+  /** The one validated suggestion parsed off this turn, if any. */
+  suggestion?: ChatSuggestion;
 }
 
 // Animated "typing…" dots shown while a reply is in flight (mirrors ChatWidget).
@@ -174,19 +173,13 @@ export default function ChatPage() {
     // Strip the fence on ANY match FIRST, so raw JSON never reaches the bubble
     // even if the parse below fails. Parse + validate separately; a suggestion
     // is only kept when it is actionable (usable text, or a photo to pair with).
-    let mockup: MockupSuggestion | undefined;
-    let generate: GenerateSuggestion | undefined;
+    let suggestion: ChatSuggestion | undefined;
     if (!local) {
-      const gen = parseGenerateSuggestion(reply);
-      const suggestion = parseMockupSuggestion(reply);
-      // Strip BOTH fences whichever parsed, so raw JSON never reaches a bubble.
-      reply = stripGenerateFence(stripMockupFence(reply));
-      // A generate block wins: it is the more specific intent, and showing two
-      // buttons for one turn would be ambiguous for the customer.
-      if (gen) generate = gen;
-      else if (suggestion && (suggestion.text || attachment)) mockup = suggestion;
+      const parsed = parseChatSuggestion(reply, !!attachment);
+      reply = parsed.text;
+      suggestion = parsed.suggestion ?? undefined;
     }
-    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, mockup, generate }]);
+    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion }]);
   }, [input, loading, messages, lang, attachment]);
 
   // Hand the design to the constructor: merge ONLY the fields the model
@@ -204,8 +197,9 @@ export default function ChatPage() {
     }
   }, [attachment, setMode, navigate]);
 
-  // Same handoff for a generation: the constructor runs handleAiGenerate on
-  // arrival. Popup blocked → this tab, so the button is never a no-op.
+  // Same contract for the generation handoff: the new tab gets it and this tab
+  // is left alone; only a blocked popup falls back to navigating here, so the
+  // button is never a no-op. No attachment — a generation starts from words.
   const openGenerate = useCallback((g: GenerateSuggestion) => {
     if (!openGenerateInConstructor(g)) {
       setMode("simple");
@@ -251,37 +245,14 @@ export default function ChatPage() {
                   single newlines inside a paragraph). User text stays plain —
                   React escapes it, and it is never parsed as markup. */}
               {m.role === "assistant" ? <ChatMarkdown text={m.content} /> : m.content}
-              {/* Only rendered for a fully-validated suggestion — a failed
-                  parse leaves `mockup` undefined and the prose stands alone. */}
-              {m.mockup && (
-                <Button
-                  onClick={() => openInConstructor(m.mockup!)}
-                  className="mt-2 w-full h-10 gap-2 font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-                >
-                  <Shirt className="h-4 w-4" />
-                  ესკიზის ნახვა
-                </Button>
-              )}
-              {/* A style the model actually supplied → one button, as before.
-                  No style → chips, so the value is chosen from the client's own
-                  catalog and never inferred. */}
-              {m.generate && (m.generate.style
-                ? (
-                  <Button
-                  onClick={() => openGenerate(m.generate!)}
-                  className="mt-2 w-full h-10 gap-2 font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  დამიხატე
-                </Button>
-                ) : (
-                  <ChatStyleChips
-                    lang={lang}
-                    suggestion={m.generate}
-                    onPick={openGenerate}
-                  />
-                )
-              )}
+              {/* Renders only for a fully-validated suggestion — a failed parse
+                  leaves it undefined and the prose stands alone. */}
+              <ChatSuggestionActions
+                suggestion={m.suggestion}
+                lang={lang}
+                onMockup={openInConstructor}
+                onGenerate={openGenerate}
+              />
             </div>
           </div>
         ))}
