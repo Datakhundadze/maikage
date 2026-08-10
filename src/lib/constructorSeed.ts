@@ -112,22 +112,16 @@ export function clearConstructorSeed(): void {
 }
 
 /**
- * Read the pending seed AND delete it in the same step, so it is applied at
- * most once. Returns null when absent, unreadable, stale, or empty.
+ * Validate an arbitrary object into a seed, or null.
+ *
+ * Extracted from consumeConstructorSeed so the SAME rules apply to a seed
+ * handed over IN-PROCESS (the live-constructor handoff) as to one read back out
+ * of localStorage. A second copy of this would be a second place for the two
+ * paths to disagree about what a seed is.
  */
-export function consumeConstructorSeed(): ConstructorSeed | null {
-  let raw: string | null = null;
+export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null {
   try {
-    raw = localStorage.getItem(SEED_KEY);
-  } catch {
-    return null;
-  }
-  // Delete FIRST: even a malformed or stale seed must not linger.
-  clearConstructorSeed();
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as ConstructorSeed;
+    const parsed = input as ConstructorSeed;
     if (!parsed || typeof parsed !== "object") return null;
 
     // Staleness. A seed with no timestamp is treated as stale.
@@ -169,6 +163,28 @@ export function consumeConstructorSeed(): ConstructorSeed | null {
 
     if (!text && !image && !product && !color && !generate) return null;
     return { text, textColor, image, side, placement, product, subProduct, color, generate };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the pending seed AND delete it in the same step, so it is applied at
+ * most once. Returns null when absent, unreadable, stale, or empty.
+ */
+export function consumeConstructorSeed(): ConstructorSeed | null {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(SEED_KEY);
+  } catch {
+    return null;
+  }
+  // Delete FIRST: even a malformed or stale seed must not linger.
+  clearConstructorSeed();
+  if (!raw) return null;
+
+  try {
+    return normalizeConstructorSeed(JSON.parse(raw));
   } catch {
     return null;
   }

@@ -10,7 +10,9 @@ import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt } from 
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
-import { consumeConstructorSeed, type ConstructorSeed, type SeedGenerate } from "@/lib/constructorSeed";
+import { consumeConstructorSeed, normalizeConstructorSeed, type ConstructorSeed, type SeedGenerate } from "@/lib/constructorSeed";
+// In-place handoff from the floating chat widget when it is used on this page.
+import { CONSTRUCTOR_APPLY_EVENT, type ConstructorApplyEvent } from "@/lib/constructorBridge";
 // Style enum resolution for a seeded generation — shared with the chat side so
 // both validate against getStyleOptions() and neither can inject free text.
 import { styleForLang } from "@/lib/generateSuggestion";
@@ -1337,6 +1339,9 @@ export default function SimplePage() {
   // layer rather than dropping the customer's own work.
   const seedAppliedRef = useRef(false);
   const seedRef = useRef<ConstructorSeed | null | undefined>(undefined);
+  // Bumped when a seed arrives IN-PLACE (see the listener below). The seed
+  // effect re-runs on it; a ref alone would not wake it.
+  const [seedNonce, setSeedNonce] = useState(0);
   useEffect(() => {
     if (seedAppliedRef.current) return;
     if (seedRef.current === undefined) {
@@ -1427,7 +1432,39 @@ export default function SimplePage() {
       // normal add behaviour (the most recently added layer is selected).
       if (added) setSelectedLayerId(id);
     }
-  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords]);
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce]);
+
+  // ── In-place handoff from the floating chat widget ────────────────────────
+  //
+  // The widget is mounted on this route too, so a customer can ask for a design
+  // while already looking at the constructor. Opening a second tab containing
+  // the page they are on would be absurd, so we take the payload here instead.
+  //
+  // This is add-only on purpose: it does not touch any state the constructor
+  // already owns. It writes the SAME two refs the mount seed uses and bumps the
+  // nonce, so the payload then travels through the exact ladder above — same
+  // product phases, same append-only layer rules, same generation queue. There
+  // is one code path for applying a seed and this is not a second one.
+  //
+  // preventDefault() is the claim: the dispatcher checks it synchronously and
+  // opens a tab only if nobody took it. So DECLINING is a real option, and we
+  // decline a generation while one is already running — handleAiGenerate
+  // returns early when aiGenerating, and claiming a request we would then drop
+  // is exactly the "button that does nothing" this replaces. The tab it falls
+  // back to actually runs it.
+  useEffect(() => {
+    const onApply = (e: Event) => {
+      const seed = normalizeConstructorSeed((e as ConstructorApplyEvent).detail);
+      if (!seed) return;
+      if (seed.generate && aiGenerating) return; // busy → let it open a tab
+      e.preventDefault();
+      seedRef.current = seed;
+      seedAppliedRef.current = false;
+      setSeedNonce((n) => n + 1);
+    };
+    window.addEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
+    return () => window.removeEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
+  }, [aiGenerating]);
 
   // ── Seeded generation: run it through handleAiGenerate, never past it ─────
   //

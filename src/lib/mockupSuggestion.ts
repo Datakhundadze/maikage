@@ -6,7 +6,8 @@
 // byte-for-byte what ChatPage ran before the extraction.
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
 import { TEXT_COLORS } from "@/lib/textColors";
-import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH } from "@/lib/constructorSeed";
+import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH, type ConstructorSeed } from "@/lib/constructorSeed";
+import { offerToLiveConstructor } from "@/lib/constructorBridge";
 
 /** The constructor entry point — mode is signalled by the query param. */
 export const CONSTRUCTOR_URL = "/?constructor=1";
@@ -217,7 +218,7 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
   // A product change without an explicit brand would carry a stale brand from
   // another product; fall back to that product's catalog default.
   const subProduct = m.subProduct ?? (m.product ? catalog.getDefaultSubProduct(m.product) : undefined);
-  writeConstructorSeed({
+  const seed: ConstructorSeed = {
     text: m.text,
     textColor: m.textColor,
     image: attachment ?? undefined,
@@ -226,7 +227,14 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
     product: m.product,
     subProduct,
     color: m.color,
-  });
+  };
+
+  // Already standing in the constructor? Apply it there and open nothing. Only
+  // a live SimplePage can answer yes, and it answers by taking the payload —
+  // see constructorBridge. Nothing below changes when it declines.
+  if (offerToLiveConstructor(seed)) return true;
+
+  writeConstructorSeed(seed);
 
   try {
     // NOTE: do NOT pass "noopener"/"noreferrer" in the features string. Per the

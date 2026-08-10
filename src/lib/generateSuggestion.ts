@@ -19,8 +19,10 @@ import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "
 import {
   writeConstructorSeed,
   MAX_SEED_PROMPT_LENGTH,
+  type ConstructorSeed,
   type SeedGenerate,
 } from "@/lib/constructorSeed";
+import { offerToLiveConstructor } from "@/lib/constructorBridge";
 import {
   CONSTRUCTOR_URL,
   parseMockupSuggestion,
@@ -41,7 +43,7 @@ const norm = (s: string) => s.trim().toLowerCase();
 // never allowed to invent one.
 //
 // The two language lists are INDEX-PARALLEL — getStyleOptions("en")[i] and
-// getStyleOptions("ka")[i] are the same style — so an index is a
+// getStyleOptions("ge")[i] are the same style — so an index is a
 // language-independent identity for a style, and every conversion below is an
 // index lookup rather than a translation table.
 const EN_STYLES = getStyleOptions("en");
@@ -268,13 +270,20 @@ export function openGenerateInConstructor(g: GenerateSuggestion): boolean {
   // A product change without an explicit brand would carry a stale brand from
   // another product; fall back to that product's catalog default.
   const subProduct = g.subProduct ?? (g.product ? catalog.getDefaultSubProduct(g.product) : undefined);
-  writeConstructorSeed({
+  const seed: ConstructorSeed = {
     product: g.product,
     subProduct,
     color: g.color,
     side: g.side,
     generate: toSeedGenerate(g),
-  });
+  };
+
+  // Already in the constructor? Generate there rather than in a second copy of
+  // the page the customer is looking at. A live SimplePage claims the payload;
+  // one that is mid-generation deliberately does not, and we fall through.
+  if (offerToLiveConstructor(seed)) return true;
+
+  writeConstructorSeed(seed);
 
   try {
     // See mockupSuggestion.openMockupInConstructor for why "noopener" must not
