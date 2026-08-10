@@ -33,6 +33,12 @@ export interface ConstructorSeed {
   image?: string;
   /** Which side the layers land on. */
   side?: "front" | "back";
+  /**
+   * Where on the garment the design sits. "left-chest"/"right-chest" are the
+   * WEARER's sides. Absent or unrecognised → the constructor's default centre
+   * placement, i.e. today's behaviour.
+   */
+  placement?: "center" | "left-chest" | "right-chest";
 }
 
 /**
@@ -63,8 +69,12 @@ export function readConstructorSeed(): ConstructorSeed | null {
     const text = rawText ? rawText.slice(0, MAX_SEED_TEXT_LENGTH) : undefined;
     const image = typeof parsed.image === "string" ? parsed.image : undefined;
     const side = parsed.side === "front" || parsed.side === "back" ? parsed.side : undefined;
+    const placement =
+      parsed.placement === "center" || parsed.placement === "left-chest" || parsed.placement === "right-chest"
+        ? parsed.placement
+        : undefined;
     if (!text && !image) return null;
-    return { text, image, side };
+    return { text, image, side, placement };
   } catch {
     return null;
   }

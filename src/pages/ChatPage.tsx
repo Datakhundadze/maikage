@@ -50,6 +50,7 @@ interface MockupSuggestion {
   subProduct?: string;
   color?: ProductColor;
   side?: "front" | "back";
+  placement?: "center" | "left-chest" | "right-chest";
 }
 
 /** Remove every maika-mockup fence (closed OR truncated) from displayed text. */
@@ -192,6 +193,13 @@ function parseMockupSuggestion(raw: string): MockupSuggestion | null {
     if (typeof parsed.side === "string") {
       const s = norm(parsed.side);
       if (s === "front" || s === "back") out.side = s;
+    }
+
+    // placement — center|left-chest|right-chest, case-insensitive. Unrecognised
+    // values are dropped, which leaves the constructor's default centring.
+    if (typeof parsed.placement === "string") {
+      const pl = norm(parsed.placement);
+      if (pl === "center" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
     }
 
     return out;
@@ -413,7 +421,7 @@ export default function ChatPage() {
     } catch {
       /* ignore — the constructor falls back to its own defaults */
     }
-    writeConstructorSeed({ text: m.text, image: attachment ?? undefined, side: m.side });
+    writeConstructorSeed({ text: m.text, image: attachment ?? undefined, side: m.side, placement: m.placement });
     setMode("simple");
     navigate("/");
   }, [attachment, setMode, navigate]);
