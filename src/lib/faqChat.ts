@@ -17,7 +17,13 @@ export type FaqResult =
   | { ok: true; text: string }
   | { ok: false; kind: "rate_limited" | "blocked" | "error" };
 
-export async function faqChat(messages: FaqMessage[], lang: Lang, sessionId?: string): Promise<FaqResult> {
+/**
+ * @param image Optional base64 data URL attached to THIS request only. It is
+ *   never added to `messages`, so it cannot enter the conversation history or
+ *   be resent on later turns, and it is never uploaded to storage — the proxy
+ *   passes it straight to the model.
+ */
+export async function faqChat(messages: FaqMessage[], lang: Lang, sessionId?: string, image?: string): Promise<FaqResult> {
   // Send only user/assistant turns (the proxy re-sanitizes anyway), last 8,
   // each capped — mirrors the server-side bounds so payloads stay small.
   const clean = messages
@@ -27,7 +33,8 @@ export async function faqChat(messages: FaqMessage[], lang: Lang, sessionId?: st
 
   const { data, error } = await supabase.functions.invoke("gemini-proxy", {
     // session_id groups a conversation in the admin chat-history log (server-side).
-    body: { action: "faq-chat", params: { messages: clean, lang, session_id: sessionId } },
+    // image (when present) is request-scoped — see the param doc above.
+    body: { action: "faq-chat", params: { messages: clean, lang, session_id: sessionId, ...(image ? { image } : {}) } },
   });
 
   // Non-2xx → FunctionsHttpError; the JSON body (with `code`) is in error.context.
