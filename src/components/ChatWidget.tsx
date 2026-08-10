@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { MessageCircle, X, Send, ImagePlus } from "lucide-react";
+import { MessageCircle, X, Minus, ChevronUp, Send, ImagePlus } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
@@ -60,6 +60,10 @@ export default function ChatWidget() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  // Collapsed-to-the-header-bar state. Purely presentational: the panel stops
+  // being rendered but every piece of chat state below stays put, so expanding
+  // restores the same conversation, the same attachment and the same session.
+  const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -75,10 +79,12 @@ export default function ChatWidget() {
   // in the admin chat-history log. Resets on reload (a new visit = new session).
   const sessionIdRef = useRef<string>(crypto.randomUUID());
 
-  // Keep the list pinned to the newest message / typing indicator.
+  // Keep the list pinned to the newest message / typing indicator. `minimized`
+  // is a dependency because collapsing unmounts the list — on expand the fresh
+  // node starts at scrollTop 0 and has to be re-pinned to the bottom.
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages, loading, open]);
+  }, [messages, loading, open, minimized]);
 
   const openPanel = useCallback(() => {
     setOpen(true);
@@ -199,6 +205,29 @@ export default function ChatWidget() {
     );
   }
 
+  // ── Open but minimized: the header bar alone, pinned bottom-right ──
+  // Anchored exactly where the round launcher sits, so it covers nothing the
+  // launcher does not already cover, and capped at the panel's own 360px.
+  // Tapping anywhere on the bar expands the panel back, untouched.
+  if (minimized) {
+    return (
+      <button
+        type="button"
+        onClick={() => setMinimized(false)}
+        aria-label={lang === "en" ? "Expand chat" : "ჩატის გაშლა"}
+        title={lang === "en" ? "Expand chat" : "ჩატის გაშლა"}
+        className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex w-[calc(100vw-2rem)] max-w-[360px] items-center justify-between gap-2 rounded-2xl px-4 py-3 text-left text-white shadow-2xl"
+        style={{ backgroundColor: ACCENT }}
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <MessageCircle className="h-4 w-4 shrink-0" />
+          <span className="text-sm font-semibold truncate">{t(lang, "chat.title")}</span>
+        </span>
+        <ChevronUp className="h-4 w-4 shrink-0" />
+      </button>
+    );
+  }
+
   // ── Open: panel (desktop card bottom-right; mobile full-width bottom sheet) ──
   return (
     <div
@@ -212,14 +241,24 @@ export default function ChatWidget() {
           <MessageCircle className="h-4 w-4 shrink-0" />
           <span className="text-sm font-semibold truncate">{t(lang, "chat.title")}</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label={t(lang, "chat.close")}
-          className="rounded-md p-1 hover:bg-white/20 transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMinimized(true)}
+            aria-label={lang === "en" ? "Minimize chat" : "ჩატის ჩაკეცვა"}
+            className="rounded-md p-1 hover:bg-white/20 transition-colors"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label={t(lang, "chat.close")}
+            className="rounded-md p-1 hover:bg-white/20 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Message list */}
