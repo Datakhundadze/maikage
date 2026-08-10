@@ -911,7 +911,16 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       // a silhouette/mask, which matting collapses into a binary mask. Green
       // keys far more reliably than white (which punches holes in white/skin/
       // highlight regions), so we ask for a green screen and key it client-side.
-      model = "google/gemini-3-pro-image-preview";
+      //
+      // COST GATE: flash instead of pro. Chroma-key segmentation is a
+      // background REPLACEMENT, not a re-render — the subject is copied, not
+      // regenerated — so it is far less model-sensitive than a difference
+      // matte. ⚠️ Flash quality on this specific task is UNVERIFIED: no A/B was
+      // run, and the failure mode to watch is edge fidelity on hair/fur and
+      // green spill onto the subject. Revert: set this back to
+      // "google/gemini-3-pro-image-preview" — one line, nothing else depends
+      // on it.
+      model = "google/gemini-2.5-flash-image";
       messages = [{
         role: "user",
         content: [

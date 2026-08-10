@@ -1108,6 +1108,19 @@ export default function SimplePage() {
   // aspect may differ). 429 → login modal / slow-down toast like other AI calls.
   const handleRemoveBgPhoto = useCallback(async (photo: PhotoLayer) => {
     if (editingPhotoId) return;
+    // Guest gate. isolate-subject is a BILLABLE action server-side (it shares
+    // the gen: bucket), but unlike handleAiGenerate this path had no client-side
+    // check, so a guest hit the server limit with no explanation. Same gate the
+    // generate flow uses: guests get the sign-in prompt instead of a bare 429.
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ("reason" in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage("message" in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
+    recordAiGeneration();
     setEditingPhotoId(photo.id);
     try {
       const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
@@ -1136,7 +1149,7 @@ export default function SimplePage() {
     } finally {
       setEditingPhotoId(null);
     }
-  }, [editingPhotoId, applyContainFit, setSideData, toast, lang]);
+  }, [editingPhotoId, applyContainFit, setSideData, toast, lang, checkAiLimit, recordAiGeneration]);
 
   // Chat edit — the merged panel's free-text / chip edit path. Mirrors the
   // retired handleRestylePhoto pattern exactly (write the result back into the
