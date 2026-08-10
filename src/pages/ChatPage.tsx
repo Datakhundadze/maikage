@@ -249,6 +249,7 @@ export default function ChatPage() {
                   leaves it undefined and the prose stands alone. */}
               <ChatSuggestionActions
                 suggestion={m.suggestion}
+                lang={lang}
                 onMockup={openInConstructor}
                 onGenerate={openGenerate}
               />

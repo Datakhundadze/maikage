@@ -240,6 +240,7 @@ export default function ChatWidget() {
                   it undefined and the prose stands alone. */}
               <ChatSuggestionActions
                 suggestion={m.suggestion}
+                lang={lang}
                 compact
                 onMockup={openInConstructor}
                 onGenerate={openGenerate}

@@ -15,13 +15,18 @@ import { Shirt, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { MockupSuggestion } from "@/lib/mockupSuggestion";
 import type { ChatSuggestion, GenerateSuggestion } from "@/lib/generateSuggestion";
+import ChatStyleChips from "@/components/ChatStyleChips";
+import type { Lang } from "@/lib/i18n";
 
 export default function ChatSuggestionActions({
   suggestion,
+  lang,
   compact = false,
   onMockup,
   onGenerate,
 }: {
+  /** Page language — only used to label the style chips. */
+  lang: Lang;
   /** The one validated suggestion for this turn, or null for prose alone. */
   suggestion: ChatSuggestion | null | undefined;
   /** The widget's tighter sizing. Purely dimensional. */
@@ -38,6 +43,19 @@ export default function ChatSuggestionActions({
   const size = compact ? "sm" : "default";
 
   if (suggestion.kind === "generate") {
+    // No style named → let the customer pick from the client's own enum in one
+    // tap rather than committing a generation to Auto. A style the model DID
+    // name keeps the single button below, unchanged.
+    if (!suggestion.generate.style) {
+      return (
+        <ChatStyleChips
+          lang={lang}
+          suggestion={suggestion.generate}
+          onPick={onGenerate}
+          compact={compact}
+        />
+      );
+    }
     return (
       <Button onClick={() => onGenerate(suggestion.generate)} size={size} className={cls}>
         <Sparkles className={iconCls} />
