@@ -351,6 +351,21 @@ EN:
 ═══════════════════════════════════════════════════════════════
 `;
 
+// Guard for the OPTIONAL faq-chat photo attachment. Accepts ONLY a
+// `data:image/*;base64,...` URL and caps the payload; anything else (remote
+// URLs, non-image data URLs, oversized blobs) is rejected and the request
+// simply proceeds as text-only. The client already downscales to 1024px /
+// JPEG q0.8 (~150-250KB), so 8MB of base64 (~6MB of image) is a generous
+// ceiling that still bounds abuse. Used by faq-chat only.
+const MAX_CHAT_IMAGE_CHARS = 8 * 1024 * 1024; // 8 MB of base64 data URL
+function isAcceptableChatImage(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length <= MAX_CHAT_IMAGE_CHARS &&
+    /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value)
+  );
+}
+
 /** Extract base64 image from various response formats the gateway might return */
 function extractImage(data: any): string | null {
   // Format 1: content array with image_url objects
@@ -952,6 +967,28 @@ Output: one photorealistic composite photo.`;
         .map((m) => ({ role: m.role, content: m.content.slice(0, 1000) }));
       messages = [{ role: "system", content: FAQ_KB }, ...history];
 
+      // ── OPTIONAL PHOTO (add-only) ──────────────────────────────────────
+      // When params.image is absent, everything above is untouched and this
+      // block is skipped — the no-image path is byte-identical to before.
+      //
+      // The image is REQUEST-SCOPED: it is attached to the last user turn of
+      // THIS call only. It never enters `history` (which stays string-only, so
+      // the .filter above would drop it anyway) and is therefore never resent
+      // on a later turn. It is never persisted — no storage, no table.
+      if (isAcceptableChatImage(params.image)) {
+        const lastUserIdx = messages.map((m: { role: string }) => m.role).lastIndexOf("user");
+        if (lastUserIdx !== -1) {
+          const turn = messages[lastUserIdx] as { role: string; content: string };
+          messages[lastUserIdx] = {
+            role: "user",
+            content: [
+              { type: "text", text: turn.content },
+              { type: "image_url", image_url: { url: params.image } },
+            ],
+          };
+        }
+      }
+
     } else {
       return new Response(JSON.stringify({ error: "Unknown action" }), {
         status: 400,
@@ -1036,7 +1073,12 @@ Output: one photorealistic composite photo.`;
               if (sessionId && srUrl && srKey) {
                 const rows: Record<string, unknown>[] = [];
                 if (lastUser) {
-                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "user", content: String(lastUser.content).slice(0, 4000), lang: logLang });
+                  // The photo rides on params.image, NOT inside messages, so
+                  // lastUser still has string content and the user row is never
+                  // lost. Only a short marker is appended — the base64 itself is
+                  // never written to chat_logs.
+                  const imageMarker = isAcceptableChatImage(params.image) ? " [image]" : "";
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "user", content: String(lastUser.content).slice(0, 4000) + imageMarker, lang: logLang });
                 }
                 if (textContent) {
                   rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: String(textContent).slice(0, 8000), lang: logLang });
