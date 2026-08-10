@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { MessageCircle, X, Send, ImagePlus } from "lucide-react";
+import { MessageCircle, X, Send, ImagePlus, Minus, ChevronUp } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
@@ -60,6 +60,10 @@ export default function ChatWidget() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  // Collapsed to the header bar alone. Purely presentational: the panel stays
+  // OPEN and mounted, so messages, the attached photo and the session id are
+  // exactly where they were — the same reason X already preserves them.
+  const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,10 +82,11 @@ export default function ChatWidget() {
   // Keep the list pinned to the newest message / typing indicator.
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages, loading, open]);
+  }, [messages, loading, open, minimized]);
 
   const openPanel = useCallback(() => {
     setOpen(true);
+    setMinimized(false);
     // Seed a local bilingual greeting on first open (no API call).
     setMessages((prev) => (prev.length === 0 ? [{ role: "assistant", content: t(lang, "chat.greeting"), local: true }] : prev));
     setTimeout(() => inputRef.current?.focus(), 60);
@@ -199,6 +204,46 @@ export default function ChatWidget() {
     );
   }
 
+  // ── Open but MINIMIZED: the header bar alone ──
+  // Deliberately the SAME fixed positioning and width as the full panel below,
+  // so it occupies a strict subset of the space the panel already used — it
+  // cannot overlap anything the expanded panel didn't. The launcher is not
+  // rendered while `open`, so there is nothing to collide with bottom-right.
+  if (minimized) {
+    return (
+      <div
+        className="fixed z-50 inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-6 sm:right-6 w-full sm:w-[360px] rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl overflow-hidden"
+        role="dialog"
+        aria-label={t(lang, "chat.title")}
+      >
+        <div className="flex items-center justify-between gap-2 text-white" style={{ backgroundColor: ACCENT }}>
+          {/* The bar itself expands — one tap anywhere on it. */}
+          <button
+            type="button"
+            onClick={() => setMinimized(false)}
+            aria-label={t(lang, "chat.expand")}
+            title={t(lang, "chat.expand")}
+            className="flex min-w-0 flex-1 items-center gap-2 px-4 py-3 text-left hover:bg-white/10 transition-colors"
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" />
+            <span className="text-sm font-semibold truncate">{t(lang, "chat.title")}</span>
+            <ChevronUp className="ml-auto h-4 w-4 shrink-0 opacity-80" />
+          </button>
+          {/* X stays reachable while collapsed, and behaves exactly as it does
+              in the expanded header. */}
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label={t(lang, "chat.close")}
+            className="mr-3 rounded-md p-1 hover:bg-white/20 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Open: panel (desktop card bottom-right; mobile full-width bottom sheet) ──
   return (
     <div
@@ -212,14 +257,25 @@ export default function ChatWidget() {
           <MessageCircle className="h-4 w-4 shrink-0" />
           <span className="text-sm font-semibold truncate">{t(lang, "chat.title")}</span>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label={t(lang, "chat.close")}
-          className="rounded-md p-1 hover:bg-white/20 transition-colors"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMinimized(true)}
+            aria-label={t(lang, "chat.minimize")}
+            title={t(lang, "chat.minimize")}
+            className="rounded-md p-1 hover:bg-white/20 transition-colors"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label={t(lang, "chat.close")}
+            className="rounded-md p-1 hover:bg-white/20 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Message list */}
