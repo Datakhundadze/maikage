@@ -11,6 +11,9 @@ import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import { consumeConstructorSeed, type ConstructorSeed } from "@/lib/constructorSeed";
+// Text-colour palette — shared with the /chat handoff so both validate against
+// the same list. Same values, same order as the former local constant.
+import { TEXT_COLORS, DEFAULT_TEXT_COLOR_HEX, resolveTextColorHex } from "@/lib/textColors";
 import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
@@ -90,20 +93,7 @@ const FONT_GROUPS = [
 
 const FONTS = FONT_GROUPS.flatMap((g) => g.fonts);
 
-const TEXT_COLORS = [
-  { name: "Black", hex: "#000000" },
-  { name: "White", hex: "#FFFFFF" },
-  { name: "Red", hex: "#DC2626" },
-  { name: "Blue", hex: "#2563EB" },
-  { name: "Green", hex: "#16A34A" },
-  { name: "Yellow", hex: "#EAB308" },
-  { name: "Orange", hex: "#EA580C" },
-  { name: "Purple", hex: "#9333EA" },
-  { name: "Pink", hex: "#EC4899" },
-  { name: "Gray", hex: "#6B7280" },
-  { name: "Gold", hex: "#D4A017" },
-  { name: "Navy", hex: "#1E3A5F" },
-];
+
 
 const LAYER_COLORS = [
   "bg-blue-500",
@@ -1406,7 +1396,9 @@ export default function SimplePage() {
           id,
           content: seedText,
           font: FONTS[0],
-          color: "#000000",
+          // Palette-only: an unknown name resolves to null and falls back to
+          // the default, so an arbitrary hex can never be injected.
+          color: resolveTextColorHex(seed.textColor) ?? DEFAULT_TEXT_COLOR_HEX,
           // No placement (or "center", or anything unrecognised) keeps today's
           // behaviour byte-for-byte: staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS.
           coords: chest ? chestTextCoords(chest) : staggeredTextCoords(prev.texts.length),

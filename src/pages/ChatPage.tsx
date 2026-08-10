@@ -9,6 +9,7 @@ import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
 import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH } from "@/lib/constructorSeed";
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
+import { TEXT_COLORS } from "@/lib/textColors";
 import { Button } from "@/components/ui/button";
 import SeoHead from "@/components/SeoHead";
 
@@ -53,6 +54,8 @@ interface MockupSuggestion {
   color?: ProductColor;
   side?: "front" | "back";
   placement?: "center" | "left-chest" | "right-chest";
+  /** A NAME from the constructor's text-colour palette, never a raw hex. */
+  textColor?: string;
 }
 
 /** Remove every maika-mockup fence (closed OR truncated) from displayed text. */
@@ -202,6 +205,13 @@ function parseMockupSuggestion(raw: string): MockupSuggestion | null {
     if (typeof parsed.placement === "string") {
       const pl = norm(parsed.placement);
       if (pl === "center" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
+    }
+
+    // textColor — must NAME a colour in the constructor's own palette. Anything
+    // else (including a raw hex) is dropped, leaving the default black.
+    if (typeof parsed.textColor === "string") {
+      const hit = TEXT_COLORS.find((c) => norm(c.name) === norm(parsed.textColor as string));
+      if (hit) out.textColor = hit.name;
     }
 
     return out;
