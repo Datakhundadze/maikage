@@ -8,7 +8,7 @@ import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
 import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH } from "@/lib/constructorSeed";
-import { catalog, PRODUCTS, type ProductType, type ProductColor } from "@/lib/catalog";
+import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
 import { Button } from "@/components/ui/button";
 import SeoHead from "@/components/SeoHead";
 
@@ -57,10 +57,72 @@ function stripMockupFence(raw: string): string {
   return raw.replace(MOCKUP_FENCE_RE, "").trim();
 }
 
+/** Case- and whitespace-insensitive comparison key. */
+const norm = (s: string) => s.trim().toLowerCase();
+
 /**
- * Parse + validate the fenced block. Returns null unless the payload is fully
- * trustworthy AND actionable (it must carry usable text, or the caller must
- * have a photo to pair with it).
+ * Placeholder text the model sometimes emits instead of the customer's own
+ * words. Accepting these would print "your text" on a shirt, so they are
+ * dropped (the block survives if a photo is attached).
+ */
+const PLACEHOLDER_TEXTS = new Set([
+  "თქვენი ტექსტი",
+  "თქვენი ტექსტი აქ",
+  "your text",
+  "your text here",
+  "text",
+  "ტექსტი",
+  "...",
+  "…",
+]);
+
+/** Resolve a product TYPE, case-insensitively, against the real catalog. */
+function resolveProductType(raw: string): ProductType | null {
+  return PRODUCTS.find((p) => norm(p.type) === norm(raw))?.type ?? null;
+}
+
+/**
+ * Resolve a BRAND to its owning product type by scanning the catalog's own
+ * sub-product lists. This is what rescues the most common model error —
+ * a brand ("GILDAN") placed in the `product` slot.
+ */
+function resolveBrand(raw: string): { product: ProductType; subProduct: string } | null {
+  for (const p of PRODUCTS) {
+    const hit = catalog.getSubProducts(p.type).find((s) => norm(s) === norm(raw));
+    if (hit) return { product: p.type, subProduct: hit };
+  }
+  return null;
+}
+
+/** Read the product/brand currently stored for the constructor, for fallbacks. */
+function storedProductContext(): { product: ProductType; subProduct: string } {
+  const fallback: ProductType = "T-Shirt";
+  try {
+    const raw = sessionStorage.getItem(PRODUCT_CONFIG_KEY);
+    const cfg = raw ? (JSON.parse(raw) as { product?: string; subProduct?: string }) : {};
+    const product = (cfg.product && resolveProductType(cfg.product)) || fallback;
+    const subs = catalog.getSubProducts(product);
+    const subProduct =
+      (cfg.subProduct && subs.find((s) => norm(s) === norm(cfg.subProduct!))) ||
+      catalog.getDefaultSubProduct(product);
+    return { product, subProduct };
+  } catch {
+    return { product: fallback, subProduct: catalog.getDefaultSubProduct(fallback) };
+  }
+}
+
+/**
+ * Parse + validate the fenced block.
+ *
+ * TOLERANT BUT NEVER INVENTIVE: matching is case- and whitespace-insensitive,
+ * and a brand in the `product` slot is re-homed to `subProduct` with its type
+ * inferred — but every value that survives is a REAL catalog entry, taken from
+ * PRODUCTS / catalog.getSubProducts() / catalog.getAvailableColors(). A field
+ * that cannot be resolved is DROPPED (the constructor then keeps whatever is
+ * already in maika-product-config) rather than rejecting the whole block.
+ *
+ * The block is rejected outright only when nothing usable is left — no valid
+ * text and (per the caller) no attached photo.
  */
 function parseMockupSuggestion(raw: string): MockupSuggestion | null {
   try {
@@ -71,37 +133,66 @@ function parseMockupSuggestion(raw: string): MockupSuggestion | null {
 
     const out: MockupSuggestion = {};
 
-    // text — trimmed, non-empty, within the seed contract's cap.
+    // text — the customer's ACTUAL words. Placeholders are dropped, not printed.
     if (typeof parsed.text === "string") {
       const t = parsed.text.trim();
-      if (t && t.length <= MAX_SEED_TEXT_LENGTH) out.text = t;
+      if (t && t.length <= MAX_SEED_TEXT_LENGTH && !PLACEHOLDER_TEXTS.has(norm(t))) {
+        out.text = t;
+      }
     }
 
-    // product — must be a real catalog product type.
+    // product — a real type, or a brand mistakenly put here (the common error).
     if (typeof parsed.product === "string") {
-      const p = PRODUCTS.find((x) => x.type === parsed.product);
-      if (!p) return null;
-      out.product = p.type;
+      const asType = resolveProductType(parsed.product);
+      if (asType) {
+        out.product = asType;
+      } else {
+        const asBrand = resolveBrand(parsed.product);
+        if (asBrand) {
+          out.product = asBrand.product;
+          out.subProduct = asBrand.subProduct;
+        }
+        // Unresolvable → dropped; the stored config's product stands.
+      }
     }
 
-    // subProduct — must exist for that product (needs a product to check against).
+    // subProduct — resolved within the product's own brand list. An explicit
+    // value wins over one inferred from the `product` slot above.
     if (typeof parsed.subProduct === "string") {
-      const base = out.product ?? ("T-Shirt" as ProductType);
-      if (!catalog.getSubProducts(base).includes(parsed.subProduct)) return null;
-      out.subProduct = parsed.subProduct;
+      const base = out.product ?? storedProductContext().product;
+      const hit = catalog.getSubProducts(base).find((s) => norm(s) === norm(parsed.subProduct as string));
+      if (hit) {
+        out.subProduct = hit;
+        if (!out.product) out.product = base;
+      } else {
+        // Maybe it names a brand of a DIFFERENT product than the one given.
+        const asBrand = resolveBrand(parsed.subProduct);
+        if (asBrand && !out.product) {
+          out.product = asBrand.product;
+          out.subProduct = asBrand.subProduct;
+        }
+        // Otherwise dropped, keeping any brand inferred from `product`.
+      }
     }
 
-    // colour — must be available for the resolved product + sub-product.
+    // colour — canonical name, then confirmed available for the resolved
+    // product + brand (falling back to whatever the constructor already holds).
     if (typeof parsed.color === "string") {
-      const base = out.product ?? ("T-Shirt" as ProductType);
-      const sub = out.subProduct ?? catalog.getDefaultSubProduct(base);
-      if (!catalog.getAvailableColors(base, sub).includes(parsed.color as ProductColor)) return null;
-      out.color = parsed.color as ProductColor;
+      const canonical = COLORS.find((c) => norm(c.name) === norm(parsed.color as string))?.name;
+      if (canonical) {
+        const ctx = storedProductContext();
+        const base = out.product ?? ctx.product;
+        const sub = out.subProduct ?? (out.product ? catalog.getDefaultSubProduct(base) : ctx.subProduct);
+        if (catalog.getAvailableColors(base, sub).includes(canonical)) out.color = canonical;
+        // Not offered for this product → colour dropped, rest kept.
+      }
     }
 
-    // side — strictly front|back.
-    if (parsed.side === "front" || parsed.side === "back") out.side = parsed.side;
-    else if (parsed.side !== undefined) return null;
+    // side — front|back, case-insensitive; anything else is dropped.
+    if (typeof parsed.side === "string") {
+      const s = norm(parsed.side);
+      if (s === "front" || s === "back") out.side = s;
+    }
 
     return out;
   } catch {
