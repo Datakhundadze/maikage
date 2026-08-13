@@ -45,7 +45,18 @@ export type LimitCheckResult =
 // `guestLimit` defaults to the historical 5 so existing callers (Studio)
 // are byte-for-byte unchanged; Simple-mode AI passes 2.
 export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAnonymous } = useAuth();
+
+  // An ANONYMOUS session is a guest, not a customer.
+  //
+  // "სტუმრად შესვლა" (LoginPage) calls signInAnonymously(), which yields a real
+  // user object carrying is_anonymous: true. Every check below branched on
+  // `!user` alone, so such a session fell through to "logged-in users have no
+  // generation limit" and got an UNLIMITED client-side allowance — while still
+  // being, in every sense the customer would recognise, a guest. What matters
+  // is whether there is a real account behind the session, not whether a JWT
+  // exists.
+  const isRealUser = !!user && !isAnonymous;
 
   const checkLimit = useCallback((): LimitCheckResult => {
     // ── AUTH NOT SETTLED YET ────────────────────────────────────────────────
@@ -72,8 +83,8 @@ export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
     // believed.
     if (loading) return { allowed: true };
 
-    // Guest user — `guestLimit` per 24h, then login required
-    if (!user) {
+    // Guest — no account, or an anonymous session. `guestLimit` per 24h.
+    if (!isRealUser) {
       const data = getGuestLimit();
       const now = Date.now();
       // Reset if 24h window has passed
@@ -91,9 +102,9 @@ export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
       return { allowed: true };
     }
 
-    // Logged-in users have no generation limit
+    // Real signed-in users have no client-side generation limit
     return { allowed: true };
-  }, [user, loading, guestLimit]);
+  }, [isRealUser, loading, guestLimit]);
 
   const recordGeneration = useCallback(() => {
     // Same window, same reason as checkLimit: a null user here is not yet KNOWN
@@ -102,7 +113,7 @@ export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
     // already counted this call against the right key.
     if (loading) return;
 
-    if (!user) {
+    if (!isRealUser) {
       const data = getGuestLimit();
       const now = Date.now();
       if (data.count > 0 && now - data.firstGenAt >= GUEST_COOLDOWN_MS) {
@@ -129,7 +140,7 @@ export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
       count: data.count + 1,
       firstGenAt: data.firstGenAt || now,
     });
-  }, [user, loading]);
+  }, [isRealUser, loading]);
 
   return { checkLimit, recordGeneration };
 }

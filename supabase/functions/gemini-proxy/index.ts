@@ -854,9 +854,23 @@ serve(async (req) => {
           }
         }
 
-        const requiresLogin = !user;
+        // An ANONYMOUS session is a guest, not a customer.
+        //
+        // "სტუმრად შესვლა" calls signInAnonymously(), which produces a real
+        // user object with is_anonymous: true. Keying that by user.id handed it
+        // the REGISTERED ceilings — 30/hour, 100/day — so anyone who tapped
+        // that button got fifteen times the guest allowance, and a fresh
+        // anonymous sign-in minted a brand new empty bucket on demand. The
+        // ceiling has to follow what the caller IS, not merely whether a JWT
+        // was present.
+        //
+        // Anonymous callers are therefore keyed by IP with the guest ceilings,
+        // exactly like a caller with no session at all. A real signed-in user
+        // is untouched: same gen:user: key, same 30/100.
+        const isRealUser = !!user && user.is_anonymous !== true;
+        const requiresLogin = !isRealUser;
         let key: string;
-        if (user) {
+        if (isRealUser) {
           key = `gen:user:${user.id}`;
         } else {
           const ip = req.headers.get("cf-connecting-ip")
@@ -864,8 +878,8 @@ serve(async (req) => {
             ?? "unknown";
           key = `gen:ip:${ip}`;
         }
-        const hourLimit = user ? 30 : 2;
-        const dayLimit = user ? 100 : 5;
+        const hourLimit = isRealUser ? 30 : 2;
+        const dayLimit = isRealUser ? 100 : 5;
 
         const { data: allowed, error: rlError } = await client.rpc(
           "check_and_increment_rate_limit",
