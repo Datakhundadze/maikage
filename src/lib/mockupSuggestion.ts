@@ -6,7 +6,12 @@
 // byte-for-byte what ChatPage ran before the extraction.
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
 import { TEXT_COLORS } from "@/lib/textColors";
-import { writeConstructorSeed, MAX_SEED_TEXT_LENGTH, type ConstructorSeed } from "@/lib/constructorSeed";
+import {
+  writeConstructorSeed,
+  withCurrentProductConfig,
+  MAX_SEED_TEXT_LENGTH,
+  type ConstructorSeed,
+} from "@/lib/constructorSeed";
 import { offerToLiveConstructor } from "@/lib/constructorBridge";
 
 /** The constructor entry point — mode is signalled by the query param. */
@@ -215,18 +220,24 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
  *   the caller should fall back to navigating its own tab.
  */
 export function openMockupInConstructor(m: MockupSuggestion, attachment?: string | null): boolean {
-  // A product change without an explicit brand would carry a stale brand from
-  // another product; fall back to that product's catalog default.
-  const subProduct = m.subProduct ?? (m.product ? catalog.getDefaultSubProduct(m.product) : undefined);
-  const seed: ConstructorSeed = {
+  // Gaps the model left in product/brand/colour are filled from what the
+  // customer is actually looking at, BEFORE the catalog default below — the
+  // new tab cannot see their sessionStorage, so this is the only chance.
+  const merged = withCurrentProductConfig({
     text: m.text,
     textColor: m.textColor,
     image: attachment ?? undefined,
     side: m.side,
     placement: m.placement,
     product: m.product,
-    subProduct,
+    subProduct: m.subProduct,
     color: m.color,
+  });
+  const seed: ConstructorSeed = {
+    ...merged,
+    // A product change without an explicit brand would carry a stale brand from
+    // another product; fall back to that product's catalog default.
+    subProduct: merged.subProduct ?? (merged.product ? catalog.getDefaultSubProduct(merged.product) : undefined),
   };
 
   // Already standing in the constructor? Apply it there and open nothing. Only

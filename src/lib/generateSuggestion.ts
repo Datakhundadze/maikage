@@ -18,6 +18,7 @@ import type { Lang } from "@/lib/i18n";
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
 import {
   writeConstructorSeed,
+  withCurrentProductConfig,
   MAX_SEED_PROMPT_LENGTH,
   type ConstructorSeed,
   type SeedGenerate,
@@ -267,15 +268,21 @@ export function toSeedGenerate(g: GenerateSuggestion): SeedGenerate {
  *   the caller should fall back to navigating its own tab.
  */
 export function openGenerateInConstructor(g: GenerateSuggestion): boolean {
-  // A product change without an explicit brand would carry a stale brand from
-  // another product; fall back to that product's catalog default.
-  const subProduct = g.subProduct ?? (g.product ? catalog.getDefaultSubProduct(g.product) : undefined);
-  const seed: ConstructorSeed = {
+  // Gaps the model left in product/brand/colour are filled from what the
+  // customer is actually looking at, BEFORE the catalog default below — the
+  // new tab cannot see their sessionStorage, so this is the only chance.
+  const merged = withCurrentProductConfig({
     product: g.product,
-    subProduct,
+    subProduct: g.subProduct,
     color: g.color,
     side: g.side,
     generate: toSeedGenerate(g),
+  });
+  const seed: ConstructorSeed = {
+    ...merged,
+    // A product change without an explicit brand would carry a stale brand from
+    // another product; fall back to that product's catalog default.
+    subProduct: merged.subProduct ?? (merged.product ? catalog.getDefaultSubProduct(merged.product) : undefined),
   };
 
   // Already in the constructor? Generate there rather than in a second copy of

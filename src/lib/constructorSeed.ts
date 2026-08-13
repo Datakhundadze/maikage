@@ -112,6 +112,86 @@ export function clearConstructorSeed(): void {
 }
 
 /**
+ * useProductConfig's own storage key.
+ *
+ * Duplicated rather than imported so this module stays free of React hooks —
+ * it is read by plain handoff functions, not by components. If the key ever
+ * moves, readCurrentProductConfig returns null and the handoff degrades to
+ * exactly the pre-2026-08 behaviour (model values only), which is why nothing
+ * here throws or guesses.
+ */
+const PRODUCT_CONFIG_KEY = "maika-product-config";
+
+/** The subset of the stored product config a seed can carry. */
+interface CurrentProductConfig {
+  product?: string;
+  subProduct?: string;
+  color?: string;
+}
+
+/**
+ * The customer's CURRENT product selection, read in the tab the chat is in.
+ *
+ * WHY. A seed only ever carried what the MODEL named. Every field it left out
+ * fell through to the constructor's own defaults — and because
+ * `maika-product-config` is sessionStorage, which a NEW TAB does not inherit,
+ * "its own defaults" means DEFAULT_CONFIG, not what the customer was looking
+ * at. So a customer standing on a yellow shirt who asked for a design without
+ * naming a colour was handed a white one.
+ *
+ * The sending tab is the only place this is still knowable, so it is read here
+ * and travels inside the seed like everything else.
+ */
+export function readCurrentProductConfig(): CurrentProductConfig | null {
+  try {
+    const raw = sessionStorage.getItem(PRODUCT_CONFIG_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object") return null;
+    const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+    const out: CurrentProductConfig = {
+      product: str(parsed.product),
+      subProduct: str(parsed.subProduct),
+      color: str(parsed.color),
+    };
+    return out.product || out.subProduct || out.color ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fill a seed's product/brand/colour gaps from the customer's current
+ * selection. The MODEL always wins on the fields it actually specified; this
+ * only supplies the ones it left out.
+ *
+ * TWO GUARDS, both about validity rather than preference:
+ *
+ *   - A different PRODUCT invalidates everything below it. A "Yellow" that
+ *     exists for a t-shirt need not exist for a mug, and a brand certainly
+ *     does not carry across. When the model names a product other than the one
+ *     in front of the customer, nothing rides along.
+ *   - A different BRAND invalidates the colour for the same reason one level
+ *     down, so the colour only travels when the brand is unchanged.
+ *
+ * Anything not carried falls through to the catalog defaults the callers
+ * already apply — i.e. exactly today's behaviour.
+ */
+export function withCurrentProductConfig(seed: ConstructorSeed): ConstructorSeed {
+  const current = readCurrentProductConfig();
+  if (!current) return seed;
+  if (seed.product && current.product && seed.product !== current.product) return seed;
+
+  const sameBrand = !seed.subProduct || seed.subProduct === current.subProduct;
+  return {
+    ...seed,
+    product: seed.product ?? current.product,
+    subProduct: seed.subProduct ?? current.subProduct,
+    color: seed.color ?? (sameBrand ? current.color : undefined),
+  };
+}
+
+/**
  * Validate an arbitrary object into a seed, or null.
  *
  * Extracted from consumeConstructorSeed so the SAME rules apply to a seed
