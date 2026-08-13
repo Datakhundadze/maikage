@@ -1535,7 +1535,24 @@ export default function SimplePage() {
     // exactly as it does for any layer already on the garment; nothing else
     // about selection changes.
     if (seed.image || seedText) setSelectedLayerId(null);
-  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce]);
+
+    // SAY SO when a requested lettering colour could not be honoured.
+    //
+    // The parser resolves a textColor to the nearest name in the same family,
+    // so this only fires when the request had no family here at all —
+    // „ოქროსფერ-ვერცხლისფერი", a raw hex, a shade the palette has no word for.
+    // The layer still gets the palette default, because a text layer must have
+    // SOME colour; what changes is that the customer is told rather than left
+    // to wonder why their request came out black. They can then pick from the
+    // palette, which is two taps away with the layer already on the garment.
+    if (seedText && seed.textColor && !resolveTextColorHex(seed.textColor)) {
+      toast({
+        title: lang === "en"
+          ? `"${seed.textColor}" isn't in the lettering palette — used black. Tap the text to change it.`
+          : `„${seed.textColor}" არ არის წარწერის პალიტრაში — გამოვიყენეთ შავი. დააჭირე წარწერას შესაცვლელად.`,
+      });
+    }
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce, toast, lang]);
 
   // ── In-place handoff from the floating chat widget ────────────────────────
   //

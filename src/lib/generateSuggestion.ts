@@ -27,6 +27,7 @@ import { offerToLiveConstructor } from "@/lib/constructorBridge";
 import {
   CONSTRUCTOR_URL,
   colorIsAvailable,
+  resolveGarmentColor,
   parseMockupSuggestion,
   stripMockupFence,
   type MockupSuggestion,
@@ -196,15 +197,14 @@ export function parseGenerateSuggestion(raw: string): GenerateSuggestion | null 
       }
     }
 
-    // colour — canonical name, then confirmed available for the resolved
-    // product + brand. Not offered → dropped, the rest kept.
+    // colour — resolved to something this product + brand actually stocks; see
+    // resolveGarmentColor. A name whose family is not stocked leaves the field
+    // unset, which means "keep the customer's current colour", not "White".
     if (typeof parsed.color === "string") {
-      const canonical = COLORS.find((c) => norm(c.name) === norm(parsed.color as string))?.name;
-      if (canonical) {
-        const base = out.product ?? "T-Shirt";
-        const sub = out.subProduct ?? catalog.getDefaultSubProduct(base);
-        if (catalog.getAvailableColors(base, sub).includes(canonical)) out.color = canonical;
-      }
+      const base = out.product ?? "T-Shirt";
+      const sub = out.subProduct ?? catalog.getDefaultSubProduct(base);
+      const resolved = resolveGarmentColor(parsed.color, base, sub);
+      if (resolved) out.color = resolved;
     }
 
     // side — front|back, case-insensitive; anything else is dropped.
