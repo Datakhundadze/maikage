@@ -72,10 +72,10 @@ export interface ConstructorSeed {
   side?: "front" | "back";
   /**
    * Where on the garment the design sits. "left-chest"/"right-chest" are the
-   * WEARER's sides. Absent or unrecognised → the constructor's default centre
-   * placement, i.e. today's behaviour.
+   * WEARER's sides. "small" is a centred print at the pre-2026-08 default size.
+   * Absent or unrecognised → the standard centred print.
    */
-  placement?: "center" | "left-chest" | "right-chest";
+  placement?: "center" | "small" | "left-chest" | "right-chest";
   /** Product selection, carried here so it survives the new tab. */
   product?: string;
   subProduct?: string;
@@ -133,7 +133,8 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const image = typeof parsed.image === "string" ? parsed.image : undefined;
     const side = parsed.side === "front" || parsed.side === "back" ? parsed.side : undefined;
     const placement =
-      parsed.placement === "center" || parsed.placement === "left-chest" || parsed.placement === "right-chest"
+      parsed.placement === "center" || parsed.placement === "small" ||
+      parsed.placement === "left-chest" || parsed.placement === "right-chest"
         ? parsed.placement
         : undefined;
     const product = typeof parsed.product === "string" ? parsed.product : undefined;

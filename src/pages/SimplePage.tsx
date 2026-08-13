@@ -627,11 +627,31 @@ const DEFAULT_SIDE: SideData = {
 // ~15% under centre. Overflow is safe at both chest positions: the hard ceiling
 // at x=0.72 is 2*(1-0.72)=0.56, and the widest box here is the photo at 0.425
 // (right edge 0.72+0.2125 = 0.9325 < 1.0).
+// A plain "დამიწერე X" from the chat should read as a NORMAL chest print, not a
+// small mark. DEFAULT_TEXT_COORDS (scale 0.4) is only 40% of the printable
+// zone's width; 0.8 fills most of it, which is what a standard DTF print looks
+// like. The 0.3 aspect of the default box is preserved (0.24/0.8 = 0.12/0.4),
+// and it stays inside the zone: x spans [0.10, 0.90], y spans [0.53, 0.77].
+//
+// ⚠️ SEEDED LAYERS ONLY. addTextLayer — the manual "+ ტექსტის დამატება" button —
+// still uses staggeredTextCoords/DEFAULT_TEXT_COORDS and is untouched.
+const SEED_TEXT_SCALE_FACTOR = 2;
+
 const CHEST_SCALE_FACTOR = 0.85;
 const CHEST_Y = 0.3;
 const CHEST_X_OFFSET = 0.22;
 
 export type SeedPlacement = "center" | "left-chest" | "right-chest";
+
+/** The standard centred print for a SEEDED text layer — the chat's default. */
+function seededTextCoords(index: number): PlacementCoords {
+  const base = staggeredTextCoords(index);
+  return {
+    ...base,
+    scale: base.scale * SEED_TEXT_SCALE_FACTOR,
+    scaleY: (base.scaleY ?? base.scale) * SEED_TEXT_SCALE_FACTOR,
+  };
+}
 
 /** Chest coords for a TEXT layer, scaled down from DEFAULT_TEXT_COORDS. */
 function chestTextCoords(placement: "left-chest" | "right-chest"): PlacementCoords {
@@ -1442,9 +1462,14 @@ export default function SimplePage() {
           // Palette-only: an unknown name resolves to null and falls back to
           // the default, so an arbitrary hex can never be injected.
           color: resolveTextColorHex(seed.textColor) ?? DEFAULT_TEXT_COLOR_HEX,
-          // No placement (or "center", or anything unrecognised) keeps today's
-          // behaviour byte-for-byte: staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS.
-          coords: chest ? chestTextCoords(chest) : staggeredTextCoords(prev.texts.length),
+          // "small" reproduces the pre-2026-08 seeded size exactly
+          // (staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS); anything else
+          // centred — including no placement — gets the standard print.
+          coords: chest
+            ? chestTextCoords(chest)
+            : seed.placement === "small"
+              ? staggeredTextCoords(prev.texts.length)
+              : seededTextCoords(prev.texts.length),
         };
         return { ...prev, texts: [...prev.texts, newText] };
       });

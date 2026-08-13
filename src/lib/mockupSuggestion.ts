@@ -34,7 +34,7 @@ export interface MockupSuggestion {
   subProduct?: string;
   color?: ProductColor;
   side?: "front" | "back";
-  placement?: "center" | "left-chest" | "right-chest";
+  placement?: "center" | "small" | "left-chest" | "right-chest";
   /** A NAME from the constructor's text-colour palette, never a raw hex. */
   textColor?: string;
 }
@@ -185,7 +185,7 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
     // values are dropped, which leaves the constructor's default centring.
     if (typeof parsed.placement === "string") {
       const pl = norm(parsed.placement);
-      if (pl === "center" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
+      if (pl === "center" || pl === "small" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
     }
 
     // textColor — must NAME a colour in the constructor's own palette. Anything
