@@ -36,8 +36,21 @@ export interface AiChatMessage {
   id: string;
   role: "user" | "assistant";
   text?: string;
-  /** Result image (generated design or edited photo). */
+  /** Result image (generated design or edited photo). WATERMARKED — display only. */
   image?: string;
+  /**
+   * The CLEAN artwork for this generated result, kept so an earlier design can
+   * be put back on the garment without paying for a regeneration.
+   *
+   * ⚠️ This — never `image` — is what may be transferred. `image` has the
+   * maika.ge watermark baked in by watermarkForDisplay and would print on the
+   * customer's shirt.
+   *
+   * Undefined on older bubbles: SimplePage retains it for the most recent few
+   * results only, so a long session cannot grow without bound. A bubble without
+   * it simply shows no transfer button.
+   */
+  transferImage?: string;
   kind?: "generated" | "edited" | "error";
 }
 
@@ -80,6 +93,13 @@ interface SimpleAiChatPanelProps {
   hasResult: boolean;
   transferLabel: string;
   onTransfer: () => void;
+  /**
+   * Put an EARLIER generated design back on the garment. Receives that bubble's
+   * own clean artwork — never the watermarked `image` it displays. Separate
+   * from onTransfer, which stays wired to the latest result so the customer's
+   * usual press keeps its existing behaviour untouched.
+   */
+  onTransferImage: (dataUrl: string) => void;
   onRegenerate: () => void;
   onShare: () => void;
   onTryOn: () => void;
@@ -91,7 +111,7 @@ export default function SimpleAiChatPanel({
   status, activePhoto, hasPhotos, canUpload, onUploadClick, restylePresets,
   onPresetChip, onRemoveBg, optionsOpen, onToggleOptions, styleOptions,
   selectedStyle, onSelectStyle, withBackground, onToggleBackground, hasResult,
-  transferLabel, onTransfer, onRegenerate, onShare, onTryOn, blocked,
+  transferLabel, onTransfer, onTransferImage, onRegenerate, onShare, onTryOn, blocked,
 }: SimpleAiChatPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -380,6 +400,27 @@ export default function SimpleAiChatPanel({
                                 </Button>
                               </div>
                             </div>
+                          )}
+                          {/* An EARLIER generated design — transfer only.
+                              Regenerate, share and try-on stay on the latest,
+                              because they all act on `aiResult`, which only
+                              ever holds the most recent run. This button acts
+                              on the bubble's own retained artwork instead, so
+                              putting back a previous version costs nothing —
+                              no model call, no quota, no waiting. It is the
+                              alternative to regenerating in the hope of getting
+                              the old design back, which costs a real slot and
+                              usually does not reproduce it. */}
+                          {m.kind === "generated" && m.id !== lastGeneratedId && m.transferImage && (
+                            <Button
+                              onClick={() => onTransferImage(m.transferImage as string)}
+                              variant="outline"
+                              size="sm"
+                              className="w-full gap-1.5 text-xs"
+                            >
+                              <ArrowDownToLine className="h-3.5 w-3.5" />
+                              {transferLabel}
+                            </Button>
                           )}
                         </div>
                       )}
