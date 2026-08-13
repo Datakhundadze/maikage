@@ -1061,7 +1061,15 @@ export default function SimplePage() {
       // produce one transfer.
       const wasSeeded = seededRunRef.current;
       seededRunRef.current = false;
-      if (wasSeeded) handleAiTransfer();
+      if (wasSeeded) {
+        handleAiTransfer();
+        // …and unselected. handleAiTransfer goes through addPhotoLayer, which
+        // selects what it adds — right for the customer's own "Place on
+        // t-shirt" press, wrong for a design that placed itself while they
+        // watched. Both setters land in the same batch, so this one wins.
+        // The MANUAL press does not run this line and still arrives selected.
+        setSelectedLayerId(null);
+      }
     }
   }, [aiResult, pushChat, handleAiTransfer]);
 
@@ -1491,10 +1499,8 @@ export default function SimplePage() {
     const seedText = seed.text?.trim();
     if (seedText) {
       const id = `text-${++textIdCounter}`;
-      let added = false;
       setSideData((prev) => {
         if (prev.texts.length >= MAX_TEXTS) return prev;
-        added = true;
         const newText: TextLayer = {
           id,
           content: seedText,
@@ -1513,10 +1519,22 @@ export default function SimplePage() {
         };
         return { ...prev, texts: [...prev.texts, newText] };
       });
-      // Select the text last so it wins when a photo was seeded too, matching
-      // normal add behaviour (the most recently added layer is selected).
-      if (added) setSelectedLayerId(id);
     }
+
+    // A SEEDED layer arrives UNSELECTED.
+    //
+    // addPhotoLayer selects whatever it adds, and the text branch above used to
+    // do the same. That is right for a manual add — the customer is mid-edit and
+    // wants the handles — but a customer arriving from the chat asked to SEE
+    // their design on the garment. The selection frame's resize and rotate
+    // handles read as an editing state they did not ask for, over the very thing
+    // they came to look at.
+    //
+    // Cleared once, after BOTH add paths, so it covers a seeded photo, a seeded
+    // text layer, and a seed that carried both. Tapping the design selects it
+    // exactly as it does for any layer already on the garment; nothing else
+    // about selection changes.
+    if (seed.image || seedText) setSelectedLayerId(null);
   }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce]);
 
   // ── In-place handoff from the floating chat widget ────────────────────────
