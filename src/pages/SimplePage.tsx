@@ -1034,6 +1034,11 @@ export default function SimplePage() {
     toast({ title: t(lang, "simpleAi.transferred") });
   }, [aiResult, sideData.photos.length, addPhotoLayer, toast, lang]);
 
+  // Armed by the seeded-generation drain effect below, for the duration of ONE
+  // run. A generation the customer started from the panel never sets it, so the
+  // manual path keeps its opt-in "Place on t-shirt" press exactly as before.
+  const seededRunRef = useRef(false);
+
   // Surface each completed generation as a chat message. Keyed on the result
   // object's identity so re-renders don't duplicate the append —
   // handleAiGenerate's internals stay untouched.
@@ -1042,8 +1047,30 @@ export default function SimplePage() {
     if (aiResult && aiResult !== lastResultRef.current) {
       lastResultRef.current = aiResult;
       pushChat({ role: "assistant", image: aiResult.resultImage, kind: "generated" });
+      // A SEEDED run places itself. The customer asked for this design in the
+      // chat and was sent here to see it on the garment; leaving it as a
+      // thumbnail behind an unseen button is what made a working generation
+      // look like a failure. Read-and-clear, so one arming can only ever
+      // produce one transfer.
+      const wasSeeded = seededRunRef.current;
+      seededRunRef.current = false;
+      if (wasSeeded) handleAiTransfer();
     }
-  }, [aiResult, pushChat]);
+  }, [aiResult, pushChat, handleAiTransfer]);
+
+  // Disarm on any generation that ENDED without a result (error, block, rate
+  // limit). Without this a failed seeded run would leave the flag armed and the
+  // customer's next MANUAL generation would auto-place — the one way this
+  // feature could leak into the opt-in path. Declared after the effect above so
+  // that on a successful run the transfer has already consumed the flag.
+  // Gated on the true→false transition, because on the commit that arms the
+  // flag `aiGenerating` is still false in this render and an ungated check
+  // would clear it immediately.
+  const wasGeneratingRef = useRef(false);
+  useEffect(() => {
+    if (wasGeneratingRef.current && !aiGenerating) seededRunRef.current = false;
+    wasGeneratingRef.current = aiGenerating;
+  }, [aiGenerating]);
 
   // Share the (already-watermarked) result image via the native share sheet on
   // mobile. downloadImage is the watermarked mockup (without-bg) / watermarked
@@ -1547,6 +1574,9 @@ export default function SimplePage() {
     // bubble in the panel, and the regenerate button has something to repeat.
     pushChat({ role: "user", text: pendingGen.prompt });
     lastGenPromptRef.current = pendingGen.prompt;
+    // Arm the auto-transfer for THIS run only — see the result effect above.
+    // Set immediately before the call so nothing can run between the two.
+    seededRunRef.current = true;
     void handleAiGenerate(pendingGen.prompt);
   }, [pendingGen, aiStyle, aiWithBackground, lang, handleAiGenerate, pushChat]);
 
