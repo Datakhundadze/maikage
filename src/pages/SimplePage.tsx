@@ -487,6 +487,13 @@ interface SideData {
 }
 
 const MAX_TEXTS = 5;
+
+/**
+ * How many past generations keep their re-transferable artwork. See
+ * pruneRetainedTransfers for the memory reasoning; deliberately the same 5 as
+ * MAX_PHOTOS, since five is also the most layers a customer can place.
+ */
+const MAX_RETAINED_TRANSFERS = 5;
 const DEFAULT_TEXT_COORDS: PlacementCoords = { x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 };
 
 // Stagger text #1..#N diagonally (up-right) from the default position so a
@@ -750,6 +757,32 @@ export default function SimplePage() {
   // photoIdCounter's id pattern).
   const pushChat = useCallback((msg: Omit<AiChatMessage, "id">) => {
     setChatMessages(prev => [...prev, { ...msg, id: `msg-${++chatMsgCounter}` }]);
+  }, []);
+
+  // Drop the clean artwork from all but the most recent few generated bubbles.
+  //
+  // Keeping every result re-transferable would be the nicest behaviour and the
+  // worst memory profile: these are base64 PNG data URLs held in React state,
+  // roughly 1.5–3 MB each after the ~33% base64 overhead, and the transcript
+  // ALREADY retains one per result for the thumbnail. Retaining the clean copy
+  // too doubles the per-result cost, so it is bounded here while the thumbnail
+  // — small on screen, but the same full-size string — is left exactly as it
+  // was. Five covers "I preferred the second one" without letting an hour of
+  // generating turn the tab into a memory problem.
+  //
+  // Only `transferImage` is cleared; the bubble, its picture and its place in
+  // the conversation all stay. It simply loses its transfer button.
+  const pruneRetainedTransfers = useCallback(() => {
+    setChatMessages(prev => {
+      const withArtwork = prev.filter(m => m.kind === "generated" && m.transferImage);
+      if (withArtwork.length <= MAX_RETAINED_TRANSFERS) return prev;
+      const keep = new Set(withArtwork.slice(-MAX_RETAINED_TRANSFERS).map(m => m.id));
+      return prev.map(m =>
+        m.kind === "generated" && m.transferImage && !keep.has(m.id)
+          ? { ...m, transferImage: undefined }
+          : m,
+      );
+    });
   }, []);
   const [showTryOn, setShowTryOn] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -1035,6 +1068,30 @@ export default function SimplePage() {
     toast({ title: t(lang, "simpleAi.transferred") });
   }, [aiResult, sideData.photos.length, addPhotoLayer, toast, lang]);
 
+  // Put an EARLIER generated design back on the garment.
+  //
+  // Deliberately a sibling of handleAiTransfer rather than a change to it:
+  // that one acts on `aiResult`, which only ever holds the latest run, and its
+  // behaviour for the customer's usual press must not move. This takes the
+  // artwork from the bubble itself and otherwise applies the identical rules —
+  // same MAX_PHOTOS guard, same addPhotoLayer, same confirmation toast.
+  //
+  // ⚠️ The caller passes AiChatMessage.transferImage, the CLEAN artwork. It
+  // must never be handed `image`, which watermarkForDisplay has stamped with
+  // "maika.ge" and which would print on the garment.
+  //
+  // Costs nothing to run: no gateway call, no rate-limit row, no quota. It
+  // exists precisely so a customer who preferred an earlier version does not
+  // have to regenerate — which does cost a slot, and rarely reproduces it.
+  const handleTransferPastResult = useCallback((dataUrl: string) => {
+    if (sideData.photos.length >= MAX_PHOTOS) {
+      toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
+      return;
+    }
+    addPhotoLayer(dataUrl);
+    toast({ title: t(lang, "simpleAi.transferred") });
+  }, [sideData.photos.length, addPhotoLayer, toast, lang]);
+
   // Armed by the seeded-generation drain effect below, for the duration of ONE
   // run. A generation the customer started from the panel never sets it, so the
   // manual path keeps its opt-in "Place on t-shirt" press exactly as before.
@@ -1053,7 +1110,18 @@ export default function SimplePage() {
   useEffect(() => {
     if (aiResult && aiResult !== lastResultRef.current) {
       lastResultRef.current = aiResult;
-      pushChat({ role: "assistant", image: aiResult.resultImage, kind: "generated" });
+      // `image` is the WATERMARKED display copy; `transferImage` is the clean
+      // artwork. Both ride along so an earlier design can go back on the
+      // garment later without a regeneration — see MAX_RETAINED_TRANSFERS.
+      pushChat({
+        role: "assistant",
+        image: aiResult.resultImage,
+        kind: "generated",
+        transferImage: aiResult.transferImage,
+      });
+      // Batched with the append above, so both land in one commit and the
+      // functional updater below already sees the new message.
+      pruneRetainedTransfers();
       // A SEEDED run places itself. The customer asked for this design in the
       // chat and was sent here to see it on the garment; leaving it as a
       // thumbnail behind an unseen button is what made a working generation
@@ -1071,7 +1139,7 @@ export default function SimplePage() {
         setSelectedLayerId(null);
       }
     }
-  }, [aiResult, pushChat, handleAiTransfer]);
+  }, [aiResult, pushChat, handleAiTransfer, pruneRetainedTransfers]);
 
   // Disarm on any generation that ENDED without a result (error, block, rate
   // limit). Without this a failed seeded run would leave the flag armed and the
@@ -1535,7 +1603,24 @@ export default function SimplePage() {
     // exactly as it does for any layer already on the garment; nothing else
     // about selection changes.
     if (seed.image || seedText) setSelectedLayerId(null);
-  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce]);
+
+    // SAY SO when a requested lettering colour could not be honoured.
+    //
+    // The parser resolves a textColor to the nearest name in the same family,
+    // so this only fires when the request had no family here at all —
+    // „ოქროსფერ-ვერცხლისფერი", a raw hex, a shade the palette has no word for.
+    // The layer still gets the palette default, because a text layer must have
+    // SOME colour; what changes is that the customer is told rather than left
+    // to wonder why their request came out black. They can then pick from the
+    // palette, which is two taps away with the layer already on the garment.
+    if (seedText && seed.textColor && !resolveTextColorHex(seed.textColor)) {
+      toast({
+        title: lang === "en"
+          ? `"${seed.textColor}" isn't in the lettering palette — used black. Tap the text to change it.`
+          : `„${seed.textColor}" არ არის წარწერის პალიტრაში — გამოვიყენეთ შავი. დააჭირე წარწერას შესაცვლელად.`,
+      });
+    }
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce, toast, lang]);
 
   // ── In-place handoff from the floating chat widget ────────────────────────
   //
@@ -2230,6 +2315,7 @@ export default function SimplePage() {
       hasResult={!!aiResult}
       transferLabel={aiTransferLabel}
       onTransfer={handleAiTransfer}
+      onTransferImage={handleTransferPastResult}
       onRegenerate={handleChatRegenerate}
       onShare={handleAiShare}
       onTryOn={handleAiTryOn}

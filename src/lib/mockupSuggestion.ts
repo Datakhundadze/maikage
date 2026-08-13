@@ -6,6 +6,7 @@
 // byte-for-byte what ChatPage ran before the extraction.
 import { catalog, PRODUCTS, COLORS, type ProductType, type ProductColor } from "@/lib/catalog";
 import { TEXT_COLORS } from "@/lib/textColors";
+import { resolveNearestColor } from "@/lib/nearestColor";
 import {
   writeConstructorSeed,
   withCurrentProductConfig,
@@ -102,6 +103,38 @@ export function colorIsAvailable(product: string, subProduct: string, color: str
   }
 }
 
+/**
+ * A garment colour the customer asked for, resolved to something the product +
+ * brand ACTUALLY stocks — or null when nothing in the same family is offered.
+ *
+ * Replaces a straight availability test that discarded anything not stocked and
+ * let the garment fall to the default. See lib/nearestColor for the rule and
+ * for why „ლურჯი" used to produce a WHITE shirt.
+ *
+ * A name outside the palette entirely is still tried against the available list
+ * (families are matched on words, not on palette membership), so "Navy Blue" —
+ * which is not a palette entry — can still land on Dark Navy instead of being
+ * thrown away.
+ *
+ * null means "we could not honour this" and is NEVER the same as "use the
+ * default": every caller leaves the field unset so the customer's current
+ * selection stands.
+ */
+export function resolveGarmentColor(
+  requested: string,
+  product: ProductType,
+  subProduct: string,
+): ProductColor | null {
+  try {
+    const available = catalog.getAvailableColors(product, subProduct);
+    const canonical = COLORS.find((c) => norm(c.name) === norm(requested))?.name;
+    const hit = resolveNearestColor(canonical ?? requested, available, COLORS);
+    return (hit as ProductColor) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Read the product/brand currently stored for the constructor, for fallbacks. */
 function storedProductContext(): { product: ProductType; subProduct: string } {
   const fallback: ProductType = "T-Shirt";
@@ -183,17 +216,18 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
       }
     }
 
-    // colour — canonical name, then confirmed available for the resolved
-    // product + brand (falling back to whatever the constructor already holds).
+    // colour — resolved to something this product + brand actually stocks. A
+    // name that is not offered is no longer discarded: resolveGarmentColor maps
+    // it to the nearest stocked shade of the SAME family, so „ლურჯი" reaches a
+    // blue instead of leaving the customer on a white shirt. Only when the
+    // family is not stocked at all does the field stay unset — and unset means
+    // "keep what they already chose", never "use the default".
     if (typeof parsed.color === "string") {
-      const canonical = COLORS.find((c) => norm(c.name) === norm(parsed.color as string))?.name;
-      if (canonical) {
-        const ctx = storedProductContext();
-        const base = out.product ?? ctx.product;
-        const sub = out.subProduct ?? (out.product ? catalog.getDefaultSubProduct(base) : ctx.subProduct);
-        if (catalog.getAvailableColors(base, sub).includes(canonical)) out.color = canonical;
-        // Not offered for this product → colour dropped, rest kept.
-      }
+      const ctx = storedProductContext();
+      const base = out.product ?? ctx.product;
+      const sub = out.subProduct ?? (out.product ? catalog.getDefaultSubProduct(base) : ctx.subProduct);
+      const resolved = resolveGarmentColor(parsed.color, base, sub);
+      if (resolved) out.color = resolved;
     }
 
     // side — front|back, case-insensitive; anything else is dropped.
@@ -209,11 +243,19 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
       if (pl === "center" || pl === "small" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
     }
 
-    // textColor — must NAME a colour in the constructor's own palette. Anything
-    // else (including a raw hex) is dropped, leaving the default black.
+    // textColor — a NAME from the constructor's own text palette, never a raw
+    // hex. Same family rule as the garment colour: "Light Blue" or "Navy Blue"
+    // used to miss the exact match and silently become BLACK, which looks like
+    // the bot ignoring the request. Now they land on Blue and Navy. A name with
+    // no family here is still left unset, and SimplePage says so out loud
+    // rather than blackening in silence.
     if (typeof parsed.textColor === "string") {
-      const hit = TEXT_COLORS.find((c) => norm(c.name) === norm(parsed.textColor as string));
-      if (hit) out.textColor = hit.name;
+      const hit = resolveNearestColor(
+        parsed.textColor,
+        TEXT_COLORS.map((c) => c.name),
+        TEXT_COLORS,
+      );
+      if (hit) out.textColor = hit;
     }
 
     return out;
