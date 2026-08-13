@@ -45,9 +45,33 @@ export type LimitCheckResult =
 // `guestLimit` defaults to the historical 5 so existing callers (Studio)
 // are byte-for-byte unchanged; Simple-mode AI passes 2.
 export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   const checkLimit = useCallback((): LimitCheckResult => {
+    // ── AUTH NOT SETTLED YET ────────────────────────────────────────────────
+    // `user` is null for TWO different people: a real guest, and a signed-in
+    // customer whose session is still being restored (useAuth starts at
+    // { user: null, loading: true } and only resolves in getSession().then).
+    // This code CAN run before that resolves, because AppRoutes returns the
+    // "/" mode views — SimplePage among them — ABOVE its own
+    // `if (loading)` gate. A chat handoff opens the constructor in a fresh tab
+    // and its seeded generation fires within a few commits, comfortably inside
+    // that window.
+    //
+    // Reading that null as "guest" charged registered customers against the
+    // GUEST key, and once it reached the limit it locked them out of a product
+    // they had signed up for, for 24 hours, with a modal telling them to sign
+    // up. So: while loading we allow, and recordGeneration below writes
+    // nothing.
+    //
+    // This is safe because this gate was never the enforcement. It exists to
+    // raise the login modal at the right moment; the counter behind it lives in
+    // localStorage and anyone can clear it. The real ceiling is server-side and
+    // entirely unaffected — gemini-proxy keys anonymous callers by IP at 2/hour
+    // and 5/day and checks it on every billable action, whatever the client
+    // believed.
+    if (loading) return { allowed: true };
+
     // Guest user — `guestLimit` per 24h, then login required
     if (!user) {
       const data = getGuestLimit();
@@ -69,9 +93,15 @@ export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
 
     // Logged-in users have no generation limit
     return { allowed: true };
-  }, [user, guestLimit]);
+  }, [user, loading, guestLimit]);
 
   const recordGeneration = useCallback(() => {
+    // Same window, same reason as checkLimit: a null user here is not yet KNOWN
+    // to be a guest, and writing the guest counter for a signed-in customer is
+    // precisely the bug. Skip the write rather than guess — the server has
+    // already counted this call against the right key.
+    if (loading) return;
+
     if (!user) {
       const data = getGuestLimit();
       const now = Date.now();
@@ -99,7 +129,7 @@ export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
       count: data.count + 1,
       firstGenAt: data.firstGenAt || now,
     });
-  }, [user]);
+  }, [user, loading]);
 
   return { checkLimit, recordGeneration };
 }

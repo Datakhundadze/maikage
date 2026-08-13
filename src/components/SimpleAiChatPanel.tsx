@@ -101,6 +101,27 @@ export default function SimpleAiChatPanel({
   }, [messages, busy]);
 
   const lastGeneratedId = [...messages].reverse().find((m) => m.kind === "generated")?.id;
+
+  // Bring the newest generated design into view.
+  //
+  // The effect above only pins the TRANSCRIPT's own scrollTop. That is not
+  // enough: this panel is the fourth block inside the sidebar's own
+  // `overflow-y-auto` container (product config → inline preview → try-on →
+  // side indicator → here), and a chat handoff opens the constructor in a
+  // FRESH TAB with that container at scrollTop 0. A generation seeded from the
+  // chat therefore completed entirely below the fold — the customer saw the
+  // garment unchanged and concluded nothing had happened.
+  //
+  // scrollIntoView is the right tool precisely because it walks EVERY
+  // scrollable ancestor, so it reaches the sidebar container this component
+  // knows nothing about. `block: "nearest"` scrolls the minimum needed, which
+  // keeps it a no-op when the bubble is already visible — the manual path.
+  const generatedRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!lastGeneratedId) return;
+    generatedRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [lastGeneratedId]);
+
   const isEmpty = messages.length === 0 && !hasPhotos && !busy;
 
   const inputRow = (
@@ -306,7 +327,11 @@ export default function SimpleAiChatPanel({
             {(messages.length > 0 || busy) && (
               <div ref={listRef} className="max-h-72 overflow-y-auto space-y-2 pr-0.5">
                 {messages.map((m) => (
-                  <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    key={m.id}
+                    ref={m.id === lastGeneratedId ? generatedRef : undefined}
+                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
                     <div
                       className={`max-w-[85%] rounded-2xl text-sm break-words ${
                         m.role === "user"
