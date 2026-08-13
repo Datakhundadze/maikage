@@ -1,44 +1,14 @@
 import type { AppStatus } from "@/hooks/useDesign";
 import { useAppState } from "@/hooks/useAppState";
+import { getStatusInfo } from "@/lib/generationStatus";
 
 interface GenerationLoaderProps {
   status: AppStatus;
 }
 
-const STATUS_INFO_EN: Record<string, { title: string; log: string }> = {
-  GENERATING_DESIGN: {
-    title: "Generative Design",
-    log: "Assembling prompt → sending to AI model...",
-  },
-  PROCESSING_TRANSPARENCY: {
-    title: "Processing Alpha...",
-    log: "Difference matting → extracting transparency...",
-  },
-  GENERATING_MOCKUP: {
-    title: "Virtual Photography",
-    log: "Compositing design onto product photo...",
-  },
-};
-
-const STATUS_INFO_GE: Record<string, { title: string; log: string }> = {
-  GENERATING_DESIGN: {
-    title: "AI დიზაინი",
-    log: "პრომპტის მომზადება → AI მოდელზე გაგზავნა...",
-  },
-  PROCESSING_TRANSPARENCY: {
-    title: "Alpha დამუშავება...",
-    log: "ფონის მოცილება → გამჭვირვალობის გამოყოფა...",
-  },
-  GENERATING_MOCKUP: {
-    title: "ვირტუალური ფოტოგრაფია",
-    log: "დიზაინი ედება პროდუქტის ფოტოს...",
-  },
-};
-
 export default function GenerationLoader({ status }: GenerationLoaderProps) {
   const { lang } = useAppState();
-  const statusInfo = lang === "en" ? STATUS_INFO_EN : STATUS_INFO_GE;
-  const info = statusInfo[status];
+  const info = getStatusInfo(status, lang);
 
   if (!info) return null;
 
