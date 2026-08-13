@@ -26,6 +26,7 @@ import {
 import { offerToLiveConstructor } from "@/lib/constructorBridge";
 import {
   CONSTRUCTOR_URL,
+  colorIsAvailable,
   parseMockupSuggestion,
   stripMockupFence,
   type MockupSuggestion,
@@ -277,7 +278,7 @@ export function openGenerateInConstructor(g: GenerateSuggestion): boolean {
     color: g.color,
     side: g.side,
     generate: toSeedGenerate(g),
-  });
+  }, colorIsAvailable);
   const seed: ConstructorSeed = {
     ...merged,
     // A product change without an explicit brand would carry a stale brand from
