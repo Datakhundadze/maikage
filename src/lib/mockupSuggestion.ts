@@ -86,6 +86,22 @@ function resolveBrand(raw: string): { product: ProductType; subProduct: string }
   return null;
 }
 
+/**
+ * The catalog question withCurrentProductConfig needs but must not import:
+ * does this product + brand actually offer this colour?
+ *
+ * Injected into the seed module so it stays free of catalog knowledge, and it
+ * lives HERE rather than in generateSuggestion because that module already
+ * imports this one — the other direction would close an import cycle.
+ */
+export function colorIsAvailable(product: string, subProduct: string, color: string): boolean {
+  try {
+    return catalog.getAvailableColors(product as ProductType, subProduct).includes(color as ProductColor);
+  } catch {
+    return false;
+  }
+}
+
 /** Read the product/brand currently stored for the constructor, for fallbacks. */
 function storedProductContext(): { product: ProductType; subProduct: string } {
   const fallback: ProductType = "T-Shirt";
@@ -232,7 +248,7 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
     product: m.product,
     subProduct: m.subProduct,
     color: m.color,
-  });
+  }, colorIsAvailable);
   const seed: ConstructorSeed = {
     ...merged,
     // A product change without an explicit brand would carry a stale brand from

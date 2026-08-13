@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo, useEffect, lazy, Suspense } fro
 import { useAppState } from "@/hooks/useAppState";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
+import PreviewGenerationOverlay from "@/components/PreviewGenerationOverlay";
 import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1037,7 +1038,13 @@ export default function SimplePage() {
   // Armed by the seeded-generation drain effect below, for the duration of ONE
   // run. A generation the customer started from the panel never sets it, so the
   // manual path keeps its opt-in "Place on t-shirt" press exactly as before.
+  //
+  // The ref is the source of truth for the transfer decision — it is read and
+  // cleared inside an effect and must be exact at that instant. `seededRunActive`
+  // mirrors it for RENDERING only (a ref cannot drive the preview overlay,
+  // which needs a re-render to appear). The two are set and cleared together.
   const seededRunRef = useRef(false);
+  const [seededRunActive, setSeededRunActive] = useState(false);
 
   // Surface each completed generation as a chat message. Keyed on the result
   // object's identity so re-renders don't duplicate the append —
@@ -1054,7 +1061,15 @@ export default function SimplePage() {
       // produce one transfer.
       const wasSeeded = seededRunRef.current;
       seededRunRef.current = false;
-      if (wasSeeded) handleAiTransfer();
+      if (wasSeeded) {
+        handleAiTransfer();
+        // …and unselected. handleAiTransfer goes through addPhotoLayer, which
+        // selects what it adds — right for the customer's own "Place on
+        // t-shirt" press, wrong for a design that placed itself while they
+        // watched. Both setters land in the same batch, so this one wins.
+        // The MANUAL press does not run this line and still arrives selected.
+        setSelectedLayerId(null);
+      }
     }
   }, [aiResult, pushChat, handleAiTransfer]);
 
@@ -1068,7 +1083,13 @@ export default function SimplePage() {
   // would clear it immediately.
   const wasGeneratingRef = useRef(false);
   useEffect(() => {
-    if (wasGeneratingRef.current && !aiGenerating) seededRunRef.current = false;
+    if (wasGeneratingRef.current && !aiGenerating) {
+      seededRunRef.current = false;
+      // Same transition takes the preview overlay down. Clearing it HERE rather
+      // than in the result effect means the error, block and rate-limit paths —
+      // which never set a result — also stop showing progress.
+      setSeededRunActive(false);
+    }
     wasGeneratingRef.current = aiGenerating;
   }, [aiGenerating]);
 
@@ -1478,10 +1499,8 @@ export default function SimplePage() {
     const seedText = seed.text?.trim();
     if (seedText) {
       const id = `text-${++textIdCounter}`;
-      let added = false;
       setSideData((prev) => {
         if (prev.texts.length >= MAX_TEXTS) return prev;
-        added = true;
         const newText: TextLayer = {
           id,
           content: seedText,
@@ -1500,10 +1519,22 @@ export default function SimplePage() {
         };
         return { ...prev, texts: [...prev.texts, newText] };
       });
-      // Select the text last so it wins when a photo was seeded too, matching
-      // normal add behaviour (the most recently added layer is selected).
-      if (added) setSelectedLayerId(id);
     }
+
+    // A SEEDED layer arrives UNSELECTED.
+    //
+    // addPhotoLayer selects whatever it adds, and the text branch above used to
+    // do the same. That is right for a manual add — the customer is mid-edit and
+    // wants the handles — but a customer arriving from the chat asked to SEE
+    // their design on the garment. The selection frame's resize and rotate
+    // handles read as an editing state they did not ask for, over the very thing
+    // they came to look at.
+    //
+    // Cleared once, after BOTH add paths, so it covers a seeded photo, a seeded
+    // text layer, and a seed that carried both. Tapping the design selects it
+    // exactly as it does for any layer already on the garment; nothing else
+    // about selection changes.
+    if (seed.image || seedText) setSelectedLayerId(null);
   }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce]);
 
   // ── In-place handoff from the floating chat widget ────────────────────────
@@ -1576,7 +1607,10 @@ export default function SimplePage() {
     lastGenPromptRef.current = pendingGen.prompt;
     // Arm the auto-transfer for THIS run only — see the result effect above.
     // Set immediately before the call so nothing can run between the two.
+    // The state mirror puts the progress overlay on the product preview, which
+    // is the only part of this page a freshly-handed-over customer can see.
     seededRunRef.current = true;
+    setSeededRunActive(true);
     void handleAiGenerate(pendingGen.prompt);
   }, [pendingGen, aiStyle, aiWithBackground, lang, handleAiGenerate, pushChat]);
 
@@ -2143,6 +2177,16 @@ export default function SimplePage() {
     setOrderDialogOpen(true);
   }, [aiResult, handleAiOrder, productConfig.config.subProduct, productConfig.config.product, productConfig.config.size]);
 
+  // Progress over the product preview, for a SEEDED run only — the panel that
+  // normally reports it is below the fold in the tab a chat handoff opens.
+  // Rendered into BOTH preview slots (mobile inline, desktop main column); only
+  // one is mounted per breakpoint, so it can never appear twice. Both gates are
+  // required: `seededRunActive` excludes the manual path, `aiGenerating` means
+  // it disappears the moment the run ends, however it ends.
+  const seededGenerationOverlay = seededRunActive && aiGenerating ? (
+    <PreviewGenerationOverlay status={aiStatus} lang={lang} />
+  ) : null;
+
   // Rendered in two slots — desktop main column below ProductPreview, and an
   // lg:hidden slot below the mobile inline preview — so it sits "under the
   // shirt" on both breakpoints. Stateless element, so sharing it is safe.
@@ -2233,8 +2277,11 @@ export default function SimplePage() {
             sizeError={sizeError}
           />
 
-          {/* Mobile-only inline preview — below view buttons, same as Studio mode */}
-          <div className="lg:hidden rounded-xl overflow-hidden border border-border bg-background">
+          {/* Mobile-only inline preview — below view buttons, same as Studio mode.
+              `relative` is the positioning context for the seeded-generation
+              overlay below; it changes nothing on its own. */}
+          <div className="relative lg:hidden rounded-xl overflow-hidden border border-border bg-background">
+            {seededGenerationOverlay}
             <ProductPreview
               productName={productConfig.config.product}
               subProduct={productConfig.config.subProduct}
@@ -2623,7 +2670,8 @@ export default function SimplePage() {
           shorter than the square clipped it at the top. */}
       <main className="hidden lg:flex flex-1 bg-background overflow-y-auto flex-col">
         <div className="shrink-0 flex justify-center pt-2">
-          <div className="w-full max-w-lg">
+          <div className="relative w-full max-w-lg">
+            {seededGenerationOverlay}
             <ProductPreview
               productName={productConfig.config.product}
               subProduct={productConfig.config.subProduct}

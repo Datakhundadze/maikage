@@ -171,24 +171,45 @@ export function readCurrentProductConfig(): CurrentProductConfig | null {
  *     exists for a t-shirt need not exist for a mug, and a brand certainly
  *     does not carry across. When the model names a product other than the one
  *     in front of the customer, nothing rides along.
- *   - A different BRAND invalidates the colour for the same reason one level
- *     down, so the colour only travels when the brand is unchanged.
+ *   - A different BRAND can invalidate the colour for the same reason one level
+ *     down — but only if the new brand does not offer it. ASK, rather than
+ *     assume: this used to drop the colour on any brand change at all, which
+ *     sent a customer on a black GILDAN to a WHITE JEL after a message that
+ *     only mentioned the brand. `isColorAvailable` is the catalog question,
+ *     injected by the callers so this module stays catalog-free; without it the
+ *     old conservative drop stands.
  *
  * Anything not carried falls through to the catalog defaults the callers
  * already apply — i.e. exactly today's behaviour.
+ *
+ * ⚠️ WHAT THIS DELIBERATELY DOES NOT DO. It does not second-guess a colour the
+ * model DID specify. It cannot: the block carries no signal for "the customer
+ * asked for this colour" versus "I restated it unprompted", and overriding
+ * model colours wholesale would break „შავზე გადამიტანე" — a change the
+ * customer really did ask for. Keeping a volunteered colour out of the block in
+ * the first place is a KB rule (§12), not something this function can enforce.
  */
-export function withCurrentProductConfig(seed: ConstructorSeed): ConstructorSeed {
+export function withCurrentProductConfig(
+  seed: ConstructorSeed,
+  isColorAvailable?: (product: string, subProduct: string, color: string) => boolean,
+): ConstructorSeed {
   const current = readCurrentProductConfig();
   if (!current) return seed;
   if (seed.product && current.product && seed.product !== current.product) return seed;
 
-  const sameBrand = !seed.subProduct || seed.subProduct === current.subProduct;
-  return {
-    ...seed,
-    product: seed.product ?? current.product,
-    subProduct: seed.subProduct ?? current.subProduct,
-    color: seed.color ?? (sameBrand ? current.color : undefined),
-  };
+  const product = seed.product ?? current.product;
+  const subProduct = seed.subProduct ?? current.subProduct;
+
+  let color = seed.color;
+  if (!color && current.color) {
+    const brandChanged = !!seed.subProduct && seed.subProduct !== current.subProduct;
+    const stillOffered =
+      !brandChanged ||
+      (!!product && !!subProduct && !!isColorAvailable && isColorAvailable(product, subProduct, current.color));
+    if (stillOffered) color = current.color;
+  }
+
+  return { ...seed, product, subProduct, color };
 }
 
 /**

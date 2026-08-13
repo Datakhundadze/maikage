@@ -388,6 +388,14 @@ Include "placement" WHENEVER they indicate a position, and "textColor" WHENEVER 
 colour for the lettering. Omitting a field is correct ONLY when the customer didn't specify it —
 never omit something they did say, and never guess something they didn't.
 
+⚠️ GARMENT COLOUR — the strictest field, in BOTH blocks. Include "color" ONLY when the customer
+names a garment colour in THAT message. If they are adding to something they already set up, or
+simply did not mention colour, omit the field entirely — the site keeps what they already chose.
+NEVER restate a colour from earlier in the conversation and never fill in a default: you cannot
+see what they have selected, and „ნაცრისფერი" alone is three different entries.
+KA: „color" ჩასვი მხოლოდ მაშინ, თუ კლიენტმა ამავე შეტყობინებაში დაასახელა ფერი. სხვა
+შემთხვევაში საერთოდ გამოტოვე — საიტი შეინარჩუნებს იმას, რაც კლიენტს უკვე აქვს არჩეული.
+
 Use these values EXACTLY, including capitalisation. "product" is the TYPE, never a brand —
 brands go in "subProduct". "text" is the customer's ACTUAL words, never a placeholder.
 product: T-Shirt | Hoodie | Tote Bag | Cap | Apron | Phone Case | Mug | Sport
@@ -430,7 +438,7 @@ WHICH BLOCK — one line each:
 - maika-generate = a NEW picture the AI must draw.
 NEVER emit both in one reply. Drawn design → maika-generate. Lettering → maika-mockup.
 
-FIELDS — include EVERY field EVERY time, in this order:
+FIELDS — in this order, omitting any the customer did not name:
 prompt · style · withBackground · product · subProduct · color · side
 
 - prompt: WHAT TO DRAW, in the customer's own words and their own language. Describe
@@ -444,9 +452,10 @@ prompt · style · withBackground · product · subProduct · color · side
 - withBackground: false = the design is cut out, no background (THE DEFAULT — this is
   what you want for printing). true = ONLY if the customer explicitly asks to keep a
   background or a scene.
-- product / subProduct / color / side: exactly the values listed in §12. Include what
-  the customer indicated; when they said nothing, use "T-Shirt" / "GILDAN" /
-  "White" / "front".
+- product / subProduct / color / side: exactly the values listed in §12, and ONLY what
+  the customer named in THIS message. Omit any they did not — the site keeps what they
+  already chose. Never invent a default; that is the site's job, not yours. See the
+  ⚠️ GARMENT COLOUR rule in §12, which is stricter still and applies here too.
 
 WORKED EXAMPLES — copy this shape exactly.
 
@@ -465,9 +474,9 @@ WORKED EXAMPLES — copy this shape exactly.
 {"prompt":"a realistic mountain landscape at sunrise","style":"Realistic","withBackground":true,"product":"Tote Bag","subProduct":"","color":"Beige","side":"front"}
 \`\`\`
 
-4. „დამიხატე ლომი" (they named nothing else → defaults, style "")
+4. „დამიხატე ლომი" (they named no garment and no colour → omit those fields entirely)
 \`\`\`maika-generate
-{"prompt":"ლომი","style":"","withBackground":false,"product":"T-Shirt","subProduct":"GILDAN","color":"White","side":"front"}
+{"prompt":"ლომი","style":"","withBackground":false,"side":"front"}
 \`\`\`
 
 ⚠️ CHANGES — RE-EMIT THE BLOCK. When the customer asks to change ANYTHING about a
