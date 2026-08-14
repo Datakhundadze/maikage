@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle, Send, ImagePlus, X } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
+import { loadChat, saveChat, type PersistedChatMsg } from "@/lib/chatPersistence";
 import {
   type MockupSuggestion,
   openMockupInConstructor,
@@ -49,6 +50,17 @@ interface ChatMsg {
   local?: boolean;
   /** The one validated suggestion parsed off this turn, if any. */
   suggestion?: ChatSuggestion;
+  /**
+   * The photo the customer attached to THIS turn, as the same downscaled data
+   * URL that was sent. Display only — it is not resent as history, and it is
+   * deliberately never persisted (see the sessionStorage restore).
+   */
+  image?: string;
+  /**
+   * This turn carried a photo whose bytes were NOT kept across the reload.
+   * Set only on restore; a live bubble uses `image` instead.
+   */
+  hadImage?: boolean;
 }
 
 // Animated "typing…" dots shown while a reply is in flight (mirrors ChatWidget).
@@ -69,7 +81,19 @@ function TypingDots() {
 export default function ChatPage() {
   const { lang, setMode } = useAppState();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  // Restored transcript, read ONCE at mount. A photo's bytes are never
+  // persisted, so a turn that carried one comes back as `hadImage` and renders
+  // a placeholder instead of the picture.
+  const restored = useMemo(() => loadChat("page"), []);
+  const [messages, setMessages] = useState<ChatMsg[]>(
+    () => (restored?.messages ?? []).map((m) => ({
+      role: m.role,
+      content: m.content,
+      local: m.local,
+      hadImage: m.hadImage,
+      suggestion: m.suggestion as ChatMsg["suggestion"],
+    })),
+  );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -89,12 +113,29 @@ export default function ChatPage() {
   // conversations recognizable against widget ones in the admin chat history
   // (chat_logs has no source/channel column, and this needs no schema change).
   // In-memory only — resets on reload, same as the widget.
-  const sessionIdRef = useRef<string>(`chatpage-${crypto.randomUUID()}`);
+  // Reuse the RESTORED session id so a reloaded conversation keeps grouping
+  // under one id in the admin chat log instead of splitting in two.
+  const sessionIdRef = useRef<string>(restored?.sessionId ?? `chatpage-${crypto.randomUUID()}`);
 
   // Keep the list pinned to the newest message / typing indicator.
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, loading]);
+  // Persist on every change. Deliberately mirrors state rather than hooking
+  // each mutation site, so no future path can forget to save. The image data
+  // URL is dropped here — see chatPersistence for why.
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const slim: PersistedChatMsg[] = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      local: m.local,
+      hadImage: !!m.image || m.hadImage,
+      suggestion: m.suggestion,
+    }));
+    saveChat("page", sessionIdRef.current, slim);
+  }, [messages]);
+
 
   // Seed the same local bilingual greeting the widget shows on first open
   // (no API call). The page has no open/closed state, so it seeds on mount.
@@ -139,7 +180,10 @@ export default function ChatPage() {
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
-    const next: ChatMsg[] = [...messages, { role: "user", content: text }];
+    // The attachment rides on the bubble purely so the customer can SEE what
+    // they sent; what goes to the model is unchanged (faqChat still receives
+    // `attachment` separately, below).
+    const next: ChatMsg[] = [...messages, { role: "user", content: text, image: attachment ?? undefined }];
     setMessages(next);
     setInput("");
     // Hide the thumbnail; `attachment` itself is retained for the handoff.
@@ -245,6 +289,27 @@ export default function ChatPage() {
                   single newlines inside a paragraph). User text stays plain —
                   React escapes it, and it is never parsed as markup. */}
               {m.role === "assistant" ? <ChatMarkdown text={m.content} /> : m.content}
+              {/* The customer's own photo, confirming it was received. Sizing
+                  matches SimpleAiChatPanel's result bubbles (max-h, w-auto,
+                  object-contain, rounded-lg). A restored-from-storage bubble
+                  has no data URL and falls to the placeholder below. */}
+              {m.role === "user" && m.image && (
+                <img
+                  src={m.image}
+                  alt={lang === "en" ? "Attached photo" : "მიმაგრებული ფოტო"}
+                  className="mt-1.5 max-h-52 w-auto rounded-lg object-contain"
+                  draggable={false}
+                />
+              )}
+              {/* Restored from sessionStorage: the turn had a photo but the
+                  bytes were deliberately not kept, so say so rather than
+                  showing a broken image or silently dropping the fact. */}
+              {m.role === "user" && !m.image && m.hadImage && (
+                <span className="mt-1.5 flex items-center gap-1 text-[11px] opacity-70">
+                  <ImagePlus className="h-3 w-3" />
+                  {lang === "en" ? "photo" : "ფოტო"}
+                </span>
+              )}
               {/* Renders only for a fully-validated suggestion — a failed parse
                   leaves it undefined and the prose stands alone. */}
               <ChatSuggestionActions

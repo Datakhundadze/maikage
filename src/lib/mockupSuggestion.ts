@@ -40,7 +40,9 @@ export interface MockupSuggestion {
   subProduct?: string;
   color?: ProductColor;
   side?: "front" | "back";
-  placement?: "center" | "small" | "left-chest" | "right-chest";
+  placement?: "center" | "small" | "left-chest" | "right-chest" | "jersey-back";
+  /** Squad number, digits only. Meaningful only with placement "jersey-back". */
+  number?: string;
   /** A NAME from the constructor's text-colour palette, never a raw hex. */
   textColor?: string;
 }
@@ -230,6 +232,13 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
       if (resolved) out.color = resolved;
     }
 
+    // number — a squad number for the jersey-back arrangement. Digits only, so
+    // the second text layer can never become a smuggled extra caption.
+    if (typeof parsed.number === "string" || typeof parsed.number === "number") {
+      const n = String(parsed.number).trim();
+      if (/^\d{1,3}$/.test(n)) out.number = n;
+    }
+
     // side — front|back, case-insensitive; anything else is dropped.
     if (typeof parsed.side === "string") {
       const s = norm(parsed.side);
@@ -240,7 +249,7 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
     // values are dropped, which leaves the constructor's default centring.
     if (typeof parsed.placement === "string") {
       const pl = norm(parsed.placement);
-      if (pl === "center" || pl === "small" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
+      if (pl === "center" || pl === "small" || pl === "left-chest" || pl === "right-chest" || pl === "jersey-back") out.placement = pl;
     }
 
     // textColor — a NAME from the constructor's own text palette, never a raw
@@ -285,8 +294,12 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
     text: m.text,
     textColor: m.textColor,
     image: attachment ?? undefined,
-    side: m.side,
+    // jersey-back is by definition the BACK of the shirt; fill it in when the
+    // model named the placement but forgot the side, without overriding an
+    // explicit one.
+    side: m.side ?? (m.placement === "jersey-back" ? "back" : undefined),
     placement: m.placement,
+    number: m.number,
     product: m.product,
     subProduct: m.subProduct,
     color: m.color,
