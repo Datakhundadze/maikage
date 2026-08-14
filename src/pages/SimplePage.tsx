@@ -1102,6 +1102,8 @@ export default function SimplePage() {
   // which needs a re-render to appear). The two are set and cleared together.
   const seededRunRef = useRef(false);
   const [seededRunActive, setSeededRunActive] = useState(false);
+  // Same idea for a seeded background removal — see the drain effect below.
+  const [seededRemoveBgActive, setSeededRemoveBgActive] = useState(false);
 
   // Surface each completed generation as a chat message. Keyed on the result
   // object's identity so re-renders don't duplicate the append —
@@ -1559,6 +1561,11 @@ export default function SimplePage() {
     // contain-fit behave exactly as they do for a manual upload.
     if (seed.image) {
       addPhotoLayer(seed.image);
+      // Background removal is QUEUED, not run — the layer does not exist until
+      // React commits the add above. The effect below waits for it and then
+      // hands it to the constructor's own handleRemoveBgPhoto. Same shape as
+      // the generation queue a few lines up, and for the same reason.
+      if (seed.removeBackground) setPendingRemoveBg(seed.image);
     }
 
     // Text: same layer shape addTextLayer builds (Georgian FONTS[0], black,
@@ -1698,6 +1705,32 @@ export default function SimplePage() {
     setSeededRunActive(true);
     void handleAiGenerate(pendingGen.prompt);
   }, [pendingGen, aiStyle, aiWithBackground, lang, handleAiGenerate, pushChat]);
+
+  // ── Seeded background removal: through handleRemoveBgPhoto, never past it ──
+  //
+  // The chat can ask for a photo to arrive with its background already gone.
+  // handleRemoveBgPhoto takes a PhotoLayer, so this waits for the layer the
+  // seed just added to actually exist in state — matched on its data URL, which
+  // addPhotoLayer copies verbatim and never rewrites (its async probe touches
+  // coords only). It does NOT depend on selection, so nothing here selects
+  // anything and the "seeded layers arrive unselected" rule is untouched.
+  //
+  // EXACTLY ONCE: cleared before the call, so a re-render inside
+  // handleRemoveBgPhoto cannot start a second one.
+  //
+  // DEGRADES, never ends with nothing: the photo is already on the garment
+  // before this runs. A refused quota, a failed call or a layer that never
+  // appears all leave the customer with their photo and its background —
+  // handleRemoveBgPhoto owns the login modal and the error toast, unchanged.
+  const [pendingRemoveBg, setPendingRemoveBg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingRemoveBg) return;
+    const layer = sideData.photos.find((p) => p.image === pendingRemoveBg);
+    if (!layer) return; // the add has not committed yet; this effect re-runs
+    setPendingRemoveBg(null);
+    setSeededRemoveBgActive(true);
+    void handleRemoveBgPhoto(layer).finally(() => setSeededRemoveBgActive(false));
+  }, [pendingRemoveBg, sideData.photos, handleRemoveBgPhoto]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit
@@ -2268,8 +2301,15 @@ export default function SimplePage() {
   // one is mounted per breakpoint, so it can never appear twice. Both gates are
   // required: `seededRunActive` excludes the manual path, `aiGenerating` means
   // it disappears the moment the run ends, however it ends.
-  const seededGenerationOverlay = seededRunActive && aiGenerating ? (
-    <PreviewGenerationOverlay status={aiStatus} lang={lang} />
+  // A seeded background removal reports through the SAME overlay, using the
+  // pipeline's own PROCESSING_TRANSPARENCY copy ("ფონის მოცილება…") rather than
+  // new wording. Without it the customer watches an unchanged shirt for the
+  // length of a model call — the exact failure the overlay was built for.
+  const seededGenerationOverlay = (seededRunActive && aiGenerating) || seededRemoveBgActive ? (
+    <PreviewGenerationOverlay
+      status={seededRemoveBgActive ? "PROCESSING_TRANSPARENCY" : aiStatus}
+      lang={lang}
+    />
   ) : null;
 
   // Rendered in two slots — desktop main column below ProductPreview, and an

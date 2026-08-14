@@ -43,6 +43,8 @@ export interface MockupSuggestion {
   placement?: "center" | "small" | "left-chest" | "right-chest";
   /** A NAME from the constructor's text-colour palette, never a raw hex. */
   textColor?: string;
+  /** Remove the background from the attached photo once it is placed. */
+  removeBackground?: boolean;
 }
 
 /** Remove every maika-mockup fence (closed OR truncated) from displayed text. */
@@ -230,6 +232,14 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
       if (resolved) out.color = resolved;
     }
 
+    // removeBackground — tolerant of a quoted boolean, as models emit "true" as
+    // often as true. Anything else is simply absent; it is only meaningful when
+    // a photo is attached, which the caller checks.
+    if (parsed.removeBackground === true ||
+        (typeof parsed.removeBackground === "string" && norm(parsed.removeBackground) === "true")) {
+      out.removeBackground = true;
+    }
+
     // side — front|back, case-insensitive; anything else is dropped.
     if (typeof parsed.side === "string") {
       const s = norm(parsed.side);
@@ -285,6 +295,8 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
     text: m.text,
     textColor: m.textColor,
     image: attachment ?? undefined,
+    // Only with a photo to act on.
+    removeBackground: attachment && m.removeBackground ? true : undefined,
     side: m.side,
     placement: m.placement,
     product: m.product,

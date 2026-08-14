@@ -68,6 +68,14 @@ export interface ConstructorSeed {
   textColor?: string;
   /** Design photo as a base64 data URL — passed in memory, never uploaded. */
   image?: string;
+  /**
+   * Run background removal on the seeded `image` once it is on the garment.
+   *
+   * A REQUEST, not a pipeline call: the constructor hands it to its own
+   * handleRemoveBgPhoto, which owns the quota gate, the isolate-subject call,
+   * the chroma key and the contain-refit. Ignored without `image`.
+   */
+  removeBackground?: boolean;
   /** Which side the layers land on. */
   side?: "front" | "back";
   /**
@@ -232,6 +240,8 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const text = rawText ? rawText.slice(0, MAX_SEED_TEXT_LENGTH) : undefined;
     const textColor = typeof parsed.textColor === "string" ? parsed.textColor : undefined;
     const image = typeof parsed.image === "string" ? parsed.image : undefined;
+    // Only ever true alongside a photo — a flag with nothing to act on is noise.
+    const removeBackground = image ? parsed.removeBackground === true : undefined;
     const side = parsed.side === "front" || parsed.side === "back" ? parsed.side : undefined;
     const placement =
       parsed.placement === "center" || parsed.placement === "small" ||
@@ -264,7 +274,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     }
 
     if (!text && !image && !product && !color && !generate) return null;
-    return { text, textColor, image, side, placement, product, subProduct, color, generate };
+    return { text, textColor, image, removeBackground, side, placement, product, subProduct, color, generate };
   } catch {
     return null;
   }
