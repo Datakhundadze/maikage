@@ -81,9 +81,20 @@ export interface ConstructorSeed {
   /**
    * Where on the garment the design sits. "left-chest"/"right-chest" are the
    * WEARER's sides. "small" is a centred print at the pre-2026-08 default size.
+   * "jersey-back" is the football arrangement — the name above in modest
+   * lettering, `number` far larger beneath it — and is the ONE placement that
+   * produces two text layers.
    * Absent or unrecognised → the standard centred print.
    */
-  placement?: "center" | "small" | "left-chest" | "right-chest";
+  placement?: "center" | "small" | "left-chest" | "right-chest" | "jersey-back";
+  /**
+   * Squad number for "jersey-back". Its OWN field rather than part of `text`
+   * because the two are printed at different sizes in different places, and
+   * because a surname can contain spaces ("VAN DIJK") — splitting one string
+   * on whitespace would guess wrong on exactly the names people care about.
+   * Digits only, so it can never smuggle a second caption onto the garment.
+   */
+  number?: string;
   /** Product selection, carried here so it survives the new tab. */
   product?: string;
   subProduct?: string;
@@ -245,8 +256,14 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const side = parsed.side === "front" || parsed.side === "back" ? parsed.side : undefined;
     const placement =
       parsed.placement === "center" || parsed.placement === "small" ||
-      parsed.placement === "left-chest" || parsed.placement === "right-chest"
+      parsed.placement === "left-chest" || parsed.placement === "right-chest" ||
+      parsed.placement === "jersey-back"
         ? parsed.placement
+        : undefined;
+    // Digits only, 1–3 of them — a squad number, never free text.
+    const number =
+      typeof parsed.number === "string" && /^\d{1,3}$/.test(parsed.number.trim())
+        ? parsed.number.trim()
         : undefined;
     const product = typeof parsed.product === "string" ? parsed.product : undefined;
     const subProduct = typeof parsed.subProduct === "string" ? parsed.subProduct : undefined;
@@ -274,7 +291,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     }
 
     if (!text && !image && !product && !color && !generate) return null;
-    return { text, textColor, image, removeBackground, side, placement, product, subProduct, color, generate };
+    return { text, textColor, image, removeBackground, side, placement, number, product, subProduct, color, generate };
   } catch {
     return null;
   }
