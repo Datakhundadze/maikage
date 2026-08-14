@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { clearAllChats } from "@/lib/chatPersistence";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthState {
@@ -77,6 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async (setMode?: (mode: string) => void) => {
     await supabase.auth.signOut();
+    // The FAQ transcript now survives reloads, so it must NOT survive a sign-out:
+    // on a shared device the next person would open the widget onto someone
+    // else's conversation. Guarded internally; a failure here never blocks it.
+    clearAllChats();
     setState({ user: null, session: null, loading: false, error: null, isAnonymous: false, displayName: "", avatarUrl: null });
     // Stay on the current page (don't redirect to landing)
   }, []);

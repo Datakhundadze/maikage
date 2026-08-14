@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MessageCircle, X, Minus, ChevronUp, Send, ImagePlus } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
 import { downscaleDataUrl } from "@/lib/imageDownscale";
+import { loadChat, saveChat, type PersistedChatMsg } from "@/lib/chatPersistence";
 import {
   type MockupSuggestion,
   openMockupInConstructor,
@@ -44,6 +45,11 @@ interface ChatMsg {
    * deliberately never persisted (see the sessionStorage restore).
    */
   image?: string;
+  /**
+   * This turn carried a photo whose bytes were NOT kept across the reload.
+   * Set only on restore; a live bubble uses `image` instead.
+   */
+  hadImage?: boolean;
 }
 
 // Animated "typing…" dots shown while a reply is in flight.
@@ -70,7 +76,19 @@ export default function ChatWidget() {
   // being rendered but every piece of chat state below stays put, so expanding
   // restores the same conversation, the same attachment and the same session.
   const [minimized, setMinimized] = useState(false);
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  // Restored transcript, read ONCE at mount. A photo's bytes are never
+  // persisted, so a turn that carried one comes back as `hadImage` and renders
+  // a placeholder instead of the picture.
+  const restored = useMemo(() => loadChat("widget"), []);
+  const [messages, setMessages] = useState<ChatMsg[]>(
+    () => (restored?.messages ?? []).map((m) => ({
+      role: m.role,
+      content: m.content,
+      local: m.local,
+      hadImage: m.hadImage,
+      suggestion: m.suggestion as ChatMsg["suggestion"],
+    })),
+  );
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -83,7 +101,9 @@ export default function ChatWidget() {
   const [attachmentSent, setAttachmentSent] = useState(false);
   // One stable id per widget mount so the server can group this conversation
   // in the admin chat-history log. Resets on reload (a new visit = new session).
-  const sessionIdRef = useRef<string>(crypto.randomUUID());
+  // Reuse the RESTORED session id so a reloaded conversation keeps grouping
+  // under one id in the admin chat log instead of splitting in two.
+  const sessionIdRef = useRef<string>(restored?.sessionId ?? crypto.randomUUID());
 
   // Keep the list pinned to the newest message / typing indicator. `minimized`
   // is a dependency because collapsing unmounts the list — on expand the fresh
@@ -91,6 +111,21 @@ export default function ChatWidget() {
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, loading, open, minimized]);
+  // Persist on every change. Deliberately mirrors state rather than hooking
+  // each mutation site, so no future path can forget to save. The image data
+  // URL is dropped here — see chatPersistence for why.
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const slim: PersistedChatMsg[] = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      local: m.local,
+      hadImage: !!m.image || m.hadImage,
+      suggestion: m.suggestion,
+    }));
+    saveChat("widget", sessionIdRef.current, slim);
+  }, [messages]);
+
 
   const openPanel = useCallback(() => {
     setOpen(true);
@@ -295,6 +330,15 @@ export default function ChatWidget() {
                   className="mt-1.5 max-h-40 w-auto rounded-lg object-contain"
                   draggable={false}
                 />
+              )}
+              {/* Restored from sessionStorage: the turn had a photo but the
+                  bytes were deliberately not kept, so say so rather than
+                  showing a broken image or silently dropping the fact. */}
+              {m.role === "user" && !m.image && m.hadImage && (
+                <span className="mt-1.5 flex items-center gap-1 text-[11px] opacity-70">
+                  <ImagePlus className="h-3 w-3" />
+                  {lang === "en" ? "photo" : "ფოტო"}
+                </span>
               )}
               {/* Only for a fully-validated suggestion; a failed parse leaves
                   it undefined and the prose stands alone. */}
