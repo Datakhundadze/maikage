@@ -394,6 +394,15 @@ WORKED EXAMPLES — copy this shape. Include EVERY field the customer indicated:
 {"text":"georgia","product":"T-Shirt","subProduct":"GILDAN","color":"Black","side":"front"}
 \`\`\`
 
+4. სპორტული მაისრის ზურგზე გვარი და ნომერი: „სპორტულ მაისურზე უკან წავაწერო ხუნდაძე 10"
+\`\`\`maika-mockup
+{"text":"ხუნდაძე","number":"10","product":"Sport","subProduct":"Sport Set","side":"back","placement":"jersey-back"}
+\`\`\`
+   placement "jersey-back" lays out BOTH prints the way a football shirt is
+   printed — the name above, the number much larger below. Use it whenever a
+   name/surname AND a number are wanted on the back of a sport shirt. The name
+   goes in "text", the number in "number"; do not merge them into one string.
+
 Include "placement" WHENEVER they indicate a position, and "textColor" WHENEVER they name a
 colour for the lettering. Omitting a field is correct ONLY when the customer didn't specify it —
 never omit something they did say, and never guess something they didn't.
@@ -438,7 +447,8 @@ matching the request, omit "color" rather than substitute one from another brand
 - Tote Bag: White | Black | Cream | Dark Navy | Electric Blue | Turquoise | Green | Lime | Pink | Red | Burgundy | Purple
 - Mug: White · Phone Case: no colour — omit the field.
 side: front | back
-placement: center | left-chest | right-chest — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center
+placement: center | left-chest | right-chest | jersey-back — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center
+number: the squad number, DIGITS ONLY ("10"), and only with placement "jersey-back". Never put it in "text".
 textColor (the LETTERING): Black | White | Red | Blue | Green | Yellow | Orange | Purple | Pink | Gray | Gold | Navy — თეთრად → White; შავად → Black; წითლად → Red; ლურჯად → Blue; მწვანედ → Green; ყვითლად → Yellow; ნარინჯისფრად → Orange; იისფრად → Purple; ვარდისფრად → Pink; ნაცრისფრად → Gray; ოქროსფრად → Gold; მუქი ლურჯი → Navy
 
 ⚠️ NEVER SEND THEM TO ვირტუალური გასახდელი TO SEE A DESIGN. To show a design on a product you
