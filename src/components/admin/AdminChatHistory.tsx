@@ -26,9 +26,29 @@ interface MessageRow {
   content: string;
   lang: string | null;
   created_at: string;
+  /** Object path in the PRIVATE chat-uploads bucket, or null. */
+  image_path: string | null;
 }
 
 const PAGE_SIZE = 50;
+
+// Customer photos live in the PRIVATE "chat-uploads" bucket, so unlike
+// AdminGenerations — which reads the public "designs" bucket and can call
+// getPublicUrl synchronously — every URL here has to be SIGNED. Signing is a
+// privileged read: it succeeds only because of the admin-only SELECT policy on
+// the bucket, and returns an error for anyone else. One hour is plenty for
+// looking through a conversation and short enough that a copied link dies.
+const SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+async function signChatUpload(path: string): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from("chat-uploads")
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+  // A missing object is expected and harmless: the path is written when the
+  // message is logged and the upload completes in the background, so a failed
+  // upload leaves a row pointing at nothing. Show the text alone, as before.
+  return error ? null : (data?.signedUrl ?? null);
+}
 
 function whoLabel(s: SessionRow): string {
   return s.user_email || (s.user_id ? "—" : "სტუმარი");
@@ -43,6 +63,8 @@ export default function AdminChatHistory() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, MessageRow[]>>({});
   const [msgLoading, setMsgLoading] = useState(false);
+  // path → signed URL, resolved once per expand and cached for the session.
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
   const fetchPage = useCallback(async (offset: number) => {
     if (offset === 0) setLoading(true);
@@ -76,8 +98,22 @@ export default function AdminChatHistory() {
       const { data, error: err } = await (supabase as any).rpc("admin_list_chat_messages", {
         p_session_id: sessionId,
       });
-      if (!err) setMessages((prev) => ({ ...prev, [sessionId]: (data as MessageRow[]) || [] }));
+      const rowsIn = (data as MessageRow[]) || [];
+      if (!err) setMessages((prev) => ({ ...prev, [sessionId]: rowsIn }));
       setMsgLoading(false);
+
+      // Sign whatever photos this conversation carries, in parallel. Failures
+      // resolve to null and are simply omitted, so one missing object never
+      // blocks the others or the transcript.
+      const paths = rowsIn.map((m) => m.image_path).filter((p): p is string => !!p);
+      if (paths.length) {
+        const signed = await Promise.all(paths.map(async (p) => [p, await signChatUpload(p)] as const));
+        setSignedUrls((prev) => {
+          const next = { ...prev };
+          for (const [p, url] of signed) if (url) next[p] = url;
+          return next;
+        });
+      }
     }
   };
 
@@ -143,6 +179,25 @@ export default function AdminChatHistory() {
                         >
                           {/* Plain text only — React escapes (no dangerouslySetInnerHTML). */}
                           {m.content}
+                          {/* The customer's own photo, where the "[image]"
+                              marker sits in the text. Click opens the full
+                              size in a new tab; the href is a signed URL that
+                              expires, and rel/noopener keep the tab isolated. */}
+                          {m.image_path && signedUrls[m.image_path] && (
+                            <a
+                              href={signedUrls[m.image_path]}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-2 block"
+                            >
+                              <img
+                                src={signedUrls[m.image_path]}
+                                alt="ატვირთული ფოტო"
+                                className="max-h-64 w-auto rounded-lg border border-border/40"
+                                loading="lazy"
+                              />
+                            </a>
+                          )}
                         </div>
                       </div>
                     ))

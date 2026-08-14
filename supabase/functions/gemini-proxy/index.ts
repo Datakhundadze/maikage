@@ -601,6 +601,95 @@ EN:
 // JPEG q0.8 (~150-250KB), so 8MB of base64 (~6MB of image) is a generous
 // ceiling that still bounds abuse. Used by faq-chat only.
 const MAX_CHAT_IMAGE_CHARS = 8 * 1024 * 1024; // 8 MB of base64 data URL
+// ── Customer chat photos → private storage ────────────────────────────────
+//
+// The picture a customer uploads is kept so an admin can judge, after the
+// fact, whether the bot answered it correctly — chat_logs previously recorded
+// a literal " [image]" and nothing else.
+//
+// BUCKET: "chat-uploads", PRIVATE. Deliberately not the existing "designs"
+// bucket, which is public — fine for generated artwork, wrong for a file a
+// stranger uploaded. Written here by the SERVICE ROLE only; there is no insert
+// policy at all, so the browser has no path into this bucket.
+//
+// SIZE: the bytes are reused exactly as the browser already sent them. Both
+// chats downscale to 1024px longest edge at JPEG 0.8 before the request
+// (ATTACH_MAX_EDGE / ATTACH_QUALITY), so no second copy and no extra payload.
+const CHAT_UPLOAD_BUCKET = "chat-uploads";
+
+/** Extension from a data URL's declared MIME, defaulting to jpg. */
+function chatImageExt(dataUrl: string): string {
+  const mime = /^data:image\/([a-zA-Z0-9.+-]+);base64,/.exec(dataUrl)?.[1]?.toLowerCase() ?? "jpeg";
+  if (mime === "jpeg" || mime === "jpg") return "jpg";
+  if (mime === "png" || mime === "webp" || mime === "gif") return mime;
+  return "jpg";
+}
+
+/**
+ * Object path for one uploaded photo: <session>/<uuid>.<ext>.
+ *
+ * Grouped by chat session so a conversation's pictures sit together, and named
+ * with a UUID so a path can never be guessed from the session id alone. The
+ * bucket is private regardless, so this is defence in depth, not the defence.
+ */
+function chatUploadPath(sessionId: string, dataUrl: string): string {
+  const safeSession = sessionId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) || "unknown";
+  return `${safeSession}/${crypto.randomUUID()}.${chatImageExt(dataUrl)}`;
+}
+
+/** Decode a base64 data URL to bytes, or null if it is not one we can read. */
+function decodeDataUrl(dataUrl: string): { bytes: Uint8Array; contentType: string } | null {
+  try {
+    const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/s.exec(dataUrl);
+    if (!match) return null;
+    const binary = atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return { bytes, contentType: match[1] };
+  } catch {
+    return null;
+  }
+}
+
+/** Put one chat photo in the private bucket. Never throws. */
+async function uploadChatImage(
+  srUrl: string,
+  srKey: string,
+  path: string,
+  dataUrl: string,
+): Promise<void> {
+  const decoded = decodeDataUrl(dataUrl);
+  if (!decoded) return;
+  const client = createClient(srUrl, srKey);
+  const { error } = await client.storage
+    .from(CHAT_UPLOAD_BUCKET)
+    .upload(path, decoded.bytes, { contentType: decoded.contentType, upsert: false });
+  if (error) console.error("[gemini-proxy] chat image upload failed:", error.message);
+}
+
+/**
+ * Run work that must NOT delay the response.
+ *
+ * A bare floating promise would be wrong here: the edge runtime may reclaim
+ * the isolate as soon as the Response is returned, killing the upload
+ * mid-flight. EdgeRuntime.waitUntil keeps the isolate alive for it WITHOUT
+ * putting it on the request's critical path — which is the whole requirement:
+ * the customer's reply is sent immediately and a slow or failing upload can
+ * never hold it up or change it.
+ *
+ * Falls back to a floating promise where waitUntil is unavailable (local
+ * `supabase functions serve`, older runtimes). Best-effort by design.
+ */
+function runInBackground(work: Promise<unknown>, label: string): void {
+  const guarded = work.catch((e) => console.error(`[gemini-proxy] ${label} failed (ignored):`, e));
+  try {
+    const rt = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+    if (rt && typeof rt.waitUntil === "function") rt.waitUntil(guarded);
+  } catch {
+    /* fall through — the promise is already running and already guarded */
+  }
+}
+
 function isAcceptableChatImage(value: unknown): value is string {
   return (
     typeof value === "string" &&
@@ -1373,9 +1462,23 @@ Output: one photorealistic composite photo.`;
                   // The photo rides on params.image, NOT inside messages, so
                   // lastUser still has string content and the user row is never
                   // lost. Only a short marker is appended — the base64 itself is
-                  // never written to chat_logs.
-                  const imageMarker = isAcceptableChatImage(params.image) ? " [image]" : "";
-                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "user", content: String(lastUser.content).slice(0, 4000) + imageMarker, lang: logLang });
+                  // never written to chat_logs; the picture goes to private
+                  // storage and only its PATH is recorded here.
+                  const hasImage = isAcceptableChatImage(params.image);
+                  const imageMarker = hasImage ? " [image]" : "";
+                  const imagePath = hasImage ? chatUploadPath(sessionId, params.image as string) : null;
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "user", content: String(lastUser.content).slice(0, 4000) + imageMarker, lang: logLang, image_path: imagePath });
+                  // Scheduled, never awaited — see runInBackground. The path is
+                  // written above optimistically; if the upload loses, the admin
+                  // view finds no object and shows the marker alone, which is
+                  // exactly today's behaviour. Delaying a customer's reply to
+                  // guarantee otherwise would be the wrong trade.
+                  if (imagePath) {
+                    runInBackground(
+                      uploadChatImage(srUrl, srKey, imagePath, params.image as string),
+                      "chat image upload",
+                    );
+                  }
                 }
                 if (textContent) {
                   rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: String(textContent).slice(0, 8000), lang: logLang });
