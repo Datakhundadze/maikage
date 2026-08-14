@@ -38,6 +38,12 @@ interface ChatMsg {
   local?: boolean;
   /** The one validated suggestion parsed off this turn, if any. */
   suggestion?: ChatSuggestion;
+  /**
+   * The photo the customer attached to THIS turn, as the same downscaled data
+   * URL that was sent. Display only — it is not resent as history, and it is
+   * deliberately never persisted (see the sessionStorage restore).
+   */
+  image?: string;
 }
 
 // Animated "typing…" dots shown while a reply is in flight.
@@ -96,7 +102,10 @@ export default function ChatWidget() {
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
-    const next: ChatMsg[] = [...messages, { role: "user", content: text }];
+    // The attachment rides on the bubble purely so the customer can SEE what
+    // they sent; what goes to the model is unchanged (faqChat still receives
+    // `attachment` separately, below).
+    const next: ChatMsg[] = [...messages, { role: "user", content: text, image: attachment ?? undefined }];
     setMessages(next);
     setInput("");
     // Hide the thumbnail; `attachment` itself is retained for the handoff.
@@ -275,6 +284,18 @@ export default function ChatWidget() {
               {/* Assistant output is markdown (whitespace-pre-wrap above keeps
                   single newlines). User text stays plain — React escapes it. */}
               {m.role === "assistant" ? <ChatMarkdown text={m.content} /> : m.content}
+              {/* The customer's own photo, confirming it was received. Sizing
+                  matches SimpleAiChatPanel's result bubbles (max-h, w-auto,
+                  object-contain, rounded-lg). A restored-from-storage bubble
+                  has no data URL and falls to the placeholder below. */}
+              {m.role === "user" && m.image && (
+                <img
+                  src={m.image}
+                  alt={lang === "en" ? "Attached photo" : "მიმაგრებული ფოტო"}
+                  className="mt-1.5 max-h-40 w-auto rounded-lg object-contain"
+                  draggable={false}
+                />
+              )}
               {/* Only for a fully-validated suggestion; a failed parse leaves
                   it undefined and the prose stands alone. */}
               <ChatSuggestionActions
