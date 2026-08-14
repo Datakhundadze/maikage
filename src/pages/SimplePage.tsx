@@ -661,6 +661,38 @@ function seededTextCoords(index: number): PlacementCoords {
   };
 }
 
+// ── Sport ────────────────────────────────────────────────────────────────
+//
+// Sport shares the t-shirt's placement zone (DEFAULT_FRONT/BACK, centred at
+// image-y 0.42) — but a Sport SET photo shows a jersey AND shorts, so the
+// jersey occupies only the upper part of the frame. The seeded default of
+// zone-y 0.65 therefore lands at image-y ≈ 0.47, which is the hem of the
+// jersey rather than its chest. The ZONE is untouched (it is shared, and
+// correct for manual placement); only where a SEEDED layer lands inside it
+// moves up.
+const SPORT_SEED_TEXT_Y = 0.38;
+
+/** Seeded centre print, raised for Sport so it reads on the jersey's chest. */
+function seededTextCoordsFor(product: string, index: number): PlacementCoords {
+  const base = seededTextCoords(index);
+  return product === "Sport" ? { ...base, y: SPORT_SEED_TEXT_Y } : base;
+}
+
+// ── Jersey back: name above, number below ────────────────────────────────
+//
+// A real football back is two prints, not one: the surname arched across the
+// shoulders in modest lettering, and the squad number very large beneath it.
+// Zone-relative, so these hold whatever the zone's pixel size turns out to be.
+//
+// Containment (centre ± half-extent) — both inside [0,1] with room:
+//   name   x 0.5±0.30 → [0.20, 0.80] · y 0.18±0.05 → [0.13, 0.23]
+//   number x 0.5±0.15 → [0.35, 0.65] · y 0.55±0.17 → [0.38, 0.72]
+// The 0.15 gap between name bottom and number top is the visual separation a
+// jersey needs; the number stands 3.4× the name's height, which is what makes
+// the arrangement read as a jersey rather than as two captions.
+const JERSEY_NAME_COORDS: PlacementCoords = { x: 0.5, y: 0.18, scale: 0.60, scaleY: 0.10 };
+const JERSEY_NUMBER_COORDS: PlacementCoords = { x: 0.5, y: 0.55, scale: 0.30, scaleY: 0.34 };
+
 /** Chest coords for a TEXT layer, scaled down from DEFAULT_TEXT_COORDS. */
 function chestTextCoords(placement: "left-chest" | "right-chest"): PlacementCoords {
   const baseScaleY = DEFAULT_TEXT_COORDS.scaleY ?? DEFAULT_TEXT_COORDS.scale;
@@ -1565,26 +1597,51 @@ export default function SimplePage() {
     // staggered coords) but with the seeded content, so the rasterisation
     // effect picks it up and fills naturalAspect normally.
     const seedText = seed.text?.trim();
+    const seedNumber = seed.number?.trim();
+    // A jersey back is TWO prints. Only here — every other placement is one
+    // layer, and the number is ignored without it.
+    const jersey = seed.placement === "jersey-back" && !!seedNumber;
     if (seedText) {
-      const id = `text-${++textIdCounter}`;
+      const seedColor = resolveTextColorHex(seed.textColor) ?? DEFAULT_TEXT_COLOR_HEX;
+      const nameId = `text-${++textIdCounter}`;
+      const numberId = jersey ? `text-${++textIdCounter}` : null;
       setSideData((prev) => {
-        if (prev.texts.length >= MAX_TEXTS) return prev;
-        const newText: TextLayer = {
+        // Both layers or neither: a name with the number silently dropped for
+        // want of one slot would look like the arrangement simply failed.
+        const needed = jersey ? 2 : 1;
+        if (prev.texts.length + needed > MAX_TEXTS) return prev;
+        const mkText = (id: string, content: string, coords: PlacementCoords): TextLayer => ({
           id,
-          content: seedText,
+          content,
           font: FONTS[0],
           // Palette-only: an unknown name resolves to null and falls back to
           // the default, so an arbitrary hex can never be injected.
-          color: resolveTextColorHex(seed.textColor) ?? DEFAULT_TEXT_COLOR_HEX,
+          color: seedColor,
+          coords,
+        });
+        if (jersey && numberId) {
+          return {
+            ...prev,
+            texts: [
+              ...prev.texts,
+              mkText(nameId, seedText, JERSEY_NAME_COORDS),
+              mkText(numberId, seedNumber as string, JERSEY_NUMBER_COORDS),
+            ],
+          };
+        }
+        const newText = mkText(
+          nameId,
+          seedText,
           // "small" reproduces the pre-2026-08 seeded size exactly
           // (staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS); anything else
-          // centred — including no placement — gets the standard print.
-          coords: chest
+          // centred — including no placement — gets the standard print, raised
+          // on Sport so it sits on the jersey chest rather than its hem.
+          chest
             ? chestTextCoords(chest)
             : seed.placement === "small"
               ? staggeredTextCoords(prev.texts.length)
-              : seededTextCoords(prev.texts.length),
-        };
+              : seededTextCoordsFor(productConfig.config.product, prev.texts.length),
+        );
         return { ...prev, texts: [...prev.texts, newText] };
       });
     }
