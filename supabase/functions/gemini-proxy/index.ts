@@ -1060,16 +1060,35 @@ serve(async (req) => {
       messages = buildGenerateDesignMessages(params);
 
     } else if (action === "convert-bg-black") {
-      // COST GATE (revert: set this to the pro model unconditionally).
-      // Flash produces an acceptable difference-matte for FLAT ILLUSTRATION
-      // (solid colors, hard edges), which is the bulk of generations. Realistic
-      // /photo designs keep pro: their mattes need pixel-level fidelity across
-      // soft edges, hair and gradients, where flash drift causes halos.
-      // FAIL-SAFE: only an explicit isRealistic === false opts into flash, so a
-      // caller that omits the flag (older deployed client) still gets pro.
-      model = params.isRealistic === false
-        ? "google/gemini-2.5-flash-image"
-        : "google/gemini-3-pro-image-preview";
+      // COST GATE — FLASH, UNCONDITIONALLY (revert: pro, or restore the
+      // isRealistic ternary this replaced).
+      //
+      // The previous rule kept pro for realistic designs and, because it read
+      // `isRealistic === false`, fell OPEN to pro whenever the flag was absent.
+      // A realistic generation therefore paid pro TWICE — once for the artwork
+      // in generate-design, and again here — and the second call is the one
+      // that does not earn it.
+      //
+      // WHY THIS IS THE CHEAP HALF. This action does not create an image. It
+      // re-renders the SAME picture on a black background so the client can
+      // subtract the two and read alpha out of the difference
+      // (runTransparencyPipeline → differenceMatting). The subject, the
+      // composition and every pixel of content are already fixed by the time
+      // this runs; the model is asked to change one thing, the backdrop.
+      // Generative headroom buys nothing here — what matters is that the
+      // subject comes back UNCHANGED between the two passes, and a model that
+      // reinterprets it is a worse matte regardless of tier.
+      //
+      // WHAT CATCHES A BAD MATTE. runTransparencyPipeline validates the result
+      // and falls back to threshold-based white removal on failure. Note that
+      // isMostlyPartialAlpha was written for exactly this failure mode — a
+      // model re-rendering the subject between passes, leaving a mid-band
+      // translucent haze — so the guard that most directly covers a weaker
+      // matte model already exists and predates this change.
+      //
+      // ⚠️ generate-design's routing is untouched: realistic artwork and
+      // Georgian slogans still go to pro there. This is the matte only.
+      model = "google/gemini-2.5-flash-image";
       console.log(`[gemini-proxy] convert-bg-black: isRealistic=${params.isRealistic} model=${model}`);
       messages = [{
         role: "user",

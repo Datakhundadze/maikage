@@ -1344,8 +1344,26 @@ export default function SimplePage() {
     if (editingPhotoId || chatEditingId || aiGenerating) return;
     const text = instruction.trim();
     if (!text) return;
+    // GUEST LIMIT. Both branches below are billable model calls — and both run
+    // on the PRO image model, so a chat edit costs strictly more than a
+    // generation does. This path had no client gate at all: handleAiGenerate
+    // and handleRemoveBgPhoto each took one, and a restyle preset chip is a
+    // ONE-TAP trigger, so a guest could spend their whole server-side budget
+    // here without ever being told a limit existed. The pair below is
+    // handleRemoveBgPhoto's, unchanged, so the three AI actions on this page
+    // now share one coherent allowance instead of two gated and one open.
+    // Logged-in users are unaffected — checkLimit always allows them.
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ("reason" in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage("message" in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
     setChatEditingId(photo.id);
     try {
+      recordAiGeneration();
       const edited = mode === "restyle"
         ? await restyleImage(photo.image, text)
         : await editImage(photo.image, text);
@@ -1380,7 +1398,7 @@ export default function SimplePage() {
     } finally {
       setChatEditingId(null);
     }
-  }, [editingPhotoId, chatEditingId, aiGenerating, applyContainFit, setSideData, pushChat, toast, lang]);
+  }, [editingPhotoId, chatEditingId, aiGenerating, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, pushChat, toast, lang]);
 
   // ── Chat orchestration (merged panel) ──────────────────────────────────
   // Routing rule: no photo layers → free text is a text-to-image prompt
