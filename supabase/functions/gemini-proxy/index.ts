@@ -1089,10 +1089,10 @@ serve(async (req) => {
       //   4. Anything else (an explicit non-"fast" speed with no text and no
       //      realistic flag) keeps its previous behaviour: pro.
       model = isRealisticMode
-        ? "google/gemini-3-pro-image-preview"
+        ? "google/gemini-3-pro-image"
         : hasSloganText
           ? "google/gemini-3.1-flash-image"
-          : (speed === "fast" ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image-preview");
+          : (speed === "fast" ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image");
       console.log(`[gemini-proxy] generate-design: style="${params.style}" isRealistic=${isRealisticMode} slogan=${hasSloganText} model=${model}`);
       messages = buildGenerateDesignMessages(params);
 
@@ -1141,7 +1141,7 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       }];
 
     } else if (action === "upscale") {
-      model = "google/gemini-3-pro-image-preview";
+      model = "google/gemini-3-pro-image";
       messages = [{
         role: "user",
         content: [
@@ -1164,7 +1164,7 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       // highlight regions), so we ask for a green screen and key it client-side.
       //
       // COST GATE — flash. Revert this one line to
-      // "google/gemini-3-pro-image-preview" to undo it; nothing else changes.
+      // "google/gemini-3-pro-image" to undo it; nothing else changes.
       //
       // ⚠️ THIS ONE IS NOT LIKE convert-bg-black's GATE, AND THE DIFFERENCE IS
       // AGAINST US. That gate moved only FLAT ILLUSTRATION to flash and kept
@@ -1218,7 +1218,7 @@ Output: a single photographic image of the isolated main subject (full detail, o
         "subject's identity, pose, count, framing and composition exactly; " +
         "change ONLY the artistic medium/style; do not add text, watermarks " +
         "or new objects.";
-      model = "google/gemini-3-pro-image-preview";
+      model = "google/gemini-3-pro-image";
       messages = [{
         role: "user",
         content: [
@@ -1244,7 +1244,7 @@ Output: a single photographic image of the isolated main subject (full detail, o
         "subject into a recognizable copyrighted or trademarked character. " +
         "If the instruction is unclear, apply the most reasonable " +
         "interpretation. Instruction:";
-      model = "google/gemini-3-pro-image-preview";
+      model = "google/gemini-3-pro-image";
       messages = [{
         role: "user",
         content: [
