@@ -920,7 +920,9 @@ export type Database = {
           mockup_image_path: string
           product: string
           prompt: string
+          session_id: string
           style: string
+          transparent_image_path: string
           user_display_name: string
           user_email: string
           user_gen_count: number
