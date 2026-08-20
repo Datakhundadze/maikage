@@ -1066,9 +1066,34 @@ serve(async (req) => {
       // Accept explicit flag from client (no regex needed); fallback to regex for safety
       const isRealisticMode = params.isRealistic === true ||
         /realistic|photo|\u10e0\u10d4\u10d0\u10da\u10d8\u10e1\u10e2|\u10e4\u10dd\u10e2\u10dd/i.test(params.style || "");
-      // Realistic mode always uses the pro model — Flash is heavily biased toward illustrations
-      model = (speed === "fast" && !isRealisticMode) ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image-preview";
-      console.log(`[gemini-proxy] generate-design: style="${params.style}" isRealistic=${isRealisticMode} model=${model}`);
+      // A slogan to RENDER AS TYPOGRAPHY. Extracted client-side by the quote
+      // regex in handleAiGenerate and sent verbatim as `text`; nothing here
+      // parses it, this only asks whether there is one.
+      const hasSloganText = typeof params.text === "string" && params.text.trim() !== "";
+      //
+      // MODEL ROUTING, in priority order:
+      //
+      //   1. REALISTIC → pro. About ARTWORK, not typography: flash skews
+      //      illustrative and breaks photoreal output. Unchanged, and it wins
+      //      over the slogan rule below — a realistic design with a slogan
+      //      still goes to pro, because the artwork is the expensive half.
+      //   2. SLOGAN, non-realistic → gemini-3.1-flash-image. This used to force
+      //      pro (speed:"pro") for ONE reason: 2.5-flash garbles non-Latin
+      //      script, returning scrambled Mtavruli where Mkhedruli was asked
+      //      for. 3.1-flash renders Georgian correctly, so the reason is gone —
+      //      and it costs 0.269 against pro's 0.560. Note `speed` is
+      //      deliberately not consulted here: the client sets speed:"pro" only
+      //      to reach a model that renders Georgian, and that is now this one.
+      //   3. NO TEXT, non-realistic → gemini-2.5-flash-image. 3.1 is 1.7x the
+      //      price and buys nothing without type to render.
+      //   4. Anything else (an explicit non-"fast" speed with no text and no
+      //      realistic flag) keeps its previous behaviour: pro.
+      model = isRealisticMode
+        ? "google/gemini-3-pro-image"
+        : hasSloganText
+          ? "google/gemini-3.1-flash-image"
+          : (speed === "fast" ? "google/gemini-2.5-flash-image" : "google/gemini-3-pro-image");
+      console.log(`[gemini-proxy] generate-design: style="${params.style}" isRealistic=${isRealisticMode} slogan=${hasSloganText} model=${model}`);
       messages = buildGenerateDesignMessages(params);
 
     } else if (action === "convert-bg-black") {
@@ -1116,7 +1141,7 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       }];
 
     } else if (action === "upscale") {
-      model = "google/gemini-3-pro-image-preview";
+      model = "google/gemini-3-pro-image";
       messages = [{
         role: "user",
         content: [
@@ -1139,7 +1164,7 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       // highlight regions), so we ask for a green screen and key it client-side.
       //
       // COST GATE — flash. Revert this one line to
-      // "google/gemini-3-pro-image-preview" to undo it; nothing else changes.
+      // "google/gemini-3-pro-image" to undo it; nothing else changes.
       //
       // ⚠️ THIS ONE IS NOT LIKE convert-bg-black's GATE, AND THE DIFFERENCE IS
       // AGAINST US. That gate moved only FLAT ILLUSTRATION to flash and kept
@@ -1193,7 +1218,7 @@ Output: a single photographic image of the isolated main subject (full detail, o
         "subject's identity, pose, count, framing and composition exactly; " +
         "change ONLY the artistic medium/style; do not add text, watermarks " +
         "or new objects.";
-      model = "google/gemini-3-pro-image-preview";
+      model = "google/gemini-3-pro-image";
       messages = [{
         role: "user",
         content: [
@@ -1219,7 +1244,7 @@ Output: a single photographic image of the isolated main subject (full detail, o
         "subject into a recognizable copyrighted or trademarked character. " +
         "If the instruction is unclear, apply the most reasonable " +
         "interpretation. Instruction:";
-      model = "google/gemini-3-pro-image-preview";
+      model = "google/gemini-3-pro-image";
       messages = [{
         role: "user",
         content: [
