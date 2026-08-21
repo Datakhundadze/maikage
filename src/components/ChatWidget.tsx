@@ -71,15 +71,22 @@ export default function ChatWidget() {
   const { lang, setMode } = useAppState();
   const navigate = useNavigate();
   const location = useLocation();
-  const [open, setOpen] = useState(false);
-  // Collapsed-to-the-header-bar state. Purely presentational: the panel stops
-  // being rendered but every piece of chat state below stays put, so expanding
-  // restores the same conversation, the same attachment and the same session.
-  const [minimized, setMinimized] = useState(false);
   // Restored transcript, read ONCE at mount. A photo's bytes are never
   // persisted, so a turn that carried one comes back as `hadImage` and renders
   // a placeholder instead of the picture.
   const restored = useMemo(() => loadChat("widget"), []);
+  // Reopen automatically when the panel was open before a document navigation.
+  //
+  // The transcript already survived that navigation; the OPEN FLAG did not, so
+  // a customer who signed in with Google/Apple — a full same-tab redirect —
+  // came back to a closed bubble with their conversation hidden behind it.
+  // Indistinguishable from having lost it. That seam matters now that signing
+  // in is a step inside the order-status conversation itself.
+  const [open, setOpen] = useState(() => restored?.open === true);
+  // Collapsed-to-the-header-bar state. Purely presentational: the panel stops
+  // being rendered but every piece of chat state below stays put, so expanding
+  // restores the same conversation, the same attachment and the same session.
+  const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>(
     () => (restored?.messages ?? []).map((m) => ({
       role: m.role,
@@ -114,6 +121,10 @@ export default function ChatWidget() {
   // Persist on every change. Deliberately mirrors state rather than hooking
   // each mutation site, so no future path can forget to save. The image data
   // URL is dropped here — see chatPersistence for why.
+  //
+  // `open` is a dependency so closing the panel is written too — otherwise a
+  // deliberate close would be forgotten and the widget would spring back open
+  // on the next navigation.
   useEffect(() => {
     if (messages.length === 0) return;
     const slim: PersistedChatMsg[] = messages.map((m) => ({
@@ -123,8 +134,8 @@ export default function ChatWidget() {
       hadImage: !!m.image || m.hadImage,
       suggestion: m.suggestion,
     }));
-    saveChat("widget", sessionIdRef.current, slim);
-  }, [messages]);
+    saveChat("widget", sessionIdRef.current, slim, open);
+  }, [messages, open]);
 
 
   const openPanel = useCallback(() => {

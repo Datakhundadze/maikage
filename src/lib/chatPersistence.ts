@@ -36,6 +36,19 @@ export interface PersistedChatMsg {
 interface PersistedChat {
   sessionId: string;
   messages: PersistedChatMsg[];
+  /**
+   * Widget only: was the panel open when this was written?
+   *
+   * The transcript already survived the OAuth redirect — but the widget's
+   * `open` flag was plain useState, so a customer who signed in with
+   * Google/Apple came back to a CLOSED bubble. Their conversation was intact
+   * one click away, and indistinguishable from lost. Signing in is now a step
+   * INSIDE the order-status conversation, so that seam had to go.
+   *
+   * Undefined for the /chat surface, which is a whole page and has no
+   * open/closed state to restore.
+   */
+  open?: boolean;
 }
 
 /**
@@ -73,7 +86,11 @@ export function loadChat(surface: ChatSurface): PersistedChat | null {
         !!m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
     );
     if (messages.length === 0) return null;
-    return { sessionId: parsed.sessionId, messages };
+    return {
+      sessionId: parsed.sessionId,
+      messages,
+      open: parsed.open === true,
+    };
   } catch {
     return null;
   }
@@ -87,13 +104,18 @@ export function loadChat(surface: ChatSurface): PersistedChat | null {
  * a locked-down in-app browser — is swallowed: the customer simply gets
  * today's behaviour on their next reload.
  */
-export function saveChat(surface: ChatSurface, sessionId: string, messages: PersistedChatMsg[]): void {
+export function saveChat(
+  surface: ChatSurface,
+  sessionId: string,
+  messages: PersistedChatMsg[],
+  open?: boolean,
+): void {
   try {
     let slice = messages;
-    let payload = JSON.stringify({ sessionId, messages: slice });
+    let payload = JSON.stringify({ sessionId, messages: slice, open });
     while (payload.length > MAX_SERIALISED_CHARS && slice.length > 1) {
       slice = slice.slice(Math.max(1, Math.ceil(slice.length * 0.25)));
-      payload = JSON.stringify({ sessionId, messages: slice });
+      payload = JSON.stringify({ sessionId, messages: slice, open });
     }
     if (payload.length > MAX_SERIALISED_CHARS) return; // one turn over the cap: keep nothing
     sessionStorage.setItem(keyFor(surface), payload);
