@@ -191,12 +191,23 @@ export default function SimpleAiChatPanel({
     </div>
   );
 
-  // Generation options (style chips + background toggle). Shown whenever there
-  // is NO photo layer — i.e. text-to-image mode, INCLUDING the empty state
-  // before the first message — so the style choice is visible while the user
-  // types their prompt, not only after generating. (Edit mode shows edit chips
-  // instead; nothing here then.)
-  const generationOptions = !hasPhotos ? (
+  // Generation options (style chips + background toggle). Rendered in EVERY
+  // mode, including edit mode — the style choice is visible while the user
+  // types their prompt, and it stays REACHABLE afterwards.
+  //
+  // It used to be gated on !hasPhotos, so the whole section — toggle, style
+  // chips and background switch alike — unmounted the moment a photo layer
+  // existed. A seeded generation auto-places its design, which flips hasPhotos
+  // instantly, so a chat handoff both set the style and removed the only
+  // control that shows it. The customer could neither see nor correct it.
+  //
+  // Presence, not expansion, is what was missing. SimplePage collapses the
+  // section once a photo is placed (optionsOpen && !hasPhotos), because two
+  // expanded chip rows meaning different things — style vs the restyle /
+  // remove-background chips right above — is its own confusion. Collapsed
+  // keeps the control one tap away without implying it applies to the photo
+  // being edited.
+  const generationOptions = (
     <div>
       <button
         type="button"
@@ -280,7 +291,7 @@ export default function SimpleAiChatPanel({
         </div>
       )}
     </div>
-  ) : null;
+  );
 
   return (
     <div className="rounded-2xl border-2 border-[#26BB89]/40 bg-[#26BB89]/[0.06] overflow-hidden shadow-sm">

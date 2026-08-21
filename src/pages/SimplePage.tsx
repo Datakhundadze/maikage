@@ -781,6 +781,20 @@ export default function SimplePage() {
   const [chatMessages, setChatMessages] = useState<AiChatMessage[]>([]);
   const [chatEditingId, setChatEditingId] = useState<string | null>(null);
   const [chatOptionsOpen, setChatOptionsOpen] = useState(true);
+  // Edit mode keeps its OWN collapse bit, defaulting closed.
+  //
+  // The options section is now rendered in both modes, but it must not arrive
+  // expanded once a photo is placed: two open chip rows — style above, restyle
+  // / remove-background below — read as one set of controls for the photo
+  // being edited, which the style chips are not.
+  //
+  // Deriving it instead (optionsOpen={chatOptionsOpen && !hasPhotos}) collapses
+  // it correctly but makes the toggle DEAD: onToggleOptions writes
+  // chatOptionsOpen, the derived value recomputes to false, and tapping
+  // „პარამეტრები" does nothing at all. A separate bit keeps the control live
+  // in edit mode while leaving the customer's generation-mode preference
+  // exactly as they left it.
+  const [editOptionsOpen, setEditOptionsOpen] = useState(false);
   // Last text-to-image prompt — the regenerate button re-runs it after the
   // chat input has been cleared.
   const lastGenPromptRef = useRef("");
@@ -2471,8 +2485,12 @@ export default function SimplePage() {
       restylePresets={RESTYLE_PRESETS}
       onPresetChip={handleChatPresetChip}
       onRemoveBg={handleChatRemoveBg}
-      optionsOpen={chatOptionsOpen}
-      onToggleOptions={setChatOptionsOpen}
+      // Collapsed once a photo is placed, and still openable there — see
+      // editOptionsOpen. Returning to generation mode restores whatever the
+      // customer had chatOptionsOpen set to; the two never overwrite each
+      // other.
+      optionsOpen={hasPhotos ? editOptionsOpen : chatOptionsOpen}
+      onToggleOptions={hasPhotos ? setEditOptionsOpen : setChatOptionsOpen}
       styleOptions={aiStyleOptions}
       selectedStyle={aiStyle}
       onSelectStyle={setAiStyle}
