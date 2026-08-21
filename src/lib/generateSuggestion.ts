@@ -32,6 +32,7 @@ import {
   stripMockupFence,
   type MockupSuggestion,
 } from "@/lib/mockupSuggestion";
+import { hasOrderStatusFence, stripOrderStatusFence } from "@/lib/orderStatus";
 
 const GENERATE_FENCE_RE = /```maika-generate\b[\s\S]*?(?:```|$)/g;
 
@@ -237,7 +238,15 @@ export function parseGenerateSuggestion(raw: string): GenerateSuggestion | null 
  */
 export type ChatSuggestion =
   | { kind: "generate"; generate: GenerateSuggestion }
-  | { kind: "mockup"; mockup: MockupSuggestion };
+  | { kind: "mockup"; mockup: MockupSuggestion }
+  /**
+   * "Where is my order?" — a signal with NO payload, deliberately. There is
+   * nothing for the model to fill in and therefore nothing it could use to
+   * aim the lookup at someone else: who the query returns is decided entirely
+   * by auth.uid() inside Postgres. The order data itself never travels
+   * through this type, so it can never be replayed to the model as history.
+   */
+  | { kind: "orderStatus" };
 
 export function parseChatSuggestion(
   raw: string,
@@ -247,8 +256,15 @@ export function parseChatSuggestion(
   // A mockup is only actionable with usable text, or a photo to pair with —
   // the rule the two chats already applied inline.
   const mockup = parseMockupSuggestion(raw);
-  const text = stripMockupFence(stripGenerateFence(raw));
+  const orderStatus = hasOrderStatusFence(raw);
+  const text = stripOrderStatusFence(stripMockupFence(stripGenerateFence(raw)));
 
+  // Order status wins. It is the only kind that answers a question about
+  // something that already exists rather than offering to make something new,
+  // so a reply carrying both has misunderstood; showing the customer their
+  // order is the safer of the two readings. In practice they never co-occur —
+  // the KB forbids it — and the losing fence is still stripped from the text.
+  if (orderStatus) return { text, suggestion: { kind: "orderStatus" } };
   if (generate) return { text, suggestion: { kind: "generate", generate } };
   if (mockup && (mockup.text || hasAttachment)) return { text, suggestion: { kind: "mockup", mockup } };
   return { text, suggestion: null };

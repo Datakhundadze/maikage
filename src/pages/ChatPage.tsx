@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle, Send, ImagePlus, X } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
@@ -22,6 +22,10 @@ import {
 import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
 import SeoHead from "@/components/SeoHead";
+// Only mounted once the order-status card's sign-in button is pressed, so
+// /chat does not ship the auth UI to every visitor. Same lazy treatment
+// AppHeader gives it.
+const LoginModal = lazy(() => import("@/components/LoginModal"));
 
 // Photo attachment bounds. The file is gated BEFORE it is read, so an
 // oversized pick never becomes a payload; it is then downscaled to 1024px /
@@ -109,6 +113,7 @@ export default function ChatPage() {
   // itself is deliberately kept, because the "ესკიზის ნახვა" handoff still
   // needs that data URL. Picking a new photo shows the preview again.
   const [attachmentSent, setAttachmentSent] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   // One stable id per page mount. The "chatpage-" prefix makes these
   // conversations recognizable against widget ones in the admin chat history
   // (chat_logs has no source/channel column, and this needs no schema change).
@@ -315,6 +320,7 @@ export default function ChatPage() {
               <ChatSuggestionActions
                 suggestion={m.suggestion}
                 lang={lang}
+                onSignIn={() => setShowLogin(true)}
                 onMockup={openInConstructor}
                 onGenerate={openGenerate}
               />
@@ -398,6 +404,16 @@ export default function ChatPage() {
         </button>
         </div>
       </div>
+
+      {/* Sign-in from the order-status card. /chat is a full page, so the
+          transcript restores visibly on its own after the OAuth redirect. */}
+      <Suspense fallback={null}>
+        <LoginModal
+          open={showLogin}
+          onClose={() => setShowLogin(false)}
+          message={lang === "en" ? "Sign in to see your order" : "შედით შეკვეთის სანახავად"}
+        />
+      </Suspense>
     </div>
   );
 }

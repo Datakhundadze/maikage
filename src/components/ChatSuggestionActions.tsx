@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import type { MockupSuggestion } from "@/lib/mockupSuggestion";
 import type { ChatSuggestion, GenerateSuggestion } from "@/lib/generateSuggestion";
 import ChatStyleChips from "@/components/ChatStyleChips";
+import ChatOrderStatus from "@/components/ChatOrderStatus";
 import type { Lang } from "@/lib/i18n";
 
 export default function ChatSuggestionActions({
@@ -24,6 +25,7 @@ export default function ChatSuggestionActions({
   compact = false,
   onMockup,
   onGenerate,
+  onSignIn,
 }: {
   /** Page language — only used to label the style chips. */
   lang: Lang;
@@ -33,8 +35,17 @@ export default function ChatSuggestionActions({
   compact?: boolean;
   onMockup: (m: MockupSuggestion) => void;
   onGenerate: (g: GenerateSuggestion) => void;
+  /** Open the login modal — the order-status card's guest path. */
+  onSignIn: () => void;
 }) {
   if (!suggestion) return null;
+
+  // Order status renders its own card rather than a button: the lookup is
+  // client-side and its result must never travel back through a message's
+  // `content`, so it lives inside the component and nowhere else.
+  if (suggestion.kind === "orderStatus") {
+    return <ChatOrderStatus lang={lang} compact={compact} onSignIn={onSignIn} />;
+  }
 
   const cls = `mt-2 w-full font-semibold bg-foreground text-background hover:bg-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90 ${
     compact ? "h-9 gap-1.5 text-xs" : "h-10 gap-2"

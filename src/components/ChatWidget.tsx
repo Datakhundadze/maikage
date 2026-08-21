@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MessageCircle, X, Minus, ChevronUp, Send, ImagePlus } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
@@ -20,6 +20,10 @@ import {
 } from "@/lib/generateSuggestion";
 import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
+// Only mounted once the order-status card's sign-in button is pressed, so the
+// chat bundle does not carry the auth UI for every visitor. Same lazy treatment
+// AppHeader gives it.
+const LoginModal = lazy(() => import("@/components/LoginModal"));
 
 const ACCENT = "#26BB89";
 
@@ -87,6 +91,7 @@ export default function ChatWidget() {
   // being rendered but every piece of chat state below stays put, so expanding
   // restores the same conversation, the same attachment and the same session.
   const [minimized, setMinimized] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>(
     () => (restored?.messages ?? []).map((m) => ({
       role: m.role,
@@ -357,6 +362,7 @@ export default function ChatWidget() {
                 suggestion={m.suggestion}
                 lang={lang}
                 compact
+                onSignIn={() => setShowLogin(true)}
                 onMockup={openInConstructor}
                 onGenerate={openGenerate}
               />
@@ -431,6 +437,18 @@ export default function ChatWidget() {
         </button>
         </div>
       </div>
+
+      {/* Sign-in from the order-status card. The transcript is already
+          persisted, and the panel's open state now is too, so both the
+          email/password path (no navigation) and the Google/Apple path (a
+          full same-tab redirect) come back to this same open conversation. */}
+      <Suspense fallback={null}>
+        <LoginModal
+          open={showLogin}
+          onClose={() => setShowLogin(false)}
+          message={lang === "en" ? "Sign in to see your order" : "შედით შეკვეთის სანახავად"}
+        />
+      </Suspense>
     </div>
   );
 }
