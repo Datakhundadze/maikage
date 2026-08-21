@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MessageCircle, X, Minus, ChevronUp, Send, ImagePlus } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
@@ -20,6 +20,10 @@ import {
 } from "@/lib/generateSuggestion";
 import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
+// Only mounted once the order-status card's sign-in button is pressed, so the
+// chat bundle does not carry the auth UI for every visitor. Same lazy treatment
+// AppHeader gives it.
+const LoginModal = lazy(() => import("@/components/LoginModal"));
 
 const ACCENT = "#26BB89";
 
@@ -71,15 +75,23 @@ export default function ChatWidget() {
   const { lang, setMode } = useAppState();
   const navigate = useNavigate();
   const location = useLocation();
-  const [open, setOpen] = useState(false);
-  // Collapsed-to-the-header-bar state. Purely presentational: the panel stops
-  // being rendered but every piece of chat state below stays put, so expanding
-  // restores the same conversation, the same attachment and the same session.
-  const [minimized, setMinimized] = useState(false);
   // Restored transcript, read ONCE at mount. A photo's bytes are never
   // persisted, so a turn that carried one comes back as `hadImage` and renders
   // a placeholder instead of the picture.
   const restored = useMemo(() => loadChat("widget"), []);
+  // Reopen automatically when the panel was open before a document navigation.
+  //
+  // The transcript already survived that navigation; the OPEN FLAG did not, so
+  // a customer who signed in with Google/Apple — a full same-tab redirect —
+  // came back to a closed bubble with their conversation hidden behind it.
+  // Indistinguishable from having lost it. That seam matters now that signing
+  // in is a step inside the order-status conversation itself.
+  const [open, setOpen] = useState(() => restored?.open === true);
+  // Collapsed-to-the-header-bar state. Purely presentational: the panel stops
+  // being rendered but every piece of chat state below stays put, so expanding
+  // restores the same conversation, the same attachment and the same session.
+  const [minimized, setMinimized] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [messages, setMessages] = useState<ChatMsg[]>(
     () => (restored?.messages ?? []).map((m) => ({
       role: m.role,
@@ -114,6 +126,10 @@ export default function ChatWidget() {
   // Persist on every change. Deliberately mirrors state rather than hooking
   // each mutation site, so no future path can forget to save. The image data
   // URL is dropped here — see chatPersistence for why.
+  //
+  // `open` is a dependency so closing the panel is written too — otherwise a
+  // deliberate close would be forgotten and the widget would spring back open
+  // on the next navigation.
   useEffect(() => {
     if (messages.length === 0) return;
     const slim: PersistedChatMsg[] = messages.map((m) => ({
@@ -123,8 +139,8 @@ export default function ChatWidget() {
       hadImage: !!m.image || m.hadImage,
       suggestion: m.suggestion,
     }));
-    saveChat("widget", sessionIdRef.current, slim);
-  }, [messages]);
+    saveChat("widget", sessionIdRef.current, slim, open);
+  }, [messages, open]);
 
 
   const openPanel = useCallback(() => {
@@ -346,6 +362,7 @@ export default function ChatWidget() {
                 suggestion={m.suggestion}
                 lang={lang}
                 compact
+                onSignIn={() => setShowLogin(true)}
                 onMockup={openInConstructor}
                 onGenerate={openGenerate}
               />
@@ -420,6 +437,18 @@ export default function ChatWidget() {
         </button>
         </div>
       </div>
+
+      {/* Sign-in from the order-status card. The transcript is already
+          persisted, and the panel's open state now is too, so both the
+          email/password path (no navigation) and the Google/Apple path (a
+          full same-tab redirect) come back to this same open conversation. */}
+      <Suspense fallback={null}>
+        <LoginModal
+          open={showLogin}
+          onClose={() => setShowLogin(false)}
+          message={lang === "en" ? "Sign in to see your order" : "შედით შეკვეთის სანახავად"}
+        />
+      </Suspense>
     </div>
   );
 }
