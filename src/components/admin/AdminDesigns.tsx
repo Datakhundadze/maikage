@@ -18,6 +18,22 @@ interface Generation {
   created_at: string;
   transparent_image_path: string | null;
   mockup_image_path: string | null;
+  /** From admin_list_generations. Null for a guest, or a user with no profile. */
+  user_email: string | null;
+  user_display_name: string | null;
+  /**
+   * ⚠️ BOTH COUNTS ARE user_id JOINS, so they are 0 for a guest whatever the
+   * truth is — g.user_id is NULL and `o.user_id = NULL` never matches. Rendered
+   * as "—" for is_guest rows: "0 orders" next to a guest who has ordered ten
+   * times is worse than admitting we cannot know.
+   */
+  user_paid_order_count: number;
+  user_gen_count: number;
+}
+
+/** Who made it: real identity when we have one, otherwise the guest marker. */
+function whoLabel(gen: Generation): string {
+  return gen.user_email || gen.user_display_name || (gen.is_guest || !gen.user_id ? "სტუმარი" : "—");
 }
 
 // Image resolver — bucket "designs" is public, so use getPublicUrl (no auth call needed).
@@ -128,6 +144,34 @@ function GenerationCard({
           <div><span className="text-muted-foreground">ფერი: </span><span className="font-medium">{gen.color}</span></div>
           {gen.style && <div><span className="text-muted-foreground">სტილი: </span><span className="font-medium">{gen.style}</span></div>}
         </div>
+        {/* Who made it. Counts are user_id joins, so they are meaningless for a
+            guest — show "—" rather than a confident, wrong 0. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+            gen.is_guest || !gen.user_id
+              ? "bg-muted text-muted-foreground"
+              : "bg-primary/10 text-primary"
+          }`}>
+            {gen.is_guest || !gen.user_id ? "სტუმარი" : "რეგისტრირებული"}
+          </span>
+          <span className="truncate text-muted-foreground" title={whoLabel(gen)}>{whoLabel(gen)}</span>
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <span title="ამ მომხმარებლის გენერაციები სულ">
+            გენერაციები: <span className="font-medium text-foreground">
+              {gen.is_guest || !gen.user_id ? "—" : gen.user_gen_count}
+            </span>
+          </span>
+          <span title="ამ მომხმარებლის გადახდილი შეკვეთები სულ">
+            შეკვეთები: <span className={`font-medium ${
+              !gen.is_guest && gen.user_id && gen.user_paid_order_count > 0
+                ? "text-green-600"
+                : "text-foreground"
+            }`}>
+              {gen.is_guest || !gen.user_id ? "—" : gen.user_paid_order_count}
+            </span>
+          </span>
+        </div>
         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border">
           <span>{format(new Date(gen.created_at), "dd.MM.yyyy HH:mm")}</span>
           <span className="font-mono">
@@ -176,17 +220,28 @@ export default function AdminDesigns() {
     const slowTimer = setTimeout(() => setSlowLoad(true), 4000);
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from("generations")
-        .select("id, created_at, prompt, product, color, style, mockup_image_path, transparent_image_path, is_guest, user_id, session_id")
-        .order("created_at", { ascending: false })
-        .limit(50);
+      // Same 50 rows, same generations table, same ordering — but through the
+      // admin-gated RPC, which also carries the person behind the design
+      // (email / display name) and their generation and paid-order counts.
+      // The RPC is schema-ahead-of-types, hence the cast, exactly as
+      // AdminGenerations does it.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error: fetchError } = await (supabase as any).rpc("admin_list_generations", {
+        p_limit: 50,
+        p_offset: 0,
+      });
 
       if (fetchError) {
         setError(`${fetchError.code}: ${fetchError.message}`);
         setGenerations([]);
       } else {
-        setGenerations((data as Generation[]) || []);
+        // counts arrive as bigint → string over the wire; Number() them once
+        // here so every consumer below sees a number.
+        setGenerations(((data as Generation[]) || []).map((r) => ({
+          ...r,
+          user_paid_order_count: Number(r.user_paid_order_count),
+          user_gen_count: Number(r.user_gen_count),
+        })));
       }
     } catch (e: any) {
       setError(e.message || "უცნობი შეცდომა");
