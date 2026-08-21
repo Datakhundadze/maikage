@@ -1134,6 +1134,16 @@ export default function SimplePage() {
   // which needs a re-render to appear). The two are set and cleared together.
   const seededRunRef = useRef(false);
   const [seededRunActive, setSeededRunActive] = useState(false);
+  // The panel settings a seeded run borrowed, plus what it set them to.
+  // Non-null only while a seeded generation is in flight. A ref, not state,
+  // because it is written and read inside effects and must be exact at that
+  // instant — and because changing it must not itself cause a render.
+  const preSeedPanelRef = useRef<{
+    style: string;
+    withBackground: boolean;
+    seededStyle: string;
+    seededWithBackground: boolean;
+  } | null>(null);
   // Same idea for a seeded background removal — see the drain effect below.
   const [seededRemoveBgActive, setSeededRemoveBgActive] = useState(false);
 
@@ -1191,6 +1201,26 @@ export default function SimplePage() {
       // than in the result effect means the error, block and rate-limit paths —
       // which never set a result — also stop showing progress.
       setSeededRunActive(false);
+
+      // Give the panel back. A seeded run borrows aiStyle / aiWithBackground to
+      // reach handleAiGenerate (which reads them from its closure); without
+      // this the borrowed values simply stayed, and the customer's own chip
+      // choice was gone for the rest of the session. Restoring on the same
+      // true→false transition covers every ending — success, error, block and
+      // rate limit — so a failed handoff cannot strand the panel either.
+      //
+      // ONLY the seed's own value is taken back. The functional updaters read
+      // the value at commit time and put the original back only if it is still
+      // exactly what the seed set; if the customer tapped a chip while the
+      // generation was running, that is a deliberate choice and it stands.
+      const borrowed = preSeedPanelRef.current;
+      preSeedPanelRef.current = null;
+      if (borrowed) {
+        setAiStyle((cur) => (cur === borrowed.seededStyle ? borrowed.style : cur));
+        setAiWithBackground((cur) =>
+          cur === borrowed.seededWithBackground ? borrowed.withBackground : cur,
+        );
+      }
     }
     wasGeneratingRef.current = aiGenerating;
   }, [aiGenerating]);
@@ -1764,6 +1794,27 @@ export default function SimplePage() {
     // for anything not in the enum, so an unknown style can never reach the
     // generation params as free text.
     const style = styleForLang(pendingGen.style, lang);
+    // BORROW, DON'T KEEP. The two setters below are how the seed reaches
+    // handleAiGenerate, but they write the panel's SHARED state — the same
+    // state the style chips and the background toggle are bound to. Nothing
+    // used to put it back, so one chat handoff permanently replaced whatever
+    // the customer had chosen: a customer on "Realistic" who accepted a chat
+    // design with no style ended up on Auto, and every generation they typed
+    // afterwards silently routed to flash instead of pro. That is the quality
+    // drop. Remember the pre-seed values here and hand them back when the run
+    // ends — see the restore in the generation-finished effect above.
+    //
+    // Captured on the FIRST pass only: this effect is a ladder that re-enters
+    // once per field, and a later pass would otherwise record the seed's own
+    // values as if they were the customer's.
+    if (!preSeedPanelRef.current) {
+      preSeedPanelRef.current = {
+        style: aiStyle,
+        withBackground: aiWithBackground,
+        seededStyle: style,
+        seededWithBackground: pendingGen.withBackground,
+      };
+    }
     if (aiStyle !== style) { setAiStyle(style); return; }
     if (aiWithBackground !== pendingGen.withBackground) { setAiWithBackground(pendingGen.withBackground); return; }
 
