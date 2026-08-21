@@ -76,6 +76,25 @@ export interface ConstructorSeed {
    * the chroma key and the contain-refit. Ignored without `image`.
    */
   removeBackground?: boolean;
+  /**
+   * Edit the seeded `image` with this free-text instruction once it is on the
+   * garment — "add black round glasses to the dog", "put a coffee in the cat's
+   * hand".
+   *
+   * THE GAP THIS CLOSES. The chat could place a photo, generate a design,
+   * remove a background and look up an order, but it had no way to express an
+   * EDIT. A customer who uploaded a dog and asked for glasses got a correct
+   * maika-mockup block that placed the ORIGINAL photo, plus prose explaining
+   * which button to press. The edit never ran. The KB's "DO IT, DON'T EXPLAIN
+   * IT" rule did not stop that, because it only forbids explaining what a block
+   * CAN carry — and no block carried this.
+   *
+   * A REQUEST, not a pipeline call, exactly like removeBackground: the
+   * constructor hands it to its own handleChatEdit, which owns the quota gate,
+   * the edit-image call, the write-back and the contain-refit. Ignored without
+   * `image`.
+   */
+  editPrompt?: string;
   /** Which side the layers land on. */
   side?: "front" | "back";
   /**
@@ -253,6 +272,12 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const image = typeof parsed.image === "string" ? parsed.image : undefined;
     // Only ever true alongside a photo — a flag with nothing to act on is noise.
     const removeBackground = image ? parsed.removeBackground === true : undefined;
+    // Same rule for the edit instruction, and bounded by the PROMPT cap rather
+    // than the text cap: this describes a change to a picture, it is not words
+    // printed on a garment. Re-validated here as well as at write time because
+    // localStorage is writable by anything on the origin.
+    const rawEdit = image && typeof parsed.editPrompt === "string" ? parsed.editPrompt.trim() : "";
+    const editPrompt = rawEdit ? rawEdit.slice(0, MAX_SEED_PROMPT_LENGTH) : undefined;
     const side = parsed.side === "front" || parsed.side === "back" ? parsed.side : undefined;
     const placement =
       parsed.placement === "center" || parsed.placement === "small" ||
@@ -291,7 +316,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     }
 
     if (!text && !image && !product && !color && !generate) return null;
-    return { text, textColor, image, removeBackground, side, placement, number, product, subProduct, color, generate };
+    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate };
   } catch {
     return null;
   }

@@ -1146,6 +1146,8 @@ export default function SimplePage() {
   } | null>(null);
   // Same idea for a seeded background removal — see the drain effect below.
   const [seededRemoveBgActive, setSeededRemoveBgActive] = useState(false);
+  // …and for a seeded photo EDIT, which reports through the same overlay.
+  const [seededEditActive, setSeededEditActive] = useState(false);
 
   // Surface each completed generation as a chat message. Keyed on the result
   // object's identity so re-renders don't duplicate the append —
@@ -1641,11 +1643,33 @@ export default function SimplePage() {
     // contain-fit behave exactly as they do for a manual upload.
     if (seed.image) {
       addPhotoLayer(seed.image);
-      // Background removal is QUEUED, not run — the layer does not exist until
-      // React commits the add above. The effect below waits for it and then
-      // hands it to the constructor's own handleRemoveBgPhoto. Same shape as
-      // the generation queue a few lines up, and for the same reason.
-      if (seed.removeBackground) setPendingRemoveBg(seed.image);
+      // Background removal and the photo EDIT are both QUEUED, not run — the
+      // layer does not exist until React commits the add above. The effects
+      // below wait for it and then hand it to the constructor's own
+      // handleRemoveBgPhoto / handleChatEdit. Same shape as the generation queue
+      // a few lines up, and for the same reason.
+      //
+      // ORDER, when the customer asked for BOTH ("remove the background and put
+      // glasses on the dog"): EDIT FIRST, then removal. Three reasons, and they
+      // all point the same way. The edit model reads the whole photo, so it does
+      // better with the background still there than with a subject floating on
+      // transparency. Removal is a cleanup pass, so it belongs last, where it
+      // also cuts around whatever the edit just added. And reversed, the edit
+      // would re-render a background over the cutout and silently undo the
+      // removal the customer asked for.
+      //
+      // So the edit OWNS the chain when both are set: it queues the removal
+      // itself once it has finished, keyed by layer id rather than data URL
+      // because the edit replaces the image the URL refers to.
+      if (seed.editPrompt) {
+        setPendingEdit({
+          image: seed.image,
+          prompt: seed.editPrompt,
+          thenRemoveBg: !!seed.removeBackground,
+        });
+      } else if (seed.removeBackground) {
+        setPendingRemoveBg(seed.image);
+      }
     }
 
     // Text: same layer shape addTextLayer builds (Georgian FONTS[0], black,
@@ -1857,6 +1881,67 @@ export default function SimplePage() {
     setSeededRemoveBgActive(true);
     void handleRemoveBgPhoto(layer).finally(() => setSeededRemoveBgActive(false));
   }, [pendingRemoveBg, sideData.photos, handleRemoveBgPhoto]);
+
+  // ── Seeded photo EDIT: through handleChatEdit, never past it ───────────────
+  //
+  // The chat can now ask for the uploaded photo to be CHANGED — "add black
+  // round glasses to the dog". Before this the request had nowhere to go: the
+  // block placed the original photo and the model, having no field for the
+  // edit, explained which button to press instead. The edit never ran.
+  //
+  // Same contract as the background-removal queue above. handleChatEdit takes a
+  // PhotoLayer, so this waits for the layer the seed just added to exist —
+  // matched on its data URL, which addPhotoLayer copies verbatim. It does NOT
+  // depend on selection, so the "seeded layers arrive unselected" rule holds.
+  //
+  // EXACTLY ONCE: cleared before the call, so a re-render inside handleChatEdit
+  // cannot start a second one.
+  //
+  // DEGRADES, never ends with nothing. The photo is already on the garment
+  // before this runs, so an exhausted quota, a refused call or a failed edit
+  // all leave the customer with their photo, placed and usable — just
+  // unedited. handleChatEdit owns the quota gate, the login modal, the error
+  // toast and the "couldn't apply that" chat bubble, all unchanged.
+  //
+  // COST: one edit is ONE generation off the allowance (handleChatEdit's own
+  // checkAiLimit/recordAiGeneration pair, the same one the manual path uses).
+  // A photo that asks for an edit AND a background removal therefore spends
+  // TWO — they are two model calls and neither is free.
+  const [pendingEdit, setPendingEdit] = useState<
+    { image: string; prompt: string; thenRemoveBg: boolean } | null
+  >(null);
+  useEffect(() => {
+    if (!pendingEdit) return;
+    const layer = sideData.photos.find((p) => p.image === pendingEdit.image);
+    if (!layer) return; // the add has not committed yet; this effect re-runs
+    const { prompt, thenRemoveBg } = pendingEdit;
+    setPendingEdit(null);
+    setSeededEditActive(true);
+    void handleChatEdit(layer, prompt, "edit").finally(() => {
+      setSeededEditActive(false);
+      // Hand the SAME layer on to background removal when both were asked for.
+      // By id, not by data URL: handleChatEdit has just replaced p.image, so the
+      // URL this effect matched on no longer exists. Queued even if the edit
+      // failed or was refused — the two requests are independent, and a
+      // customer who has one generation left should still get their background
+      // removed rather than nothing.
+      if (thenRemoveBg) setPendingRemoveBgId(layer.id);
+    });
+  }, [pendingEdit, sideData.photos, handleChatEdit]);
+
+  // The second half of that chain. Identical to the removal queue above except
+  // that it finds its layer by id, for the reason given there.
+  const [pendingRemoveBgId, setPendingRemoveBgId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingRemoveBgId) return;
+    const layer = sideData.photos.find((p) => p.id === pendingRemoveBgId);
+    // Gone (the customer deleted it while the edit ran) → drop the request
+    // rather than leaving it queued forever.
+    if (!layer) { setPendingRemoveBgId(null); return; }
+    setPendingRemoveBgId(null);
+    setSeededRemoveBgActive(true);
+    void handleRemoveBgPhoto(layer).finally(() => setSeededRemoveBgActive(false));
+  }, [pendingRemoveBgId, sideData.photos, handleRemoveBgPhoto]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit
@@ -2431,9 +2516,12 @@ export default function SimplePage() {
   // pipeline's own PROCESSING_TRANSPARENCY copy ("ფონის მოცილება…") rather than
   // new wording. Without it the customer watches an unchanged shirt for the
   // length of a model call — the exact failure the overlay was built for.
-  const seededGenerationOverlay = (seededRunActive && aiGenerating) || seededRemoveBgActive ? (
+  // A seeded EDIT reports through it too, using GENERATING_DESIGN — the edit IS
+  // a model call drawing on the photo, and inventing a fourth vocabulary for it
+  // would say less than the words that already exist.
+  const seededGenerationOverlay = (seededRunActive && aiGenerating) || seededRemoveBgActive || seededEditActive ? (
     <PreviewGenerationOverlay
-      status={seededRemoveBgActive ? "PROCESSING_TRANSPARENCY" : aiStatus}
+      status={seededRemoveBgActive ? "PROCESSING_TRANSPARENCY" : seededEditActive ? "GENERATING_DESIGN" : aiStatus}
       lang={lang}
     />
   ) : null;
