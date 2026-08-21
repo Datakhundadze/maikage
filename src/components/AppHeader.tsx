@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
 import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
 const LoginModal = lazy(() => import("@/components/LoginModal"));
@@ -49,13 +49,16 @@ export default function AppHeader() {
         {/* LEFT: logo — navigates home. setMode("landing") alone is a
             no-op on non-root routes (/designs, /design/:slug, etc.):
             mode flips but the URL stays put, and AppRoutes only renders
-            mode views at "/". navigate("/") moves the URL to "/" where
-            AppRoutes then honours mode === "landing". */}
-        <button
-          onClick={() => {
-            setMode("landing");
-            navigate("/");
-          }}
+            mode views at "/". Linking to "/" moves the URL there, where
+            AppRoutes then honours mode === "landing".
+
+            A <Link>, not a button, for the same reason as the nav tabs:
+            this is the one link to the homepage that appears on every
+            page, and a crawler has to be able to follow it. <Link> runs
+            onClick before navigating, so setMode still lands first. */}
+        <Link
+          to="/"
+          onClick={() => setMode("landing")}
           aria-label={lang === "en" ? "Home" : "მთავარი"}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0 cursor-pointer"
         >
@@ -68,7 +71,7 @@ export default function AppHeader() {
               {isLoggedIn ? (user?.email?.split("@")[0] || "სტუმარი") : (lang === "en" ? "Guest" : "სტუმარი")}
             </div>
           </div>
-        </button>
+        </Link>
 
         {/* CENTER: nav tabs */}
         <nav className="flex items-center gap-0.5 flex-1 justify-center overflow-x-auto">
@@ -76,15 +79,19 @@ export default function AppHeader() {
             const active = location.pathname === path;
             const preload = PRELOAD_BY_PATH[path];
             return (
-              <button
+              // Real <a href> rather than a button, so the header gives every
+              // page a crawlable link to /designs, /portfolio, /blog and
+              // /contact. As buttons these were invisible to Googlebot, which
+              // left the catalog itself with no inbound link anywhere on the
+              // site.
+              //
+              // Every nav target is a non-root path, which always renders
+              // through <Routes> regardless of mode (the mode short-circuit in
+              // App.tsx only applies at "/"), so the <Link> alone is enough —
+              // no setMode needed, exactly as the old navigate() call.
+              <Link
                 key={path}
-                onClick={() => {
-                  // Every nav target here is a non-root path, which always
-                  // renders through <Routes> regardless of mode (the mode
-                  // short-circuit in App.tsx only applies at "/"), so a plain
-                  // navigate() is enough — no setMode needed.
-                  navigate(path);
-                }}
+                to={path}
                 onMouseEnter={preload}
                 onFocus={preload}
                 onTouchStart={preload}
@@ -96,7 +103,7 @@ export default function AppHeader() {
               >
                 <Icon className="h-3 w-3" />
                 <span className="hidden sm:inline">{label}</span>
-              </button>
+              </Link>
             );
           })}
         </nav>
