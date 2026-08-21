@@ -274,9 +274,19 @@ export default function DesignDetailPage() {
   const categoryLabel = design?.category ? CATEGORY_LABEL[design.category] ?? design.category : null;
 
   // ── States ────────────────────────────────────────────────────────────────
+  // Each of the three early exits below renders its own <SeoHead>. They are
+  // the only branches on the site that returned markup without one, and with
+  // the static canonical now gone from index.html they would otherwise ship a
+  // page with NO canonical at all. Self-canonical to the requested design URL
+  // — the honest answer for every one of these states, and in particular far
+  // better than the old behaviour, where index.html's hardcoded tag told
+  // Google that every unresolvable /design/:slug WAS the homepage.
+  const requestedUrl = `${SITE_URL}/design/${slug}`;
+
   if (loading) {
     return (
       <div className="flex flex-col h-screen">
+        <SeoHead url={requestedUrl} />
         <AppHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -288,6 +298,9 @@ export default function DesignDetailPage() {
   if (notFound || !design) {
     return (
       <div className="flex flex-col h-screen">
+        {/* A slug with no published design is a soft 404 — keep it out of the
+            index rather than letting a "not found" page compete for it. */}
+        <SeoHead url={requestedUrl} noindex />
         <AppHeader />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
           <ImageOff className="h-10 w-10 text-muted-foreground/40" />
@@ -303,6 +316,9 @@ export default function DesignDetailPage() {
   if (!product || !priceBreakdown) {
     return (
       <div className="flex flex-col h-screen">
+        {/* Indexable: the design exists, only its product wiring is missing,
+            so this stays a real URL that an admin fix turns into a full page. */}
+        <SeoHead url={requestedUrl} />
         <AppHeader />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
           <p className="text-sm text-muted-foreground">ამ დიზაინს არ აქვს კონფიგურირებული პროდუქტი</p>

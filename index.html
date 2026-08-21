@@ -58,7 +58,6 @@
       />
     </noscript>
     <title>Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი 15 წლის გამოცდილებით</title>
-    <link rel="canonical" href="https://maika.ge/" />
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -96,7 +95,16 @@
 
     <!-- OG / Twitter / canonical meta are emitted per-page by SeoHead
          (react-helmet-async) so they vary per route and don't duplicate.
-         Static copies were removed to stop each tag rendering twice. -->
+         Static copies were removed to stop each tag rendering twice.
+
+         DO NOT re-add <link rel="canonical"> here. This shell is served
+         byte-identical for EVERY route, so a canonical in it points every
+         URL on the site at whatever it hardcodes. react-helmet-async only
+         manages the tags it creates; it does not remove pre-existing ones,
+         so a static canonical does not get replaced — it survives next to
+         SeoHead's and the page ships two conflicting values. The <title>
+         below is safe to keep: helmet DOES replace the title element, and
+         it doubles as the pre-hydration/no-JS fallback. -->
 </head>
 
   <body>
