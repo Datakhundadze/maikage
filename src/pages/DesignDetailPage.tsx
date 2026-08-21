@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
 import { buildBreadcrumbList, buildProductSchema } from "@/lib/seoSchemas";
@@ -40,6 +40,33 @@ interface CatalogDesignRow {
   tags: string[] | null;
 }
 
+/** The subset of a design row the related-designs grid needs. */
+interface RelatedDesignRow {
+  id: string;
+  slug: string;
+  title_ka: string;
+  print_file_url: string;
+  thumbnail_url: string | null;
+  default_color: string | null;
+}
+
+const RELATED_LIMIT = 8;
+
+// catalog_designs isn't in the generated Supabase types, so a query against it
+// needs an escape hatch. The rest of this file reaches for `supabase as any`;
+// this describes the builder shape instead, so the chain below still
+// type-checks and no new `no-explicit-any` lint error is introduced.
+interface RelatedQuery {
+  select: (columns: string) => RelatedQuery;
+  eq: (column: string, value: string | boolean) => RelatedQuery;
+  neq: (column: string, value: string) => RelatedQuery;
+  order: (column: string, opts: { ascending: boolean }) => RelatedQuery;
+  limit: (count: number) => PromiseLike<{ data: RelatedDesignRow[] | null }>;
+}
+
+const relatedQuery = (): RelatedQuery =>
+  (supabase as unknown as { from: (table: string) => RelatedQuery }).from("catalog_designs");
+
 const SITE_URL = "https://maika.ge";
 
 interface ProductColorOption {
@@ -60,6 +87,12 @@ interface ProductRow {
 const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.slug, c.label_ka]),
 );
+
+/** Stored colour (any case) → canonical COLORS.name, defaulting to White. */
+function normalizeColor(raw: string | null | undefined): string {
+  if (!raw) return "White";
+  return COLORS.find((c) => c.name.toLowerCase() === raw.toLowerCase())?.name ?? "White";
+}
 
 export default function DesignDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -89,6 +122,13 @@ export default function DesignDetailPage() {
   const [hiResMockup, setHiResMockup] = useState<string | null>(null);
   const [hiResLoading, setHiResLoading] = useState(false);
   const hiResCacheRef = useRef<Record<string, string>>({});
+
+  // Up to 8 other published designs in this design's category, for the
+  // "მსგავსი დიზაინები" block. Their only job beyond being useful to a
+  // customer is to give the catalog a crawlable graph: without them every
+  // /design/:slug is a leaf that links back to /designs and nowhere else, so
+  // Googlebot has to return to the catalog and start again for each one.
+  const [related, setRelated] = useState<RelatedDesignRow[]>([]);
 
   // Fetch design + product on slug change
   useEffect(() => {
@@ -140,6 +180,34 @@ export default function DesignDetailPage() {
 
     return () => { cancelled = true; };
   }, [slug]);
+
+  // Related designs. Separate from the effect above so it runs off the loaded
+  // design rather than delaying the main render, and so a failure here leaves
+  // the product page intact — the block simply doesn't appear.
+  //
+  // Fetches RELATED_LIMIT + 1 and drops the current design client-side: the
+  // current one may or may not be inside the first 8 rows, and asking for
+  // exactly 8 would sometimes return 7 after the filter.
+  useEffect(() => {
+    setRelated([]);
+    const category = design?.category;
+    if (!category || !design) return;
+
+    let cancelled = false;
+    (async () => {
+      const { data } = await relatedQuery()
+        .select("id, slug, title_ka, print_file_url, thumbnail_url, default_color")
+        .eq("category", category)
+        .eq("is_published", true)
+        .neq("id", design.id)
+        .order("created_at", { ascending: false })
+        .limit(RELATED_LIMIT + 1);
+      if (cancelled) return;
+      setRelated((data ?? []).filter((r) => r.slug !== design.slug).slice(0, RELATED_LIMIT));
+    })();
+
+    return () => { cancelled = true; };
+  }, [design]);
 
   const colorOptions = useMemo(() => {
     if (!product) return [] as { name: string; hex: string }[];
@@ -513,6 +581,46 @@ export default function DesignDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* Related designs. Rendered only when the category actually has
+              others — no empty heading. Cards are real <a href> and reuse the
+              catalog grid's markup and classes verbatim so the two surfaces
+              stay visually identical. */}
+          {related.length > 0 && (
+            <section className="mt-10">
+              <h2 className="text-lg font-bold text-foreground mb-1">მსგავსი დიზაინები</h2>
+              {categoryLabel && (
+                <p className="text-sm text-muted-foreground mb-4">
+                  სხვა დიზაინები კატეგორიიდან „{categoryLabel}{"“"}
+                </p>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {related.map((r) => (
+                  <Link
+                    key={r.id}
+                    to={`/design/${r.slug}`}
+                    className="group flex flex-col text-left rounded-xl border border-border bg-card overflow-hidden hover:border-primary/60 hover:shadow-sm transition-all"
+                  >
+                    <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
+                      {r.print_file_url ? (
+                        <CatalogDesignCard
+                          printFileUrl={transformedDisplayUrl(r.print_file_url, { width: 400 })}
+                          fallbackUrl={r.thumbnail_url}
+                          alt={`${r.title_ka}${categoryLabel ? ` — ${categoryLabel}` : ""} მაისურზე`}
+                          color={normalizeColor(r.default_color)}
+                        />
+                      ) : (
+                        <ImageOff className="h-8 w-8 text-muted-foreground/40" />
+                      )}
+                    </div>
+                    <div className="p-3">
+                      <h3 className="text-sm font-semibold text-foreground line-clamp-2">{r.title_ka}</h3>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
 
