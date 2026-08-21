@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
@@ -36,7 +36,6 @@ const CATEGORY_LABEL_BY_SLUG: Record<string, string> = Object.fromEntries(
 
 export default function CatalogPage() {
   const { setMode } = useAppState();
-  const navigate = useNavigate();
   const [designs, setDesigns] = useState<CatalogDesignRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCat, setActiveCat] = useState<string>(ALL);
@@ -63,10 +62,18 @@ export default function CatalogPage() {
     [],
   );
 
-  const goToDesign = (slug: string) => {
-    setMode("simple");
-    navigate(`/design/${slug}`);
-  };
+  // Each card is a real <a href="/design/:slug"> (via <Link>), not a button.
+  //
+  // WHY IT MATTERS. Googlebot follows hrefs; it does not synthesise clicks. As
+  // buttons, all ~192 design pages had zero inbound links — present in the
+  // sitemap but unreachable by crawl, which is why almost none were indexed.
+  //
+  // Behaviour is preserved exactly. <Link> calls this onClick first and only
+  // navigates if the handler didn't preventDefault, so setMode still runs
+  // before the route changes, in the same order as the old navigate() call.
+  // Modified clicks (⌘/ctrl/middle) now open a new tab, which is what a link
+  // is supposed to do — setMode on the current tab is harmless there.
+  const markSimpleMode = () => setMode("simple");
 
   return (
     <div className="flex flex-col h-screen">
@@ -122,9 +129,10 @@ export default function CatalogPage() {
               {designs.map((d, idx) => {
                 const catLabel = d.category ? CATEGORY_LABEL_BY_SLUG[d.category] ?? d.category : null;
                 return (
-                  <button
+                  <Link
                     key={d.id}
-                    onClick={() => goToDesign(d.slug)}
+                    to={`/design/${d.slug}`}
+                    onClick={markSimpleMode}
                     className="group flex flex-col text-left rounded-xl border border-border bg-card overflow-hidden hover:border-primary/60 hover:shadow-sm transition-all"
                   >
                     <div className="aspect-square bg-muted/30 flex items-center justify-center overflow-hidden">
@@ -151,7 +159,7 @@ export default function CatalogPage() {
                         </span>
                       )}
                     </div>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
