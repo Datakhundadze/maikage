@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { redactPii } from "./redactPii.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1550,7 +1551,19 @@ Output: one photorealistic composite photo.`;
                   const hasImage = isAcceptableChatImage(params.image);
                   const imageMarker = hasImage ? " [image]" : "";
                   const imagePath = hasImage ? chatUploadPath(sessionId, params.image as string) : null;
-                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "user", content: String(lastUser.content).slice(0, 4000) + imageMarker, lang: logLang, image_path: imagePath });
+                  // redactPii masks phone numbers and email addresses the
+                  // customer typed. chat_logs has no purge job, so whatever
+                  // lands here is kept indefinitely and every admin can read
+                  // it — including in the admin session list, whose snippet is
+                  // the first 120 characters of this very field, which a phone
+                  // number fits inside easily. Our own published contact
+                  // details are allow-listed through unchanged.
+                  //
+                  // ⚠️ AT REST ONLY. The gateway call above already received
+                  // the RAW turn. Redacting before that would also stop the bot
+                  // reading back a number the customer wants it to use, so this
+                  // shrinks what WE keep and nothing else.
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "user", content: redactPii(String(lastUser.content).slice(0, 4000)) + imageMarker, lang: logLang, image_path: imagePath });
                   // Scheduled, never awaited — see runInBackground. The path is
                   // written above optimistically; if the upload loses, the admin
                   // view finds no object and shows the marker alone, which is
@@ -1564,7 +1577,10 @@ Output: one photorealistic composite photo.`;
                   }
                 }
                 if (textContent) {
-                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: String(textContent).slice(0, 8000), lang: logLang });
+                  // Redacted too: the bot routinely echoes back a number the
+                  // customer just gave it, and that echo would otherwise land
+                  // in the log unmasked even though the user turn was cleaned.
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: redactPii(String(textContent).slice(0, 8000)), lang: logLang });
                 }
                 if (rows.length) {
                   const logClient = createClient(srUrl, srKey);
