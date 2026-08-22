@@ -168,6 +168,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          image_path: string | null
           lang: string | null
           role: string
           session_id: string
@@ -177,6 +178,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          image_path?: string | null
           lang?: string | null
           role: string
           session_id: string
@@ -186,6 +188,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          image_path?: string | null
           lang?: string | null
           role?: string
           session_id?: string
@@ -894,6 +897,7 @@ export type Database = {
         Returns: {
           content: string
           created_at: string
+          image_path: string
           lang: string
           role: string
         }[]
