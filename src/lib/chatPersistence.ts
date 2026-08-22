@@ -31,6 +31,12 @@ export interface PersistedChatMsg {
   hadImage?: boolean;
   /** The parsed suggestion, if any — small JSON, and it keeps the button alive. */
   suggestion?: unknown;
+  /**
+   * This turn's sketch was applied automatically to a live constructor, so the
+   * button was suppressed. Persisted so a reload does not resurrect a button
+   * that would add the same design a second time.
+   */
+  autoApplied?: boolean;
 }
 
 interface PersistedChat {

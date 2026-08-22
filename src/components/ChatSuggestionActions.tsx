@@ -23,6 +23,7 @@ export default function ChatSuggestionActions({
   suggestion,
   lang,
   compact = false,
+  autoApplied = false,
   onMockup,
   onGenerate,
   onSignIn,
@@ -33,6 +34,14 @@ export default function ChatSuggestionActions({
   suggestion: ChatSuggestion | null | undefined;
   /** The widget's tighter sizing. Purely dimensional. */
   compact?: boolean;
+  /**
+   * This turn's sketch was already applied to a constructor mounted in this
+   * tab, so there is nothing left to press — the design is on the garment in
+   * front of the customer. Set only by tryAutoOpenSketch's success, which is
+   * reachable only for a block that spends no generation. False in every other
+   * case, including a declined handoff, and then the button renders as before.
+   */
+  autoApplied?: boolean;
   onMockup: (m: MockupSuggestion) => void;
   onGenerate: (g: GenerateSuggestion) => void;
   /** Open the login modal — the order-status card's guest path. */
@@ -74,6 +83,10 @@ export default function ChatSuggestionActions({
       </Button>
     );
   }
+
+  // Already applied in this tab — the sketch IS the feedback. A button here
+  // would re-apply the same design and add the layers a second time.
+  if (autoApplied) return null;
 
   return (
     <Button onClick={() => onMockup(suggestion.mockup)} size={size} className={cls}>

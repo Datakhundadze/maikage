@@ -304,19 +304,12 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
 }
 
 /**
- * Hand the design to the constructor in a NEW TAB, keeping the caller's
- * conversation intact (no state here is mutated).
- *
- * Everything the constructor needs rides in ONE localStorage seed: layers AND
- * the product selection. sessionStorage would be wrong twice over — both
- * `maika-mode` and `maika-product-config` live there and a new tab inherits
- * neither. Constructor mode is signalled by "?constructor=1", which useAppState
- * honours when initialising `mode`.
- *
- * @returns true when the new tab opened; false when the popup was blocked and
- *   the caller should fall back to navigating its own tab.
+ * The seed a mockup suggestion becomes — product selection and layers alike.
+ * Extracted so the new-tab handoff and the live-constructor handoff below build
+ * it from ONE piece of code and can never disagree about what was requested.
+ * Pure: nothing here is written, dispatched or opened.
  */
-export function openMockupInConstructor(m: MockupSuggestion, attachment?: string | null): boolean {
+function buildMockupSeed(m: MockupSuggestion, attachment?: string | null): ConstructorSeed {
   // Gaps the model left in product/brand/colour are filled from what the
   // customer is actually looking at, BEFORE the catalog default below — the
   // new tab cannot see their sessionStorage, so this is the only chance.
@@ -338,12 +331,56 @@ export function openMockupInConstructor(m: MockupSuggestion, attachment?: string
     subProduct: m.subProduct,
     color: m.color,
   }, colorIsAvailable);
-  const seed: ConstructorSeed = {
+  return {
     ...merged,
     // A product change without an explicit brand would carry a stale brand from
     // another product; fall back to that product's catalog default.
     subProduct: merged.subProduct ?? (merged.product ? catalog.getDefaultSubProduct(merged.product) : undefined),
   };
+}
+
+/**
+ * Offer a mockup to a constructor ALREADY MOUNTED IN THIS TAB, and do nothing
+ * else. Never opens a tab, never writes the localStorage seed, never navigates.
+ *
+ * This is the half of openMockupInConstructor that requires no user gesture, so
+ * it is the only half that may be fired automatically. window.open() below is
+ * gated on user activation: called outside a click it returns null, the caller
+ * falls through to navigate(), and the customer's chat tab is torn down under
+ * them. The live path has no such requirement — the receiver claims the payload
+ * synchronously via preventDefault().
+ *
+ * @returns true when a live constructor took it; false in every other case,
+ *   including "nothing is mounted" and "the receiver declined", so the caller
+ *   can fall back to showing its button.
+ */
+export function applyMockupToLiveConstructor(m: MockupSuggestion, attachment?: string | null): boolean {
+  try {
+    return offerToLiveConstructor(buildMockupSeed(m, attachment));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Hand the design to the constructor in a NEW TAB, keeping the caller's
+ * conversation intact (no state here is mutated).
+ *
+ * Everything the constructor needs rides in ONE localStorage seed: layers AND
+ * the product selection. sessionStorage would be wrong twice over — both
+ * `maika-mode` and `maika-product-config` live there and a new tab inherits
+ * neither. Constructor mode is signalled by "?constructor=1", which useAppState
+ * honours when initialising `mode`.
+ *
+ * ⚠️ CLICK-ONLY. window.open below is gated on user activation, so this must be
+ * reached from a real gesture. The automatic path is
+ * applyMockupToLiveConstructor above, which never opens anything.
+ *
+ * @returns true when the new tab opened; false when the popup was blocked and
+ *   the caller should fall back to navigating its own tab.
+ */
+export function openMockupInConstructor(m: MockupSuggestion, attachment?: string | null): boolean {
+  const seed = buildMockupSeed(m, attachment);
 
   // Already standing in the constructor? Apply it there and open nothing. Only
   // a live SimplePage can answer yes, and it answers by taking the payload —
