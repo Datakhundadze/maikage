@@ -708,13 +708,18 @@ function seededTextCoordsFor(product: string, index: number): PlacementCoords {
 // Zone-relative, so these hold whatever the zone's pixel size turns out to be.
 //
 // Containment (centre ± half-extent) — both inside [0,1] with room:
-//   name   x 0.5±0.30 → [0.20, 0.80] · y 0.18±0.05 → [0.13, 0.23]
-//   number x 0.5±0.15 → [0.35, 0.65] · y 0.55±0.17 → [0.38, 0.72]
+//   name   x 0.5±0.30 → [0.20, 0.80] · y 0.13±0.05 → [0.08, 0.18]
+//   number x 0.5±0.15 → [0.35, 0.65] · y 0.50±0.17 → [0.33, 0.67]
 // The 0.15 gap between name bottom and number top is the visual separation a
 // jersey needs; the number stands 3.4× the name's height, which is what makes
 // the arrangement read as a jersey rather than as two captions.
-const JERSEY_NAME_COORDS: PlacementCoords = { x: 0.5, y: 0.18, scale: 0.60, scaleY: 0.10 };
-const JERSEY_NUMBER_COORDS: PlacementCoords = { x: 0.5, y: 0.55, scale: 0.30, scaleY: 0.34 };
+//
+// Both y values were lowered by 0.05 together — the arrangement sat too low on
+// the garment. Moving them as a pair is what preserves the 0.15 gap and the
+// 3.4× ratio; changing either alone would break the thing that makes it read as
+// a jersey. x, scale and scaleY are untouched.
+const JERSEY_NAME_COORDS: PlacementCoords = { x: 0.5, y: 0.13, scale: 0.60, scaleY: 0.10 };
+const JERSEY_NUMBER_COORDS: PlacementCoords = { x: 0.5, y: 0.50, scale: 0.30, scaleY: 0.34 };
 
 /** Chest coords for a TEXT layer, scaled down from DEFAULT_TEXT_COORDS. */
 function chestTextCoords(placement: "left-chest" | "right-chest"): PlacementCoords {

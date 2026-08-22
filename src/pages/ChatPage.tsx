@@ -11,6 +11,9 @@ import {
   openMockupInConstructor,
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
+// The one place that decides whether a sketch may skip its button — shared by
+// this chat and the other so the two can never diverge.
+import { tryAutoOpenSketch } from "@/lib/autoSketch";
 // Both chats parse and render through the shared module, so the fence
 // precedence, the validation and the button can never drift between them.
 import {
@@ -55,6 +58,12 @@ interface ChatMsg {
   /** The one validated suggestion parsed off this turn, if any. */
   suggestion?: ChatSuggestion;
   /**
+   * The sketch was applied automatically to a constructor already mounted in
+   * this tab, so no button is rendered — see tryAutoOpenSketch. Absent for
+   * every other turn, including one whose auto-apply was declined.
+   */
+  autoApplied?: boolean;
+  /**
    * The photo the customer attached to THIS turn, as the same downscaled data
    * URL that was sent. Display only — it is not resent as history, and it is
    * deliberately never persisted (see the sessionStorage restore).
@@ -96,6 +105,7 @@ export default function ChatPage() {
       local: m.local,
       hadImage: m.hadImage,
       suggestion: m.suggestion as ChatMsg["suggestion"],
+      autoApplied: m.autoApplied,
     })),
   );
   const [input, setInput] = useState("");
@@ -137,6 +147,7 @@ export default function ChatPage() {
       local: m.local,
       hadImage: !!m.image || m.hadImage,
       suggestion: m.suggestion,
+      autoApplied: m.autoApplied,
     }));
     saveChat("page", sessionIdRef.current, slim);
   }, [messages]);
@@ -185,6 +196,11 @@ export default function ChatPage() {
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
+    // The photo THIS turn is sent with, pinned before the await below. The
+    // handoff must carry the picture the model actually saw: a customer who
+    // attaches a different photo while the reply is in flight would otherwise
+    // have that newer one applied to a sketch it was never part of.
+    const sentAttachment = attachment;
     // The attachment rides on the bubble purely so the customer can SEE what
     // they sent; what goes to the model is unchanged (faqChat still receives
     // `attachment` separately, below).
@@ -228,7 +244,11 @@ export default function ChatPage() {
       reply = parsed.text;
       suggestion = parsed.suggestion ?? undefined;
     }
-    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion }]);
+    // FREE SKETCH → SHOW IT, don't ask for a click. Returns true only when a
+    // constructor is mounted in THIS tab AND the block spends no generation;
+    // every other case is false and the button below renders as it always has.
+    const autoApplied = tryAutoOpenSketch(suggestion, sentAttachment) || undefined;
+    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion, autoApplied }]);
   }, [input, loading, messages, lang, attachment]);
 
   // Hand the design to the constructor: merge ONLY the fields the model
@@ -319,6 +339,7 @@ export default function ChatPage() {
                   leaves it undefined and the prose stands alone. */}
               <ChatSuggestionActions
                 suggestion={m.suggestion}
+                autoApplied={m.autoApplied}
                 lang={lang}
                 onSignIn={() => setShowLogin(true)}
                 onMockup={openInConstructor}
