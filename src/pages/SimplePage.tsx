@@ -355,6 +355,16 @@ interface PhotoLayer {
    *  after the photo loads; used by DraggablePlacement to lock corner
    *  resize to this aspect so dragging doesn't stretch the image. */
   naturalAspect?: number;
+  /** PAIRED LAYOUT — this photo shares the zone with seeded lettering placed
+   *  BENEATH it, so every contain-fit refits into the zone's upper strip
+   *  rather than the whole zone (see containFitCoords). Set only by the seed
+   *  drain, and only when the seed carried a photo AND text; a manual upload,
+   *  a photo-only seed and a chest / jersey-back seed never carry it. */
+  paired?: boolean;
+  /** The customer has dragged, resized or panned this layer. Their placement
+   *  then outranks the paired layout: a later re-fit (an AI edit, a background
+   *  removal) keeps their box instead of snapping back to the seeded one. */
+  userAdjusted?: boolean;
   /** Source-image crop / pan state, in zone fractions (same units as
    *  `coords.scale`). `sourceScale` is the source width; `sourceOffsetX/Y`
    *  is the source center offset from the window center. Undefined means
@@ -718,6 +728,75 @@ function chestPhotoCoords(placement: "left-chest" | "right-chest"): PlacementCoo
   };
 }
 
+// ── Paired layout: photo above, lettering below ──────────────────────────
+//
+// A seed that carries BOTH a photo and text used to stack them on top of each
+// other. Contain-fit always fills one zone dimension completely, so a portrait
+// or square photo on a t-shirt kept scaleY 1 and left NO room underneath, and
+// the seeded text box (y 0.65, scaleY 0.24) landed inside the picture.
+//
+// The fix is not a new coordinate but a shared zone: the photo is fitted into
+// the upper 72% and the lettering takes the strip beneath it.
+//
+//   photo  centre y 0.36, box height ≤ 0.72  → occupies [0.00, 0.72]
+//   text   centre y 0.86, scaleY 0.24        → occupies [0.74, 0.98]
+//
+// Both inside the zone with a 0.02 gap. The text's SIZE is untouched — only
+// its y — so a "small" seed stays small and the raster effect's aspect fit
+// behaves exactly as it does anywhere else.
+const PAIRED_PHOTO_Y = 0.36;
+const PAIRED_PHOTO_BOX_SCALE = 1;
+const PAIRED_PHOTO_MAX_SCALE_Y = 0.72;
+const PAIRED_TEXT_Y = 0.86;
+
+/**
+ * Contain-fit a photo's window box to its natural aspect. Shared by
+ * addPhotoLayer's first-load probe and applyContainFit's re-fit so the two can
+ * never drift apart.
+ *
+ * NON-PAIRED — every path that exists today. The box is the layer's own, and
+ * the binding dimension is chosen against the ZONE's pixel aspect. This is the
+ * former inline arithmetic moved verbatim, same operand order and all: a manual
+ * upload, a photo-only seed, a chest seed, a background removal and a plain
+ * chat edit each produce bit-identical coords to before.
+ *
+ * PAIRED — the box is the zone's full width by PAIRED_PHOTO_MAX_SCALE_Y of its
+ * height, centred at PAIRED_PHOTO_Y. The binding dimension is chosen against
+ * THAT box's pixel aspect rather than the zone's, because the box is no longer
+ * zone-shaped; comparing against the zone would pick the wrong dimension and
+ * let a landscape photo spill past 0.72. The aspect arithmetic is otherwise the
+ * same, so the image is contain-fitted and NEVER stretched in either mode.
+ */
+function containFitCoords(
+  base: PlacementCoords,
+  naturalAspect: number,
+  zoneW: number,
+  zoneH: number,
+  paired: boolean,
+): PlacementCoords {
+  const boxScale = paired ? PAIRED_PHOTO_BOX_SCALE : base.scale;
+  const boxScaleY = paired ? PAIRED_PHOTO_MAX_SCALE_Y : (base.scaleY ?? base.scale);
+  const compareAspect = paired ? (boxScale * zoneW) / (boxScaleY * zoneH) : zoneW / zoneH;
+
+  let scale: number;
+  let scaleY: number;
+  if (naturalAspect >= compareAspect) {
+    // Wider than the box → width binds, height shrinks to match the aspect.
+    scale = boxScale;
+    scaleY = boxScale * zoneW / (naturalAspect * zoneH);
+  } else {
+    // Taller than the box → height binds, width shrinks to match the aspect.
+    scaleY = boxScaleY;
+    scale = boxScaleY * naturalAspect * zoneH / zoneW;
+  }
+  // Paired also OWNS the vertical position: the whole point is that the bottom
+  // edge stays at 0.72 whatever aspect the image (or an edited replacement of
+  // it) turns out to have. Non-paired leaves x/y exactly as it found them.
+  return paired
+    ? { ...base, y: PAIRED_PHOTO_Y, scale, scaleY }
+    : { ...base, scale, scaleY };
+}
+
 let photoIdCounter = 0;
 let chatMsgCounter = 0;
 let textIdCounter = 0;
@@ -863,19 +942,30 @@ export default function SimplePage() {
   // the AI "transfer to product" action, so a generated design behaves
   // exactly like an uploaded photo — same default coords/zone, same async
   // contain-fit, same DraggablePlacement handles, same order/cart path.
-  const addPhotoLayer = useCallback((dataUrl: string) => {
+  //
+  // `paired` is passed EXPLICITLY by the seed drain rather than inferred here
+  // from whether a text layer happens to exist — that inference would also
+  // catch a manual upload onto a design that already has lettering, which is
+  // not what the customer asked for.
+  const addPhotoLayer = useCallback((dataUrl: string, opts?: { paired?: boolean }) => {
     const photoId = `photo-${++photoIdCounter}`;
+    const paired = opts?.paired === true;
     setSideData(prev => {
       if (prev.photos.length >= MAX_PHOTOS) return prev;
       const newPhoto: PhotoLayer = {
         id: photoId,
         image: dataUrl,
+        ...(paired ? { paired: true } : {}),
+        // Paired: the bounding box of the upper strip, so the layout is already
+        // right at first paint and stays right even if the probe below never
+        // fires (a corrupt data URL). The probe then contain-fits INSIDE it.
         // First photo: land at wherever the user dragged the empty
         // placement frame (or zone-fill default if they never moved it).
         // Subsequent photos: stagger at half-size so they don't cover
         // each other completely.
-        coords:
-          prev.photos.length === 0
+        coords: paired
+          ? { x: 0.5, y: PAIRED_PHOTO_Y, scale: PAIRED_PHOTO_BOX_SCALE, scaleY: PAIRED_PHOTO_MAX_SCALE_Y }
+          : prev.photos.length === 0
             ? { ...nextPhotoCoords }
             : staggeredPhotoCoords(prev.photos.length),
       };
@@ -895,27 +985,22 @@ export default function SimplePage() {
       const naturalAspect = probe.naturalWidth / probe.naturalHeight;
       const zoneW = zoneForLayers?.scale ?? 1;
       const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
-      const zonePixelAspect = zoneW / zoneH;
       setSideData(prev => ({
         ...prev,
         photos: prev.photos.map(p => {
           if (p.id !== photoId) return p;
-          const baseScale = p.coords.scale;
-          const baseScaleY = p.coords.scaleY ?? p.coords.scale;
-          let newScale: number;
-          let newScaleY: number;
-          if (naturalAspect >= zonePixelAspect) {
-            newScale = baseScale;
-            newScaleY = baseScale * zoneW / (naturalAspect * zoneH);
-          } else {
-            newScaleY = baseScaleY;
-            newScale = baseScaleY * naturalAspect * zoneH / zoneW;
-          }
+          const coords = containFitCoords(
+            p.coords,
+            naturalAspect,
+            zoneW,
+            zoneH,
+            paired && !p.userAdjusted,
+          );
           return {
             ...p,
             naturalAspect,
-            coords: { ...p.coords, scale: newScale, scaleY: newScaleY },
-            sourceScale: newScale,
+            coords,
+            sourceScale: coords.scale,
             sourceOffsetX: 0,
             sourceOffsetY: 0,
           };
@@ -1282,6 +1367,21 @@ export default function SimplePage() {
   // an EXISTING photo layer — keeps the layer's position, recomputes scale for
   // the new aspect. Mirrors addPhotoLayer's probe; used by background removal,
   // whose transparent cutout can have a different aspect than the original.
+  //
+  // PAIRED LAYERS. This is the path that would otherwise break the layout, and
+  // it is the common case now that one request can carry an edit AND lettering
+  // („ამ ფოტოს თავზე დაახურე კეპკა და წარწერა გაუკეთე სალომე"). The plain
+  // re-fit preserves the CENTRE and rewrites the box, so the box grows or
+  // shrinks about y and the bottom edge moves — sliding an edited photo down
+  // over the lettering beneath it, silently, with no way for the text to know.
+  // A paired layer therefore re-fits into the same upper strip and keeps its
+  // centre pinned at PAIRED_PHOTO_Y, so the bottom edge stays at 0.72 no matter
+  // what aspect comes back from the model.
+  //
+  // MANUAL OVERRIDE WINS. Once the customer has dragged, resized or panned the
+  // layer, `userAdjusted` turns the paired refit off and the ordinary re-fit
+  // above runs instead — their placement survives the edit, which it would not
+  // if we snapped the photo back to the seeded strip underneath them.
   const applyContainFit = useCallback((photoId: string, dataUrl: string) => {
     const probe = new Image();
     probe.onload = () => {
@@ -1289,27 +1389,22 @@ export default function SimplePage() {
       const naturalAspect = probe.naturalWidth / probe.naturalHeight;
       const zoneW = zoneForLayers?.scale ?? 1;
       const zoneH = zoneForLayers?.scaleY ?? zoneForLayers?.scale ?? 1;
-      const zonePixelAspect = zoneW / zoneH;
       setSideData(prev => ({
         ...prev,
         photos: prev.photos.map(p => {
           if (p.id !== photoId) return p;
-          const baseScale = p.coords.scale;
-          const baseScaleY = p.coords.scaleY ?? p.coords.scale;
-          let newScale: number;
-          let newScaleY: number;
-          if (naturalAspect >= zonePixelAspect) {
-            newScale = baseScale;
-            newScaleY = baseScale * zoneW / (naturalAspect * zoneH);
-          } else {
-            newScaleY = baseScaleY;
-            newScale = baseScaleY * naturalAspect * zoneH / zoneW;
-          }
+          const coords = containFitCoords(
+            p.coords,
+            naturalAspect,
+            zoneW,
+            zoneH,
+            !!p.paired && !p.userAdjusted,
+          );
           return {
             ...p,
             naturalAspect,
-            coords: { ...p.coords, scale: newScale, scaleY: newScaleY },
-            sourceScale: newScale,
+            coords,
+            sourceScale: coords.scale,
             sourceOffsetX: 0,
             sourceOffsetY: 0,
           };
@@ -1643,6 +1738,21 @@ export default function SimplePage() {
       }
     }
 
+    // PAIRED LAYOUT — the seed carries a photo AND lettering, with no explicit
+    // position asked for. Photo into the zone's upper strip, lettering beneath.
+    //
+    // The two excluded placements are excluded because they are POSITIONAL
+    // REQUESTS the customer made out loud: a chest print goes on the chest, and
+    // a jersey back is the name-above-number arrangement. Overriding either with
+    // this layout would be ignoring what they said. Everything else — no
+    // placement, "center", "small" — is us choosing, so we choose the layout
+    // that doesn't put the words on top of the picture.
+    const pairedSeed =
+      !!seed.image &&
+      !!seed.text?.trim() &&
+      !chest &&
+      seed.placement !== "jersey-back";
+
     seedAppliedRef.current = true;
 
     // A seeded GENERATION is queued, not run, and queued only HERE — after the
@@ -1656,7 +1766,7 @@ export default function SimplePage() {
     // Photo: reuse the existing add path so the async naturalAspect probe and
     // contain-fit behave exactly as they do for a manual upload.
     if (seed.image) {
-      addPhotoLayer(seed.image);
+      addPhotoLayer(seed.image, { paired: pairedSeed });
       // Background removal and the photo EDIT are both QUEUED, not run — the
       // layer does not exist until React commits the add above. The effects
       // below wait for it and then hand it to the constructor's own
@@ -1735,18 +1845,29 @@ export default function SimplePage() {
             ],
           };
         }
+        // "small" reproduces the pre-2026-08 seeded size exactly
+        // (staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS); anything else
+        // centred — including no placement — gets the standard print, raised
+        // on Sport so it sits on the jersey chest rather than its hem.
+        const baseTextCoords = chest
+          ? chestTextCoords(chest)
+          : seed.placement === "small"
+            ? staggeredTextCoords(prev.texts.length)
+            : seededTextCoordsFor(productConfig.config.product, prev.texts.length);
         const newText = mkText(
           nameId,
           seedText,
-          // "small" reproduces the pre-2026-08 seeded size exactly
-          // (staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS); anything else
-          // centred — including no placement — gets the standard print, raised
-          // on Sport so it sits on the jersey chest rather than its hem.
-          chest
-            ? chestTextCoords(chest)
-            : seed.placement === "small"
-              ? staggeredTextCoords(prev.texts.length)
-              : seededTextCoordsFor(productConfig.config.product, prev.texts.length),
+          // PAIRED: the photo has been fitted into the zone's upper strip, so
+          // the lettering takes the band beneath it. Only y moves — the size
+          // stays whatever the branch above chose, so a "small" seed is still
+          // small and the raster effect's aspect fit is unaffected.
+          //
+          // y is a CONSTANT, not derived from the photo, which is what makes it
+          // settable here at all: the photo's real geometry does not exist yet
+          // (its coords are the placeholder box until the load probe fires) and
+          // the text is never repositioned afterwards, so there is no second
+          // move to see.
+          pairedSeed ? { ...baseTextCoords, y: PAIRED_TEXT_Y } : baseTextCoords,
         );
         return { ...prev, texts: [...prev.texts, newText] };
       });
@@ -1992,10 +2113,20 @@ export default function SimplePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLayerId]);
 
+  // These two are the ONLY commit points for a customer moving, resizing or
+  // panning a photo layer — DraggablePlacement's onCoordsChange / onSourceChange
+  // reach the layer through nothing else. That makes them the honest place to
+  // record `userAdjusted`, rather than trying to guess after the fact by
+  // comparing coordinates against the ones we seeded (which would misread a
+  // drag that happened to land back near the start, and would call every
+  // programmatic re-fit a user edit).
+  //
+  // Only the PAIRED refit reads the flag. Every other path is untouched by it,
+  // so dragging still behaves exactly as it does today, unclamped.
   const updatePhotoCoords = useCallback((id: string, coords: PlacementCoords) => {
     setSideData(prev => ({
       ...prev,
-      photos: prev.photos.map(p => p.id === id ? { ...p, coords } : p),
+      photos: prev.photos.map(p => p.id === id ? { ...p, coords, userAdjusted: true } : p),
     }));
   }, [setSideData]);
 
@@ -2010,6 +2141,7 @@ export default function SimplePage() {
                 sourceScale: source.scale,
                 sourceOffsetX: source.offsetX,
                 sourceOffsetY: source.offsetY,
+                userAdjusted: true,
               }
             : p,
         ),
