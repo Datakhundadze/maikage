@@ -30,7 +30,10 @@ const translations = {
     chat: {
       launcher: "Chat with us",
       title: "maika.ge assistant",
-      placeholder: "Ask about prices, delivery…",
+      // Neutral on purpose. The old "Ask about prices, delivery…" advertised two
+      // topics and narrowed what people asked about; the assistant answers far
+      // more than those. No hint beats a partial one.
+      placeholder: "Message…",
       send: "Send",
       close: "Close",
       typing: "typing…",
@@ -227,7 +230,8 @@ const translations = {
     chat: {
       launcher: "მოგვწერეთ",
       title: "maika.ge ასისტენტი",
-      placeholder: "იკითხეთ ფასებზე, მიწოდებაზე…",
+      // Neutral — see the EN note above.
+      placeholder: "შეტყობინება…",
       send: "გაგზავნა",
       close: "დახურვა",
       typing: "წერს…",
