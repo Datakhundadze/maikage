@@ -19,7 +19,7 @@ import { CONSTRUCTOR_APPLY_EVENT, type ConstructorApplyEvent } from "@/lib/const
 import { styleForLang } from "@/lib/generateSuggestion";
 // Text-colour palette — shared with the /chat handoff so both validate against
 // the same list. Same values, same order as the former local constant.
-import { TEXT_COLORS, DEFAULT_TEXT_COLOR_HEX, resolveTextColorHex } from "@/lib/textColors";
+import { TEXT_COLORS, resolveTextColorHex, contrastingTextColorHex } from "@/lib/textColors";
 import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { calculatePrice } from "@/lib/pricing";
@@ -1695,7 +1695,20 @@ export default function SimplePage() {
     // layer, and the number is ignored without it.
     const jersey = seed.placement === "jersey-back" && !!seedNumber;
     if (seedText) {
-      const seedColor = resolveTextColorHex(seed.textColor) ?? DEFAULT_TEXT_COLOR_HEX;
+      // An EXPLICIT choice is honoured even when it reads badly: a customer who
+      // asked for black lettering on a black shirt gets black — that is their
+      // call to make, and second-guessing it would be worse than obeying it.
+      //
+      // The fallback runs ONLY when they named no colour at all, or named one
+      // the palette has no word for. Those are the cases where the old
+      // unconditional black default produced black-on-black and the
+      // seeded design arrived invisible. The garment name comes from the
+      // already-resolved config; COLORS maps it to the same hex the swatch and
+      // the composite use.
+      const explicitColor = resolveTextColorHex(seed.textColor);
+      const seedColor =
+        explicitColor ??
+        contrastingTextColorHex(COLORS.find((c) => c.name === productConfig.config.color)?.hex);
       const nameId = `text-${++textIdCounter}`;
       const numberId = jersey ? `text-${++textIdCounter}` : null;
       setSideData((prev) => {
