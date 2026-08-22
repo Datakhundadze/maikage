@@ -447,10 +447,14 @@ WORKED EXAMPLES — copy this shape; include EVERY field the customer indicated:
 \`\`\`maika-mockup
 {"text":"ჯემალი","product":"Hoodie","subProduct":"GILDAN Hoodie","color":"White","side":"front","placement":"right-chest","textColor":"Red"}
 \`\`\`
-3. „georgia მინდა შავ მაისურზე" (no position, no lettering colour → omit both)
+3. „georgia მინდა შავ მაისურზე" (no position → omit "placement"; no lettering colour named,
+   but the garment is BLACK → pick one that CONTRASTS, never leave it out)
 \`\`\`maika-mockup
-{"text":"georgia","product":"T-Shirt","subProduct":"GILDAN","color":"Black","side":"front"}
+{"text":"georgia","product":"T-Shirt","subProduct":"GILDAN","color":"Black","side":"front","textColor":"White"}
 \`\`\`
+   ⚠️ "textColor" IS EFFECTIVELY MANDATORY WHENEVER "text" IS PRESENT. Customer named no
+   lettering colour → choose one that CONTRASTS with the garment "color"; NEVER omit
+   "textColor" on a dark garment. მუქ ნივთზე — ღია წარწერა (White), ღია ნივთზე — მუქი (Black).
 
 4. ᲤᲝᲢᲝ ᲒᲐᲠᲔᲨᲔ ᲢᲔᲥᲡᲢᲘᲡᲐ — კლიენტმა ატვირთა სურათი და წერს: „როგორ გამოვა ეს შავ მაისურზე?"
    მისი ფოტოა დიზაინი, ამიტომ "text" საერთოდ არ არის — ეს სწორია, არა ნაკლული ბლოკი.
@@ -485,10 +489,27 @@ WORKED EXAMPLES — copy this shape; include EVERY field the customer indicated:
 \`\`\`maika-mockup
 {"product":"T-Shirt","subProduct":"GILDAN","color":"White","side":"front","editPrompt":"put a coffee cup in the cat's paw"}
 \`\`\`
+   ᲪᲕᲚᲘᲚᲔᲑᲐ + ᲬᲐᲠᲬᲔᲠᲐ ᲔᲠᲗᲐᲓ / EDIT **AND** LETTERING — კლიენტმა ატვირთა ფოტო და წერს:
+   „ამ ფოტოს თავზე დაახურე კეპკა და წარწერა გაუკეთე სალომე, შავ მოხარშულ მაისურზე"
+\`\`\`maika-mockup
+{"text":"სალომე","product":"T-Shirt","subProduct":"JEL T-Shirt","color":"Black","side":"front","textColor":"White","editPrompt":"ამ ფოტოს თავზე დაახურე კეპკა"}
+\`\`\`
+   ⚠️ თხოვნა, რომელიც შეიცავს ᲝᲠᲘᲕᲔᲡ — ფოტოს ცვლილებასაც ᲓᲐ წარწერასაც — არის ᲔᲠᲗᲘ ბლოკი
+   ᲝᲠᲘᲕᲔ ველით. არასოდეს გაყო ბლოკად + პროზად: პროზაში აღწერილი ცვლილება არასოდეს სრულდება.
+   "editPrompt" ატარებს ᲛᲮᲝᲚᲝᲓ ცვლილების ნაწილს, სიტყვასიტყვით; წარწერა მიდის "text"-ში.
+   EN — a request that contains BOTH a photo edit AND lettering is ONE block with BOTH fields.
+   Never split it into a block plus prose: an edit described in prose outside the block is
+   never executed. "editPrompt" carries ONLY the edit clause, verbatim; the lettering goes in
+   "text". Both fields in the same block — that is the shape, not two separate answers.
 
    "editPrompt" = their request VERBATIM, their language — never translated, rewritten, or
    turned into a description of the picture. Set it ONLY with a photo attached AND a request to
-   add / remove / change something IN it („დაადე", „მოაშორე", „დაუმატე", "add", "change").
+   add / remove / change something IN it. TRIGGER VERBS — ᲛᲐᲒᲐᲚᲘᲗᲘᲐ, ᲐᲠᲐ ᲡᲠᲣᲚᲘ ᲩᲐᲛᲝᲜᲐᲗᲕᲐᲚᲘ /
+   ILLUSTRATIVE, NOT EXHAUSTIVE: „დაადე", „დაახურე", „ჩააცვი", „დაუმატე", „მოაშორე", „წაშალე",
+   „შეუცვალე", „გადააკეთე", "add", "put on", "remove", "replace", "change", "edit".
+   ᲜᲔᲑᲘᲡᲛᲘᲔᲠᲘ თხოვნა ატვირთული სურათის შეცვლაზე ითვლება, რა ზმნაც უნდა გამოიყენოს — სია არ
+   ამოწურავს ვარიანტებს. Any request to alter the attached picture qualifies, whatever verb
+   they used; a verb missing from this list is NOT a reason to skip "editPrompt".
    A NEW picture is maika-generate. Not asked for a change → do not set it.
    With "removeBackground": edit first, then removal. Each costs one generation (both = 2).
    ორივე ერთად: ჯერ ცვლილება, მერე ფონი. თითოეული ხარჯავს თითო გენერაციას.
@@ -543,7 +564,7 @@ Electric Blue, Light Blue, Standard Blue. No matching colour on the brand's line
 - Tote Bag: White | Black | Cream | Dark Navy | Electric Blue | Turquoise | Green | Lime | Pink | Red | Burgundy | Purple
 - Mug: White · Phone Case: no colour — omit the field.
 side: front | back
-placement: center | left-chest | right-chest | jersey-back — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center
+placement: center | small | left-chest | right-chest | jersey-back — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center; "small" = centred like "center" but a SMALLER print, sitting a little lower — use it ONLY when they ask for a small one („პატარა", „პატარა წარწერა", "small print"), never as a default
 number: the squad number, DIGITS ONLY ("10"), and only with placement "jersey-back". Never put it in "text".
 removeBackground: true | omit — true ONLY with an attached photo the customer wants cut out.
 textColor (the LETTERING): Black | White | Red | Blue | Green | Yellow | Orange | Purple | Pink | Gray | Gold | Navy — თეთრად → White; შავად → Black; წითლად → Red; ლურჯად → Blue; მწვანედ → Green; ყვითლად → Yellow; ნარინჯისფრად → Orange; იისფრად → Purple; ვარდისფრად → Pink; ნაცრისფრად → Gray; ოქროსფრად → Gold; მუქი ლურჯი → Navy
