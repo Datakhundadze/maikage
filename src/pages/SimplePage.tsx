@@ -489,6 +489,19 @@ interface TextLayer {
    *  renders. Drives aspect-locked resize (so the whole word scales as one
    *  unit) and lets the compositors contain-fit, mirroring photo layers. */
   naturalAspect?: number;
+  /** PAIRED LAYOUT — this lettering sits in the band BELOW a seeded photo, so
+   *  the rasterisation effect caps its height at PAIRED_TEXT_MAX_SCALE_Y
+   *  instead of letting a short word grow back up into the picture. Set only
+   *  by the seed drain, alongside the photo's own `paired`. */
+  paired?: boolean;
+  /** The seeded width this layer was created with, kept so the paired cap is a
+   *  pure function of the word's aspect. Re-deriving from `coords.scale` would
+   *  ratchet: a capped width would become the base for the next re-fit, and a
+   *  word that got longer would never grow back. */
+  pairedBaseScale?: number;
+  /** The customer has dragged or resized this lettering. Their placement then
+   *  outranks the paired cap, exactly as it does for a photo layer. */
+  userAdjusted?: boolean;
 }
 
 interface SideData {
@@ -748,6 +761,7 @@ const PAIRED_PHOTO_Y = 0.36;
 const PAIRED_PHOTO_BOX_SCALE = 1;
 const PAIRED_PHOTO_MAX_SCALE_Y = 0.72;
 const PAIRED_TEXT_Y = 0.86;
+const PAIRED_TEXT_MAX_SCALE_Y = 0.24;
 
 /**
  * Contain-fit a photo's window box to its natural aspect. Shared by
@@ -795,6 +809,46 @@ function containFitCoords(
   return paired
     ? { ...base, y: PAIRED_PHOTO_Y, scale, scaleY }
     : { ...base, scale, scaleY };
+}
+
+/**
+ * Size a PAIRED text layer's window box from its rendered raster aspect,
+ * capped so it cannot climb back into the photo above it.
+ *
+ * The rasterisation effect's ordinary rule is "keep the seeded width, derive
+ * the height from the word's aspect" — which is fine at the centre of a garment
+ * but not in a fixed band, because fewer characters means wider glyphs means a
+ * TALLER box. Measured on the real font: „საქართველო" derives a height of
+ * 0.19, but „ნინო" derives 0.48 and „ია" derives 0.93, both of which reach up
+ * past the photo's 0.72 floor and down past the zone's.
+ *
+ * So the height is capped at PAIRED_TEXT_MAX_SCALE_Y and BOTH axes shrink by
+ * the same factor. The glyphs keep their aspect exactly: a short word renders
+ * SMALLER, never vertically squashed. The box then sits at PAIRED_TEXT_Y with
+ * its top edge at 0.74 — the target band, whatever the word.
+ *
+ * Derived from `baseScale` rather than the layer's current width so it is a
+ * pure function of the aspect: applying it twice gives the same answer, and a
+ * word that grows longer after being capped grows back to full width.
+ */
+function pairedTextCoords(
+  base: PlacementCoords,
+  baseScale: number,
+  rasterAspect: number,
+  zoneW: number,
+  zoneH: number,
+): PlacementCoords {
+  const uncappedScaleY = (baseScale * zoneW) / (rasterAspect * zoneH);
+  if (uncappedScaleY <= PAIRED_TEXT_MAX_SCALE_Y) {
+    return { ...base, y: PAIRED_TEXT_Y, scale: baseScale, scaleY: uncappedScaleY };
+  }
+  const factor = PAIRED_TEXT_MAX_SCALE_Y / uncappedScaleY;
+  return {
+    ...base,
+    y: PAIRED_TEXT_Y,
+    scale: baseScale * factor,
+    scaleY: PAIRED_TEXT_MAX_SCALE_Y,
+  };
 }
 
 let photoIdCounter = 0;
@@ -1869,7 +1923,20 @@ export default function SimplePage() {
           // move to see.
           pairedSeed ? { ...baseTextCoords, y: PAIRED_TEXT_Y } : baseTextCoords,
         );
-        return { ...prev, texts: [...prev.texts, newText] };
+        return {
+          ...prev,
+          texts: [
+            ...prev.texts,
+            // The paired marks travel WITH the layer, because the height cap is
+            // applied later — by the rasterisation effect, once the word has
+            // actually been measured. `pairedBaseScale` is the width the branch
+            // above chose (0.8 normally, 0.4 for a "small" seed), so the cap
+            // stays a pure function of the word and never ratchets.
+            pairedSeed
+              ? { ...newText, paired: true, pairedBaseScale: baseTextCoords.scale }
+              : newText,
+          ],
+        };
       });
     }
 
@@ -2192,6 +2259,22 @@ export default function SimplePage() {
           if (!aspect || aspect <= 0) return tl;
           if (tl.naturalAspect !== undefined && Math.abs(tl.naturalAspect - aspect) < 0.002) return tl;
           changed = true;
+          // PAIRED lettering is sized by the capped rule instead, so a short
+          // word cannot grow back up into the photo. Skipped once the customer
+          // has resized it themselves — their size wins, as it does for photos.
+          if (tl.paired && !tl.userAdjusted && zoneH > 0) {
+            return {
+              ...tl,
+              naturalAspect: aspect,
+              coords: pairedTextCoords(
+                tl.coords,
+                tl.pairedBaseScale ?? tl.coords.scale,
+                aspect,
+                zoneW,
+                zoneH,
+              ),
+            };
+          }
           const newScaleY = zoneH > 0 ? (tl.coords.scale * zoneW) / (aspect * zoneH) : (tl.coords.scaleY ?? tl.coords.scale);
           return { ...tl, naturalAspect: aspect, coords: { ...tl.coords, scaleY: newScaleY } };
         });
@@ -2283,9 +2366,13 @@ export default function SimplePage() {
         id: tl.id,
         image: img,
         coords: tl.coords,
+        // The one commit point for a customer dragging or resizing lettering —
+        // the text equivalent of updatePhotoCoords, and where `userAdjusted` is
+        // recorded for the same reason: only the PAIRED height cap reads it, so
+        // dragging and resizing are otherwise untouched.
         onCoordsChange: (c) => setSideData(prev => ({
           ...prev,
-          texts: prev.texts.map((x) => x.id === tl.id ? { ...x, coords: c } : x),
+          texts: prev.texts.map((x) => x.id === tl.id ? { ...x, coords: c, userAdjusted: true } : x),
         })),
         accentClass: "bg-emerald-500",
         selected: selectedLayerId === tl.id,
