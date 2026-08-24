@@ -5,17 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { submitFeedback, MAX_FEEDBACK_MESSAGE } from "@/lib/feedback";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppState } from "@/hooks/useAppState";
 import { useToast } from "@/hooks/use-toast";
 
-const MAX_MESSAGE = 2000;
-
-// Lightweight feedback collector — opens from a footer link. Inserts directly
-// into the `feedback` table (anon + authenticated INSERT RLS, message length
-// bounded server-side; mirrors the corporate_inquiries form). No proxy/edge.
+// Lightweight feedback collector — opens from a footer link. Writes to the
+// `feedback` table (anon + authenticated INSERT RLS, message length bounded
+// server-side; mirrors the corporate_inquiries form). No proxy/edge.
 // `children` is the trigger element (DialogTrigger asChild).
+//
+// The insert itself now lives in lib/feedback so the post-order form on the
+// confirmation page writes the identical row shape. Behaviour here is
+// unchanged: same fields, same toasts, same empty-message guard.
 export default function FeedbackModal({ children }: { children: ReactNode }) {
   const { lang } = useAppState();
   const { user } = useAuth();
@@ -34,29 +36,26 @@ export default function FeedbackModal({ children }: { children: ReactNode }) {
       return;
     }
     setSubmitting(true);
-    try {
-      // `feedback` is schema-ahead-of-types — cast mirrors the showroom/portfolio convention.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any).from("feedback").insert({
-        message: msg.slice(0, MAX_MESSAGE),
-        email: email.trim() || null,
-        page: location.pathname,
-        user_id: user?.id ?? null,
-      });
-      if (error) throw error;
-      toast({ title: lang === "en" ? "Thank you! Sent ✅" : "მადლობა! გაიგზავნა ✅" });
-      setMessage("");
-      setEmail("");
-      setOpen(false);
-    } catch (err) {
+    // No order to attach from the footer — orderId stays null here.
+    const { error } = await submitFeedback({
+      message: msg,
+      email,
+      page: location.pathname,
+      userId: user?.id ?? null,
+    });
+    setSubmitting(false);
+    if (error) {
       toast({
         title: lang === "en" ? "Couldn't send — please try again" : "ვერ გაიგზავნა — სცადე ხელახლა",
-        description: err instanceof Error ? err.message : undefined,
+        description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setSubmitting(false);
+      return;
     }
+    toast({ title: lang === "en" ? "Thank you! Sent ✅" : "მადლობა! გაიგზავნა ✅" });
+    setMessage("");
+    setEmail("");
+    setOpen(false);
   };
 
   return (
@@ -73,12 +72,12 @@ export default function FeedbackModal({ children }: { children: ReactNode }) {
               id="fb-msg"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              maxLength={MAX_MESSAGE}
+              maxLength={MAX_FEEDBACK_MESSAGE}
               rows={4}
               required
               placeholder={lang === "en" ? "Suggestions, problems, ideas…" : "შენიშვნა, წინადადება, იდეა…"}
             />
-            <p className="text-[11px] text-muted-foreground text-right">{message.length}/{MAX_MESSAGE}</p>
+            <p className="text-[11px] text-muted-foreground text-right">{message.length}/{MAX_FEEDBACK_MESSAGE}</p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="fb-email">{lang === "en" ? "Email (optional)" : "ელფოსტა (არასავალდებულო)"}</Label>

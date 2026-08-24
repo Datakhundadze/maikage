@@ -1,0 +1,54 @@
+-- Link a feedback row to the order it is about.
+--
+-- ⚠️ ALREADY APPLIED to the live database by hand. This file is the repo
+--    record so the schema history is complete — it is NOT pending work. Every
+--    statement below is idempotent, so re-running it is harmless if you are
+--    rebuilding the schema from scratch.
+--
+-- WHY. `feedback` had no way to say which order a message was about. The footer
+-- modal never needed one, but the post-order form on the confirmation page
+-- writes from a page that already knows the order, and an admin reading "the
+-- print was crooked" needs to know which print.
+--
+-- NULLABLE, AND NO FOREIGN KEY. Two reasons, and they point the same way:
+--   - the footer modal writes with no order at all, and always will;
+--   - a FK to public.orders would make an unauthenticated INSERT fail loudly
+--     on a stale or wrong id, and the INSERT policy on this table validates
+--     only message length. A bad id should be a bad hint, not a rejected
+--     submission from a customer who has already paid.
+--
+-- ⚠️ CUSTOMER-SUPPLIED AND UNVERIFIED, therefore. The "Anyone can submit
+-- feedback" policy checks `char_length(message) BETWEEN 1 AND 2000` and nothing
+-- else, so an anonymous caller can post any uuid here. The admin view labels it
+-- as unverified for exactly this reason; it must never be treated as proof that
+-- the feedback belongs to that order, and nothing may join on it as if it were.
+--
+-- NO POLICY CHANGE IS NEEDED. The existing INSERT policy's WITH CHECK does not
+-- enumerate columns, so it accepts the new one as-is; the admin SELECT policy
+-- returns it automatically, which is why AdminFeedback's select("*") picks it
+-- up with no query change.
+
+ALTER TABLE public.feedback ADD COLUMN IF NOT EXISTS order_id uuid;
+
+NOTIFY pgrst, 'reload schema';
+
+-- VERIFY (run in the SQL Editor as owner):
+--
+--   -- 1. the column exists and is nullable, with no FK
+--   SELECT column_name, data_type, is_nullable
+--   FROM information_schema.columns
+--   WHERE table_schema='public' AND table_name='feedback' AND column_name='order_id';
+--   -- expect: order_id | uuid | YES
+--
+--   -- 2. still exactly three policies, unchanged (submit / read / update)
+--   SELECT policyname, cmd, roles FROM pg_policies
+--   WHERE schemaname='public' AND tablename='feedback' ORDER BY cmd;
+--   -- expect 3 rows; the INSERT one still {anon,authenticated}
+--
+--   -- 3. after a post-order submission — what actually landed
+--   SELECT created_at, order_id, left(message, 60) AS message, page, user_id IS NOT NULL AS signed_in
+--   FROM public.feedback
+--   ORDER BY created_at DESC
+--   LIMIT 20;
+--   -- expect rows from the confirmation page to carry order_id and
+--   --   page = '/order-confirmation'; footer-modal rows carry order_id = NULL.

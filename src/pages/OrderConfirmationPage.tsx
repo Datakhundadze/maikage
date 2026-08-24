@@ -7,6 +7,7 @@ import { t } from "@/lib/i18n";
 import { CheckCircle, XCircle, Loader2, ArrowRight } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import OrderCard from "@/components/OrderCard";
+import OrderFeedback from "@/components/OrderFeedback";
 import { trackEvent } from "@/lib/gtag";
 import {
   groupOrdersByCart,
@@ -220,6 +221,14 @@ export default function OrderConfirmationPage() {
               <p className="text-xs text-muted-foreground">{t(lang, "confirm.guestCreateAccount")}</p>
             </div>
           )}
+
+          {/* Optional feedback — below the summary, above the actions, and
+              deliberately reading as an afterthought rather than a step.
+              Hidden on failure: a customer whose payment failed wants support,
+              not a survey. `orderId` is passed from the page's own state, never
+              re-read from localStorage (effect 1 has already cleared that key,
+              and on the TBC path it is the only source there ever was). */}
+          {!isFailed && <OrderFeedback orderId={orderId} />}
 
           {/* Actions */}
           <div className="space-y-2">

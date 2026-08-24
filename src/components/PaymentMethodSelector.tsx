@@ -16,24 +16,23 @@ const CARD_MC: CardLogo = { src: "/payment-logos/mastercard.png", alt: "Masterca
 const CARD_APPLE: CardLogo = { src: "/payment-logos/apple-pay.png", alt: "Apple Pay", width: 32, height: 32 };
 const CARD_GPAY: CardLogo = { src: "/payment-logos/google-pay.png", alt: "Google Pay", width: 84, height: 86 };
 
+// THE ACQUIRER'S LOGO IS NOT A CARD RESTRICTION, and customers read it as one.
+// The row used to lead with the TBC bank mark, which answers a question nobody
+// asked ("who processes this?") while implying an answer to the one they do
+// ("will my card work?") — and implying it WRONGLY, since any Visa or
+// Mastercard is accepted whoever the acquirer is. The card marks now carry the
+// row; they are the actual answer. `value` is untouched, so nothing about
+// provider selection or routing changes — this is presentation only.
 const METHODS: {
   value: PaymentMethod;
   label: string;
   desc: string;
-  bankLogo: string;
-  bankAlt: string;
-  bankLogoWidth: number;
-  bankLogoHeight: number;
   cards: CardLogo[];
 }[] = [
   {
     value: "tbc",
     label: "TBC",
     desc: "ბარათით გადახდა",
-    bankLogo: "/payment-logos/tbc.png",
-    bankAlt: "TBC Bank",
-    bankLogoWidth: 128,
-    bankLogoHeight: 45,
     cards: [CARD_VISA, CARD_MC, CARD_APPLE, CARD_GPAY],
   },
 ];
@@ -62,17 +61,11 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
               htmlFor={`pay-${m.value}`}
               className="cursor-pointer flex-1 min-w-0 flex items-center gap-2 flex-nowrap"
             >
-              <img
-                src={m.bankLogo}
-                alt={m.bankAlt}
-                width={m.bankLogoWidth}
-                height={m.bankLogoHeight}
-                className="h-7 md:h-8 w-auto object-contain shrink-0"
-                loading="lazy"
-              />
-              <span className="sr-only">
-                {m.label} — {m.desc}
-              </span>
+              {/* Where the bank mark used to sit. Without a word here the row
+                  would be four small logos and nothing else; `desc` already
+                  said "pay by card" to screen readers only. */}
+              <span className="text-sm font-medium text-foreground shrink-0">{m.desc}</span>
+              <span className="sr-only">{m.label}</span>
               <div className="flex items-center gap-1 sm:gap-1.5 ml-auto flex-nowrap shrink-0">
                 {m.cards.map((c) => (
                   <img
@@ -82,7 +75,7 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
                     title={c.alt}
                     width={c.width}
                     height={c.height}
-                    className="h-4 sm:h-5 w-auto object-contain shrink-0"
+                    className="h-5 sm:h-6 w-auto object-contain shrink-0"
                     loading="lazy"
                   />
                 ))}

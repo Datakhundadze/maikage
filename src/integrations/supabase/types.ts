@@ -495,6 +495,7 @@ export type Database = {
           handled: boolean
           id: string
           message: string
+          order_id: string | null
           page: string | null
           user_id: string | null
         }
@@ -504,6 +505,7 @@ export type Database = {
           handled?: boolean
           id?: string
           message: string
+          order_id?: string | null
           page?: string | null
           user_id?: string | null
         }
@@ -513,6 +515,7 @@ export type Database = {
           handled?: boolean
           id?: string
           message?: string
+          order_id?: string | null
           page?: string | null
           user_id?: string | null
         }
