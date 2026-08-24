@@ -7,7 +7,7 @@ import { useProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt } from "lucide-react";
+import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt, ArrowUpDown } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
@@ -361,6 +361,11 @@ interface PhotoLayer {
    *  drain, and only when the seed carried a photo AND text; a manual upload,
    *  a photo-only seed and a chest / jersey-back seed never carry it. */
   paired?: boolean;
+  /** Which way round the paired layout sits. Absent = "text-below", the shape
+   *  the seed drain creates. PERSISTED ON THE LAYER on purpose: every re-fit
+   *  reads it out of the layer it is already holding, so an image replacement
+   *  cannot silently flip the design back — see containFitCoords. */
+  pairedOrientation?: PairedOrientation;
   /** The customer has dragged, resized or panned this layer. Their placement
    *  then outranks the paired layout: a later re-fit (an AI edit, a background
    *  removal) keeps their box instead of snapping back to the seeded one. */
@@ -499,6 +504,10 @@ interface TextLayer {
    *  ratchet: a capped width would become the base for the next re-fit, and a
    *  word that got longer would never grow back. */
   pairedBaseScale?: number;
+  /** Which way round the paired layout sits — kept in step with the photo's
+   *  own field by the swap, which flips both in ONE update so they cannot
+   *  diverge. Absent = "text-below". */
+  pairedOrientation?: PairedOrientation;
   /** The customer has dragged or resized this lettering. Their placement then
    *  outranks the paired cap, exactly as it does for a photo layer. */
   userAdjusted?: boolean;
@@ -762,11 +771,32 @@ function chestPhotoCoords(placement: "left-chest" | "right-chest"): PlacementCoo
 // Both inside the zone with a 0.02 gap. The text's SIZE is untouched — only
 // its y — so a "small" seed stays small and the raster effect's aspect fit
 // behaves exactly as it does anywhere else.
+// Which of the two shares the top. "text-below" is what the seed drain builds;
+// "text-above" is the customer flipping it with the swap control.
+//
+//   text-below   photo [0.00, 0.72] · text [0.74, 0.98]
+//   text-above   text  [0.02, 0.26] · photo [0.28, 1.00]
+//
+// A mirror of each other, same 0.02 gap, both inside the zone.
+type PairedOrientation = "text-below" | "text-above";
+
 const PAIRED_PHOTO_Y = 0.36;
+const PAIRED_PHOTO_Y_SWAPPED = 0.64;
 const PAIRED_PHOTO_BOX_SCALE = 1;
 const PAIRED_PHOTO_MAX_SCALE_Y = 0.72;
 const PAIRED_TEXT_Y = 0.86;
+const PAIRED_TEXT_Y_SWAPPED = 0.14;
 const PAIRED_TEXT_MAX_SCALE_Y = 0.24;
+
+/** Photo centre for an orientation. Absent orientation = the seeded default. */
+function pairedPhotoY(orientation?: PairedOrientation): number {
+  return orientation === "text-above" ? PAIRED_PHOTO_Y_SWAPPED : PAIRED_PHOTO_Y;
+}
+
+/** Lettering centre for an orientation. Absent = the seeded default. */
+function pairedTextY(orientation?: PairedOrientation): number {
+  return orientation === "text-above" ? PAIRED_TEXT_Y_SWAPPED : PAIRED_TEXT_Y;
+}
 
 /**
  * Contain-fit a photo's window box to its natural aspect. Shared by
@@ -792,6 +822,7 @@ function containFitCoords(
   zoneW: number,
   zoneH: number,
   paired: boolean,
+  orientation?: PairedOrientation,
 ): PlacementCoords {
   const boxScale = paired ? PAIRED_PHOTO_BOX_SCALE : base.scale;
   const boxScaleY = paired ? PAIRED_PHOTO_MAX_SCALE_Y : (base.scaleY ?? base.scale);
@@ -812,7 +843,7 @@ function containFitCoords(
   // edge stays at 0.72 whatever aspect the image (or an edited replacement of
   // it) turns out to have. Non-paired leaves x/y exactly as it found them.
   return paired
-    ? { ...base, y: PAIRED_PHOTO_Y, scale, scaleY }
+    ? { ...base, y: pairedPhotoY(orientation), scale, scaleY }
     : { ...base, scale, scaleY };
 }
 
@@ -842,15 +873,17 @@ function pairedTextCoords(
   rasterAspect: number,
   zoneW: number,
   zoneH: number,
+  orientation?: PairedOrientation,
 ): PlacementCoords {
+  const y = pairedTextY(orientation);
   const uncappedScaleY = (baseScale * zoneW) / (rasterAspect * zoneH);
   if (uncappedScaleY <= PAIRED_TEXT_MAX_SCALE_Y) {
-    return { ...base, y: PAIRED_TEXT_Y, scale: baseScale, scaleY: uncappedScaleY };
+    return { ...base, y, scale: baseScale, scaleY: uncappedScaleY };
   }
   const factor = PAIRED_TEXT_MAX_SCALE_Y / uncappedScaleY;
   return {
     ...base,
-    y: PAIRED_TEXT_Y,
+    y,
     scale: baseScale * factor,
     scaleY: PAIRED_TEXT_MAX_SCALE_Y,
   };
@@ -1085,6 +1118,7 @@ export default function SimplePage() {
             zoneW,
             zoneH,
             paired && !p.userAdjusted,
+            p.pairedOrientation,
           );
           return {
             ...p,
@@ -1489,6 +1523,11 @@ export default function SimplePage() {
             zoneW,
             zoneH,
             !!p.paired && !p.userAdjusted,
+            // READ OFF THE LAYER, never a closure: the orientation the customer
+            // last chose travels with the layer, so an AI edit or a background
+            // removal re-fits into the strip the design is ACTUALLY in rather
+            // than flipping it back to the seeded one.
+            p.pairedOrientation,
           );
           return {
             ...p,
@@ -2308,6 +2347,7 @@ export default function SimplePage() {
                 aspect,
                 zoneW,
                 zoneH,
+                tl.pairedOrientation,
               ),
             };
           }
@@ -2804,6 +2844,71 @@ export default function SimplePage() {
     setOrderDialogOpen(true);
   }, [needsSize, productConfig.config.size, computeFresh, saveToGenerations]);
 
+  // ── Swap: lettering above the photo, or below it ─────────────────────────
+  //
+  // PAIRED MODE ONLY, and paired mode means BOTH marks present: a photo layer
+  // and a text layer that the seed drain created together. A photo-only design,
+  // a text-only design, a manual upload and a chest or jersey-back seed carry no
+  // `paired` mark at all — the seed drain sets it only for pairedSeed, which
+  // excludes both placements — so none of them offers the control.
+  const pairedPhoto = sideData.photos.find((p) => p.paired);
+  const pairedText = sideData.texts.find((t) => t.paired);
+  const pairedOrientation: PairedOrientation =
+    pairedPhoto?.pairedOrientation ?? pairedText?.pairedOrientation ?? "text-below";
+  const canSwapPaired = !!pairedPhoto && !!pairedText;
+
+  // ONLY `y` MOVES. Not a re-fit: the boxes are already the right size for the
+  // strip, so the swap is a mirror of two centres and nothing else.
+  //
+  // That is also the answer for a layer the customer has dragged or resized.
+  // The swap is an EXPLICIT request — they tapped it — so it repositions both
+  // layers whether or not they carry `userAdjusted`; refusing to move a layer
+  // they had touched would make the control look broken. But it preserves their
+  // SIZE exactly, because scale and scaleY are never written here. Discarding a
+  // resize they had deliberately made would be the worse of the two mistakes,
+  // and the one they could not undo.
+  //
+  // Both fields flip in ONE update, so the photo and the lettering can never
+  // hold different orientations.
+  const swapPairedOrientation = useCallback(() => {
+    setSideData((prev) => {
+      const photo = prev.photos.find((p) => p.paired);
+      const text = prev.texts.find((t) => t.paired);
+      if (!photo || !text) return prev;
+      const next: PairedOrientation =
+        (photo.pairedOrientation ?? "text-below") === "text-below" ? "text-above" : "text-below";
+      return {
+        ...prev,
+        photos: prev.photos.map((p) =>
+          p.paired
+            ? { ...p, pairedOrientation: next, coords: { ...p.coords, y: pairedPhotoY(next) } }
+            : p,
+        ),
+        texts: prev.texts.map((t) =>
+          t.paired
+            ? { ...t, pairedOrientation: next, coords: { ...t.coords, y: pairedTextY(next) } }
+            : t,
+        ),
+      };
+    });
+  }, [setSideData]);
+
+  // Rendered into BOTH preview slots, like seededGenerationOverlay — only one is
+  // mounted per breakpoint. Sits at the card's TOP-LEFT, mirroring the loupe at
+  // its top-right, so it collides with neither that button nor the design (the
+  // placement zone is centred) nor the chat widget (bottom-right anchored).
+  const swapControl = canSwapPaired ? (
+    <button
+      type="button"
+      onClick={swapPairedOrientation}
+      title={lang === "en" ? "Swap photo and text" : "ფოტოსა და წარწერის ადგილების გაცვლა"}
+      aria-label={lang === "en" ? "Swap photo and text" : "ფოტოსა და წარწერის ადგილების გაცვლა"}
+      className="absolute top-10 left-10 z-30 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background/90 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted"
+    >
+      <ArrowUpDown className="h-4 w-4" />
+    </button>
+  ) : null;
+
   const tryOnDesignImage = frontDesignOnly ?? backDesignOnly ?? aiResult?.transferImage ?? null;
 
   const handleTryOnOpen = useCallback(() => {
@@ -2979,6 +3084,7 @@ export default function SimplePage() {
               overlay below; it changes nothing on its own. */}
           <div className="relative lg:hidden rounded-xl overflow-hidden border border-border bg-background">
             {seededGenerationOverlay}
+            {swapControl}
             <ProductPreview
               productName={productConfig.config.product}
               subProduct={productConfig.config.subProduct}
@@ -3339,6 +3445,7 @@ export default function SimplePage() {
               action row below stay flush with the card's edges. */}
           <div className="relative w-full max-w-[38rem]">
             {seededGenerationOverlay}
+            {swapControl}
             <ProductPreview
               productName={productConfig.config.product}
               subProduct={productConfig.config.subProduct}
