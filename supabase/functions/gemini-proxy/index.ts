@@ -464,15 +464,7 @@ WORKED EXAMPLES — copy this shape; include EVERY field the customer indicated:
    A block with no "text" is VALID whenever a photo is attached. Never invent a caption, and
    never withhold the block because they typed no words to print.
 
-5. სპორტული მაისრის ზურგზე გვარი და ნომერი: „სპორტულ მაისურზე უკან წავაწერო ხუნდაძე 10"
-\`\`\`maika-mockup
-{"text":"ხუნდაძე","number":"10","product":"Sport","subProduct":"Sport Set","side":"back","placement":"jersey-back"}
-\`\`\`
-   "jersey-back" lays out BOTH prints as a football shirt is printed — name above, number
-   much larger below. Use it whenever a name AND a number are wanted on a sport shirt back.
-   Name in "text", number in "number"; never merged into one string.
-
-6. ᲤᲝᲜᲘᲡ ᲛᲝᲮᲡᲜᲐ — კლიენტმა ატვირთა ფოტო და წერს: „ფონი მოაშორე და დამადე მაისურზე"
+5. ᲤᲝᲜᲘᲡ ᲛᲝᲮᲡᲜᲐ — კლიენტმა ატვირთა ფოტო და წერს: „ფონი მოაშორე და დამადე მაისურზე"
 \`\`\`maika-mockup
 {"product":"T-Shirt","subProduct":"GILDAN","color":"White","side":"front","removeBackground":true}
 \`\`\`
@@ -480,7 +472,7 @@ WORKED EXAMPLES — copy this shape; include EVERY field the customer indicated:
    Set "removeBackground" ONLY when a photo is attached AND they asked for the background
    gone („ფონი მოაშორე", „გაასუფთავე", "without background").
 
-7. ᲤᲝᲢᲝᲡ ᲨᲔᲪᲕᲚᲐ / EDITING AN ATTACHED PHOTO — კლიენტმა ატვირთა ძაღლის ფოტო და წერს:
+6. ᲤᲝᲢᲝᲡ ᲨᲔᲪᲕᲚᲐ / EDITING AN ATTACHED PHOTO — კლიენტმა ატვირთა ძაღლის ფოტო და წერს:
    „შავი მრგვალი სათვალე დაადე ძაღლს"
 \`\`\`maika-mockup
 {"product":"T-Shirt","subProduct":"GILDAN","color":"White","side":"front","editPrompt":"შავი მრგვალი სათვალე დაადე ძაღლს"}
@@ -521,6 +513,19 @@ instructions are for what a block cannot carry, nothing else.
 EDITS TOO, and this one IS failing in production: never answer an edit request with button
 instructions („ატვირთე, აირჩიე ფენა, დააჭირე რედაქტირებას…") — emit the block with "editPrompt".
 
+⚠️ NEVER INTRODUCE, ANNOUNCE OR POINT AT THE BLOCK. The prose is the ANSWER; the block is
+not a thing the prose talks about. It has no heading, no lead-in, no colon before it, and no
+sentence telling them what to do with it. End the reply naturally and emit it.
+ᲐᲙᲠᲫᲐᲚᲣᲚᲘᲐ — these two are copied from real logged replies and are BOTH bugs:
+  „შეგიძლიათ გამოიყენოთ AI რედაქტირება ფოტოში ქურთუკის ფერის შესაცვლელად."
+      → the edit IS the block. Emit it with "editPrompt"; do not offer the feature in words.
+  „ესკიზის სანახავად დააჭირეთ ღილაკს:"
+      → and this one is now usually FALSE as well. An eligible sketch is applied
+        AUTOMATICALLY, with no button anywhere on screen, so the sentence points at
+        something that does not exist. Never write it.
+ᲨᲔᲜᲘᲨᲕᲜᲐ: პასუხში არასოდეს დაწერო „დააჭირე ღილაკს", „შეგიძლია გამოიყენო…",
+„ესკიზის სანახავად…" ან რაიმე მსგავსი — არც ბლოკამდე, არც ბლოკის შემდეგ.
+
 Include "placement" WHENEVER they indicate a position, and "textColor" WHENEVER they name a
 colour for the lettering. Omitting a field is correct ONLY when the customer didn't specify it —
 never omit something they did say, and never guess something they didn't.
@@ -542,10 +547,10 @@ KA: თუ კლიენტმა დაასახელა ფერი —
 Use these values EXACTLY, including capitalisation. "product" is the TYPE, never a brand —
 brands go in "subProduct". "text" is the customer's ACTUAL words, never a placeholder —
 and it is OMITTED ENTIRELY when they attached a photo instead of asking for lettering.
-product: T-Shirt | Hoodie | Tote Bag | Cap | Apron | Phone Case | Mug | Sport
+product: T-Shirt | Hoodie | Tote Bag | Cap | Apron | Phone Case | Mug
 subProduct (T-Shirt): GILDAN | Sol's | GILDAN HUMMER | TH | JEL T-Shirt | GIORDANO | Khundadze | NIKE | Polo | Oversize | GILDAN KIDS
 subProduct (Hoodie): GILDAN Hoodie | Premium Washed Hoodie | JEL Standard Hoodie | JEL Zipper | JEL Standard Zipper | GILDAN Bomber
-subProduct (Sport): Sport Set — other products have no subProduct, omit it.
+Other products have no subProduct — omit the field.
 color (the GARMENT) — ⚠️ PER BRAND. Colours are NOT interchangeable; pick only from the line
 for the brand in "subProduct". There is no plain "Blue" on a t-shirt — GILDAN's blues are
 Electric Blue, Light Blue, Standard Blue. No matching colour on the brand's line → omit
@@ -564,8 +569,7 @@ Electric Blue, Light Blue, Standard Blue. No matching colour on the brand's line
 - Tote Bag: White | Black | Cream | Dark Navy | Electric Blue | Turquoise | Green | Lime | Pink | Red | Burgundy | Purple
 - Mug: White · Phone Case: no colour — omit the field.
 side: front | back
-placement: center | small | left-chest | right-chest | jersey-back — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center; "small" = centred like "center" but a SMALLER print, sitting a little lower — use it ONLY when they ask for a small one („პატარა", „პატარა წარწერა", "small print"), never as a default
-number: the squad number, DIGITS ONLY ("10"), and only with placement "jersey-back". Never put it in "text".
+placement: center | small | left-chest | right-chest — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center; "small" = centred like "center" but a SMALLER print, sitting a little lower — use it ONLY when they ask for a small one („პატარა", „პატარა წარწერა", "small print"), never as a default
 removeBackground: true | omit — true ONLY with an attached photo the customer wants cut out.
 textColor (the LETTERING): Black | White | Red | Blue | Green | Yellow | Orange | Purple | Pink | Gray | Gold | Navy — თეთრად → White; შავად → Black; წითლად → Red; ლურჯად → Blue; მწვანედ → Green; ყვითლად → Yellow; ნარინჯისფრად → Orange; იისფრად → Purple; ვარდისფრად → Pink; ნაცრისფრად → Gray; ოქროსფრად → Gold; მუქი ლურჯი → Navy
 
@@ -605,10 +609,12 @@ prompt · style · withBackground · product · subProduct · color · side
   never the garment, never "on a t-shirt", never "print".
 - style: EXACTLY one of these ENGLISH values, or "" for automatic:
   Realistic | Animated | Illustration | Oil Art | Anime | Comics | Line Art | Graphic | Pixar 3D
-  Anything else is discarded and treated as "". Never invent, translate or Georgianise one;
-  no style named → "".
+  Anything else is discarded and treated as "". Never invent, translate or Georgianise one.
+  ⚠️ NO STYLE NAMED → "Realistic". That is the DEFAULT — never "" — and it is what the
+  offer rule below invites them to change. "" stays a legal value but is not the default.
   რეალისტური → Realistic · ანიმაციური → Animated · ილუსტრაცია → Illustration ·
-  ოილ არტი → Oil Art · ანიმე → Anime · კომიქსი → Comics · გრაფიკა → Graphic
+  ოილ არტი → Oil Art · ანიმე → Anime · კომიქსი → Comics · გრაფიკა → Graphic ·
+  პიქსარი / Pixar → Pixar 3D
 - withBackground: false = cut out, no background (THE DEFAULT, and what printing wants).
   true = ONLY if they explicitly ask to keep a background or scene.
 - product / subProduct / color / side: exactly the values listed in §12, and ONLY what
@@ -620,7 +626,7 @@ WORKED EXAMPLES — copy this shape exactly.
 
 1. „დამიხატე მგელი მთვარეზე, შავ მაისურზე"
 \`\`\`maika-generate
-{"prompt":"მგელი მთვარეზე ყმუის","style":"","withBackground":false,"product":"T-Shirt","subProduct":"GILDAN","color":"Black","side":"front"}
+{"prompt":"მგელი მთვარეზე ყმუის","style":"Realistic","withBackground":false,"product":"T-Shirt","subProduct":"GILDAN","color":"Black","side":"front"}
 \`\`\`
 
 2. „ანიმეს სტილში კატა მინდა თეთრ ჰუდზე"
@@ -635,7 +641,7 @@ WORKED EXAMPLES — copy this shape exactly.
 
 4. „დამიხატე ლომი" (they named no garment and no colour → omit those fields entirely)
 \`\`\`maika-generate
-{"prompt":"ლომი","style":"","withBackground":false,"side":"front"}
+{"prompt":"ლომი","style":"Realistic","withBackground":false,"side":"front"}
 \`\`\`
 
 ⚠️ CHANGES — RE-EMIT THE BLOCK. Any change to a design you already suggested
@@ -646,7 +652,7 @@ to maika-mockup as much as maika-generate.
 
 Example — after example 1 above, the customer says „თეთრზე გადამიტანე":
 \`\`\`maika-generate
-{"prompt":"მგელი მთვარეზე ყმუის","style":"","withBackground":false,"product":"T-Shirt","subProduct":"GILDAN","color":"White","side":"front"}
+{"prompt":"მგელი მთვარეზე ყმუის","style":"Realistic","withBackground":false,"product":"T-Shirt","subProduct":"GILDAN","color":"White","side":"front"}
 \`\`\`
 
 ⚠️ A TURN EITHER ASKS OR EMITS — never both. This is about YOUR questions, not theirs.
@@ -655,6 +661,22 @@ it carries NO block: a customer tapping the button mid-question spends one of tw
 generations on a request you just said you did not understand.
 A question from the CUSTOMER is the opposite — „როგორ გამოვა ეს მაისურზე?" MUST carry the
 block. Never read this rule as a reason to withhold one.
+
+⚠️ OFFER THE STYLE — AND STILL EMIT. The customer asked for a drawing and named no style:
+say which style you are using and list the alternatives, THEN emit the block with
+"style":"Realistic". Most customers do not know the choice exists at all — Pixar 3D above
+all — and never discover it unless told.
+This is NOT the ASKS-OR-EMITS case above and does not collide with it. That rule is about a
+question you need ANSWERED before you can draw; this is an INVITATION alongside a block that
+is already complete. Never hold the block back to ask which style they want.
+- KA: „აი, რეალისტურ სტილში. თუ გირჩევნია — ანიმე, Pixar 3D, ილუსტრაცია, ოილ არტი,
+  კომიქსი, გრაფიკა ან ანიმაციური — მითხარი და თავიდან დავხატავ."
+- EN: "Here it is in Realistic. If you'd rather have anime, Pixar 3D, illustration, oil art,
+  comics, graphic or animated — say so and I'll redraw it."
+Name the styles in THEIR language, and keep it to one short sentence — this is an aside, not
+a menu the reply is built around. Already named a style → no offer, just the block.
+A follow-up naming one („ანიმეს სტილში") is a CHANGE: re-emit the WHOLE block with the new
+"style" and EVERY other field exactly as it was, per the ⚠️ CHANGES rule above.
 
 ⚠️ ONE GOOD GENERATION, NOT THREE. Too vague to draw — no subject, or a subject with no
 indication of what it looks like („რამე ლამაზი", „დამიხატე რაღაც", "something cool") — ask
@@ -810,6 +832,63 @@ function runInBackground(work: Promise<unknown>, label: string): void {
   } catch {
     /* fall through — the promise is already running and already guarded */
   }
+}
+
+/**
+ * One row per GATEWAY CALL, so per-action cost stops being invisible.
+ *
+ * `generations` only ever recorded generate-design, which means edit-image,
+ * restyle, upscale, isolate-subject and virtual-tryon — every one of them a
+ * paid model call, two of them on the PRO tier — left no trace at all. There
+ * was no way to answer "what are we actually spending it on" before changing
+ * anything.
+ *
+ * ACTION AND MODEL ONLY. No prompt, no image, no instruction text, nothing the
+ * customer typed. The row is a cost record, not a transcript — chat_logs is
+ * where conversation lives, under its own rules.
+ *
+ * SERVICE ROLE, exactly like chat_logs, because ai_calls is deny-all to
+ * everyone else. FIRE-AND-FORGET, exactly like the chat image upload: the
+ * promise is handed to runInBackground and never awaited, so it cannot delay a
+ * response, and every failure is swallowed and logged. A logging outage must
+ * never be visible to a customer, and must never cost them a generation.
+ *
+ * Retries log SEPARATELY — one row per attempt — because each attempt is a
+ * real call to the gateway and, on the image models, a real charge.
+ */
+function logAiCall(row: {
+  action: string;
+  model: string;
+  userId: string | null;
+  sessionId: string | null;
+  isGuest: boolean;
+  success: boolean;
+  durationMs: number;
+  errorCode: string | null;
+}): void {
+  const url = Deno.env.get("SUPABASE_URL");
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !key) return;
+  const admin = createClient(url, key);
+  runInBackground(
+    Promise.resolve(
+      admin.from("ai_calls").insert({
+        action: row.action,
+        model: row.model,
+        user_id: row.userId,
+        session_id: row.sessionId,
+        is_guest: row.isGuest,
+        success: row.success,
+        duration_ms: row.durationMs,
+        error_code: row.errorCode,
+      }),
+    ).then(({ error }) => {
+      // Thrown rather than returned, so runInBackground's catch reports it in
+      // one place instead of two.
+      if (error) throw error;
+    }),
+    "ai_calls insert",
+  );
 }
 
 function isAcceptableChatImage(value: unknown): value is string {
@@ -1042,6 +1121,15 @@ serve(async (req) => {
     // Captured in the faq-chat gate below; used at the success path.
     let faqChatUserId: string | null = null;
 
+    // Caller identity for the ai_calls cost log. Filled in from the auth
+    // lookups the two gates below ALREADY perform, so this adds no extra
+    // round-trip for anyone. An action that passes through neither gate
+    // (convert-bg-black) simply logs as an unattributed guest call, which is
+    // accurate: it is the internal second half of a generate-design.
+    let callerUserId: string | null = null;
+    let callerIsGuest = true;
+    const callerSessionId = typeof params.session_id === "string" ? params.session_id : null;
+
     // --- Rate limiting (billable actions only) ---
     // Keyed on user_id for authed callers, IP for anon. Admins (trusted batch
     // generation) are exempt. Enforced BEFORE any gateway call so blocked
@@ -1055,6 +1143,8 @@ serve(async (req) => {
 
       // null/err for anon (no user JWT); a real user object when logged in.
       const { data: { user } } = await client.auth.getUser();
+      callerUserId = user?.id ?? null;
+      callerIsGuest = !user || user.is_anonymous === true;
 
       // Admins bypass the limit entirely (mirrors check-design-quality's
       // has_role gate). On any rpc error, treat as non-admin (still limited).
@@ -1163,6 +1253,8 @@ serve(async (req) => {
 
       const { data: { user } } = await client.auth.getUser();
       faqChatUserId = user?.id ?? null;
+      callerUserId = faqChatUserId;
+      callerIsGuest = !user || user.is_anonymous === true;
 
       let isAdmin = false;
       if (user) {
@@ -1554,12 +1646,30 @@ Output: one photorealistic composite photo.`;
     let lastError = "";
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // One ai_calls row per ATTEMPT — each attempt is a real gateway call and,
+      // on the image models, a real charge. Fire-and-forget throughout: every
+      // logAttempt below hands the insert to runInBackground and returns
+      // immediately, so no customer ever waits on it and no logging failure
+      // can change what they get back.
+      const startedAt = Date.now();
+      const logAttempt = (success: boolean, errorCode: string | null) =>
+        logAiCall({
+          action, model,
+          userId: callerUserId,
+          sessionId: callerSessionId,
+          isGuest: callerIsGuest,
+          success,
+          durationMs: Date.now() - startedAt,
+          errorCode,
+        });
+
       try {
         const response = await callGateway(model, messages, attempt, action);
 
         if (!response.ok) {
           const status = response.status;
           const text = await response.text();
+          logAttempt(false, `http_${status}`);
           console.error(`[gemini-proxy] Gateway HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 300));
 
           if (status === 429) {
@@ -1675,6 +1785,7 @@ Output: one photorealistic composite photo.`;
             }
           }
 
+          logAttempt(true, null);
           return new Response(JSON.stringify({ image: null, text: textContent }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -1687,6 +1798,7 @@ Output: one photorealistic composite photo.`;
         if (!imageData) {
           const userError = getUserError(nativeFinishReason, finishReason);
           if (userError) {
+            logAttempt(false, String(nativeFinishReason ?? finishReason ?? "blocked").slice(0, 60));
             console.error(`[gemini-proxy] Blocked: ${nativeFinishReason}`);
             return new Response(JSON.stringify({ error: userError, text: textContent }), {
               status: 422,
@@ -1704,6 +1816,7 @@ Output: one photorealistic composite photo.`;
           });
           console.error(`[gemini-proxy] No image extracted (attempt ${attempt + 1}). Structure: ${responseKeys}`);
 
+          logAttempt(false, "no_image");
           lastError = "No image in response";
           if (attempt < maxAttempts - 1) {
             console.log(`[gemini-proxy] Retrying in ${(attempt + 1) * 2}s...`);
@@ -1718,12 +1831,14 @@ Output: one photorealistic composite photo.`;
         }
 
         // Success
+        logAttempt(true, null);
         console.log(`[gemini-proxy] Success: action=${action}, attempt=${attempt + 1}`);
         return new Response(JSON.stringify({ image: imageData, text: textContent }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
 
       } catch (attemptErr) {
+        logAttempt(false, "exception");
         lastError = attemptErr instanceof Error ? attemptErr.message : String(attemptErr);
         console.error(`[gemini-proxy] Attempt ${attempt + 1} exception:`, lastError);
         if (attempt < maxAttempts - 1) {

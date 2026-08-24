@@ -903,7 +903,38 @@ export default function SimplePage() {
   const { checkLimit: checkAiLimit, recordGeneration: recordAiGeneration } = useGenerationLimit(2);
   const { saveDesign } = useDesignStorage();
   const [aiPrompt, setAiPrompt] = useState("");
-  const [aiStyle, setAiStyle] = useState("");
+  // DEFAULT = REALISTIC (was "" / ავტომატური). The chips are matched by their
+  // LOCALISED label, so the default is read out of the same getStyleOptions
+  // list the row renders — index 0 is the realistic chip in both languages.
+  // „ავტომატური" is still offered and still selectable; only the initial
+  // selection moved.
+  //
+  // ⚠️ COST: realistic routes to the PRO image model (0.560) rather than flash
+  // (0.269 and below), so this roughly doubles the per-generation cost.
+  // Confirmed as intended. The ROUTER is untouched — it reads this value
+  // exactly as it always has.
+  const [aiStyle, setAiStyle] = useState(() => getStyleOptions(lang)[0]);
+
+  // Keep the selected chip selected across a language switch.
+  //
+  // The two style lists are PARALLEL, and a chip is active when its label ===
+  // aiStyle. While the default was "" that was language-independent and this
+  // never came up; a localised default would otherwise leave „რეალისტური" set
+  // against an English row and nothing looking selected. Re-mapped by INDEX, so
+  // it preserves whatever the customer picked, not just the default. "" is
+  // language-independent and is left alone.
+  const styleLangRef = useRef(lang);
+  useEffect(() => {
+    if (styleLangRef.current === lang) return;
+    const prev = getStyleOptions(styleLangRef.current);
+    const next = getStyleOptions(lang);
+    styleLangRef.current = lang;
+    setAiStyle((cur) => {
+      if (!cur) return cur;
+      const i = prev.indexOf(cur);
+      return i >= 0 ? next[i] : cur;
+    });
+  }, [lang]);
   const [aiWithBackground, setAiWithBackground] = useState(false); // default: without background
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState<AppStatus>("GENERATING_DESIGN");
