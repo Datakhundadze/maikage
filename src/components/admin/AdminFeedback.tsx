@@ -7,7 +7,6 @@ import { format } from "date-fns";
 
 // Customer feedback list (newest-first, paginated). Read via direct admin-RLS
 // SELECT (the "Admins can read feedback" policy), mirroring AdminCorporate.
-// `feedback` is schema-ahead-of-types, so reads/writes are cast (supabase as any).
 
 interface FeedbackRow {
   id: string;
@@ -15,6 +14,16 @@ interface FeedbackRow {
   email: string | null;
   page: string | null;
   user_id: string | null;
+  /**
+   * The order the customer was looking at when they wrote this — set only by
+   * the post-order form on the confirmation page.
+   *
+   * ⚠️ CUSTOMER-SUPPLIED AND UNVERIFIED. The INSERT policy on `feedback`
+   * validates the message length and nothing else, so an anonymous caller can
+   * post any uuid here. It is a hint about which order the words are about,
+   * not proof that they are. Labelled as such in the card below.
+   */
+  order_id: string | null;
   handled: boolean;
   created_at: string;
 }
@@ -33,8 +42,7 @@ export default function AdminFeedback() {
     if (offset === 0) setLoading(true);
     else setLoadingMore(true);
     setError(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error: err } = await (supabase as any)
+    const { data, error: err } = await supabase
       .from("feedback")
       .select("*")
       .order("created_at", { ascending: false })
@@ -57,8 +65,7 @@ export default function AdminFeedback() {
   const toggleHandled = async (r: FeedbackRow) => {
     const next = !r.handled;
     setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, handled: next } : x)));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: err } = await (supabase as any).from("feedback").update({ handled: next }).eq("id", r.id);
+    const { error: err } = await supabase.from("feedback").update({ handled: next }).eq("id", r.id);
     if (err) {
       toast({ title: "შენახვა ვერ მოხერხდა", description: err.message, variant: "destructive" });
       setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, handled: r.handled } : x)));
@@ -107,6 +114,18 @@ export default function AdminFeedback() {
                 <a href={`mailto:${r.email}`} className="text-primary hover:underline">{r.email}</a>
               )}
               {r.page && <Badge variant="outline" className="text-[10px]">{r.page}</Badge>}
+              {/* Unverified on purpose — see FeedbackRow.order_id. The dashed
+                  border and the "?" are the point: this is what the customer's
+                  browser sent, not something we checked. */}
+              {r.order_id && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] border-dashed"
+                  title="შეკვეთის ID კლიენტის მხრიდან — გადაუმოწმებელი / customer-supplied, unverified"
+                >
+                  შეკვეთა? {r.order_id.slice(0, 8)}
+                </Badge>
+              )}
               {r.user_id && <span title="user id">👤 {r.user_id.slice(0, 8)}</span>}
             </div>
           </div>
