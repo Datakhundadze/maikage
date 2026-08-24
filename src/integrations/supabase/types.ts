@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_calls: {
+        Row: {
+          action: string
+          created_at: string
+          duration_ms: number | null
+          error_code: string | null
+          id: string
+          is_guest: boolean
+          model: string
+          session_id: string | null
+          success: boolean
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          is_guest?: boolean
+          model: string
+          session_id?: string | null
+          success: boolean
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          duration_ms?: number | null
+          error_code?: string | null
+          id?: string
+          is_guest?: boolean
+          model?: string
+          session_id?: string | null
+          success?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string
