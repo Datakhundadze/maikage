@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PRODUCTS, SUB_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_GROUPS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, NEW_BRANDS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_GROUPS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { useAppState } from "@/hooks/useAppState";
@@ -104,14 +104,33 @@ export default function ProductConfigPanel({
             <div className="px-3 pb-3">
               <div className="flex flex-wrap gap-2">
                 {subProducts.map((sub) => (
-                  <Button
-                    key={sub}
-                    size="sm"
-                    variant={config.subProduct === sub ? "default" : "outline"}
-                    onClick={() => { onSubProductChange(sub); setBrandOpen(false); }}
-                  >
-                    {sub}
-                  </Button>
+                  // The badge is ABSOLUTELY positioned inside a zero-size
+                  // wrapper, so it is out of flow entirely: the button keeps its
+                  // own dimensions, the flex-wrap row measures the button and
+                  // nothing else, and adding or removing a badge can never
+                  // reflow the picker. `inline-flex` makes the wrapper hug the
+                  // button rather than stretch.
+                  <span key={sub} className="relative inline-flex">
+                    <Button
+                      size="sm"
+                      variant={config.subProduct === sub ? "default" : "outline"}
+                      onClick={() => { onSubProductChange(sub); setBrandOpen(false); }}
+                    >
+                      {sub}
+                    </Button>
+                    {NEW_BRANDS.has(sub) && (
+                      // Sits on the button's top-right CORNER — clear of the
+                      // label, which is vertically centred and inset by the
+                      // button's own padding. pointer-events-none so it can
+                      // never swallow a tap meant for the button underneath.
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -top-1.5 -right-1.5 z-10 rounded-full bg-red-600 px-1.5 py-px text-[9px] font-bold uppercase leading-tight tracking-wide text-white shadow-sm ring-1 ring-background"
+                      >
+                        NEW
+                      </span>
+                    )}
+                  </span>
                 ))}
               </div>
             </div>

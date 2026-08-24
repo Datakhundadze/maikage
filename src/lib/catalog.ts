@@ -66,6 +66,21 @@ export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "Sport": ["Sport Set"],
 };
 
+/**
+ * Brands flagged as NEW in the brand picker.
+ *
+ * THE ONE PLACE TO EDIT. Adding or removing a badge is a single entry here —
+ * the picker reads this set and nothing hardcodes a brand name at the render
+ * site. Values must match SUB_PRODUCTS exactly (the lookup is by that string).
+ *
+ * A name that is no longer in SUB_PRODUCTS simply never matches, so a stale
+ * entry is inert rather than a crash — but it is dead weight, so remove it.
+ */
+export const NEW_BRANDS: ReadonlySet<string> = new Set([
+  "GILDAN HUMMER",
+  "JEL T-Shirt",
+]);
+
 // Per-brand color availability
 export const BRAND_COLORS: Record<string, ProductColor[]> = {
   // T-Shirt brands

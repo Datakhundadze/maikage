@@ -2730,6 +2730,49 @@ export default function SimplePage() {
   // modal unmounted. handleAiTryOn stays untouched for the chat's
   // generated-message button; this path serves the persistent button below
   // the product preview.
+  // ── The order trigger, hoisted so there is exactly ONE of it ─────────────
+  //
+  // These three were defined inside the left panel's render IIFE, which made
+  // them unreachable from anywhere else — so a second order button would have
+  // meant a second copy of the size gate, the fresh-composite step and the
+  // saveToGenerations call, i.e. a second path to checkout that could drift.
+  // Hoisting them changes no behaviour: same bodies, same order of operations,
+  // same OrderDialog (whose props and wiring are untouched — it is still opened
+  // by flipping `orderDialogOpen`, exactly as before).
+  const needsSize = (BRAND_SIZES[productConfig.config.subProduct]?.length > 0) || productConfig.config.product === "Phone Case";
+
+  // Both buttons must use fresh composite output. The useEffect that populates
+  // frontMockup/backDesignOnly is debounced 250ms, so a quick click can race
+  // past stale state and ship a missing back print file. Re-compute
+  // synchronously here.
+  const computeFresh = useCallback(async () => {
+    const hasFront = frontData.photos.length > 0 || sideHasText(frontData);
+    const hasBack = backData.photos.length > 0 || sideHasText(backData);
+    const [fm, bm, fdo, bdo] = await Promise.all([
+      hasFront ? compositeSide(frontData, "front") : Promise.resolve(null),
+      hasBack ? compositeSide(backData, "back") : Promise.resolve(null),
+      hasFront ? compositeDesignOnly(frontData, "front") : Promise.resolve(null),
+      hasBack ? compositeDesignOnly(backData, "back") : Promise.resolve(null),
+    ]);
+    setFrontMockup(fm);
+    setBackMockup(bm);
+    setFrontDesignOnly(fdo);
+    setBackDesignOnly(bdo);
+    return { fm, bm, fdo, bdo };
+  }, [frontData, backData, compositeSide, compositeDesignOnly]);
+
+  const handleOrderClick = useCallback(async () => {
+    if (needsSize && !productConfig.config.size) {
+      setSizeError(true);
+      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setSizeError(false);
+    const { fm, bm, fdo, bdo } = await computeFresh();
+    if (fm || bm) saveToGenerations(fm, bm, fdo || bdo);
+    setOrderDialogOpen(true);
+  }, [needsSize, productConfig.config.size, computeFresh, saveToGenerations]);
+
   const tryOnDesignImage = frontDesignOnly ?? backDesignOnly ?? aiResult?.transferImage ?? null;
 
   const handleTryOnOpen = useCallback(() => {
@@ -2780,11 +2823,39 @@ export default function SimplePage() {
   // Rendered in two slots — desktop main column below ProductPreview, and an
   // lg:hidden slot below the mobile inline preview — so it sits "under the
   // shirt" on both breakpoints. Stateless element, so sharing it is safe.
-  const tryOnButton = tryOnDesignImage ? (
-    <Button variant="outline" className="w-full gap-1.5" onClick={handleTryOnOpen}>
-      <Shirt className="h-4 w-4" />
-      {t(lang, "simpleAi.tryOn")}
-    </Button>
+  //
+  // ORDER LIVES HERE TOO. The customer is looking at the finished garment; the
+  // order button was only in the left panel, below the price, which on a tall
+  // design means scrolling away from the thing they just decided to buy. This
+  // is a SECOND CALL SITE for handleOrderClick above — the same size gate, the
+  // same fresh composite, the same OrderDialog — and not a second checkout.
+  //
+  // Shown only when there is something to order, which is also what keeps an
+  // empty garment from carrying a primary CTA. Try-on stays conditional on its
+  // own image (it needs a composited design), so the row can legitimately hold
+  // the order button alone.
+  const hasAnyDesign =
+    frontData.photos.length > 0 || sideHasText(frontData) ||
+    backData.photos.length > 0 || sideHasText(backData);
+  const previewActions = hasAnyDesign ? (
+    // Stacked on narrow viewports with ORDER FIRST, so the primary action is
+    // never the lower of the two; one row from sm up, order taking the wider
+    // half. Both grow to fill, so the row is the same height either way.
+    <div className="flex flex-col sm:flex-row gap-2">
+      <Button
+        className="flex-1 gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+        onClick={handleOrderClick}
+      >
+        <ShoppingBag className="h-4 w-4" />
+        შეკვეთა
+      </Button>
+      {tryOnDesignImage && (
+        <Button variant="outline" className="flex-1 gap-1.5" onClick={handleTryOnOpen}>
+          <Shirt className="h-4 w-4" />
+          {t(lang, "simpleAi.tryOn")}
+        </Button>
+      )}
+    </div>
   ) : null;
 
   // The AI design panel is rendered in two responsive slots: under the mobile
@@ -2892,8 +2963,8 @@ export default function SimplePage() {
             />
           </div>
 
-          {/* Try-on — mobile slot, directly below the inline preview */}
-          {tryOnButton && <div className="lg:hidden">{tryOnButton}</div>}
+          {/* Order + try-on — mobile slot, directly below the inline preview */}
+          {previewActions && <div className="lg:hidden">{previewActions}</div>}
 
           {/* Side indicator */}
           <div className="text-xs text-muted-foreground text-center">
@@ -3106,38 +3177,6 @@ export default function SimplePage() {
               <>
                 <PriceDisplay breakdown={breakdown} />
                 {(() => {
-                  const needsSize = (BRAND_SIZES[productConfig.config.subProduct]?.length > 0) || productConfig.config.product === "Phone Case";
-                  // Both buttons must use fresh composite output. The useEffect
-                  // that populates frontMockup/backDesignOnly is debounced
-                  // 250ms, so a quick click can race past stale state and ship
-                  // a missing back print file. Re-compute synchronously here.
-                  const computeFresh = async () => {
-                    const hasFront = frontData.photos.length > 0 || sideHasText(frontData);
-                    const hasBack = backData.photos.length > 0 || sideHasText(backData);
-                    const [fm, bm, fdo, bdo] = await Promise.all([
-                      hasFront ? compositeSide(frontData, "front") : Promise.resolve(null),
-                      hasBack ? compositeSide(backData, "back") : Promise.resolve(null),
-                      hasFront ? compositeDesignOnly(frontData, "front") : Promise.resolve(null),
-                      hasBack ? compositeDesignOnly(backData, "back") : Promise.resolve(null),
-                    ]);
-                    setFrontMockup(fm);
-                    setBackMockup(bm);
-                    setFrontDesignOnly(fdo);
-                    setBackDesignOnly(bdo);
-                    return { fm, bm, fdo, bdo };
-                  };
-
-                  const handleOrderClick = async () => {
-                    if (needsSize && !productConfig.config.size) {
-                      setSizeError(true);
-                      document.getElementById("size-selector")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                      return;
-                    }
-                    setSizeError(false);
-                    const { fm, bm, fdo, bdo } = await computeFresh();
-                    if (fm || bm) saveToGenerations(fm, bm, fdo || bdo);
-                    setOrderDialogOpen(true);
-                  };
                   const handleAddToCart = async () => {
                     if (needsSize && !productConfig.config.size) {
                       setSizeError(true);
@@ -3265,7 +3304,9 @@ export default function SimplePage() {
           shorter than the square clipped it at the top. */}
       <main className="hidden lg:flex flex-1 bg-background overflow-y-auto flex-col">
         <div className="shrink-0 flex justify-center pt-2">
-          <div className="relative w-full max-w-lg">
+          {/* 38rem, matching ProductPreview's own lg cap so the overlay and the
+              action row below stay flush with the card's edges. */}
+          <div className="relative w-full max-w-[38rem]">
             {seededGenerationOverlay}
             <ProductPreview
               productName={productConfig.config.product}
@@ -3282,10 +3323,10 @@ export default function SimplePage() {
             />
           </div>
         </div>
-        {/* Try-on — desktop slot, directly below the product preview */}
-        {tryOnButton && (
+        {/* Order + try-on — desktop slot, directly below the product preview */}
+        {previewActions && (
           <div className="shrink-0 border-t border-border p-3">
-            <div className="max-w-lg mx-auto w-full">{tryOnButton}</div>
+            <div className="max-w-[38rem] mx-auto w-full">{previewActions}</div>
           </div>
         )}
       </main>
