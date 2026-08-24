@@ -40,7 +40,7 @@ import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
 import { chromaKeyGreen } from "@/lib/chromaKey";
-import { t } from "@/lib/i18n";
+import { t, colorKa } from "@/lib/i18n";
 import type { AppStatus } from "@/hooks/useDesign";
 import LoginModal from "@/components/LoginModal";
 import TryOnModal from "@/components/TryOnModal";
@@ -1894,6 +1894,11 @@ export default function SimplePage() {
     // A jersey back is TWO prints. Only here — every other placement is one
     // layer, and the number is ignored without it.
     const jersey = seed.placement === "jersey-back" && !!seedNumber;
+    // The hex actually put on the layer, carried out to the toast below so it
+    // can name the colour it really used. Captured rather than recomputed: the
+    // contrast decision is made exactly once, in the branch below, and this is
+    // only a copy of its answer.
+    let appliedTextColor: string | null = null;
     if (seedText) {
       // An EXPLICIT choice is honoured even when it reads badly: a customer who
       // asked for black lettering on a black shirt gets black — that is their
@@ -1909,6 +1914,7 @@ export default function SimplePage() {
       const seedColor =
         explicitColor ??
         contrastingTextColorHex(COLORS.find((c) => c.name === productConfig.config.color)?.hex);
+      appliedTextColor = seedColor;
       const nameId = `text-${++textIdCounter}`;
       const numberId = jersey ? `text-${++textIdCounter}` : null;
       setSideData((prev) => {
@@ -1996,15 +2002,37 @@ export default function SimplePage() {
     // The parser resolves a textColor to the nearest name in the same family,
     // so this only fires when the request had no family here at all —
     // „ოქროსფერ-ვერცხლისფერი", a raw hex, a shade the palette has no word for.
-    // The layer still gets the palette default, because a text layer must have
+    // The layer still gets a palette colour, because a text layer must have
     // SOME colour; what changes is that the customer is told rather than left
-    // to wonder why their request came out black. They can then pick from the
-    // palette, which is two taps away with the layer already on the garment.
+    // to wonder why their request came out a different colour. They can then
+    // pick from the palette, which is two taps away with the layer already on
+    // the garment.
+    //
+    // NAME THE COLOUR WE ACTUALLY USED. This said "black" unconditionally, which
+    // was true only while the fallback WAS unconditionally black. Since the
+    // contrast fallback shipped it is white on a dark garment — and on a dark
+    // garment the old message was simply false, telling the customer their
+    // lettering was black while they looked at white lettering.
+    //
+    // Read back off the applied hex, not recomputed: the palette carries both
+    // the hex and the name, so this is a lookup, and the contrast decision is
+    // never made twice. If a hex ever had no palette name the hex itself is
+    // shown — unlovely, but true, and never the wrong colour's name.
     if (seedText && seed.textColor && !resolveTextColorHex(seed.textColor)) {
+      const appliedName = TEXT_COLORS.find(
+        (c) => c.hex.toLowerCase() === appliedTextColor?.toLowerCase(),
+      )?.name;
+      // colorKa falls back to the English name for a palette colour with no
+      // Georgian mapping (Gold, Navy), which t() would render as the raw key
+      // path "colors.Gold". Unreachable today — the fallback only ever returns
+      // white or black — but it costs nothing to be right.
+      const appliedLabel = appliedName
+        ? (lang === "en" ? appliedName.toLowerCase() : colorKa(appliedName))
+        : (appliedTextColor ?? "");
       toast({
         title: lang === "en"
-          ? `"${seed.textColor}" isn't in the lettering palette — used black. Tap the text to change it.`
-          : `„${seed.textColor}" არ არის წარწერის პალიტრაში — გამოვიყენეთ შავი. დააჭირე წარწერას შესაცვლელად.`,
+          ? `"${seed.textColor}" isn't in the lettering palette — used ${appliedLabel}. Tap the text to change it.`
+          : `„${seed.textColor}" არ არის წარწერის პალიტრაში — გამოვიყენეთ ${appliedLabel}. დააჭირე წარწერას შესაცვლელად.`,
       });
     }
   }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce, toast, lang]);
