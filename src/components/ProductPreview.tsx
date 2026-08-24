@@ -262,7 +262,12 @@ export default function ProductPreview({
   return (
     <div className="flex h-full items-center justify-center p-8" onPointerDown={(e) => { if (e.target === e.currentTarget && onBackgroundClick) onBackgroundClick(); }}>
       <div
-        className="relative w-full max-w-lg aspect-square rounded-2xl border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300"
+        // 38rem on desktop (+18.75% over max-w-lg's 32rem) so photo detail is
+        // legible. Deliberately gated behind `lg:` — every narrow viewport keeps
+        // max-w-lg exactly, so phones and tablets are untouched. Nothing here
+        // reaches print geometry: the card is aspect-square and every layer is
+        // positioned in ZONE FRACTIONS, so the whole composition scales with it.
+        className="relative w-full max-w-lg lg:max-w-[38rem] aspect-square rounded-2xl border border-border flex items-center justify-center overflow-hidden select-none transition-colors duration-300"
         style={bgStyle}
         onPointerDown={(e) => {
           // Only fire if clicking directly on the container (background), not on a layer
