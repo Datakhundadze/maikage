@@ -81,6 +81,27 @@ export const NEW_BRANDS: ReadonlySet<string> = new Set([
   "JEL T-Shirt",
 ]);
 
+/**
+ * Products TEMPORARILY hidden from the constructor's product picker.
+ *
+ * HIDE, NOT DELETE. Everything else about a hidden product stays exactly where
+ * it is — its catalog entries, its images, its placement zones, and in
+ * SimplePage its JERSEY_*_COORDS and SPORT_SEED_TEXT_Y. Bringing it back is
+ * removing one line here, and nothing else has to be rebuilt.
+ *
+ * ⚠️ THE CHAT KNOWLEDGE BASE MUST AGREE. A product hidden here but still listed
+ * in the KB's `product:` enum (gemini-proxy) lets the model keep emitting it,
+ * and the block then resolves to something the customer cannot see or select.
+ * Both sides or neither.
+ *
+ * Existing designs are unaffected: this filters the PICKER only, so a saved
+ * order, an admin view or a restored session on a hidden product still renders
+ * from the same catalog rows it always did.
+ */
+export const HIDDEN_PRODUCTS: ReadonlySet<ProductType> = new Set<ProductType>([
+  "Sport",
+]);
+
 // Per-brand color availability
 export const BRAND_COLORS: Record<string, ProductColor[]> = {
   // T-Shirt brands
