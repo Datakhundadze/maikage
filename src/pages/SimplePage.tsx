@@ -26,6 +26,9 @@ import { calculatePrice } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
+// Announces a photo landing on the garment so the floating chat can offer to
+// restyle it. Fire-and-forget: nothing here waits on it or reads a result.
+import { announcePhotoUploaded } from "@/lib/photoRestyleOffer";
 import PriceDisplay from "@/components/PriceDisplay";
 // OrderDialog ships ~21 KB (radix dialog + form code) and never renders on
 // initial paint — wait until the customer actually opens it.
@@ -1132,6 +1135,14 @@ export default function SimplePage() {
       }));
     };
     probe.src = dataUrl;
+
+    // A photo is on the garment — say so, once, for anything that cares. The
+    // chat widget listens and may offer a restyle; nothing here depends on it,
+    // and no path above waits for or reads a result. Fired for EVERY add
+    // (upload, AI transfer, chat handoff) because "a photo arrived" is the
+    // fact; the once-per-session decision belongs to the listener, which is the
+    // only thing that knows whether its panel is already open.
+    announcePhotoUploaded();
   }, [setSideData, nextPhotoCoords, zoneForLayers]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
