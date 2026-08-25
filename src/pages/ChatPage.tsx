@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { MessageCircle, Send, ImagePlus, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Send, ImagePlus, X } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
@@ -25,6 +25,13 @@ import {
 import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
 import SeoHead from "@/components/SeoHead";
+// The site's own header, reused verbatim — /chat had only a logo, so a
+// first-time visitor had no way back in. See the render for why it replaces
+// the local bar rather than sitting beside it.
+import AppHeader from "@/components/AppHeader";
+// The chip wording, kept out of this file so editing it is not a component
+// change — and so this module keeps exporting only its component.
+import { CHAT_STARTERS } from "@/lib/chatStarters";
 // Only mounted once the order-status card's sign-in button is pressed, so
 // /chat does not ship the auth UI to every visitor. Same lazy treatment
 // AppHeader gives it.
@@ -193,8 +200,11 @@ export default function ChatPage() {
     reader.readAsDataURL(file);
   }, [lang]);
 
-  const send = useCallback(async () => {
-    const text = input.trim();
+  // `textOverride` is how a starter chip sends: everything below is the
+  // identical path, and only the source of the words differs. Setting the input
+  // and calling send() instead would read a stale value from this closure.
+  const send = useCallback(async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim();
     if (!text || loading) return;
     // The photo THIS turn is sent with, pinned before the await below. The
     // handoff must carry the picture the model actually saw: a customer who
@@ -276,31 +286,51 @@ export default function ChatPage() {
     }
   }, [setMode, navigate]);
 
+  // Anything that is not a UI-only bubble means the conversation is under way.
+  // The seed greeting and the local error bubbles carry `local`, so they do not
+  // count — which is what keeps the chips visible on a fresh page and retires
+  // them permanently after the first real exchange.
+  const conversationStarted = messages.some((m) => !m.local);
+
   return (
     <div className="flex h-[100dvh] flex-col bg-background text-foreground">
       <SeoHead title={`${t(lang, "chat.title")} | Maika.ge`} noindex />
 
-      {/* Minimal chrome: brand mark doubles as the way back to the site. No
-          nav — someone arriving from an auto-responder wants the chat. */}
-      <header className="flex items-center gap-2 border-b border-border bg-card px-4 py-3 shrink-0">
-        <Link
-          to="/"
-          className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity"
-          aria-label="maika.ge"
-        >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-base font-black">
-            M
-          </span>
-          <span className="text-sm font-bold tracking-tight truncate">maika.ge</span>
-        </Link>
-        <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
-          <MessageCircle className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{t(lang, "chat.title")}</span>
-        </span>
-      </header>
+      {/* THE SITE'S OWN HEADER, not a second navigation. The page used to carry
+          a logo and a "chat" label and nothing else, which left a first-time
+          visitor with no way back in. AppHeader already is the primary nav
+          everywhere else, and it drops in cleanly here: it is a self-contained
+          `h-14 shrink-0` bar, so the composer still pins to the bottom of the
+          flex column, and it handles narrow widths itself — the nav strip
+          scrolls horizontally and the labels collapse to icons below `sm`.
+          It REPLACES the local bar rather than sitting above it; two stacked
+          bars would spend 100px of a phone screen on chrome. The page name
+          lives in SeoHead above, where it was already. */}
+      <AppHeader />
 
-      {/* Message list */}
-      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-2">
+      {/* Message list.
+          THE COLUMN IS CAPPED AT 44rem (~700px) AND CENTRED. Bubbles ran to the
+          viewport edge, so on a desktop a one-line answer stretched across the
+          whole screen. The cap is on an inner wrapper, not on this scroller, so
+          the scrollbar stays at the window edge where it belongs.
+
+          THE EMPTY STATE IS VERTICALLY CENTRED — `justify-center` until the
+          first real turn, `justify-start` after. The page opened as one bubble
+          pinned to the top-left of a tall black field, and the chips would have
+          added a second island in the same emptiness. Centring composes the
+          greeting and the chips into one block that reads as the page's
+          content, rather than as the top of a conversation that has not
+          happened. It settles to top-anchored the moment the customer sends
+          something, which is the one moment a layout shift is unremarkable —
+          they are watching their own message appear, and from then on the
+          transcript grows downward as a transcript should. */}
+      <div
+        ref={listRef}
+        className={`flex-1 min-h-0 overflow-y-auto px-3 py-3 flex flex-col ${
+          conversationStarted ? "justify-start" : "justify-center"
+        }`}
+      >
+        <div className="mx-auto w-full max-w-[44rem] space-y-2">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
@@ -356,6 +386,31 @@ export default function ChatPage() {
             </div>
           </div>
         )}
+
+        {/* STARTER CHIPS — only before the first real turn, and gone for good
+            after it: `conversationStarted` is derived from the transcript, so a
+            session restored from sessionStorage never shows them again either.
+            Hidden while a reply is in flight so they cannot be double-tapped.
+
+            `flex-wrap` with full-width chips below `sm`: on a phone they stack
+            one per line at a full 44px-ish tap target rather than squeezing
+            four Georgian phrases onto shared rows; from `sm` up they flow and
+            wrap naturally. */}
+        {!conversationStarted && !loading && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {CHAT_STARTERS.map((q) => (
+              <button
+                key={q}
+                type="button"
+                onClick={() => send(q)}
+                className="w-full sm:w-auto min-h-11 rounded-full border border-border bg-card px-3.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+        </div>
       </div>
 
       {/* Composer — pinned to the bottom; pb honours the phone's home indicator. */}
@@ -383,7 +438,11 @@ export default function ChatPage() {
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        {/* Matched to the conversation column, not left full-width: the input
+            is where the customer's own words go, so it lines up with the
+            bubbles those words become. The bar itself stays edge-to-edge, so it
+            still reads as docked chrome rather than a floating box. */}
+        <div className="mx-auto w-full max-w-[44rem] flex items-center gap-2">
         <input
           ref={fileRef}
           type="file"
@@ -416,7 +475,9 @@ export default function ChatPage() {
         />
         <button
           type="button"
-          onClick={send}
+          // Wrapped: bare `onClick={send}` would hand send() the MouseEvent as
+          // its new first argument.
+          onClick={() => send()}
           disabled={loading || !input.trim()}
           aria-label={t(lang, "chat.send")}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground transition-opacity disabled:opacity-40"
