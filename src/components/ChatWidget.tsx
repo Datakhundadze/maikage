@@ -14,6 +14,14 @@ import {
 // The one place that decides whether a sketch may skip its button — shared by
 // this chat and the other so the two can never diverge.
 import { tryAutoOpenSketch } from "@/lib/autoSketch";
+// The photo-upload nudge: the event name, the once-per-session flag and the
+// wording all live together, away from this component.
+import {
+  PHOTO_UPLOADED_EVENT,
+  restyleOfferAlreadyShown,
+  markRestyleOfferShown,
+  restyleOfferText,
+} from "@/lib/photoRestyleOffer";
 // Shared with /chat — same parse, same precedence, same button.
 import {
   type ChatSuggestion,
@@ -154,12 +162,69 @@ export default function ChatWidget() {
   }, [messages, open]);
 
 
+  // ── The photo nudge ──────────────────────────────────────────────────────
+  //
+  // A red dot on the collapsed launcher, and an assistant bubble waiting inside
+  // when it is opened. Both are LOCAL: the bubble is pushed straight into the
+  // transcript with `local: true`, so it costs nothing, makes no request, and
+  // is never parsed for fenced blocks — parsing only happens inside send(),
+  // which this never touches.
+  //
+  // ONCE PER SESSION, ENFORCED IN ONE PLACE. The flag is set the moment the
+  // offer is made by EITHER route, so a second upload finds it set and does
+  // nothing, and clearing the dot cannot bring it back. The listener re-reads
+  // the flag rather than trusting component state, so a remount cannot reopen
+  // the door either.
+  const [showPhotoDot, setShowPhotoDot] = useState(false);
+
+  const seedRestyleOffer = useCallback(() => {
+    setMessages((prev) => [
+      ...prev,
+      // Seeded AFTER the greeting if one is already there, and standing alone
+      // if the customer has never opened the panel — the greeting is seeded by
+      // openPanel only when the transcript is empty, so it cannot land twice.
+      { role: "assistant", content: restyleOfferText(lang), local: true },
+    ]);
+  }, [lang]);
+
+  useEffect(() => {
+    const onPhoto = () => {
+      if (restyleOfferAlreadyShown()) return;
+      markRestyleOfferShown();
+      // PANEL ALREADY OPEN → no dot, because a badge on a launcher the customer
+      // is not looking at is pointless; they are already in the chat, so the
+      // offer goes straight in where they will see it now. Either way the
+      // session flag is spent, so this happens exactly once.
+      if (open && !minimized) {
+        seedRestyleOffer();
+        return;
+      }
+      setShowPhotoDot(true);
+    };
+    window.addEventListener(PHOTO_UPLOADED_EVENT, onPhoto);
+    return () => window.removeEventListener(PHOTO_UPLOADED_EVENT, onPhoto);
+  }, [open, minimized, seedRestyleOffer]);
+
+  // Clearing the dot and putting the offer in front of the customer are one
+  // act, and it happens whichever collapsed affordance they tapped — the round
+  // launcher or the minimised bar. The dot never comes back: the session flag
+  // was already spent when it appeared.
+  const revealPhotoOffer = useCallback(() => {
+    if (!showPhotoDot) return;
+    setShowPhotoDot(false);
+    seedRestyleOffer();
+  }, [showPhotoDot, seedRestyleOffer]);
+
   const openPanel = useCallback(() => {
     setOpen(true);
     // Seed a local bilingual greeting on first open (no API call).
     setMessages((prev) => (prev.length === 0 ? [{ role: "assistant", content: t(lang, "chat.greeting"), local: true }] : prev));
+    // After the greeting, so on a first-ever open it reads as a follow-on
+    // rather than as the first thing the assistant says. Both are functional
+    // updates, so React applies them in this order.
+    revealPhotoOffer();
     setTimeout(() => inputRef.current?.focus(), 60);
-  }, [lang]);
+  }, [lang, revealPhotoOffer]);
 
   const send = useCallback(async () => {
     const text = input.trim();
@@ -281,6 +346,26 @@ export default function ChatWidget() {
         className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
       >
         <MessageCircle className="h-6 w-6" />
+        {/* Notification dot. Sits on the launcher's top-right edge, 2px proud of
+            a 56px circle that is itself 16px off the viewport corner — so it
+            never reaches an edge and never covers the icon, at mobile size as
+            at desktop (the launcher is h-14 at every breakpoint). The ring is
+            the page behind it, which is what makes it read as a badge rather
+            than a dot painted on the button.
+
+            ONE-SHOT ENTRANCE, not a loop: zoom-in plays once on appearance.
+            A dot that pulses forever is an alarm, and gets ignored like one. */}
+        {showPhotoDot && (
+          <span
+            aria-hidden="true"
+            className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-background animate-in zoom-in-50 duration-300"
+          />
+        )}
+        {showPhotoDot && (
+          <span className="sr-only">
+            {lang === "en" ? "New message" : "ახალი შეტყობინება"}
+          </span>
+        )}
       </button>
     );
   }
@@ -293,7 +378,7 @@ export default function ChatWidget() {
     return (
       <button
         type="button"
-        onClick={() => setMinimized(false)}
+        onClick={() => { setMinimized(false); revealPhotoOffer(); }}
         aria-label={lang === "en" ? "Expand chat" : "ჩატის გაშლა"}
         title={lang === "en" ? "Expand chat" : "ჩატის გაშლა"}
         className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex w-[calc(100vw-2rem)] max-w-[360px] items-center justify-between gap-2 rounded-2xl px-4 py-3 text-left text-white shadow-2xl"
@@ -303,7 +388,18 @@ export default function ChatWidget() {
           <MessageCircle className="h-4 w-4 shrink-0" />
           <span className="text-sm font-semibold truncate">{t(lang, "chat.title")}</span>
         </span>
-        <ChevronUp className="h-4 w-4 shrink-0" />
+        <span className="flex items-center gap-2 shrink-0">
+          {/* Same badge on the minimised bar: while minimised the launcher is
+              not rendered, so without this the dot would have nowhere to show
+              and the nudge would be silent until the customer expanded anyway. */}
+          {showPhotoDot && (
+            <span
+              aria-hidden="true"
+              className="h-2.5 w-2.5 rounded-full bg-red-500 animate-in zoom-in-50 duration-300"
+            />
+          )}
+          <ChevronUp className="h-4 w-4 shrink-0" />
+        </span>
       </button>
     );
   }
