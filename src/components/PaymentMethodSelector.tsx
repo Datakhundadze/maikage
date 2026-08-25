@@ -48,25 +48,48 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
       <Label>გადახდის მეთოდი *</Label>
       <RadioGroup value={value} onValueChange={(v) => onChange(v as PaymentMethod)} className="space-y-2">
         {METHODS.map((m) => (
+          // MATCHES THE DELIVERY ROWS ABOVE, which are the reference: same
+          // rounded-lg, same border-border, same hover:bg-accent/50, and — the
+          // point of this — NO background of its own, so it takes the form's.
+          //
+          // It used to carry a hardcoded bg-[hsl(0_0%_92%)] / 96%, a fixed light
+          // grey that ignored the theme. That was invisible while the only thing
+          // on the row was logos; the moment a word appeared next to them,
+          // `text-foreground` resolved light in dark mode and vanished against
+          // it. Theme tokens on both, so the two can never disagree again.
+          //
+          // SELECTED still reads as chosen, not disabled: border-primary plus
+          // the same primary/5 wash the price summary in this dialog already
+          // uses. There is one method today, so this is the state customers
+          // actually see — it has to look picked.
           <div
             key={m.value}
-            className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
+            className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
               value === m.value
-                ? "border-primary bg-[hsl(0_0%_92%)]"
-                : "border-border bg-[hsl(0_0%_96%)] hover:bg-[hsl(0_0%_93%)]"
+                ? "border-primary bg-primary/5"
+                : "border-border hover:bg-accent/50"
             }`}
           >
             <RadioGroupItem value={m.value} id={`pay-${m.value}`} />
             <Label
               htmlFor={`pay-${m.value}`}
-              className="cursor-pointer flex-1 min-w-0 flex items-center gap-2 flex-nowrap"
+              className="cursor-pointer flex-1 min-w-0 flex items-center gap-2 flex-wrap"
             >
               {/* Where the bank mark used to sit. Without a word here the row
                   would be four small logos and nothing else; `desc` already
                   said "pay by card" to screen readers only. */}
-              <span className="text-sm font-medium text-foreground shrink-0">{m.desc}</span>
+              <span className="text-sm font-normal text-foreground shrink-0">{m.desc}</span>
               <span className="sr-only">{m.label}</span>
-              <div className="flex items-center gap-1 sm:gap-1.5 ml-auto flex-nowrap shrink-0">
+              {/* THE MARKS KEEP THEIR OWN LIGHT GROUND, and only they do.
+                  public/payment-logos holds one artwork per brand — dark Visa
+                  lettering, a black Apple Pay glyph, dark "G Pay" — all drawn
+                  for a light backing, and there are no dark-mode variants to
+                  switch to. Lightening the whole row to suit them is what broke
+                  the label, so the light stays under the logos and nowhere
+                  else. White rather than a token because these are brand marks
+                  specified against white; the hairline ring keeps the chip from
+                  floating on a light theme, where it sits on near-white. */}
+              <span className="ml-auto flex items-center gap-1 sm:gap-1.5 rounded-md bg-white px-1.5 py-1 ring-1 ring-black/10 shrink-0">
                 {m.cards.map((c) => (
                   <img
                     key={c.alt}
@@ -75,11 +98,11 @@ export default function PaymentMethodSelector({ value, onChange }: Props) {
                     title={c.alt}
                     width={c.width}
                     height={c.height}
-                    className="h-5 sm:h-6 w-auto object-contain shrink-0"
+                    className="h-4 sm:h-5 w-auto object-contain shrink-0"
                     loading="lazy"
                   />
                 ))}
-              </div>
+              </span>
             </Label>
           </div>
         ))}
