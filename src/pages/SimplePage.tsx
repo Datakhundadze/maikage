@@ -1073,7 +1073,11 @@ export default function SimplePage() {
   // from whether a text layer happens to exist — that inference would also
   // catch a manual upload onto a design that already has lettering, which is
   // not what the customer asked for.
-  const addPhotoLayer = useCallback((dataUrl: string, opts?: { paired?: boolean }) => {
+  //
+  // RETURNS THE LAYER ID it created, so a caller that needs to act on the layer
+  // afterwards can name it instead of hunting for it by data URL. Every
+  // existing caller ignores the return and is unaffected.
+  const addPhotoLayer = useCallback((dataUrl: string, opts?: { paired?: boolean }): string => {
     const photoId = `photo-${++photoIdCounter}`;
     const paired = opts?.paired === true;
     setSideData(prev => {
@@ -1143,6 +1147,7 @@ export default function SimplePage() {
     // fact; the once-per-session decision belongs to the listener, which is the
     // only thing that knows whether its panel is already open.
     announcePhotoUploaded();
+    return photoId;
   }, [setSideData, nextPhotoCoords, zoneForLayers]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1905,8 +1910,40 @@ export default function SimplePage() {
 
     // Photo: reuse the existing add path so the async naturalAspect probe and
     // contain-fit behave exactly as they do for a manual upload.
+    //
+    // ⚠️ ONE LAYER PER CHAT ATTACHMENT. This used to add unconditionally, so a
+    // customer who already had their photo on the garment and asked the chat to
+    // change it got a SECOND layer — the new one centred at half scale over the
+    // old, which reads as a bad crop. Confirmed from a production screenshot.
+    //
+    // Deduplicating on the data URL is not enough, and this is the whole
+    // difficulty: it works for the FIRST edit, where the attachment and the
+    // layer's image are byte-identical, and fails for the second, because by
+    // then handleChatEdit has replaced the layer's image with the edited result
+    // and the attachment matches nothing. So what is remembered is not what the
+    // layer LOOKS like but where it CAME FROM — the attachment that produced
+    // it, paired with the id of the layer it produced. The codebase already
+    // reached for exactly this when the edit-then-removal chain switched from a
+    // data URL to an id "because the edit replaces the image the URL refers
+    // to"; this is the same move, one step earlier.
     if (seed.image) {
-      addPhotoLayer(seed.image, { paired: pairedSeed });
+      const tracked = chatPhotoRef.current;
+      // Reusable only when BOTH still hold: the same attachment is in play, and
+      // the layer it made is still on the garment. A customer who attaches a
+      // DIFFERENT photo gets a second layer, which is what they asked for; one
+      // who deleted the layer gets a fresh one.
+      const reuse =
+        !!tracked &&
+        tracked.source === seed.image &&
+        photosRef.current.some((p) => p.id === tracked.layerId);
+      // Reuse changes NOTHING about the layer — not its box, not its paired
+      // marks, not userAdjusted. It is already placed; the edit that follows
+      // replaces its image and applyContainFit re-fits it from its own state,
+      // exactly as the left panel's chips do.
+      const targetId = reuse
+        ? (tracked as { source: string; layerId: string }).layerId
+        : addPhotoLayer(seed.image, { paired: pairedSeed });
+      chatPhotoRef.current = { source: seed.image, layerId: targetId };
       // Background removal and the photo EDIT are both QUEUED, not run — the
       // layer does not exist until React commits the add above. The effects
       // below wait for it and then hand it to the constructor's own
@@ -1927,12 +1964,12 @@ export default function SimplePage() {
       // because the edit replaces the image the URL refers to.
       if (seed.editPrompt) {
         setPendingEdit({
-          image: seed.image,
+          layerId: targetId,
           prompt: seed.editPrompt,
           thenRemoveBg: !!seed.removeBackground,
         });
       } else if (seed.removeBackground) {
-        setPendingRemoveBg(seed.image);
+        setPendingRemoveBg(targetId);
       }
     }
 
@@ -2119,6 +2156,26 @@ export default function SimplePage() {
     return () => window.removeEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
   }, [aiGenerating]);
 
+  // WHICH LAYER THE CHAT'S PHOTO BECAME, and which attachment made it.
+  //
+  // A ref, not state: nothing renders from it, and it must be readable and
+  // writable inside the seed drain without adding a dependency that would
+  // re-run that effect. Both halves are needed — the source proves it is still
+  // the SAME attachment (a different photo is a different layer), the id
+  // survives the edits that rewrite the layer's image out from under any
+  // URL-based lookup.
+  const chatPhotoRef = useRef<{ source: string; layerId: string } | null>(null);
+
+  // A mirror of the current photo layers, for the seed drain's reuse check.
+  //
+  // The drain must ask "is that layer still on the garment?" without taking
+  // sideData as a dependency: it carries the whole product ladder and the layer
+  // adds, and re-running it on every photo change would be a different bug from
+  // the one being fixed. A ref updated after each commit answers the question
+  // with current data and changes nothing about when the effect runs.
+  const photosRef = useRef(sideData.photos);
+  useEffect(() => { photosRef.current = sideData.photos; }, [sideData.photos]);
+
   // ── Seeded generation: run it through handleAiGenerate, never past it ─────
   //
   // WHY A LADDER RATHER THAN A CALL. handleAiGenerate takes only a prompt
@@ -2201,10 +2258,14 @@ export default function SimplePage() {
   // before this runs. A refused quota, a failed call or a layer that never
   // appears all leave the customer with their photo and its background —
   // handleRemoveBgPhoto owns the login modal and the error toast, unchanged.
+  // Holds a LAYER ID, not a data URL. Same reason as the edit queue below: the
+  // layer this names may already have been rewritten by a previous turn, and an
+  // id is the only handle that survives that. Retry-until-found is kept as it
+  // was — on the add path the layer does not exist until React commits.
   const [pendingRemoveBg, setPendingRemoveBg] = useState<string | null>(null);
   useEffect(() => {
     if (!pendingRemoveBg) return;
-    const layer = sideData.photos.find((p) => p.image === pendingRemoveBg);
+    const layer = sideData.photos.find((p) => p.id === pendingRemoveBg);
     if (!layer) return; // the add has not committed yet; this effect re-runs
     setPendingRemoveBg(null);
     setSeededRemoveBgActive(true);
@@ -2236,12 +2297,19 @@ export default function SimplePage() {
   // checkAiLimit/recordAiGeneration pair, the same one the manual path uses).
   // A photo that asks for an edit AND a background removal therefore spends
   // TWO — they are two model calls and neither is free.
+  //
+  // ⚠️ BY ID, NOT BY DATA URL — and this is a fix in its own right. `find`
+  // returns the FIRST match, so while two layers could carry the same image the
+  // edit could land on the wrong one: a customer who attached to the chat the
+  // photo already on their garment would have had the OLDER layer edited and
+  // the newly added duplicate left alone. The dedup above makes that pair
+  // impossible, and keying on the id makes it unrepresentable.
   const [pendingEdit, setPendingEdit] = useState<
-    { image: string; prompt: string; thenRemoveBg: boolean } | null
+    { layerId: string; prompt: string; thenRemoveBg: boolean } | null
   >(null);
   useEffect(() => {
     if (!pendingEdit) return;
-    const layer = sideData.photos.find((p) => p.image === pendingEdit.image);
+    const layer = sideData.photos.find((p) => p.id === pendingEdit.layerId);
     if (!layer) return; // the add has not committed yet; this effect re-runs
     const { prompt, thenRemoveBg } = pendingEdit;
     setPendingEdit(null);
