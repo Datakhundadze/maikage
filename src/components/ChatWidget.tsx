@@ -88,6 +88,42 @@ function TypingDots() {
   );
 }
 
+// The unread badge — rendered on the collapsed launcher and on the minimised
+// bar, which are the only two surfaces that can carry it.
+//
+// ⚠️ THE DIGIT IS LITERALLY "1", AND THERE IS NO COUNTER. The offer it announces
+// fires exactly once per session (see photoRestyleOffer), so a count would be
+// machinery with nothing to count — a `count` prop here would be an invitation
+// to wire one up, and there is nothing to wire. If a second notification ever
+// exists, that is the moment to add one, not before.
+//
+// WHY A DIGIT AT ALL. A bare dot reads as a status light — "something is on" —
+// and gets scanned past. The numeral is the convention every messaging app has
+// already taught the customer, and it says the one thing the dot did not: there
+// is a message waiting to be read.
+//
+// The caller owns SIZE, POSITION and RING, because those differ per surface and
+// nothing here can know them: the launcher's sits proud of a round button and
+// needs the ring of page colour behind it; the bar's sits inline in a row of
+// 16px icons on the accent fill, where a `ring-background` would be a halo of
+// the wrong colour. What is shared is the part that must not drift — the fill,
+// the shape, the centring of the glyph and the play-once entrance.
+//
+// ONE-SHOT ENTRANCE, not a loop: zoom-in plays once on appearance. A badge that
+// pulses forever is an alarm, and gets ignored like one.
+function UnreadBadge({ className }: { className: string }) {
+  return (
+    // aria-hidden because the surfaces carry their own sr-only wording; a
+    // screen reader announcing a bare "1" next to it would be noise.
+    <span
+      aria-hidden="true"
+      className={`flex items-center justify-center rounded-full bg-red-500 font-bold text-white tabular-nums animate-in zoom-in-50 duration-300 ${className}`}
+    >
+      1
+    </span>
+  );
+}
+
 export default function ChatWidget() {
   const { lang, setMode } = useAppState();
   const navigate = useNavigate();
@@ -346,20 +382,22 @@ export default function ChatWidget() {
         className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95"
       >
         <MessageCircle className="h-6 w-6" />
-        {/* Notification dot. Sits on the launcher's top-right edge, 2px proud of
-            a 56px circle that is itself 16px off the viewport corner — so it
-            never reaches an edge and never covers the icon, at mobile size as
-            at desktop (the launcher is h-14 at every breakpoint). The ring is
-            the page behind it, which is what makes it read as a badge rather
-            than a dot painted on the button.
+        {/* Sits on the launcher's top-right edge, 2px proud of a 56px circle
+            that is itself 16px off the viewport corner — so it never reaches an
+            edge and never covers the icon, at mobile size as at desktop (the
+            launcher is h-14 at every breakpoint). The ring is the page behind
+            it, which is what makes it read as a badge rather than a mark
+            painted on the button.
 
-            ONE-SHOT ENTRANCE, not a loop: zoom-in plays once on appearance.
-            A dot that pulses forever is an alarm, and gets ignored like one. */}
+            18px, WHICH IS WHAT ONE DIGIT NEEDS and not a pixel more — it grew
+            from the 14px dot only far enough to hold a 10px numeral with even
+            space around it. It is still a badge, not a button: nothing here is
+            tappable in its own right, the whole launcher is the target. The
+            offsets are unchanged from the dot, so the extra 4px grows inward,
+            AWAY from the viewport corner. Both circles stay clear of the icon —
+            centres 29.7px apart against 22px of combined radius. */}
         {showPhotoDot && (
-          <span
-            aria-hidden="true"
-            className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-red-500 ring-2 ring-background animate-in zoom-in-50 duration-300"
-          />
+          <UnreadBadge className="absolute -top-0.5 -right-0.5 h-[18px] w-[18px] text-[10px] leading-none ring-2 ring-background" />
         )}
         {showPhotoDot && (
           <span className="sr-only">
@@ -390,13 +428,20 @@ export default function ChatWidget() {
         </span>
         <span className="flex items-center gap-2 shrink-0">
           {/* Same badge on the minimised bar: while minimised the launcher is
-              not rendered, so without this the dot would have nowhere to show
-              and the nudge would be silent until the customer expanded anyway. */}
+              not rendered, so without this the badge would have nowhere to show
+              and the nudge would be silent until the customer expanded anyway.
+
+              SMALLER THAN THE LAUNCHER'S, AND STILL LEGIBLE — 16px against 18px.
+              It sits inline in a row whose other glyph is a 16px chevron, so
+              matching that is what keeps the row from looking lopsided; the
+              digit is the SAME 10px as on the launcher, which is the part that
+              had to survive the shrink. Only the ring is dropped, and only
+              because there is nothing here for it to be a ring of: the bar's
+              fill is the accent green, not the page, so `ring-background` would
+              draw a halo of a colour that is nowhere near it. Red on that green
+              separates on its own. */}
           {showPhotoDot && (
-            <span
-              aria-hidden="true"
-              className="h-2.5 w-2.5 rounded-full bg-red-500 animate-in zoom-in-50 duration-300"
-            />
+            <UnreadBadge className="h-4 w-4 shrink-0 text-[10px] leading-none" />
           )}
           <ChevronUp className="h-4 w-4 shrink-0" />
         </span>
