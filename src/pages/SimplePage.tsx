@@ -2156,26 +2156,6 @@ export default function SimplePage() {
     return () => window.removeEventListener(CONSTRUCTOR_APPLY_EVENT, onApply);
   }, [aiGenerating]);
 
-  // ── Seeded generation: run it through handleAiGenerate, never past it ─────
-  //
-  // WHY A LADDER RATHER THAN A CALL. handleAiGenerate takes only a prompt
-  // override; `style` and `withBackground` reach it through aiStyle /
-  // aiWithBackground, which are React state captured in its useCallback
-  // closure. Calling it in the same tick as setAiStyle would run the OLD
-  // closure and silently generate in the wrong style — the failure would look
-  // like the model ignoring the request. So each field is set in its own effect
-  // pass and the effect returns; React commits, handleAiGenerate is rebuilt
-  // with the new value, this effect re-runs, and only when both already match
-  // does the generation start.
-  //
-  // Ordering overall, from the seed effect above into this one:
-  //   product → subProduct → colour → side → (placement) → layers
-  //     → queue → style → withBackground → handleAiGenerate(prompt)
-  // Every arrow is a separate commit, so by the last one productConfig.config
-  // holds exactly what the chat asked for.
-  //
-  // EXACTLY ONCE: the request is cleared before the call, not after, so a
-  // re-render inside handleAiGenerate cannot start a second generation.
   // WHICH LAYER THE CHAT'S PHOTO BECAME, and which attachment made it.
   //
   // A ref, not state: nothing renders from it, and it must be readable and
@@ -2196,6 +2176,26 @@ export default function SimplePage() {
   const photosRef = useRef(sideData.photos);
   useEffect(() => { photosRef.current = sideData.photos; }, [sideData.photos]);
 
+  // ── Seeded generation: run it through handleAiGenerate, never past it ─────
+  //
+  // WHY A LADDER RATHER THAN A CALL. handleAiGenerate takes only a prompt
+  // override; `style` and `withBackground` reach it through aiStyle /
+  // aiWithBackground, which are React state captured in its useCallback
+  // closure. Calling it in the same tick as setAiStyle would run the OLD
+  // closure and silently generate in the wrong style — the failure would look
+  // like the model ignoring the request. So each field is set in its own effect
+  // pass and the effect returns; React commits, handleAiGenerate is rebuilt
+  // with the new value, this effect re-runs, and only when both already match
+  // does the generation start.
+  //
+  // Ordering overall, from the seed effect above into this one:
+  //   product → subProduct → colour → side → (placement) → layers
+  //     → queue → style → withBackground → handleAiGenerate(prompt)
+  // Every arrow is a separate commit, so by the last one productConfig.config
+  // holds exactly what the chat asked for.
+  //
+  // EXACTLY ONCE: the request is cleared before the call, not after, so a
+  // re-render inside handleAiGenerate cannot start a second generation.
   const [pendingGen, setPendingGen] = useState<SeedGenerate | null>(null);
   useEffect(() => {
     if (!pendingGen) return;
