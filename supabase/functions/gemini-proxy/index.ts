@@ -28,7 +28,7 @@ const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
 # ცოდნის ბაზა (KA + EN)
 # Single source of truth for the website FAQ assistant.
 # Prices = exactly what the cart charges (pricing.ts). Update here when prices change.
-# Last reconciled: 2026-08-24
+# Last reconciled: 2026-08-26
 
 ═══════════════════════════════════════════════════════════════
 ## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
