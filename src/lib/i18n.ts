@@ -140,7 +140,10 @@ const translations = {
       paid: "Thank you! Your payment is confirmed and your order is being processed.",
       processing: "We're confirming your payment — this can take a moment.",
       failed: "Your payment didn't go through. Please try again or contact us.",
-      guestNote: "We're processing your order and will contact you shortly.",
+      // No "being processed" here — the status paragraph above already says it,
+      // for guests and account holders alike; this box carries only what is
+      // NOT said elsewhere: we'll be in touch, and an account shows the orders.
+      guestNote: "We'll contact you shortly.",
       guestCreateAccount: "Create an account to track your orders.",
       orderNumber: "Order",
       viewOrders: "View my orders",
@@ -335,15 +338,21 @@ const translations = {
       paidTitle: "შეკვეთა მიღებულია!",
       processingTitle: "შეკვეთა მიღებულია",
       failedTitle: "გადახდა ვერ განხორციელდა",
+      // FORMAL REGISTER (თქვენ), deliberately — this is a payment confirmation
+      // to a paying customer. The constructor and the chat keep their informal
+      // voice; that contrast is intended, not an inconsistency to "fix".
       paid: "მადლობა! გადახდა დადასტურდა და შეკვეთა მუშავდება.",
-      processing: "ვადასტურებთ შენს გადახდას — ამას შესაძლოა ცოტა დრო დასჭირდეს.",
-      failed: "გადახდა ვერ შესრულდა. სცადე თავიდან ან დაგვიკავშირდი.",
-      guestNote: "შენი შეკვეთა მუშავდება და მალე დაგიკავშირდებით.",
-      guestCreateAccount: "შექმენი ანგარიში შეკვეთების სანახავად.",
+      processing: "ვადასტურებთ თქვენს გადახდას — ამას შესაძლოა ცოტა დრო დასჭირდეს.",
+      failed: "გადახდა ვერ შესრულდა. სცადეთ თავიდან ან დაგვიკავშირდით.",
+      // No „მუშავდება" here — the status paragraph above already says it, for
+      // guests and account holders alike; this box carries only what is NOT
+      // said elsewhere: we'll be in touch, and an account shows the orders.
+      guestNote: "მალე დაგიკავშირდებით.",
+      guestCreateAccount: "შექმენით ანგარიში შეკვეთების სანახავად.",
       orderNumber: "შეკვეთა",
       viewOrders: "ჩემი შეკვეთები",
       backHome: "მთავარ გვერდზე",
-      contact: "დაგვიკავშირდი",
+      contact: "დაგვიკავშირდით",
     },
     config: {
       product: "პროდუქტი",
