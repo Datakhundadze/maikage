@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PRODUCTS, SUB_PRODUCTS, NEW_BRANDS, HIDDEN_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_GROUPS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, NEW_BRANDS, HIDDEN_PRODUCTS, FRONT_ONLY_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_GROUPS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { useAppState } from "@/hooks/useAppState";
@@ -248,8 +248,12 @@ export default function ProductConfigPanel({
         </div>
       )}
 
-      {/* View — always flat, hide for Mug and Phone Case */}
-      {config.product !== "Mug" && config.product !== "Phone Case" && (
+      {/* View — always flat; hidden for products with no printable back.
+          Used to be an inline "Mug and Phone Case" pair, which is how Apron
+          and Cap slipped through with a back button to a view that has no
+          asset. One list in catalog.ts now, shared with useProductConfig's
+          view guard so the toggle and the state can never disagree. */}
+      {!FRONT_ONLY_PRODUCTS.has(config.product) && (
         <div>
           <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.view")}</h3>
           <div className="flex gap-2">

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ProductType, ProductColor, ProductView, PlacementCoords } from "@/lib/catalog";
-import { catalog } from "@/lib/catalog";
+import { catalog, FRONT_ONLY_PRODUCTS } from "@/lib/catalog";
 
 export interface ProductConfig {
   product: ProductType;
@@ -38,7 +38,11 @@ function loadStoredConfig(): ProductConfig {
     // user drag stays even when the design changes.
     const product = (parsed.product || DEFAULT_CONFIG.product) as ProductType;
     const subProduct = parsed.subProduct || catalog.getDefaultSubProduct(product);
-    const view = (parsed.view || DEFAULT_CONFIG.view) as ProductView;
+    // A session stored before the front-only rule could carry view:"back" on a
+    // product that has none; restoring it verbatim would resurrect the
+    // impossible state the setters below now refuse.
+    const storedView = (parsed.view || DEFAULT_CONFIG.view) as ProductView;
+    const view = FRONT_ONLY_PRODUCTS.has(product) ? "front" : storedView;
     const color = (parsed.color || DEFAULT_CONFIG.color) as ProductColor;
     return {
       product,
@@ -72,7 +76,10 @@ export function useProductConfig() {
       product,
       subProduct,
       color,
-      view: config.view,
+      // A back selection cannot survive a switch onto a product that has no
+      // back — it would leave the preview on a view with no asset and no
+      // toggle to escape through.
+      view: FRONT_ONLY_PRODUCTS.has(product) ? "front" : config.view,
       placementCoords: FILL_ZONE_COORDS,
       size: "",
     });
@@ -93,8 +100,16 @@ export function useProductConfig() {
     setConfig((prev) => ({ ...prev, color }));
   }, []);
 
+  // Refuses "back" on a front-only product rather than trusting every caller
+  // to check: the toggle never offers it, but the chat's seed drain calls this
+  // with whatever side the model emitted, and an old cached reply can still
+  // carry {"side":"back"} for a mug. Hiding, not breakage — the seed applies,
+  // just on the only view the product has.
   const setView = useCallback((view: ProductView) => {
-    setConfig((prev) => ({ ...prev, view }));
+    setConfig((prev) => ({
+      ...prev,
+      view: FRONT_ONLY_PRODUCTS.has(prev.product) ? "front" : view,
+    }));
   }, []);
 
   const setPlacementCoords = useCallback((coords: PlacementCoords) => {
