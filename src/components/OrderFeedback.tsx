@@ -74,7 +74,8 @@ export default function OrderFeedback({ orderId }: { orderId: string | null }) {
   return (
     <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
       <p className="text-sm font-medium text-foreground">
-        {lang === "en" ? "Anything you'd like to tell us?" : "გვინდა შენი აზრი"}
+        {/* Formal register (თქვენ), matching the confirmation page it sits on. */}
+        {lang === "en" ? "Anything you'd like to tell us?" : "გვინდა თქვენი აზრი"}
       </p>
       <p className="text-xs text-muted-foreground">
         {lang === "en" ? "Optional — it helps us get better." : "სურვილისამებრ — დაგვეხმარება გავუმჯობესდეთ."}
@@ -91,7 +92,7 @@ export default function OrderFeedback({ orderId }: { orderId: string | null }) {
         <p className="text-xs text-muted-foreground">
           {lang === "en"
             ? "Couldn't send — please try again."
-            : "ვერ გაიგზავნა — სცადე ხელახლა."}
+            : "ვერ გაიგზავნა — სცადეთ ხელახლა."}
         </p>
       )}
       <Button
