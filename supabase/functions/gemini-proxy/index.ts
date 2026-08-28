@@ -591,7 +591,7 @@ Electric Blue, Light Blue, Standard Blue. No matching colour on the brand's line
 - GILDAN Bomber: Black | White | Red | Standard Blue | Brown
 - Tote Bag: White | Black | Cream | Dark Navy | Electric Blue | Turquoise | Green | Lime | Pink | Red | Burgundy | Purple
 - Mug: White · Phone Case: no colour — omit the field.
-side: front | back
+side: front | back — "back" exists ONLY for garments and the tote bag. წინსაფარს (Apron), კეპს (Cap), ჭიქას (Mug) და მობილურის ქეისს (Phone Case) ზურგი არ აქვთ — for those four, never emit "back": omit the field or use "front".
 placement: center | small | left-chest | right-chest — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center; "small" = centred like "center" but a SMALLER print, sitting a little lower — use it ONLY when they ask for a small one („პატარა", „პატარა წარწერა", "small print"), never as a default
 removeBackground: true | omit — true ONLY with an attached photo the customer wants cut out.
 textColor (the LETTERING): Black | White | Red | Blue | Green | Yellow | Orange | Purple | Pink | Gray | Gold | Navy — თეთრად → White; შავად → Black; წითლად → Red; ლურჯად → Blue; მწვანედ → Green; ყვითლად → Yellow; ნარინჯისფრად → Orange; იისფრად → Purple; ვარდისფრად → Pink; ნაცრისფრად → Gray; ოქროსფრად → Gold; მუქი ლურჯი → Navy

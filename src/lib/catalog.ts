@@ -102,6 +102,24 @@ export const HIDDEN_PRODUCTS: ReadonlySet<ProductType> = new Set<ProductType>([
   "Sport",
 ]);
 
+// Products that physically have no back to print on — one surface, one view.
+// Listed as the exceptions rather than as "products WITH a back" because the
+// back is the rule in this catalog (every garment and the tote have real back
+// zones and assets) and these four are the deviation; the shorter list is the
+// one a reader can verify at a glance.
+//
+// HIDDEN, NOT DELETED, exactly like Sport above: generateCatalog still builds
+// a "back" entry for each of these (imageUrl null — no back asset has ever
+// existed for them, so selecting it showed an empty preview). The UI simply
+// never offers the view: the toggle is not rendered, setView refuses "back",
+// and a product switch resets an already-selected back to front.
+export const FRONT_ONLY_PRODUCTS: ReadonlySet<ProductType> = new Set<ProductType>([
+  "Apron",
+  "Cap",
+  "Phone Case",
+  "Mug",
+]);
+
 // Per-brand color availability
 export const BRAND_COLORS: Record<string, ProductColor[]> = {
   // T-Shirt brands
