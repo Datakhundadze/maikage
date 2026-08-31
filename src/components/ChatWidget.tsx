@@ -61,6 +61,14 @@ interface ChatMsg {
    */
   autoApplied?: boolean;
   /**
+   * The sketch button was PRESSED and the design handed to the constructor.
+   * The button then renders spent (visible, disabled) instead of live — it
+   * used to stay pressable forever, and every press appended the same layers
+   * again. Persisted beside `suggestion`, which is what keeps the button
+   * alive across reloads: the spent mark must live exactly as long.
+   */
+  applied?: boolean;
+  /**
    * The photo the customer attached to THIS turn, as the same downscaled data
    * URL that was sent. Display only — it is not resent as history, and it is
    * deliberately never persisted (see the sessionStorage restore).
@@ -153,6 +161,7 @@ export default function ChatWidget() {
       hadImage: m.hadImage,
       suggestion: m.suggestion as ChatMsg["suggestion"],
       autoApplied: m.autoApplied,
+      applied: m.applied,
     })),
   );
   const [input, setInput] = useState("");
@@ -193,6 +202,7 @@ export default function ChatWidget() {
       hadImage: !!m.image || m.hadImage,
       suggestion: m.suggestion,
       autoApplied: m.autoApplied,
+      applied: m.applied,
     }));
     saveChat("widget", sessionIdRef.current, slim, open);
   }, [messages, open]);
@@ -318,6 +328,21 @@ export default function ChatWidget() {
 
   // Same handoff as /chat: new tab on success, this tab only if popup-blocked.
   const openInConstructor = useCallback((m: MockupSuggestion) => {
+    // Spend the button FIRST, on the turn whose suggestion this is — matched
+    // by the mockup object's identity, which is stable for the life of the
+    // message (parsed once per reply; a restored transcript's fresh object is
+    // equally the one the render passes back here). Marked before the handoff
+    // for the same reason autoSketch marks its WeakSet before firing: every
+    // branch below delivers the seed exactly once — a live constructor claims
+    // it, a new tab consumes it, a blocked popup navigates this tab to it —
+    // so no branch may leave the button live.
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.suggestion?.kind === "mockup" && msg.suggestion.mockup === m
+          ? { ...msg, applied: true }
+          : msg,
+      ),
+    );
     if (!openMockupInConstructor(m, attachment)) {
       setMode("simple");
       navigate(CONSTRUCTOR_URL);
@@ -522,6 +547,7 @@ export default function ChatWidget() {
               <ChatSuggestionActions
                 suggestion={m.suggestion}
                 autoApplied={m.autoApplied}
+                applied={m.applied}
                 lang={lang}
                 compact
                 onSignIn={() => setShowLogin(true)}

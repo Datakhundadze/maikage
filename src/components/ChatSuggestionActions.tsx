@@ -24,6 +24,7 @@ export default function ChatSuggestionActions({
   lang,
   compact = false,
   autoApplied = false,
+  applied = false,
   onMockup,
   onGenerate,
   onSignIn,
@@ -42,6 +43,13 @@ export default function ChatSuggestionActions({
    * case, including a declined handoff, and then the button renders as before.
    */
   autoApplied?: boolean;
+  /**
+   * This turn's sketch was applied by a BUTTON PRESS (marked by the caller,
+   * persisted next to `suggestion` itself so it survives reloads exactly as
+   * long as the button does). The button renders spent — visible but disabled
+   * — instead of silently re-applying the same layers on every press.
+   */
+  applied?: boolean;
   onMockup: (m: MockupSuggestion) => void;
   onGenerate: (g: GenerateSuggestion) => void;
   /** Open the login modal — the order-status card's guest path. */
@@ -84,9 +92,28 @@ export default function ChatSuggestionActions({
     );
   }
 
-  // Already applied in this tab — the sketch IS the feedback. A button here
-  // would re-apply the same design and add the layers a second time.
+  // Already applied automatically in this tab — the sketch IS the feedback.
+  // Nothing renders at all: the auto path never showed a button, so there is
+  // no control to account for. (Untouched behaviour.)
   if (autoApplied) return null;
+
+  // Applied by a PRESS. The button stays — hiding it would erase the record of
+  // what the tap did — but it is spent: disabled, and saying so. It used to
+  // stay live forever (and `suggestion` is persisted, so it survived reloads),
+  // and each press appended the same layers again; a customer pressed it three
+  // times and got three identical text layers stacked on one spot. Wanting the
+  // SAME design on a second garment does not need this button — the layers
+  // stay on the canvas across a product or colour change in the constructor —
+  // so a dead button here closes the stacking path without closing any real
+  // one.
+  if (applied) {
+    return (
+      <Button disabled size={size} className={cls} aria-disabled="true">
+        <Shirt className={iconCls} />
+        დაემატა ✓
+      </Button>
+    );
+  }
 
   return (
     <Button onClick={() => onMockup(suggestion.mockup)} size={size} className={cls}>

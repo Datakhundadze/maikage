@@ -1591,7 +1591,29 @@ export default function SimplePage() {
     try {
       recordAiGeneration();
       const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
-      const transparentImage = await chromaKeyGreen(greenBg);
+      const { image: transparentImage, keyedFraction } = await chromaKeyGreen(greenBg);
+      // ⚠️ VERIFY BEFORE DECLARING SUCCESS. The model can return the subject on
+      // a backdrop that is NOT green — it happened in production, on a beige
+      // one — and the key then removes nothing and hands back the image
+      // unchanged. This used to be written into the layer with a success
+      // toast, and a paying customer's print file went out with the background
+      // still on it. keyedFraction is what the key actually removed: measured
+      // through the real key, a genuine green backdrop keys 0.34-0.75 of the
+      // frame under this action's "roughly centered, similar scale" prompt
+      // (0.031 even for an absurd 8px green margin), while a wrong-colour
+      // backdrop keys exactly 0. 0.02 is an order of magnitude below every
+      // successful measurement and above nothing but true failures.
+      if (keyedFraction < 0.02) {
+        // The layer keeps the customer's photo exactly as it was. The call was
+        // made and billed (recordAiGeneration above) — that is honest; the
+        // failure is the model's output, discovered only after the spend.
+        toast({
+          title: lang === "en" ? "Background removal failed" : "ფონის მოხსნა ვერ მოხერხდა",
+          description: lang === "en" ? "Please try again." : "სცადე ხელახლა.",
+          variant: "destructive",
+        });
+        return;
+      }
       setSideData(prev => ({
         ...prev,
         photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: transparentImage } : p)),

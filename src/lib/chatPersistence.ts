@@ -37,6 +37,13 @@ export interface PersistedChatMsg {
    * that would add the same design a second time.
    */
   autoApplied?: boolean;
+  /**
+   * This turn's sketch button was PRESSED. Persisted for exactly the reason
+   * `suggestion` is: the suggestion keeps the button alive across reloads, so
+   * an unpersisted spent-mark would resurrect a LIVE button for a design
+   * already on the garment — the very stacking this flag exists to stop.
+   */
+  applied?: boolean;
 }
 
 interface PersistedChat {

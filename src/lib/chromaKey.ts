@@ -27,21 +27,41 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Key a bright-green chroma background out to transparency.
- * Returns a transparent PNG data URL (or the input unchanged if a 2D context
- * isn't available).
+ * What the key actually did — so the caller can judge the outcome.
+ *
+ * ⚠️ THE KEY CANNOT THROW ON A WRONG-COLOUR BACKDROP, and that silence shipped
+ * a wrong print file to a paying customer: the model returned the subject on a
+ * BEIGE backdrop instead of green, the flood fill found nothing to key, the
+ * unchanged image came back, and the caller declared success. `keyedFraction`
+ * is the judgement handle: the share of the image the fill actually made
+ * transparent. A real green backdrop keys the whole margin around the subject
+ * (measured ≥ ~0.11 even with the subject filling 88% of the frame, ~0.5-0.6
+ * typically); a wrong-colour backdrop keys exactly 0. The caller decides the
+ * threshold — this module only reports.
  */
-export async function chromaKeyGreen(dataUrl: string): Promise<string> {
+export interface ChromaKeyResult {
+  /** Transparent PNG data URL — or the INPUT UNCHANGED on the mechanical
+   *  bail-outs (unloadable image, no 2D context), which also report 0. */
+  image: string;
+  /** Fraction of all pixels the flood fill made fully transparent, 0..1.
+   *  Counts only the keyed background, not the despill fade on kept edges. */
+  keyedFraction: number;
+}
+
+/**
+ * Key a bright-green chroma background out to transparency.
+ */
+export async function chromaKeyGreen(dataUrl: string): Promise<ChromaKeyResult> {
   const img = await loadImage(dataUrl);
   const w = img.naturalWidth;
   const h = img.naturalHeight;
-  if (!w || !h) return dataUrl;
+  if (!w || !h) return { image: dataUrl, keyedFraction: 0 };
 
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return dataUrl;
+  if (!ctx) return { image: dataUrl, keyedFraction: 0 };
   ctx.drawImage(img, 0, 0);
 
   const imageData = ctx.getImageData(0, 0, w, h);
@@ -110,5 +130,7 @@ export async function chromaKeyGreen(dataUrl: string): Promise<string> {
   }
 
   ctx.putImageData(imageData, 0, 0);
-  return canvas.toDataURL("image/png");
+  // queue holds exactly the pixels the fill zeroed — every entry was pushed
+  // once (visited guards re-pushes) and every entry's alpha was set to 0.
+  return { image: canvas.toDataURL("image/png"), keyedFraction: queue.length / (w * h) };
 }
