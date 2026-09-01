@@ -1450,29 +1450,19 @@ CRITICAL: Output must be pixel-identical to the input except for the background 
       // keys far more reliably than white (which punches holes in white/skin/
       // highlight regions), so we ask for a green screen and key it client-side.
       //
-      // COST GATE — flash. Revert this one line to
-      // "google/gemini-3-pro-image" to undo it; nothing else changes.
-      //
-      // ⚠️ THIS ONE IS NOT LIKE convert-bg-black's GATE, AND THE DIFFERENCE IS
-      // AGAINST US. That gate moved only FLAT ILLUSTRATION to flash and kept
-      // pro for realistic/photographic input, on the stated grounds that
-      // photographic mattes "need pixel-level fidelity across soft edges, hair
-      // and gradients, where flash drift causes halos". isolate-subject's input
-      // is ALWAYS a photograph — it is the photo path by construction — so this
-      // is exactly the case that argument said to keep on pro.
-      //
-      // The mitigation is that the failure modes here are visible rather than
-      // subtle: the prompt below demands a uniform #00FF00 backdrop, no spill
-      // and no silhouette, and the client chroma-keys it. Green that drifts, or
-      // a subject flattened into a silhouette, shows up immediately as a ragged
-      // or hollow cut-out. It does not fail quietly.
-      //
-      // WHETHER FLASH IS GOOD ENOUGH HERE IS UNKNOWN AND CANNOT BE KNOWN FROM
-      // READING THE CODE. No side-by-side has been run on real customer photos
-      // — hair, fur, motion blur, low light, busy backgrounds. Treat this as a
-      // cost change made on a cost argument, watch the cut-outs, and revert the
-      // line above if quality drops.
-      model = "google/gemini-2.5-flash-image";
+      // ⚠️ PRO, REVERTED FROM FLASH 2026-08-31. The cost gate that moved this
+      // to "google/gemini-2.5-flash-image" said, in its own words, that this
+      // was exactly the case its argument said to keep on pro (the input is
+      // ALWAYS a photograph), that its sufficiency was unknown, and to revert
+      // if quality dropped. It did: in production flash returned the subject
+      // on a NON-GREEN (beige) backdrop, the client key removed nothing, and
+      // a paid order's print file went out with the background still on it.
+      // The predicted "visible, not quiet" failure mode was also wrong — a
+      // wrong-colour backdrop failed perfectly quietly until the client grew
+      // a keyed-fraction check (src/lib/chromaKey.ts). convert-bg-black's own
+      // flash gate is untouched: that one really did move only flat
+      // illustration and keeps pro for photographic input.
+      model = "google/gemini-3-pro-image";
       messages = [{
         role: "user",
         content: [

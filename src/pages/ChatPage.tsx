@@ -64,6 +64,14 @@ interface ChatMsg {
    */
   autoApplied?: boolean;
   /**
+   * The sketch button was PRESSED and the design handed to the constructor.
+   * The button then renders spent (visible, disabled) instead of live — it
+   * used to stay pressable forever, and every press appended the same layers
+   * again. Persisted beside `suggestion`, which is what keeps the button
+   * alive across reloads: the spent mark must live exactly as long.
+   */
+  applied?: boolean;
+  /**
    * The photo the customer attached to THIS turn, as the same downscaled data
    * URL that was sent. Display only — it is not resent as history, and it is
    * deliberately never persisted (see the sessionStorage restore).
@@ -106,6 +114,7 @@ export default function ChatPage() {
       hadImage: m.hadImage,
       suggestion: m.suggestion as ChatMsg["suggestion"],
       autoApplied: m.autoApplied,
+      applied: m.applied,
     })),
   );
   const [input, setInput] = useState("");
@@ -148,6 +157,7 @@ export default function ChatPage() {
       hadImage: !!m.image || m.hadImage,
       suggestion: m.suggestion,
       autoApplied: m.autoApplied,
+      applied: m.applied,
     }));
     saveChat("page", sessionIdRef.current, slim);
   }, [messages]);
@@ -260,6 +270,15 @@ export default function ChatPage() {
   // tab is left completely alone; only a blocked popup falls back to navigating
   // here, so the button is never a no-op.
   const openInConstructor = useCallback((m: MockupSuggestion) => {
+    // Spend the button FIRST — same mark, same reason, same object-identity
+    // match as the widget's handler; see ChatWidget.openInConstructor.
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.suggestion?.kind === "mockup" && msg.suggestion.mockup === m
+          ? { ...msg, applied: true }
+          : msg,
+      ),
+    );
     if (!openMockupInConstructor(m, attachment)) {
       setMode("simple");
       navigate(CONSTRUCTOR_URL);
@@ -340,6 +359,7 @@ export default function ChatPage() {
               <ChatSuggestionActions
                 suggestion={m.suggestion}
                 autoApplied={m.autoApplied}
+                applied={m.applied}
                 lang={lang}
                 onSignIn={() => setShowLogin(true)}
                 onMockup={openInConstructor}
