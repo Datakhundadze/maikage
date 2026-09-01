@@ -11,6 +11,23 @@ import type { DesignState } from "@/lib/designState";
 import { isDesignState } from "@/lib/designState";
 import { compositePrintFileFromDesignState } from "@/lib/designCompositor";
 import { uploadBlobWithRetry } from "@/lib/uploadWithRetry";
+// DISPLAY ONLY — every <img> below goes through this, every download button
+// keeps the raw stored URL. This was the one admin tab fetching originals
+// into thumbnails: each summary row pulled its full 800×800 mockup PNG
+// (~1.1MB) into a 40px box and an expanded order pulled 4000×4000 print
+// PNGs (~4MB) into 256px boxes, all eagerly. The print file the admin
+// DOWNLOADS and sends to production must stay byte-identical, so
+// downloadImage() calls are deliberately left on the untransformed URLs.
+import { transformedDisplayUrl } from "@/lib/imageTransform";
+
+// Display widths. Generous on purpose — a soft thumbnail is a worse bug than
+// one that loads in 40ms instead of 20: the 40px summary chip gets 128
+// (AdminGenerations' size for the same kind of chip, 3.2× the box), and the
+// 256px mockup/print views and 160px originals share 512 (2-3.2× their
+// boxes, crisp on a 2× display). resize=contain + height ride along inside
+// the helper — that exact shape is load-bearing, see imageTransform.ts.
+const THUMB_W = 128;
+const VIEW_W = 512;
 
 interface Order {
   id: string;
@@ -438,7 +455,7 @@ export default function AdminOrders() {
                 <span className="text-xs font-mono text-muted-foreground w-8">#{groups.length - i}</span>
                 {order.front_mockup_url ? (
                   <div className="w-10 h-10 rounded border border-border bg-muted overflow-hidden flex-shrink-0">
-                    <img src={order.front_mockup_url} alt="" className="w-full h-full object-contain" />
+                    <img src={transformedDisplayUrl(order.front_mockup_url, { width: THUMB_W })} alt="" className="w-full h-full object-contain" loading="lazy" />
                   </div>
                 ) : (
                   <div className="w-10 h-10 rounded border border-border bg-muted flex-shrink-0" />
@@ -599,7 +616,7 @@ export default function AdminOrders() {
                                     <div className="space-y-1.5">
                                       <p className="text-xs text-muted-foreground">წინა მხარე</p>
                                       <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                                        <img src={unit.front_mockup_url} alt="წინა მხარე" className="w-full h-full object-contain" />
+                                        <img src={transformedDisplayUrl(unit.front_mockup_url, { width: VIEW_W })} alt="წინა მხარე" className="w-full h-full object-contain" loading="lazy" />
                                       </div>
                                       <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
                                         onClick={() => downloadImage(unit.front_mockup_url!, `order-${unit.id}-front.png`)}>
@@ -611,7 +628,7 @@ export default function AdminOrders() {
                                     <div className="space-y-1.5">
                                       <p className="text-xs text-muted-foreground">უკანა მხარე</p>
                                       <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                                        <img src={unit.back_mockup_url} alt="უკანა მხარე" className="w-full h-full object-contain" />
+                                        <img src={transformedDisplayUrl(unit.back_mockup_url, { width: VIEW_W })} alt="უკანა მხარე" className="w-full h-full object-contain" loading="lazy" />
                                       </div>
                                       <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
                                         onClick={() => downloadImage(unit.back_mockup_url!, `order-${unit.id}-back.png`)}>
@@ -630,7 +647,8 @@ export default function AdminOrders() {
                                     <p className="text-xs text-muted-foreground mb-1.5">სრული წარწერა (ცალკე ფაილი)</p>
                                     <div className="space-y-1.5 inline-block">
                                       <div className="w-64 h-40 rounded-lg border border-border bg-white overflow-hidden flex items-center justify-center">
-                                        <img src={dataUrl} alt="სრული წარწერა" className="max-w-full max-h-full object-contain" />
+                                        {/* data: URL — the helper passes it through untouched; lazy still helps */}
+                                        <img src={transformedDisplayUrl(dataUrl, { width: VIEW_W })} alt="სრული წარწერა" className="max-w-full max-h-full object-contain" loading="lazy" />
                                       </div>
                                       <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
                                         onClick={() => downloadTextAsPng(unit.prompt || "", `order-${unit.id}-text.png`)}>
@@ -648,7 +666,7 @@ export default function AdminOrders() {
                                       <div className="space-y-1.5">
                                         <p className="text-xs text-muted-foreground">წინა მხარე</p>
                                         <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                                          <img src={unit.transparent_image_url} alt="წინა პრინტი" className="w-full h-full object-contain" />
+                                          <img src={transformedDisplayUrl(unit.transparent_image_url, { width: VIEW_W })} alt="წინა პრინტი" className="w-full h-full object-contain" loading="lazy" />
                                         </div>
                                         <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
                                           onClick={() => downloadImage(unit.transparent_image_url!, `order-${unit.id}-print-front.png`)}>
@@ -660,7 +678,7 @@ export default function AdminOrders() {
                                       <div className="space-y-1.5">
                                         <p className="text-xs text-muted-foreground">უკანა მხარე</p>
                                         <div className="w-64 h-64 rounded-lg border border-border bg-background overflow-hidden">
-                                          <img src={unit.back_transparent_image_url} alt="უკანა პრინტი" className="w-full h-full object-contain" />
+                                          <img src={transformedDisplayUrl(unit.back_transparent_image_url, { width: VIEW_W })} alt="უკანა პრინტი" className="w-full h-full object-contain" loading="lazy" />
                                         </div>
                                         <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
                                           onClick={() => downloadImage(unit.back_transparent_image_url!, `order-${unit.id}-print-back.png`)}>
@@ -718,7 +736,7 @@ export default function AdminOrders() {
                                       <div key={photo.name} className="space-y-1.5">
                                         <p className="text-xs text-muted-foreground">{photo.name.startsWith("back") ? "უკანა" : "წინა"} #{pi + 1}</p>
                                         <div className="w-40 h-40 rounded-lg border border-border bg-background overflow-hidden">
-                                          <img src={photo.url} alt={photo.name} className="w-full h-full object-contain" />
+                                          <img src={transformedDisplayUrl(photo.url, { width: VIEW_W })} alt={photo.name} className="w-full h-full object-contain" loading="lazy" />
                                         </div>
                                         <Button size="sm" variant="outline" className="w-full h-7 text-xs gap-1"
                                           onClick={() => downloadImage(photo.url, `order-${unit.id}-${photo.name}`)}>
