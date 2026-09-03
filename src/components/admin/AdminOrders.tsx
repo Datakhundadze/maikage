@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,23 @@ import { transformedDisplayUrl } from "@/lib/imageTransform";
 // the helper — that exact shape is load-bearing, see imageTransform.ts.
 const THUMB_W = 128;
 const VIEW_W = 512;
+
+// How stale the list must be before RETURNING TO THE TAB refetches it.
+//
+// This tab had exactly two triggers — mount and the „განახლება" button — and
+// useAutoLogout deliberately suspends its idle timer while the tab is hidden,
+// so a backgrounded admin tab is never signed out AND never refetched. A real
+// incident: a tab last loaded at 16:52 still showed that snapshot at 12:43 the
+// next day, three orders missing, with a „ბოლო" stamp from the previous
+// afternoon to match.
+//
+// ONE MINUTE, and the number is a rate limit, not a freshness target. Coming
+// back to the tab is a human-paced act; a minute is short enough that the list
+// is current by the time the admin has read the header, and long enough that
+// somebody alt-tabbing between this and a courier app cannot fire more than
+// one unbounded select("*") per minute. It is NOT polling — nothing fires
+// while the tab sits in front of you untouched.
+const STALE_AFTER_MS = 60_000;
 
 interface Order {
   id: string;
@@ -163,11 +180,41 @@ function renderTextDataUrl(rawPrompt: string): string | null {
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  // FIRST LOAD ONLY. `loading` swaps the whole table for a spinner, so a
+  // background refresh must never set it — blanking the list on every
+  // visibility refetch would be a new bug, and it would also hide the rows
+  // that a failed refresh is now supposed to leave standing.
   const [loading, setLoading] = useState(true);
+  // A fetch is in flight: disables the button, nothing more.
+  const [fetching, setFetching] = useState(false);
+  // Last fetch FAILED. Shown in the header, cleared by the next success — a
+  // silently stale list is the thing being fixed, so the failure is visible.
+  const [fetchError, setFetchError] = useState<string | null>(null);
   // Expanded card is keyed by GROUP key (cart_id, or `single-${id}` for
   // ungrouped single-unit orders), not by a row id.
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  // LAST SUCCESSFUL FETCH — null until one succeeds. It used to be stamped
+  // after every attempt including failures, and to start at mount time, so it
+  // could assert freshness for a list that had never loaded or had just failed
+  // to reload. „ბოლო" now means what an admin reads it as.
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  // Monotonic request id. Only the NEWEST response may touch state: there was
+  // no abort, no generation counter and no in-flight flag, so a slow earlier
+  // response could land after a fast later one and overwrite fresh rows with
+  // stale ones. Not the cause of the incident above, but the visibility
+  // refetch makes concurrent fetches reachable, so it is closed here.
+  const fetchGenRef = useRef(0);
+  // Mirrors `fetching` for the auto-trigger, which needs a SYNCHRONOUS answer:
+  // visibilitychange and focus can fire in the same tick, and state would still
+  // read false for the second one.
+  const inFlightRef = useRef(false);
+  // Epoch ms of the last SUCCESS, read by the staleness gate. A ref so the
+  // listener can be registered once and never re-subscribed.
+  const lastSuccessRef = useRef(0);
+  const hasLoadedOnceRef = useRef(false);
+  // Always the current fetchOrders, so the visibility listener below is
+  // registered once with an empty dep array and still calls the live closure.
+  const fetchRef = useRef<() => void>(() => {});
   const [originalPhotos, setOriginalPhotos] = useState<Record<string, { name: string; url: string }[]>>({});
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -253,17 +300,87 @@ export default function AdminOrders() {
     fetchOrders();
   }, [user?.id, authLoading]);
 
+  useEffect(() => { fetchRef.current = fetchOrders; });
+
+  // COMING BACK TO THE TAB REFETCHES — the fix for a snapshot that could sit
+  // unchanged for twenty hours. Both events, because they answer different
+  // questions: `visibilitychange` covers a backgrounded tab, `focus` covers a
+  // window that stayed visible beside another one and only lost focus.
+  //
+  // Three gates, in order, and all three are needed: still hidden → nothing to
+  // show yet; already fetching → the two events fire together and the ref is
+  // the only synchronous way to see that; fresher than a minute → the admin
+  // is switching windows, not waiting on data. Nothing here polls.
+  //
+  // ⚠️ useAutoLogout is untouched. It suspends its idle timer while hidden on
+  // purpose, and this listener does not change when a session ends — a signed
+  // out admin's fetch simply returns no rows through RLS, exactly as before.
+  useEffect(() => {
+    const onReveal = () => {
+      if (document.hidden) return;
+      if (inFlightRef.current) return;
+      if (Date.now() - lastSuccessRef.current < STALE_AFTER_MS) return;
+      fetchRef.current();
+    };
+    document.addEventListener("visibilitychange", onReveal);
+    window.addEventListener("focus", onReveal);
+    return () => {
+      document.removeEventListener("visibilitychange", onReveal);
+      window.removeEventListener("focus", onReveal);
+    };
+  }, []);
+
   async function fetchOrders() {
-    setLoading(true);
-    const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
-    if (error) {
-      console.error("[AdminOrders] fetch error:", error);
-      toast({ title: "შეცდომა", description: error.message, variant: "destructive" });
+    // Claimed BEFORE the await, so a later call supersedes this one by simply
+    // being newer. No re-entry block here on purpose: the generation check is
+    // what makes concurrency safe, and blocking would leave a hung request
+    // able to freeze the tab in exactly the way this change is undoing.
+    const gen = ++fetchGenRef.current;
+    inFlightRef.current = true;
+    setFetching(true);
+    if (!hasLoadedOnceRef.current) setLoading(true);
+
+    let rows: Order[];
+    try {
+      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
+      // PostgREST reports failure in `error`; the network layer THROWS. Both
+      // funnel into the catch below — the throw used to escape entirely and
+      // leave `loading` stuck true with no message at all.
+      if (error) throw new Error(error.message);
+      rows = (data as any as Order[]) || [];
+    } catch (e) {
+      // Superseded: a newer fetch owns the flag and will report for itself.
+      if (gen !== fetchGenRef.current) return;
+      console.error("[AdminOrders] fetch error:", e);
+      inFlightRef.current = false;
+      setFetching(false);
+      hasLoadedOnceRef.current = true;
+      setLoading(false);
+      // ⚠️ THE ROWS STAY, AND SO DOES „ბოლო". A failed reload used to fall
+      // through to `data || []` and blank the table to „შეკვეთები (0)" while
+      // stamping a fresh timestamp — one transient blip and the admin was
+      // looking at an empty order list that claimed to be current. Now the
+      // last good list stands and the header says the refresh failed.
+      setFetchError(e instanceof Error ? e.message : "ქსელის შეცდომა");
+      toast({
+        title: "შეკვეთების განახლება ვერ მოხერხდა",
+        description: e instanceof Error ? e.message : undefined,
+        variant: "destructive",
+      });
+      return;
     }
-    const rows = (data as any as Order[]) || [];
+
+    // A newer fetch already applied its rows — drop these on the floor rather
+    // than overwriting fresher data with older data.
+    if (gen !== fetchGenRef.current) return;
+    inFlightRef.current = false;
+    setFetching(false);
+    hasLoadedOnceRef.current = true;
     setOrders(rows);
     setLoading(false);
+    setFetchError(null);
     setLastRefresh(new Date());
+    lastSuccessRef.current = Date.now();
 
     // Auto-sync any non-paid orders that have a payment provider order id
     const unsynced = rows.filter(
@@ -436,8 +553,21 @@ export default function AdminOrders() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">შეკვეთები ({groups.length})</h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">ბოლო: {lastRefresh.toLocaleTimeString("ka-GE")}</span>
-          <Button variant="outline" size="sm" onClick={fetchOrders}>განახლება</Button>
+          {/* A FAILED REFRESH SAYS SO. The rows below are the last good ones,
+              and the timestamp still names when they were fetched — the two
+              together say "this is stale and here is how stale", which is the
+              honest reading the old silent blank could not give. */}
+          {fetchError && (
+            <span className="text-xs text-destructive" title={fetchError}>
+              განახლება ვერ მოხერხდა
+            </span>
+          )}
+          <span className="text-xs text-muted-foreground">
+            ბოლო: {lastRefresh ? lastRefresh.toLocaleTimeString("ka-GE") : "—"}
+          </span>
+          <Button variant="outline" size="sm" onClick={fetchOrders} disabled={fetching}>
+            {fetching ? "განახლდება…" : "განახლება"}
+          </Button>
         </div>
       </div>
 
