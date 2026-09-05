@@ -1329,15 +1329,50 @@ export default function SimplePage() {
     }
   }, [aiPrompt, aiStyle, aiWithBackground, aiGenerating, checkAiLimit, recordAiGeneration, productConfig, user, saveDesign, trackEvent, toast, lang]);
 
+  // ── Which layer the chat most recently PRODUCED ──────────────────────────
+  //
+  // TWO REFS, NOT ONE, sharing one clock.
+  //
+  // chatPhotoRef (declared further down) remembers the ATTACHMENT and the
+  // layer it became, and its `source` half is what makes attachment reuse
+  // correct. A generated design has no attachment to compare against, so
+  // folding generations into that ref would either poison the comparison or
+  // evict the attachment's layer — and the next edit would then add the second
+  // layer the reuse check exists to prevent. Generations get their own ref and
+  // the duplicate-layer contract is left exactly as it was.
+  //
+  // `seq` is a monotonic counter stamped when a layer is PRODUCED — created,
+  // never merely re-touched. That is the only ordering that cannot lie:
+  //   - ARRAY POSITION lies, because the drain's reuse path re-claims an
+  //     existing layer without moving it; the layer the customer most recently
+  //     acted on can sit earlier in sideData.photos than one placed before it.
+  //   - A TIMESTAMP can tie inside a millisecond and follows the wall clock.
+  //   - THE ID SUFFIX (`photo-N`) is insertion order again, with the same
+  //     reuse blind spot, read out of a string.
+  // A counter incremented on each production is total, exact, and answers the
+  // question actually being asked: which of these two did the chat make last.
+  const chatLayerSeqRef = useRef(0);
+  const chatGeneratedRef = useRef<{ layerId: string; seq: number } | null>(null);
+  // Called by the two places that put a GENERATED design on the garment. Both
+  // are explicit "put this on the garment" acts — the panel's own press and the
+  // seeded auto-transfer, which runs through handleAiTransfer — so a removal
+  // asked for afterwards means the design the customer just got, whichever
+  // button produced it.
+  const recordGeneratedLayer = useCallback((layerId: string) => {
+    chatGeneratedRef.current = { layerId, seq: ++chatLayerSeqRef.current };
+  }, []);
+
   const handleAiTransfer = useCallback(() => {
     if (!aiResult) return;
     if (sideData.photos.length >= MAX_PHOTOS) {
       toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
       return;
     }
-    addPhotoLayer(aiResult.transferImage);
+    // Recorded only when a layer was really added — the MAX_PHOTOS guard above
+    // returns without producing anything.
+    recordGeneratedLayer(addPhotoLayer(aiResult.transferImage));
     toast({ title: t(lang, "simpleAi.transferred") });
-  }, [aiResult, sideData.photos.length, addPhotoLayer, toast, lang]);
+  }, [aiResult, sideData.photos.length, addPhotoLayer, recordGeneratedLayer, toast, lang]);
 
   // Put an EARLIER generated design back on the garment.
   //
@@ -1359,9 +1394,9 @@ export default function SimplePage() {
       toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
       return;
     }
-    addPhotoLayer(dataUrl);
+    recordGeneratedLayer(addPhotoLayer(dataUrl));
     toast({ title: t(lang, "simpleAi.transferred") });
-  }, [sideData.photos.length, addPhotoLayer, toast, lang]);
+  }, [sideData.photos.length, addPhotoLayer, recordGeneratedLayer, toast, lang]);
 
   // Armed by the seeded-generation drain effect below, for the duration of ONE
   // run. A generation the customer started from the panel never sets it, so the
@@ -1948,6 +1983,14 @@ export default function SimplePage() {
     // reached for exactly this when the edit-then-removal chain switched from a
     // data URL to an id "because the edit replaces the image the URL refers
     // to"; this is the same move, one step earlier.
+    // The last layer a GENERATION put on the garment, if it is still there.
+    // Computed before the branches because BOTH need it: a removal that
+    // arrives with the stale attachment riding along, and one that arrives
+    // with no attachment at all.
+    const generated = chatGeneratedRef.current;
+    const liveGenerated =
+      generated && photosRef.current.some((p) => p.id === generated.layerId) ? generated : null;
+
     if (seed.image) {
       const tracked = chatPhotoRef.current;
       // Reusable only when BOTH still hold: the same attachment is in play, and
@@ -1963,9 +2006,20 @@ export default function SimplePage() {
       // replaces its image and applyContainFit re-fits it from its own state,
       // exactly as the left panel's chips do.
       const targetId = reuse
-        ? (tracked as { source: string; layerId: string }).layerId
+        ? (tracked as { source: string; layerId: string; seq: number }).layerId
         : addPhotoLayer(seed.image, { paired: pairedSeed });
-      chatPhotoRef.current = { source: seed.image, layerId: targetId };
+      // ⚠️ REUSE KEEPS THE OLD `seq`. The counter records when this layer was
+      // PRODUCED, and reuse produces nothing — re-stamping here would make a
+      // months-old upload look newer than a design generated a minute ago
+      // every time the widget's retained attachment rode along on a block,
+      // which is exactly the comparison below.
+      chatPhotoRef.current = {
+        source: seed.image,
+        layerId: targetId,
+        seq: reuse
+          ? (tracked as { source: string; layerId: string; seq: number }).seq
+          : ++chatLayerSeqRef.current,
+      };
       // Background removal and the photo EDIT are both QUEUED, not run — the
       // layer does not exist until React commits the add above. The effects
       // below wait for it and then hand it to the constructor's own
@@ -1991,8 +2045,38 @@ export default function SimplePage() {
           thenRemoveBg: !!seed.removeBackground,
         });
       } else if (seed.removeBackground) {
-        setPendingRemoveBg(targetId);
+        // ⚠️ THE REMOVAL TARGETS WHAT THE CHAT LAST PRODUCED, not what the
+        // stale attachment once became. A customer who uploaded a photo, then
+        // generated a design, then asked to remove the background had the
+        // removal land on the ORIGINAL upload: the widget retains `attachment`
+        // for the rest of the session and buildMockupSeed puts it on every
+        // block, so this branch arrived carrying an upload from ten minutes
+        // ago and the reuse check dutifully matched its layer.
+        //
+        // The EDIT path above is untouched and still targets the attachment's
+        // layer — "put a hat on him" is about the picture they attached. Only
+        // a removal-ONLY block is ambiguous, and there the honest reading is
+        // the most recent thing the customer was handed.
+        setPendingRemoveBg(
+          liveGenerated && liveGenerated.seq > chatPhotoRef.current.seq
+            ? liveGenerated.layerId
+            : targetId,
+        );
       }
+    } else if (seed.removeBackground && liveGenerated) {
+      // A removal with NO attachment in play — the customer generated a design
+      // without ever uploading a photo, then asked for its background gone.
+      //
+      // ⚠️ UNREACHABLE TODAY, DELIBERATELY LEFT CORRECT. Two independent gates
+      // upstream drop `removeBackground` when there is no image to act on:
+      // buildMockupSeed (mockupSuggestion.ts) and normalizeConstructorSeed
+      // ("Only ever true alongside a photo", constructorSeed.ts). Both are
+      // reasonable where they stand — the flag was designed as "cut out THIS
+      // attachment" — and neither is this change's to move. So the drain is
+      // ready and the seed never arrives; verified by measurement, not
+      // assumed. Relaxing either gate is a separate decision, and when it is
+      // taken this branch already targets the right layer.
+      setPendingRemoveBg(liveGenerated.layerId);
     }
 
     // Text: same layer shape addTextLayer builds (Georgian FONTS[0], black,
@@ -2186,7 +2270,10 @@ export default function SimplePage() {
   // the SAME attachment (a different photo is a different layer), the id
   // survives the edits that rewrite the layer's image out from under any
   // URL-based lookup.
-  const chatPhotoRef = useRef<{ source: string; layerId: string } | null>(null);
+  // `seq` is stamped from chatLayerSeqRef when the layer is CREATED and carried
+  // unchanged through reuse — see the drain. It exists so a removal-only block
+  // can tell this layer apart in age from the one a generation produced.
+  const chatPhotoRef = useRef<{ source: string; layerId: string; seq: number } | null>(null);
 
   // A mirror of the current photo layers, for the seed drain's reuse check.
   //
