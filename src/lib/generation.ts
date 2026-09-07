@@ -71,6 +71,25 @@ export async function callGemini(action: string, params: Record<string, any>, re
         throw new RateLimitError(userMessage, errorBody.requiresLogin === true);
       }
 
+      // Upstream credit exhaustion (402) — short-circuit, never retry.
+      //
+      // ⚠️ THE RETRY LOOP IS WHY ONE PRESS BECAME THREE GATEWAY CALLS. A 402
+      // carries no `code` before this and did not match the content-block
+      // strings, so it fell through to `continue` and this function fired the
+      // same doomed request three times (retries = 2). The proxy itself never
+      // retried a 402 — it returns immediately, ahead of its own retry loop —
+      // so the bursts of three in ai_calls came from here. Credits are
+      // exhausted: the second and third attempts cannot succeed, they only
+      // multiply the noise in the log and the wait before the customer is
+      // told anything.
+      //
+      // The message is the SERVER's, thrown as-is: every call site puts it in
+      // the toast description, which is how the customer reads it.
+      if (errorBody?.code === "SERVICE_UNAVAILABLE") {
+        console.warn(`AI service unavailable (${action})`);
+        throw new Error(userMessage);
+      }
+
       // Anti-abuse block (403) — short-circuit, never retry; a paid order or
       // contacting us unblocks (server-side).
       if (errorBody?.code === "GENERATION_BLOCKED") {

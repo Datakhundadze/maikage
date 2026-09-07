@@ -1692,7 +1692,21 @@ Output: one photorealistic composite photo.`;
             });
           }
           if (status === 402) {
-            return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
+            // ⚠️ THIS TEXT IS SHOWN TO CUSTOMERS, VERBATIM. Every call site
+            // puts the server's message straight into a toast description, so
+            // the previous wording — "AI credits exhausted. Please add credits
+            // in Settings → Workspace → Usage." — told a customer trying to
+            // edit their photo, in English, to go top up a workspace they have
+            // no access to. Six of those went out in one minute in production.
+            //
+            // Same shape as the rate limiter's 429 above: Georgian first with
+            // the English in parentheses, formal, no internal system named and
+            // no blame. `code` lets the client short-circuit — a 402 is not
+            // retryable, and callGemini would otherwise fire three times.
+            return new Response(JSON.stringify({
+              error: "სერვისი დროებით მიუწვდომელია — სცადეთ ცოტა ხანში ან დაგვიკავშირდით. (The service is temporarily unavailable — please try again shortly or contact us.)",
+              code: "SERVICE_UNAVAILABLE",
+            }), {
               status: 402,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
