@@ -1,13 +1,18 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, useRef, lazy, Suspense } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper } from "lucide-react";
+import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper, Menu } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
 const LoginModal = lazy(() => import("@/components/LoginModal"));
+// The phone-width menu sheet is only needed once the customer taps the
+// hamburger, so it (and the Radix dialog it sits on) stays out of the
+// header's own bundle for the same reason.
+const MobileNav = lazy(() => import("@/components/MobileNav"));
+const preloadMobileNav = () => import("@/components/MobileNav");
 import { useCart } from "@/hooks/useCart";
 
 // Hover-preload map: when the customer hovers a nav button we kick off
@@ -31,6 +36,15 @@ export default function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showLogin, setShowLogin] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Mounted on first open and kept mounted after, so the sheet's close
+  // animation still plays instead of the component vanishing.
+  const [menuMounted, setMenuMounted] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const openMenu = () => {
+    setMenuMounted(true);
+    setMenuOpen(true);
+  };
 
   const isLoggedIn = !!user && !isAnonymous;
 
@@ -46,6 +60,23 @@ export default function AppHeader() {
   return (
     <>
       <header className="h-14 flex items-center gap-2 px-3 border-b border-sidebar-border shrink-0 bg-sidebar text-sidebar-foreground">
+        {/* Below lg the tab row is hidden (see the <nav> below) and this
+            hamburger opens the same destinations in a sheet. Above lg it
+            does not render at all. */}
+        <button
+          ref={menuButtonRef}
+          type="button"
+          onClick={openMenu}
+          onPointerEnter={preloadMobileNav}
+          onFocus={preloadMobileNav}
+          onTouchStart={preloadMobileNav}
+          aria-label={lang === "en" ? "Open menu" : "მენიუს გახსნა"}
+          aria-haspopup="dialog"
+          aria-expanded={menuOpen}
+          className="lg:hidden flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors border border-sidebar-border"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
         {/* LEFT: logo — navigates home. setMode("landing") alone is a
             no-op on non-root routes (/designs, /design/:slug, etc.):
             mode flips but the URL stays put, and AppRoutes only renders
@@ -73,8 +104,13 @@ export default function AppHeader() {
           </div>
         </Link>
 
-        {/* CENTER: nav tabs */}
-        <nav className="flex items-center gap-0.5 flex-1 justify-center overflow-x-auto">
+        {/* CENTER: nav tabs — lg and up only. The row needs ~470px for its
+            Georgian labels (more with the admin tab); below lg the header
+            cannot give it that, and a centred overflow row is unreachable
+            on its left half (a scroll container cannot scroll to a
+            negative offset), which is exactly what hid the catalog link on
+            phones. Below lg the hamburger above carries these links. */}
+        <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center overflow-x-auto">
           {navItems.map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
             const preload = PRELOAD_BY_PATH[path];
@@ -102,11 +138,14 @@ export default function AppHeader() {
                 }`}
               >
                 <Icon className="h-3 w-3" />
-                <span className="hidden sm:inline">{label}</span>
+                <span>{label}</span>
               </Link>
             );
           })}
         </nav>
+        {/* Below lg the nav row is gone, so this takes its flex-1 slot and
+            keeps the cart / language / sign-in group pinned to the right. */}
+        <div className="flex-1 lg:hidden" aria-hidden="true" />
 
         {/* RIGHT: cart + lang + auth */}
         <div className="shrink-0 flex items-center gap-1.5">
@@ -162,6 +201,17 @@ export default function AppHeader() {
       <Suspense fallback={null}>
         <LoginModal open={showLogin} onClose={() => setShowLogin(false)} />
       </Suspense>
+      {menuMounted && (
+        <Suspense fallback={null}>
+          <MobileNav
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            returnFocusTo={menuButtonRef}
+            lang={lang}
+            items={navItems.map((item) => ({ ...item, preload: PRELOAD_BY_PATH[item.path] }))}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
