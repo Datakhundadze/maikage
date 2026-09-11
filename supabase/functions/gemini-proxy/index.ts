@@ -1144,13 +1144,37 @@ serve(async (req) => {
     // Captured in the faq-chat gate below; used at the success path.
     let faqChatUserId: string | null = null;
 
-    // Caller identity for the ai_calls cost log. Filled in from the auth
-    // lookups the two gates below ALREADY perform, so this adds no extra
-    // round-trip for anyone. An action that passes through neither gate
-    // (convert-bg-black) simply logs as an unattributed guest call, which is
-    // accurate: it is the internal second half of a generate-design.
-    let callerUserId: string | null = null;
-    let callerIsGuest = true;
+    // Caller identity, resolved ONCE, for EVERY action, from the request's
+    // own Authorization header — before either gate below. The two gates and
+    // the ai_calls cost log all read it from here.
+    //
+    // It used to be resolved inside the gates, so an action that passed
+    // through neither of them — convert-bg-black, the internal second half of
+    // a generate-design, and randomize-prompt — logged with no user_id even
+    // for a signed-in customer. Every transparency-pipeline generation left
+    // one attributed row and one unattributed one, and the second half of an
+    // abuser's generations was invisible in the cost log.
+    //
+    // COST. For the gated actions this is the same single auth.getUser() the
+    // gates already made, moved up: no extra round-trip. For convert-bg-black
+    // and randomize-prompt it IS one new round-trip to Supabase Auth on the
+    // critical path — the same call generate-design already pays, on top of
+    // three more RPCs, before its own gateway call. Tens of milliseconds
+    // against a multi-second image call, and the price of a cost record that
+    // names its caller.
+    //
+    // NEVER REJECTS. A missing, expired or anon-key-only Authorization header
+    // yields user = null — exactly what the gates saw before — and the request
+    // continues as a guest. Only the gates decide whether a guest may proceed.
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
+    });
+    // null/err for anon (no user JWT); a real user object when logged in.
+    const { data: { user } } = await client.auth.getUser();
+    const callerUserId: string | null = user?.id ?? null;
+    const callerIsGuest = !user || user.is_anonymous === true;
     const callerSessionId = typeof params.session_id === "string" ? params.session_id : null;
 
     // --- Rate limiting (billable actions only) ---
@@ -1158,17 +1182,6 @@ serve(async (req) => {
     // generation) are exempt. Enforced BEFORE any gateway call so blocked
     // requests cost nothing. verify_jwt stays false — anon Studio must work.
     if (BILLABLE_ACTIONS.has(action)) {
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-      });
-
-      // null/err for anon (no user JWT); a real user object when logged in.
-      const { data: { user } } = await client.auth.getUser();
-      callerUserId = user?.id ?? null;
-      callerIsGuest = !user || user.is_anonymous === true;
-
       // Admins bypass the limit entirely (mirrors check-design-quality's
       // has_role gate). On any rpc error, treat as non-admin (still limited).
       let isAdmin = false;
@@ -1268,16 +1281,9 @@ serve(async (req) => {
     // (check_generation_block only enforces that for action 'generate-design').
     // Admins are exempt. Fails open on RPC error.
     if (action === "faq-chat") {
-      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
-      });
-
-      const { data: { user } } = await client.auth.getUser();
-      faqChatUserId = user?.id ?? null;
-      callerUserId = faqChatUserId;
-      callerIsGuest = !user || user.is_anonymous === true;
+      // Same verified caller as every other action, resolved once above; the
+      // chat_logs writer at the success path reads it from faqChatUserId.
+      faqChatUserId = callerUserId;
 
       let isAdmin = false;
       if (user) {
