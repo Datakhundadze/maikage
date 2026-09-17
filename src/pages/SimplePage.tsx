@@ -1612,7 +1612,7 @@ export default function SimplePage() {
   // AI action on this page with NO guest gate: only handleAiGenerate called
   // checkAiLimit, so a guest could run isolate-subject as often as they liked.
   // The only thing that ever stopped them was the server's shared per-IP bucket
-  // (gen:ip:*, 4 units/hour, 3 units/day; this action costs 2) — which it spent out from under generation, with
+  // (gen:ip:*, 4 units/hour, 4 units/day; this action costs 2) — which it spent out from under generation, with
   // no login prompt to explain why the next generation was refused. It now takes
   // the SAME gate and the SAME budget as a generation: the pair below is
   // handleAiGenerate's, unchanged, so a guest has one coherent allowance across

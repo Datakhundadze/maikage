@@ -24,11 +24,17 @@ const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale",
 // cost 2 units; everything else costs 1. The models themselves are unchanged.
 //
 // The hourly cap rises 2 → 4 with the weighting, otherwise one background
-// removal would consume the whole hour. The daily cap drops 5 → 3: measured
-// guest sessions were 86% at ≤2 calls and none above 5, so 3 refuses only the
-// tail. Concretely, in one day a guest can upload a photo, remove its
-// background (2) and generate one design (1) — and that is the day. Two
-// background removals in one day (4 units) are refused at the second.
+// removal would consume the whole hour. The daily cap drops 5 → 4 units.
+// Concretely, in one day a guest can remove the background from TWO photos
+// (2 + 2), or remove one and generate one design (2 + 1, with one flash-tier
+// unit left), and a third pro-tier action is refused. A 30-day replay of
+// guest sessions at 3 units/day refused 42 of 115 sessions, 33 of them a
+// guest doing exactly two pro-tier actions — the upload-a-photo flow with
+// the clearest buyer intent — which is why the cap is 4 and not 3.
+//
+// The hourly cap (4) and the daily cap (4) bind at the SAME point for
+// pro-tier actions: two of them fill both. Only flash-tier actions can tell
+// the two apart, and only across hours.
 //
 // This server cap is the BACKSTOP. An honest browser hits the client-side
 // useGenerationLimit(2) gate first (SimplePage) and sees the login modal
@@ -36,7 +42,7 @@ const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale",
 // Weights are applied via rateLimitCharge.ts against the UNCHANGED
 // check_and_increment_rate_limit RPC — no schema or signature change.
 const GUEST_HOUR_LIMIT = 4;
-const GUEST_DAY_LIMIT = 3;
+const GUEST_DAY_LIMIT = 4;
 const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image"]);
 const PRO_TIER_GUEST_UNITS = 2;
 

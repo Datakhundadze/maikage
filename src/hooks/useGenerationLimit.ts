@@ -79,7 +79,7 @@ export function useGenerationLimit(guestLimit: number = GUEST_LIMIT) {
     // raise the login modal at the right moment; the counter behind it lives in
     // localStorage and anyone can clear it. The real ceiling is server-side and
     // entirely unaffected — gemini-proxy keys anonymous callers by IP at 4
-    // units/hour and 3 units/day (pro-tier actions cost 2 units) and checks it
+    // units/hour and 4 units/day (pro-tier actions cost 2 units) and checks it
     // on every billable action, whatever the client believed.
     if (loading) return { allowed: true };
 
