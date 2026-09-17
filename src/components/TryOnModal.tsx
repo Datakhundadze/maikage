@@ -9,6 +9,7 @@ import { t } from "@/lib/i18n";
 // Downscale helper — extracted to src/lib so /chat's photo attachment shares
 // one implementation. Same function, same defaults, same best-effort contract.
 import { downscaleDataUrl } from "@/lib/imageDownscale";
+import LoginModal from "@/components/LoginModal";
 
 // sessionStorage bridge to OrderDialog.uploadTryOnAssets, which reads these two
 // keys at order time and uploads them under order-originals/{orderId}/. Keys
@@ -65,6 +66,10 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  // A guest at the generation cap is asked to sign in. This used to be a
+  // toast with no way to act on it; now it opens the same LoginModal the
+  // constructor's own handlers open, stacked over this dialog.
+  const [showLogin, setShowLogin] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // True only when the user left via the "Order" CTA, so handleClose keeps the
   // stashed assets (the order flow needs them) instead of clearing them.
@@ -116,13 +121,18 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
             body = await error.context.json();
           }
         } catch { /* ignore parse errors */ }
-        // Rate limited (429): toast the limit message and stop — don't fall
-        // through to the generic "try-on failed" error.
+        // Rate limited (429): guest → login modal, signed-in → slow-down
+        // toast. Either way stop here — don't fall through to the generic
+        // "try-on failed" error.
         if (body?.code === "RATE_LIMITED") {
-          toast({
-            title: t(lang, body.requiresLogin ? "rateLimit.signInTitle" : "rateLimit.slowDownTitle"),
-            description: t(lang, body.requiresLogin ? "rateLimit.signIn" : "rateLimit.slowDown"),
-          });
+          if (body.requiresLogin) {
+            setShowLogin(true);
+          } else {
+            toast({
+              title: t(lang, "rateLimit.slowDownTitle"),
+              description: t(lang, "rateLimit.slowDown"),
+            });
+          }
           return;
         }
         throw new Error(body?.error || error.message || "Virtual try-on ვერ მოხერხდა");
@@ -174,6 +184,7 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-lg w-full">
         <DialogHeader>
@@ -274,5 +285,15 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
         </div>
       </DialogContent>
     </Dialog>
+    {/* Stacked over the try-on dialog, same component and same message as the
+        constructor's own rate-limit handlers. The person photo and result stay
+        in this dialog's state, so after an in-page (email) sign-in the customer
+        can press try-on again without re-uploading. */}
+    <LoginModal
+      open={showLogin}
+      onClose={() => setShowLogin(false)}
+      message={t(lang, "rateLimit.signIn")}
+    />
+    </>
   );
 }

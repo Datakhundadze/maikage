@@ -46,6 +46,7 @@ import { chromaKeyGreen } from "@/lib/chromaKey";
 import { t, colorKa } from "@/lib/i18n";
 import type { AppStatus } from "@/hooks/useDesign";
 import LoginModal from "@/components/LoginModal";
+import { consumeDesignRecovery, registerDesignSnapshotProvider } from "@/lib/designRecovery";
 import TryOnModal from "@/components/TryOnModal";
 import SimpleAiChatPanel, { type AiChatMessage } from "@/components/SimpleAiChatPanel";
 
@@ -976,6 +977,46 @@ export default function SimplePage() {
   const [aiStatus, setAiStatus] = useState<AppStatus>("GENERATING_DESIGN");
   // resultImage = shown in the panel; transferImage = injected as a layer.
   const [aiResult, setAiResult] = useState<{ resultImage: string; transferImage: string; downloadImage: string } | null>(null);
+
+  // ── Design recovery across an OAuth redirect ─────────────────────────
+  // Google / Apple sign-in navigates away and back; everything above is
+  // React state and would be lost. While this page is mounted, LoginModal
+  // can snapshot the design through this provider right before it redirects
+  // (see src/lib/designRecovery.ts), and the effect below puts it back on
+  // the next mount. Refs, not state, so the provider always reads the
+  // latest render without re-registering on every keystroke.
+  const recoverySnapshotRef = useRef({ frontData, backData, aiResult });
+  recoverySnapshotRef.current = { frontData, backData, aiResult };
+  useEffect(() => {
+    return registerDesignSnapshotProvider(() => {
+      const { frontData: front, backData: back, aiResult: result } = recoverySnapshotRef.current;
+      return { front, back, aiResult: result };
+    });
+  }, []);
+  useEffect(() => {
+    consumeDesignRecovery<SideData, { resultImage: string; transferImage: string; downloadImage: string }>()
+      .then((recovered) => {
+        if (!recovered) return;
+        const { snapshot, dropped } = recovered;
+        setFrontData(snapshot.front);
+        setBackData(snapshot.back);
+        setAiResult(snapshot.aiResult);
+        // A partial restore is acceptable; a silent one is not.
+        if (dropped.photos > 0 || dropped.aiResult) {
+          toast({
+            title: lang === "en" ? "Design partly restored" : "დიზაინი ნაწილობრივ აღდგა",
+            description: lang === "en"
+              ? `${dropped.photos > 0 ? `${dropped.photos} photo(s) could not be kept. ` : ""}${dropped.aiResult ? "The last AI result could not be kept." : ""}`.trim()
+              : `${dropped.photos > 0 ? `${dropped.photos} ფოტო ვერ შენარჩუნდა. ` : ""}${dropped.aiResult ? "ბოლო AI შედეგი ვერ შენარჩუნდა." : ""}`.trim(),
+            variant: "destructive",
+          });
+        }
+      })
+      .catch((e) => console.warn("[Simple] design recovery failed:", e));
+    // Mount only: the stash is consumed once per page load by design.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Per-layer "Edit with AI": which photo's background removal is in flight
   // (null = none) — drives the button's loading/disabled state.
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -1571,7 +1612,7 @@ export default function SimplePage() {
   // AI action on this page with NO guest gate: only handleAiGenerate called
   // checkAiLimit, so a guest could run isolate-subject as often as they liked.
   // The only thing that ever stopped them was the server's shared per-IP bucket
-  // (gen:ip:*, 2/hour, 5/day) — which it spent out from under generation, with
+  // (gen:ip:*, 4 units/hour, 3 units/day; this action costs 2) — which it spent out from under generation, with
   // no login prompt to explain why the next generation was refused. It now takes
   // the SAME gate and the SAME budget as a generation: the pair below is
   // handleAiGenerate's, unchanged, so a guest has one coherent allowance across
