@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactPii } from "./redactPii.ts";
+import { chargeRateLimit } from "./rateLimitCharge.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,37 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // caller. convert-bg-black (internal second half of a generate-design) and
 // randomize-prompt (cheap text) are intentionally exempt.
 const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image"]);
+
+// GUEST allowance, in UNITS, per IP (real signed-in users keep 30/hour and
+// 100/day, one unit per call, untouched).
+//
+// Guest spend is driven by model tier, not call count: the three actions in
+// PRO_TIER_GUEST_ACTIONS always run on the pro image model at roughly twice a
+// flash generation's price, and were ~17 of ~30 guest credits a week. They
+// cost 2 units; everything else costs 1. The models themselves are unchanged.
+//
+// The hourly cap rises 2 → 4 with the weighting, otherwise one background
+// removal would consume the whole hour. The daily cap drops 5 → 4 units.
+// Concretely, in one day a guest can remove the background from TWO photos
+// (2 + 2), or remove one and generate one design (2 + 1, with one flash-tier
+// unit left), and a third pro-tier action is refused. A 30-day replay of
+// guest sessions at 3 units/day refused 42 of 115 sessions, 33 of them a
+// guest doing exactly two pro-tier actions — the upload-a-photo flow with
+// the clearest buyer intent — which is why the cap is 4 and not 3.
+//
+// The hourly cap (4) and the daily cap (4) bind at the SAME point for
+// pro-tier actions: two of them fill both. Only flash-tier actions can tell
+// the two apart, and only across hours.
+//
+// This server cap is the BACKSTOP. An honest browser hits the client-side
+// useGenerationLimit(2) gate first (SimplePage) and sees the login modal
+// before any request is sent; this is what stops a client that skips it.
+// Weights are applied via rateLimitCharge.ts against the UNCHANGED
+// check_and_increment_rate_limit RPC — no schema or signature change.
+const GUEST_HOUR_LIMIT = 4;
+const GUEST_DAY_LIMIT = 4;
+const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image"]);
+const PRO_TIER_GUEST_UNITS = 2;
 
 // Text-only actions: they skip the image modality, run a single attempt, and
 // return { text } (no image extraction). randomize-prompt (existing) and
@@ -1244,13 +1276,26 @@ serve(async (req) => {
             ?? "unknown";
           key = `gen:ip:${ip}`;
         }
-        const hourLimit = isRealUser ? 30 : 2;
-        const dayLimit = isRealUser ? 100 : 5;
+        const hourLimit = isRealUser ? 30 : GUEST_HOUR_LIMIT;
+        const dayLimit = isRealUser ? 100 : GUEST_DAY_LIMIT;
+        // Guests pay 2 units for a pro-tier action; registered users pay 1
+        // for everything, exactly as before (their limits are unchanged).
+        const units = !isRealUser && PRO_TIER_GUEST_ACTIONS.has(action) ? PRO_TIER_GUEST_UNITS : 1;
 
-        const { data: allowed, error: rlError } = await client.rpc(
-          "check_and_increment_rate_limit",
-          { p_key: key, p_hour_limit: hourLimit, p_day_limit: dayLimit },
+        const charge = await chargeRateLimit(
+          async (fn, args) => {
+            const { data, error } = await client.rpc(fn, args);
+            return { data, error };
+          },
+          { key, hourLimit, dayLimit, units },
         );
+        const allowed = charge.allowed;
+        const rlError = charge.error;
+        if (charge.topUpError) {
+          // The gate allowed and the action proceeds; the bucket is short by
+          // the units that failed to land. Logged, never surfaced.
+          console.error(`[gemini-proxy] rate-limit top-up failed for ${key} (charged ${charge.charged}/${units}):`, charge.topUpError);
+        }
 
         if (rlError) {
           // Fail open: never block real users on an infra hiccup.

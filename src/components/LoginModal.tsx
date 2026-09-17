@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { lovable } from "@/integrations/lovable/index";
+import { discardDesignStash, stashDesignForRedirect } from "@/lib/designRecovery";
 import { X } from "lucide-react";
 
 interface LoginModalProps {
@@ -37,19 +38,23 @@ export default function LoginModal({ open, onClose, message }: LoginModalProps) 
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("google", {
+  // OAuth with a redirect_uri is a FULL-PAGE navigation: the constructor's
+  // layers and AI result live in React state and would be gone on return. So
+  // the design is stashed FIRST (a no-op when no constructor is mounted or it
+  // is empty), and SimplePage restores it on the next mount. If the call comes
+  // back without having navigated (popup / embedded mode) nothing was lost, so
+  // the stash is dropped rather than left to resurrect on a later reload.
+  const handleOAuthSignIn = async (provider: "google" | "apple") => {
+    await stashDesignForRedirect();
+    const result = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.href,
     });
-    if (!error) onClose();
+    if (!result.redirected) discardDesignStash();
+    if (!result.error) onClose();
   };
 
-  const handleAppleSignIn = async () => {
-    const { error } = await lovable.auth.signInWithOAuth("apple", {
-      redirect_uri: window.location.href,
-    });
-    if (!error) onClose();
-  };
+  const handleGoogleSignIn = () => handleOAuthSignIn("google");
+  const handleAppleSignIn = () => handleOAuthSignIn("apple");
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
