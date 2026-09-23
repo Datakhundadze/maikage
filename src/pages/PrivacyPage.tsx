@@ -27,11 +27,11 @@ const LAST_UPDATED = "2026-09-23";
 // and the banner disappears.
 const TODO_OWNER = {
   /** How long a deletion request takes to complete, e.g. "30 days" / "30 დღე". */
-  deletionResponseTime: { ge: "TODO_OWNER: [ვადა, მაგ. 30 დღე]", en: "TODO_OWNER: [period, e.g. 30 days]" },
+  deletionResponseTime: { ge: "2–3 სამუშაო დღე", en: "2–3 working days" },
   /** Legal entity as it should appear: name, id, registered address. */
-  legalEntity: { ge: "შპს MAIKA.GE (ს/კ 404430175), TODO_OWNER: [იურიდიული მისამართი]", en: "MAIKA.GE LLC (ID 404430175), TODO_OWNER: [registered address]" },
+  legalEntity: { ge: "შპს MAIKA.GE (ს/კ 404430175), ქ. თბილისი, იერუსალიმის ქ. 2/5", en: "MAIKA.GE LLC (ID 404430175), 2/5 Ierusalimi St, Tbilisi" },
   /** How long paid-order records are kept after a deletion request (accounting). */
-  orderRecordRetention: { ge: "TODO_OWNER: [ვადა]", en: "TODO_OWNER: [period]" },
+  orderRecordRetention: { ge: "3 წელი", en: "3 years" },
 };
 const HAS_PLACEHOLDERS = JSON.stringify(TODO_OWNER).includes("TODO_OWNER");
 
