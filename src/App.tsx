@@ -87,7 +87,10 @@ function AppRoutes() {
     if (mode === "landing") return <LandingPage />;
     if (mode === "simple") return <SimplePage />;
     if (mode === "terms") return <TermsPage />;
-    if (mode === "privacy") return <PrivacyPage />;
+    // /privacy is a real route now (Meta needs a direct URL) and nothing sets
+    // this mode any more; the guard only keeps a stray setMode("privacy") from
+    // rendering the policy at "/" without its URL.
+    if (mode === "privacy") return <Navigate to="/privacy" replace />;
     if (mode === "corporate") return <CorporatePage />;
     if (mode === "sport") return <SportPage />;
     if (mode === "about") return <AboutPage />;
@@ -109,6 +112,9 @@ function AppRoutes() {
       <Route path="/design/:slug" element={<DesignDetailPage />} />
       <Route path="/my-designs" element={<MyDesignsPage />} />
       <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+      {/* Direct URL for the Meta App dashboard (Privacy Policy URL and Data
+          deletion instructions URL → /privacy#data-deletion). Indexable. */}
+      <Route path="/privacy" element={<PrivacyPage />} />
       {/* /community gallery retired — redirect old URL to the catalog so it
           doesn't dead-end (client-side; Lovable has no server redirects). */}
       <Route path="/community" element={<Navigate to="/designs" replace />} />
