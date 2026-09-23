@@ -21,38 +21,25 @@ import { submitOrder } from "@/lib/orderSubmission";
 // for cart-based orders. Without this, cart orders never populate that
 // folder and admin can only see the rendered mockup.
 //
+// SERVER-SIDE NOW. This used to list cart-items/{id} from the browser and
+// copy file by file, which needed an anonymous SELECT policy on cart-items/
+// — the one that let anyone enumerate every customer's original photos.
+// The mirror-order-originals edge function does the same copy with the
+// service role, deriving the source files from each order row's own
+// design_state (photos[].url), so the browser passes ORDER IDS ONLY and the
+// policy could be dropped. Destination paths are unchanged.
+//
 // Best-effort: failures are logged but never abort the checkout. Runs
 // fire-and-forget so the payment redirect isn't gated on storage copies.
-async function mirrorCartItemOriginals(cartItemId: string, orderRowIds: string[]) {
+async function mirrorCartItemOriginals(orderRowIds: string[]) {
+  if (orderRowIds.length === 0) return;
   try {
-    const { data, error } = await supabase.storage
-      .from("designs")
-      .list(`cart-items/${cartItemId}`, { limit: 100 });
-    if (error || !data) return;
-    const originals = data.filter((f) => f.name.includes("-original-"));
-    if (originals.length === 0) return;
-
-    await Promise.all(
-      orderRowIds.flatMap((orderId) =>
-        originals.map(async (file) => {
-          // Cart layout: "front-original-0.png" | "back-original-1.png".
-          // OrderDialog layout: "front-0.png" | "back-1.png". Rename
-          // during copy so admin's filter (name.startsWith("back")) and
-          // numbering stay consistent across both checkout paths.
-          const m = file.name.match(/^(front|back)-original-(\d+)\.(png|jpg|jpeg|webp)$/i);
-          if (!m) return;
-          const [, side, idx, ext] = m;
-          const from = `cart-items/${cartItemId}/${file.name}`;
-          const to = `order-originals/${orderId}/${side}-${idx}.${ext.toLowerCase()}`;
-          const { error: copyErr } = await supabase.storage.from("designs").copy(from, to);
-          if (copyErr) {
-            console.warn(`[cart-mirror] copy ${from} → ${to} failed:`, copyErr.message);
-          }
-        }),
-      ),
-    );
+    const { error } = await supabase.functions.invoke("mirror-order-originals", {
+      body: { orderIds: orderRowIds },
+    });
+    if (error) console.warn("[cart-mirror] mirror-order-originals failed:", error.message ?? error);
   } catch (e) {
-    console.warn(`[cart-mirror] cart-item ${cartItemId} mirror failed:`, e);
+    console.warn("[cart-mirror] mirror-order-originals threw:", e);
   }
 }
 
@@ -250,19 +237,13 @@ export default function CartPage() {
         backTransparentBackfill,
       });
 
-      // Fire-and-forget: mirror each cart item's originals into
+      // Fire-and-forget: mirror every row's cart originals into
       // order-originals/{orderId}/ so admin's photo download buttons work
       // for cart orders. Don't await — the payment redirect shouldn't wait
       // on storage copies, and admin polling will pick up the files when
-      // they appear.
-      void Promise.all(
-        items.map((item) => {
-          const matchingIds = rows
-            .filter((r) => r.front_mockup_url === item.frontMockupUrl)
-            .map((r) => r.id);
-          return mirrorCartItemOriginals(item.id, matchingIds);
-        }),
-      );
+      // they appear. One call for the whole cart: the function reads each
+      // row's design_state and knows which cart item it came from.
+      void mirrorCartItemOriginals(rows.map((r) => r.id));
 
       localStorage.setItem("maika_pending_order_id", firstOrderId);
       localStorage.setItem("maika_pending_cart_id", cartId);

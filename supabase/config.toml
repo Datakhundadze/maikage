@@ -53,3 +53,10 @@ verify_jwt = true
 # GET with META_VERIFY_TOKEN. verify_jwt = false is set for THIS function only.
 [functions.meta-webhook]
 verify_jwt = false
+
+# Cart checkout: copies a cart order's original photos into order-originals/
+# server-side (service role) so the anonymous SELECT policy on cart-items/
+# could be dropped. Guest checkout has no JWT; the function takes order ids
+# only and copies nothing but those orders' own referenced files.
+[functions.mirror-order-originals]
+verify_jwt = false
