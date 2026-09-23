@@ -58,6 +58,7 @@ const STATIC_URLS: { loc: string; priority: string; changefreq: string }[] = [
   { loc: "/portfolio", priority: "0.7", changefreq: "weekly" },
   { loc: "/blog",      priority: "0.7", changefreq: "weekly" },
   { loc: "/contact",   priority: "0.6", changefreq: "monthly" },
+  { loc: "/privacy",   priority: "0.3", changefreq: "yearly" },
 ];
 
 const ESCAPE: Record<string, string> = {
