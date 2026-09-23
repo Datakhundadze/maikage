@@ -440,7 +440,10 @@ export default function AdminOrders() {
       }
       const suffix = side === "front" ? "transparent" : "transparent-back";
       const path = `order-mockups/${order.id}-${suffix}.png`;
-      const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: "image/png" });
+      // Deterministic path: a second regeneration legitimately overwrites the
+      // first, so this is the one caller that keeps upsert: true. Admins hold
+      // "Admins update designs order-mockups" (migration 20260924110000).
+      const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: "image/png", upsert: true });
       const column = side === "front" ? "transparent_image_url" : "back_transparent_image_url";
       const { error } = await supabase
         .from("orders")

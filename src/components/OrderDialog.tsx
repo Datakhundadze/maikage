@@ -71,7 +71,12 @@ async function uploadMockupImage(dataUrl: string, orderId: string, side: string)
   // the resulting public URL is stored in front_mockup_url / back_mockup_url
   // and every reader (admin, order cards, emails) uses that column.
   const path = `order-mockups/${orderId}-${side}-${crypto.randomUUID()}.png`;
-  const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: "image/png" });
+  // upsert: false — the path is unique to this call, so a real overwrite never
+  // happens, and refusing one is what lets the anonymous UPDATE policy on
+  // order-mockups/ be dropped (migration 20260924110000). A network retry
+  // that finds its own first attempt already stored is handled inside
+  // uploadBlobWithRetry as a success.
+  const { publicUrl } = await uploadBlobWithRetry("designs", path, blob, { contentType: "image/png", upsert: false });
   console.log(`[OrderDialog] ${side} mockup uploaded:`, publicUrl);
   return publicUrl;
 }
