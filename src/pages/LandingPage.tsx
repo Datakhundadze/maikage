@@ -312,9 +312,9 @@ export default function LandingPage() {
               {lang === "en" ? "Terms & Conditions" : "წესები და პირობები"}
             </button>
             <span className="text-muted-foreground/30">•</span>
-            <button onClick={() => setMode("privacy")} className="text-muted-foreground hover:text-foreground transition-colors text-xs">
+            <Link to="/privacy" className="text-muted-foreground hover:text-foreground transition-colors text-xs">
               {lang === "en" ? "Privacy Policy" : "კონფიდენციალურობა"}
-            </button>
+            </Link>
             <span className="text-muted-foreground/30">•</span>
             <Link to="/faq" className="text-muted-foreground hover:text-foreground transition-colors text-xs">
               {lang === "en" ? "FAQ" : "ხშირად დასმული კითხვები"}
