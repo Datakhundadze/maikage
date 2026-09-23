@@ -884,6 +884,54 @@ export type Database = {
         }
         Relationships: []
       }
+      social_messages: {
+        Row: {
+          attachments: Json
+          channel: string
+          conversation_key: string | null
+          created_at: string
+          customer_id: string
+          direction: string
+          id: string
+          meta_message_id: string
+          page_id: string
+          sender_id: string
+          sent_at: string
+          text: string | null
+          unsupported: boolean
+        }
+        Insert: {
+          attachments?: Json
+          channel: string
+          conversation_key?: string | null
+          created_at?: string
+          customer_id: string
+          direction: string
+          id?: string
+          meta_message_id: string
+          page_id: string
+          sender_id: string
+          sent_at: string
+          text?: string | null
+          unsupported?: boolean
+        }
+        Update: {
+          attachments?: Json
+          channel?: string
+          conversation_key?: string | null
+          created_at?: string
+          customer_id?: string
+          direction?: string
+          id?: string
+          meta_message_id?: string
+          page_id?: string
+          sender_id?: string
+          sent_at?: string
+          text?: string | null
+          unsupported?: boolean
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
