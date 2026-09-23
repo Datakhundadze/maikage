@@ -46,3 +46,10 @@ verify_jwt = true
 # Bearer, so verify_jwt stays true (no public/anon access).
 [functions.generate-weekly-sales-report]
 verify_jwt = true
+
+# Meta (Messenger + Instagram DM) webhook. Meta cannot send a Supabase JWT, so
+# the gateway must not demand one; the endpoint authenticates every POST with
+# X-Hub-Signature-256 (HMAC-SHA256 of the raw body, META_APP_SECRET) and every
+# GET with META_VERIFY_TOKEN. verify_jwt = false is set for THIS function only.
+[functions.meta-webhook]
+verify_jwt = false
