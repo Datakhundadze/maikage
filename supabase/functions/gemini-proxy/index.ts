@@ -60,7 +60,7 @@ const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
 # ცოდნის ბაზა (KA + EN)
 # Single source of truth for the website FAQ assistant.
 # Prices = exactly what the cart charges (pricing.ts). Update here when prices change.
-# Last reconciled: 2026-09-17
+# Last reconciled: 2026-10-03
 
 ═══════════════════════════════════════════════════════════════
 ## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
@@ -286,13 +286,29 @@ contact us for an individual quote. (Corporate / bulk → individual pricing.)
 ## 7. PRODUCTION TIME / დამზადების ვადა
 ═══════════════════════════════════════════════════════════════
 
-KA: 1–2 სამუშაო დღე. კონკრეტული თარიღისთვის თუ გჭირდებათ — მოგვწერეთ და შევეცდებით დაგეხმაროთ.
+KA: 1–2 სამუშაო დღე — როგორც წესი, შეკვეთა მზადდება იმავე ან მაქსიმუმ მეორე დღეს.
+ზუსტი დრო დამოკიდებულია შეკვეთების რაოდენობასა და დეტალებზე.
+კონკრეტული თარიღისთვის თუ გჭირდებათ — მოგვწერეთ და შევეცდებით დაგეხმაროთ.
+გამონაკლისი: სპორტულ ფორმაზე გვარის და ნომრის დატანა — 30–40 წუთი.
 ⚠️ ვადაზე კითხვისას უპასუხე ᲛᲮᲝᲚᲝᲓ ეს. ნუ ჩამოთვლი რაოდენობრივ საფეხურებს (21–50ც, 50+).
 დიდი ან კორპორატიული შეკვეთის შემთხვევაში თქვი, რომ ზუსტი თარიღისთვის პირდაპირ დაგვიკავშირდნენ.
+⚠️ ადგილზე მოსვლა („ადგილზევე დამზადდება?", „დაველოდები", „ახლავე გამიკეთებთ?",
+მოტანილ ნივთზე ბეჭდვა): პასუხი იგივეა — 1–2 სამუშაო დღე, დამოკიდებულია შეკვეთების
+რაოდენობასა და დეტალებზე. არასოდეს დაასახელო წუთები და არასოდეს დაჰპირდე ადგილზე
+დალოდებით დამზადებას. ერთადერთი გამონაკლისი — გვარი + ნომერი სპორტულ ფორმაზე (30–40 წუთი).
+ნუ გამოიგონებ მიზეზებს (მაგ. „შაბათობით მეტი შეკვეთაა").
 
-EN: 1–2 working days. If you need it by a specific date, message us and we'll try to help.
+EN: 1–2 working days — usually ready the same day or the next day at the latest.
+The exact time depends on the number of orders and the order details.
+If you need it by a specific date, message us and we'll try to help.
+Exception: name + number on a sports uniform — 30–40 minutes.
 ⚠️ Answer ONLY that. Never volunteer quantity tiers (21–50, 50+). For a large or
 corporate order, tell them to contact us directly for an exact date.
+⚠️ WALK-IN / ON THE SPOT ("can I wait for it?", "will it be ready right away?",
+printing on an item they bring): same answer — 1–2 working days, depending on order
+volume and details. NEVER quote minutes and NEVER promise while-you-wait production.
+The only exception is name + number on a sports uniform (30–40 minutes).
+Never invent reasons (e.g. "Saturdays are busier").
 
 ═══════════════════════════════════════════════════════════════
 ## 8. DELIVERY / მიწოდება
