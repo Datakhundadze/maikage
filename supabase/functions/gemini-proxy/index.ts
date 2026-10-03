@@ -1669,9 +1669,9 @@ Output: one photorealistic composite photo.`;
       model = "google/gemini-3-flash-preview";
       const incoming = Array.isArray(params.messages) ? params.messages : [];
       const history = incoming
-        .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+        .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
         .slice(-8)
-        .map((m) => ({ role: m.role, content: m.content.slice(0, 1000) }));
+        .map((m: any) => ({ role: m.role, content: m.content.slice(0, 1000) }));
       // WHO IS ASKING. The KB's generation-allowance line is for guests only —
       // telling a registered customer that "guests get 2 free generations, then
       // sign up" asks them to do the thing they have already done, with numbers
