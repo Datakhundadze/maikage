@@ -46,14 +46,14 @@ describe("coarseDate — never a timestamp", () => {
   const ago = (days: number) => new Date(now - days * 86_400_000).toISOString();
 
   it("reports today, yesterday and recent days", () => {
-    expect(coarseDate(ago(0), "ka", now)).toBe("დღეს");
-    expect(coarseDate(ago(1), "ka", now)).toBe("გუშინ");
-    expect(coarseDate(ago(3), "ka", now)).toBe("3 დღის წინ");
+    expect(coarseDate(ago(0), "ge", now)).toBe("დღეს");
+    expect(coarseDate(ago(1), "ge", now)).toBe("გუშინ");
+    expect(coarseDate(ago(3), "ge", now)).toBe("3 დღის წინ");
   });
 
   it("coarsens to weeks and months", () => {
-    expect(coarseDate(ago(10), "ka", now)).toBe("დაახლოებით 1 კვირის წინ");
-    expect(coarseDate(ago(60), "ka", now)).toBe("დაახლოებით 2 თვის წინ");
+    expect(coarseDate(ago(10), "ge", now)).toBe("დაახლოებით 1 კვირის წინ");
+    expect(coarseDate(ago(60), "ge", now)).toBe("დაახლოებით 2 თვის წინ");
   });
 
   it("speaks English when the page does", () => {
@@ -72,6 +72,6 @@ describe("coarseDate — never a timestamp", () => {
   });
 
   it("returns empty for an unparseable value rather than throwing", () => {
-    expect(coarseDate("not-a-date", "ka", now)).toBe("");
+    expect(coarseDate("not-a-date", "ge", now)).toBe("");
   });
 });

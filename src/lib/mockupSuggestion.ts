@@ -335,7 +335,7 @@ function buildMockupSeed(m: MockupSuggestion, attachment?: string | null): Const
     ...merged,
     // A product change without an explicit brand would carry a stale brand from
     // another product; fall back to that product's catalog default.
-    subProduct: merged.subProduct ?? (merged.product ? catalog.getDefaultSubProduct(merged.product) : undefined),
+    subProduct: merged.subProduct ?? (merged.product ? catalog.getDefaultSubProduct(merged.product as ProductType) : undefined),
   };
 }
 
