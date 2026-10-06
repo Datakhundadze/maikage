@@ -20,7 +20,7 @@ import SeoHead from "@/components/SeoHead";
 // notice while any placeholder remains.
 
 const CONTACT_EMAIL = "maika@maika.ge";
-const LAST_UPDATED = "2026-09-24";
+const LAST_UPDATED = "2026-10-06";
 
 // ── Placeholders the owner must fill in ──────────────────────────────────
 // Kept in one place so the draft banner can detect them. Replace the values
@@ -29,7 +29,7 @@ const TODO_OWNER = {
   /** How long a deletion request takes to complete, e.g. "30 days" / "30 დღე". */
   deletionResponseTime: { ge: "2–3 სამუშაო დღის", en: "2–3 working days" },
   /** Legal entity as it should appear: name, id, registered address. */
-  legalEntity: { ge: "შპს მაიკა ჯი (ს/კ 404430175), ქ. თბილისი, კრწანისის რაიონი, იერუსალიმის ქ. N 2/5", en: "MAIKA JI LLC (ID 404430175), 2/5 Ierusalimi St, Krtsanisi District, Tbilisi" },
+  legalEntity: { ge: "შპს მაიკა ჯი (MAIKA.GE LLC, ს/კ 404430175), ქ. თბილისი, კრწანისის რაიონი, იერუსალიმის ქ. N 2/5", en: "MAIKA.GE LLC (ID 404430175), N 2/5 Ierusalimi Street, Krtsanisi District, Tbilisi, Georgia" },
   /** How long paid-order records are kept after a deletion request (accounting). */
   orderRecordRetention: { ge: "3 წლის", en: "3 years" },
 };
