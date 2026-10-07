@@ -4,6 +4,15 @@
 //   dist/design/<slug>/index.html
 //   dist/blog/<slug>/index.html
 //
+// plus three list / info routes:
+//
+//   dist/designs/index.html   every published design, linked, by category
+//   dist/blog/index.html      every published post (title, date, summary)
+//   dist/contact/index.html   business facts copied verbatim from the app
+//
+// dist/index.html is NEVER written: it is the SPA fallback for every route
+// that has no file of its own.
+//
 // Why this exists: the SPA shell (dist/index.html) is byte-identical for every
 // URL, so a crawler that doesn't run JS — or snapshots before the data fetch
 // lands — sees the generic homepage title and an empty <div id="root">. The
@@ -67,6 +76,23 @@ function outputPath(kind, slug) {
   if (!file.startsWith(base + sep)) throw new Error(`path escapes dist/${kind}: ${file}`);
   return file;
 }
+
+// The only list/info files this script may write. Anything else — above all
+// dist/index.html, the SPA fallback — is refused.
+const STATIC_ROUTES = new Set(["designs", "blog", "contact"]);
+async function writeStatic(route, html) {
+  if (!STATIC_ROUTES.has(route)) throw new Error(`refusing to write unknown static route: ${route}`);
+  const file = resolve(DIST, route, "index.html");
+  if (file === TEMPLATE || !file.startsWith(resolve(DIST, route) + sep)) {
+    throw new Error(`refusing to write ${file}`);
+  }
+  await mkdir(dirname(file), { recursive: true });
+  await writeFile(file, html, "utf8");
+}
+
+// SeoHead's DEFAULT_OG_IMAGE: emitted as og:image by every page that passes
+// no image of its own (/designs, /blog, /contact).
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
 
 // Mirrors src/lib/categories.ts (label_ka by slug). Used only for the
 // no-price description fallback below.
@@ -150,6 +176,9 @@ const STYLE = {
   img: "display:block;max-width:100%;height:auto;margin:0 auto 24px;border-radius:16px",
   a: "color:inherit;text-decoration:underline;text-underline-offset:2px",
   footer: "margin:32px 0 0;font-size:14px",
+  ul: "margin:0 0 16px;padding-left:20px;list-style:disc",
+  li: "margin:0 0 6px",
+  card: "margin:0 0 24px",
 };
 const link = (href, text) => `<a href="${esc(href)}" style="${STYLE.a}">${esc(text)}</a>`;
 
@@ -285,6 +314,142 @@ function blogRoot(p, coverUrl) {
   ].filter(Boolean).join("\n");
 }
 
+/** Sort helper: newest first by an ISO timestamp, missing values last. */
+const byDateDesc = (a, b) => String(b ?? "").localeCompare(String(a ?? ""));
+
+/** dd.MM.yyyy in Tbilisi time — what BlogPage's date-fns format() shows a local visitor. */
+function formatDateKa(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Tbilisi", day: "2-digit", month: "2-digit", year: "numeric" })
+      .formatToParts(d)
+      .map((x) => [x.type, x.value]),
+  );
+  return `${parts.day}.${parts.month}.${parts.year}`;
+}
+
+/**
+ * /designs — every published design with a safe slug, as a plain link, under
+ * its category label (CATEGORY_LABEL order). Within a group: newest first, as
+ * CatalogPage orders them. Designs without a category close the list with no
+ * heading, so no label is invented. Heading and subtitle copy CatalogPage.
+ */
+function designsIndexRoot(designs) {
+  const groups = new Map();
+  for (const d of [...designs].sort((a, b) => byDateDesc(a.created_at, b.created_at))) {
+    const key = d.category || "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(d);
+  }
+  const order = [
+    ...Object.keys(CATEGORY_LABEL).filter((k) => groups.has(k)),
+    ...[...groups.keys()].filter((k) => k && !(k in CATEGORY_LABEL)).sort(),
+    ...(groups.has("") ? [""] : []),
+  ];
+  const list = (rows) =>
+    `<ul style="${STYLE.ul}">\n` +
+    rows.map((d) => `<li style="${STYLE.li}">${link(`/design/${d.slug}`, d.title_ka)}</li>`).join("\n") +
+    `\n</ul>`;
+  const sections = order.map((key) =>
+    key
+      ? `<section>\n<h2 style="${STYLE.h2}">${esc(CATEGORY_LABEL[key] ?? key)}</h2>\n${list(groups.get(key))}\n</section>`
+      : `<section>\n${list(groups.get(key))}\n</section>`,
+  );
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", "მთავარი")}</nav>`,
+    `<h1 style="${STYLE.h1}">კატალოგი</h1>`,
+    `<p style="${STYLE.p}">მზა დიზაინები — აირჩიე და დაიბეჭდე ნებისმიერ პროდუქტზე</p>`,
+    ...sections,
+    `</main>`,
+  ].join("\n");
+}
+
+/**
+ * /blog — every published post with a safe slug: title link, date, summary.
+ * Order and copy follow BlogPage (published_at desc, then created_at desc).
+ */
+function blogIndexRoot(posts) {
+  const sorted = [...posts].sort(
+    (a, b) => byDateDesc(a.published_at, b.published_at) || byDateDesc(a.created_at, b.created_at),
+  );
+  const items = sorted.map((p) => {
+    const date = formatDateKa(p.published_at ?? p.created_at);
+    const summary = p.meta_description_ka || excerpt(p.body_md);
+    return [
+      `<article style="${STYLE.card}">`,
+      `<h2 style="${STYLE.h3}">${link(`/blog/${p.slug}`, p.title_ka)}</h2>`,
+      date ? `<p style="${STYLE.meta}"><time datetime="${esc(String(p.published_at ?? p.created_at).slice(0, 10))}">${esc(date)}</time></p>` : "",
+      summary ? `<p style="${STYLE.p}">${esc(summary)}</p>` : "",
+      `</article>`,
+    ].filter(Boolean).join("\n");
+  });
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", "მთავარი")}</nav>`,
+    `<h1 style="${STYLE.h1}">ბლოგი</h1>`,
+    `<p style="${STYLE.p}">სიახლეები, ივენთები და კოლაბორაციები</p>`,
+    ...items,
+    `</main>`,
+  ].join("\n");
+}
+
+// /contact — every string below is copied VERBATIM from the codebase; the
+// source of each is noted. Nothing is reworded, inferred or added: no prices,
+// no production times. Change the source, then change it here.
+const CONTACT = {
+  h1: "კონტაქტი და შოურუმი",                                   // ContactPage.tsx:112
+  // SeoHead.tsx:25-26 (Organization schema description)
+  about: "Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში.",
+  addressLabel: "მისამართი",                                    // ContactPage.tsx:120
+  address: "დინამოს სტადიონი, კარი #10",                       // ContactPage.tsx:127
+  hoursLabel: "სამუშაო საათები",                                // ContactPage.tsx:136
+  hours: ["ორშ–პარ 11:00–19:00", "შაბ 11:00–18:00", "კვირა დაკეტილი"], // ContactPage.tsx:138-140
+  phoneLabel: "ტელეფონი",                                       // ContactPage.tsx:149
+  phones: [                                                     // ContactPage.tsx:21-22
+    { display: "+(995 32) 2 05 06 20", tel: "+995322050620" },
+    { display: "+599 05 08 07", tel: "+995599050807" },
+  ],
+  emailLabel: "ელფოსტა",                                        // ContactPage.tsx:167
+  email: "maika@maika.ge",                                      // ContactPage.tsx:168-169
+  mapLabel: "მდებარეობა",                                       // ContactPage.tsx:177
+  mapLinkText: "გახსენი Google Maps-ში",                        // ContactPage.tsx:195
+  // ContactPage.tsx:14 (MAPS_PLACE_URL)
+  mapUrl: "https://www.google.com/maps/place/Maika.ge/@41.7231446,44.7910174,17z/data=!3m1!4b1!4m6!3m5!1s0x404473c7faeeac33:0x51850ad0fd75a99b!8m2!3d41.7231446!4d44.7910174!16s%2Fg%2F11h6g3tpzr",
+  socials: [                                                    // labels: ContactBar.tsx aria-labels
+    { label: "Facebook", url: "https://www.facebook.com/maika.ge" },       // SeoHead.tsx:36
+    { label: "Instagram", url: "https://www.instagram.com/maika.ge_/" },   // SeoHead.tsx:37
+    { label: "TikTok", url: "https://www.tiktok.com/@maika.ge" },          // SeoHead.tsx:38
+    { label: "WhatsApp", url: "https://wa.me/995599050807" },              // ContactBar.tsx:21,63
+  ],
+  homeLinkText: "მთავარი გვერდი",                               // ContactPage.tsx:109
+};
+
+function contactRoot() {
+  const c = CONTACT;
+  const ext = (href, text) =>
+    `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="${STYLE.a}">${esc(text)}</a>`;
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", c.homeLinkText)}</nav>`,
+    `<h1 style="${STYLE.h1}">${esc(c.h1)}</h1>`,
+    `<p style="${STYLE.p}">${esc(c.about)}</p>`,
+    `<h2 style="${STYLE.h3}">${esc(c.addressLabel)}</h2>`,
+    `<p style="${STYLE.p}">${ext(c.mapUrl, c.address)}</p>`,
+    `<h2 style="${STYLE.h3}">${esc(c.hoursLabel)}</h2>`,
+    `<ul style="${STYLE.ul}">${c.hours.map((h) => `<li style="${STYLE.li}">${esc(h)}</li>`).join("")}</ul>`,
+    `<h2 style="${STYLE.h3}">${esc(c.phoneLabel)}</h2>`,
+    `<ul style="${STYLE.ul}">${c.phones.map((p) => `<li style="${STYLE.li}">${link(`tel:${p.tel}`, p.display)}</li>`).join("")}</ul>`,
+    `<h2 style="${STYLE.h3}">${esc(c.emailLabel)}</h2>`,
+    `<p style="${STYLE.p}">${link(`mailto:${c.email}`, c.email)}</p>`,
+    `<h2 style="${STYLE.h3}">${esc(c.mapLabel)}</h2>`,
+    `<p style="${STYLE.p}">${ext(c.mapUrl, c.mapLinkText)}</p>`,
+    `<p style="${STYLE.footer}">${c.socials.map((x) => ext(x.url, x.label)).join(" · ")}</p>`,
+    `</main>`,
+  ].join("\n");
+}
+
 async function emit(kind, rows, build, stats) {
   for (const row of rows) {
     const reason = unsafeSlugReason(row?.slug);
@@ -317,22 +482,36 @@ async function main() {
     return;
   }
 
+  const stats = { design: 0, blog: 0, lists: [], skipped: [], failed: [] };
+
+  // /contact — no data needed, so it does not depend on Supabase at all.
+  try {
+    await writeStatic("contact", renderPage(template, {
+      title: "კონტაქტი და შოურუმი | Maika.ge",
+      description: "მოგვაკითხეთ შოურუმში — დინამოს სტადიონი, კარი #10. სამუშაო საათები, ტელეფონი, ელფოსტა და მდებარეობა რუკაზე.",
+      canonical: `${SITE_URL}/contact`,
+      image: DEFAULT_OG_IMAGE,
+      rootHtml: contactRoot(),
+    }));
+    stats.lists.push("contact");
+  } catch (e) {
+    stats.failed.push(`contact: ${e?.message ?? e}`);
+  }
+
   let cfg;
   try {
     cfg = supabaseConfig();
   } catch (e) {
-    console.warn(`${LOG} ${e.message}. Skipping prerender; SPA fallback serves these URLs.`);
+    console.warn(`${LOG} ${e.message}. Skipping data-driven pages; SPA fallback serves them.`);
     return;
   }
-
-  const stats = { design: 0, blog: 0, skipped: [], failed: [] };
 
   // Designs
   try {
     const designs = await fetchAll(
       cfg,
       "catalog_designs",
-      "slug,title_ka,thumbnail_url,print_file_url,category,meta_description_ka,description_ka",
+      "slug,title_ka,thumbnail_url,print_file_url,category,meta_description_ka,description_ka,created_at",
       "is_published=eq.true",
     );
     if (designs.length === 0) console.warn(`${LOG} catalog_designs returned 0 published rows — no design pages written.`);
@@ -346,6 +525,23 @@ async function main() {
         rootHtml: designRoot(d, description),
       });
     }, stats);
+
+    // /designs — the crawl hub. Links exactly the designs that got a page.
+    if (stats.design > 0) {
+      try {
+        const linked = designs.filter((d) => !unsafeSlugReason(d?.slug));
+        await writeStatic("designs", renderPage(template, {
+          title: "კატალოგი — Maika.ge დიზაინები",
+          description: "აარჩიე მზა დიზაინი Maika.ge-ის კატალოგიდან — ქართული მოტივები, ფიროსმანი, მუსიკა, კინო, პატრიოტული. სხვადასხვა სტილისა და ხარისხის მაისურები.",
+          canonical: `${SITE_URL}/designs`,
+          image: DEFAULT_OG_IMAGE,
+          rootHtml: designsIndexRoot(linked),
+        }));
+        stats.lists.push(`designs (${linked.length} links)`);
+      } catch (e) {
+        stats.failed.push(`designs index: ${e?.message ?? e}`);
+      }
+    }
   } catch (e) {
     console.warn(`${LOG} WARNING: design fetch failed: ${reason(e)}. No design pages written; SPA fallback serves /design/*.`);
   }
@@ -370,10 +566,26 @@ async function main() {
         rootHtml: blogRoot(p, coverUrl),
       });
     }, stats);
-    // With dist/blog/ now a real directory, keep /blog itself (the list page)
-    // on the SPA shell regardless of how the host treats a directory without
-    // an index: write the shell there byte-for-byte.
-    if (stats.blog > 0) await writeFile(resolve(DIST, "blog", "index.html"), template, "utf8");
+    // /blog — the list page. dist/blog/ is a real directory once any post
+    // page exists, so /blog must have an index of its own: the prerendered
+    // list, or — if building it fails — the SPA shell byte-for-byte, exactly
+    // as before this list existed.
+    if (stats.blog > 0) {
+      try {
+        const listed = posts.filter((p) => !unsafeSlugReason(p?.slug));
+        await writeStatic("blog", renderPage(template, {
+          title: "ბლოგი — Maika.ge სიახლეები და ივენთები",
+          description: "Maika.ge-ის სიახლეები: პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",
+          canonical: `${SITE_URL}/blog`,
+          image: DEFAULT_OG_IMAGE,
+          rootHtml: blogIndexRoot(listed),
+        }));
+        stats.lists.push(`blog (${listed.length} posts)`);
+      } catch (e) {
+        stats.failed.push(`blog index: ${e?.message ?? e} — wrote the SPA shell instead`);
+        await writeStatic("blog", template);
+      }
+    }
   } catch (e) {
     console.warn(`${LOG} WARNING: blog fetch failed: ${reason(e)}. No blog pages written; SPA fallback serves /blog/*.`);
   }
@@ -382,6 +594,7 @@ async function main() {
   for (const f of stats.failed) console.warn(`${LOG} WARNING: page failed — ${f}`);
   console.log(
     `${LOG} wrote ${stats.design} design + ${stats.blog} blog pages` +
+      ` + lists [${stats.lists.join(", ")}]` +
       ` (${stats.skipped.length} skipped, ${stats.failed.length} failed) in ${Date.now() - started}ms.`,
   );
 }
