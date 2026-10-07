@@ -180,7 +180,7 @@ function renderPage(template, { title, description, canonical, image, rootHtml }
   let html = template;
   // The shell's own description has no data-rh, so Helmet would never remove
   // it; drop it here so the file carries exactly one description.
-  html = html.replace(/[ \t]*<meta\s+name="description"[^>]*>\s*\n?/i, "");
+  html = html.replace(/[ \t]*<meta\s+name="description"[^>]*>[ \t]*\n?/i, "");
   html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${esc(title)}</title>`);
   html = html.replace(/<\/head>/i, () => `    ${tags}\n  </head>`);
   html = html.replace(/<div id="root"><\/div>/, () => `<div id="root">${rootHtml}</div>`);
