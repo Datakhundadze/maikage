@@ -130,6 +130,29 @@ function excerpt(md, max = 155) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+// Inline styles for the static #root content. It is on screen until the JS
+// bundle runs, so it should look intentional — but it must not touch the app:
+// inline style attributes only (no <style> block, no class names), and no
+// colours. Before main.tsx runs <html> has no theme class, so the shipped CSS
+// paints body with the light :root palette (hsl(0 0% 95%) / hsl(240 6% 10%));
+// main.tsx then adds .dark (default) or .green. Inheriting colour from body
+// keeps the text readable in all three. Tailwind preflight zeroes heading and
+// paragraph margins/sizes and strips link underlines, hence the explicit
+// values below. Top padding clears the 56px (h-14) AppHeader.
+const STYLE = {
+  main: "box-sizing:border-box;max-width:720px;margin:0 auto;padding:80px 20px 48px;line-height:1.6;font-size:16px",
+  nav: "font-size:14px;opacity:.75;margin:0 0 16px",
+  h1: "font-size:28px;line-height:1.25;font-weight:700;margin:0 0 16px",
+  h2: "font-size:22px;line-height:1.3;font-weight:700;margin:28px 0 12px",
+  h3: "font-size:18px;line-height:1.35;font-weight:700;margin:24px 0 8px",
+  p: "margin:0 0 16px",
+  meta: "font-size:14px;opacity:.75;margin:0 0 16px",
+  img: "display:block;max-width:100%;height:auto;margin:0 auto 24px;border-radius:16px",
+  a: "color:inherit;text-decoration:underline;text-underline-offset:2px",
+  footer: "margin:32px 0 0;font-size:14px",
+};
+const link = (href, text) => `<a href="${esc(href)}" style="${STYLE.a}">${esc(text)}</a>`;
+
 /**
  * Markdown → minimal escaped HTML for crawlers: headings and paragraphs only.
  * Images are dropped, links keep their text, inline markers are stripped.
@@ -153,14 +176,14 @@ function markdownToHtml(md) {
       if (h) {
         const level = Math.min(Math.max(h[1].length, 2), 6); // the page owns the single <h1>
         const text = inline(h[2].replace(/\s+/g, " "));
-        return text ? `<h${level}>${text}</h${level}>` : "";
+        return text ? `<h${level} style="${level === 2 ? STYLE.h2 : STYLE.h3}">${text}</h${level}>` : "";
       }
       const text = block
         .split("\n")
         .map((line) => inline(line.replace(/^\s*(?:[-*+]|\d+\.|>)\s+/, "")))
         .filter(Boolean)
         .join("<br>");
-      return text ? `<p>${text}</p>` : "";
+      return text ? `<p style="${STYLE.p}">${text}</p>` : "";
     })
     .filter(Boolean)
     .join("\n");
@@ -236,12 +259,12 @@ function designRoot(d, description) {
   const label = d.category ? CATEGORY_LABEL[d.category] ?? d.category : null;
   const body = d.description_ka?.trim() || description;
   return [
-    `<main>`,
-    `<nav><a href="/">მთავარი</a> › <a href="/designs">კატალოგი</a>${label ? ` › ${esc(label)}` : ""}</nav>`,
-    `<h1>${esc(d.title_ka)}</h1>`,
-    image ? `<img src="${esc(image)}" alt="${esc(d.title_ka)}" width="800" height="800" style="max-width:100%;height:auto">` : "",
-    `<p>${esc(body)}</p>`,
-    `<p><a href="/designs">ყველა დიზაინი კატალოგში</a> · <a href="/">Maika.ge მთავარი</a></p>`,
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", "მთავარი")} › ${link("/designs", "კატალოგი")}${label ? ` › ${esc(label)}` : ""}</nav>`,
+    `<h1 style="${STYLE.h1}">${esc(d.title_ka)}</h1>`,
+    image ? `<img src="${esc(image)}" alt="${esc(d.title_ka)}" width="800" height="800" style="${STYLE.img}">` : "",
+    `<p style="${STYLE.p}">${esc(body)}</p>`,
+    `<p style="${STYLE.footer}">${link("/designs", "ყველა დიზაინი კატალოგში")} · ${link("/", "Maika.ge მთავარი")}</p>`,
     `</main>`,
   ].filter(Boolean).join("\n");
 }
@@ -249,15 +272,15 @@ function designRoot(d, description) {
 function blogRoot(p, coverUrl) {
   const date = String(p.published_at ?? p.created_at ?? "").slice(0, 10);
   return [
-    `<main>`,
-    `<nav><a href="/">მთავარი</a> › <a href="/blog">ბლოგი</a></nav>`,
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", "მთავარი")} › ${link("/blog", "ბლოგი")}</nav>`,
     `<article>`,
-    `<h1>${esc(p.title_ka)}</h1>`,
-    date ? `<p><time datetime="${esc(date)}">${esc(date)}</time></p>` : "",
-    coverUrl ? `<img src="${esc(coverUrl)}" alt="${esc(p.title_ka)}" style="max-width:100%;height:auto">` : "",
+    `<h1 style="${STYLE.h1}">${esc(p.title_ka)}</h1>`,
+    date ? `<p style="${STYLE.meta}"><time datetime="${esc(date)}">${esc(date)}</time></p>` : "",
+    coverUrl ? `<img src="${esc(coverUrl)}" alt="${esc(p.title_ka)}" style="${STYLE.img}">` : "",
     markdownToHtml(p.body_md),
     `</article>`,
-    `<p><a href="/blog">ყველა სტატია</a> · <a href="/">Maika.ge მთავარი</a></p>`,
+    `<p style="${STYLE.footer}">${link("/blog", "ყველა სტატია")} · ${link("/", "Maika.ge მთავარი")}</p>`,
     `</main>`,
   ].filter(Boolean).join("\n");
 }
