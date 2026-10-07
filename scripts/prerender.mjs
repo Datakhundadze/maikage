@@ -403,13 +403,13 @@ const CONTACT = {
   // SeoHead.tsx:25-26 (Organization schema description)
   about: "Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში.",
   addressLabel: "მისამართი",                                    // ContactPage.tsx:120
-  address: "დინამოს სტადიონი, კარი #10",                       // ContactPage.tsx:127
+  address: "ა. წერეთლის #2, დინამოს სტადიონი, კარი #10, თბილისი", // ContactPage.tsx:127
   hoursLabel: "სამუშაო საათები",                                // ContactPage.tsx:136
   hours: ["ორშ–პარ 11:00–19:00", "შაბ 11:00–18:00", "კვირა დაკეტილი"], // ContactPage.tsx:138-140
   phoneLabel: "ტელეფონი",                                       // ContactPage.tsx:149
   phones: [                                                     // ContactPage.tsx:21-22
     { display: "+(995 32) 2 05 06 20", tel: "+995322050620" },
-    { display: "+599 05 08 07", tel: "+995599050807" },
+    { display: "+995 599 05 08 07", tel: "+995599050807" },
   ],
   emailLabel: "ელფოსტა",                                        // ContactPage.tsx:167
   email: "maika@maika.ge",                                      // ContactPage.tsx:168-169
