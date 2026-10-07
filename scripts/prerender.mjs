@@ -488,7 +488,7 @@ async function main() {
   try {
     await writeStatic("contact", renderPage(template, {
       title: "კონტაქტი და შოურუმი | Maika.ge",
-      description: "მოგვაკითხეთ შოურუმში — დინამოს სტადიონი, კარი #10. სამუშაო საათები, ტელეფონი, ელფოსტა და მდებარეობა რუკაზე.",
+      description: "მოგვაკითხეთ შოურუმში — ა. წერეთლის #2, დინამოს სტადიონი, კარი #10, თბილისი. სამუშაო საათები, ტელეფონი, ელფოსტა და მდებარეობა რუკაზე.",
       canonical: `${SITE_URL}/contact`,
       image: DEFAULT_OG_IMAGE,
       rootHtml: contactRoot(),
