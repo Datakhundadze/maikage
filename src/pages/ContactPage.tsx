@@ -19,7 +19,7 @@ const MAPS_EMBED_URL = `https://www.google.com/maps?q=${LAT},${LNG}&z=17&hl=ka&o
 // the full +995 country code even though it's shown locally).
 const PHONES = [
   { display: "+(995 32) 2 05 06 20", tel: "+995322050620", mobile: false },
-  { display: "+599 05 08 07", tel: "+995599050807", mobile: true },
+  { display: "+995 599 05 08 07", tel: "+995599050807", mobile: true },
 ];
 
 // LocalBusiness schema — mirrors the FAQPage / Organization JSON-LD pattern
@@ -124,7 +124,7 @@ export default function ContactPage() {
                 rel="noopener noreferrer"
                 className="text-sm font-medium hover:underline"
               >
-                დინამოს სტადიონი, კარი #10
+                ა. წერეთლის #2, დინამოს სტადიონი, კარი #10, თბილისი
               </a>
             </div>
           </div>
