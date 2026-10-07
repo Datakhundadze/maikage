@@ -23,7 +23,7 @@ export default function Lightbox({ src, onClose }: LightboxProps) {
         className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg"
         onClick={(e) => e.stopPropagation()}
         loading="eager"
-        fetchPriority="high"
+        fetchpriority="high"
       />
     </div>
   );

@@ -137,7 +137,7 @@ export default function CatalogDesignCard({
       className="w-full h-full object-contain p-3 group-hover:scale-[1.02] transition-transform"
       loading={priority ? "eager" : "lazy"}
       decoding="async"
-      fetchPriority={priority ? "high" : "auto"}
+      fetchpriority={priority ? "high" : "auto"}
     />
   );
 }

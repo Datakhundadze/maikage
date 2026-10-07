@@ -236,7 +236,7 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
           {/* Result */}
           {resultImage && (
             <div className="relative rounded-xl overflow-hidden border border-border">
-              <img src={resultImage} alt="Try-on result" width={800} height={1000} className="w-full object-contain" loading="eager" fetchPriority="high" />
+              <img src={resultImage} alt="Try-on result" width={800} height={1000} className="w-full object-contain" loading="eager" fetchpriority="high" />
               <div className="absolute top-2 right-2 flex gap-2">
                 <Button size="sm" variant="secondary" className="gap-1.5" onClick={downloadResult}>
                   <Download className="h-3.5 w-3.5" /> გადმოწერა
