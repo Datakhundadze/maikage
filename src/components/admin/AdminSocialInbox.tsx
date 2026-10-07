@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Inbox, Paperclip } from "lucide-react";
+import { ArrowLeft, Copy, Inbox, Paperclip, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import {
   attachmentTypes,
@@ -14,11 +16,19 @@ import {
   type SocialChannel,
   type SocialMessageRow,
 } from "@/lib/socialInbox";
+import { HINT_MAX_CHARS, socialReplyDraft } from "@/lib/socialReplyDraft";
 
 // READ-ONLY mirror of Facebook Messenger + Instagram DMs (public.social_messages,
 // written by the meta-webhook edge function with the service role). Admins read
 // it through the "Admins can read social_messages" SELECT policy. This tab has
-// no reply box, no delete, no edit: it never writes.
+// no reply box, no delete, no edit: it never writes to social_messages and
+// never sends anything to Meta.
+//
+// AI DRAFT: "პასუხის პროექტი" asks the admin-only gemini-proxy
+// "social-reply-draft" action for a suggested reply. The proxy reads the thread
+// itself (with this admin's session) and returns text, which is shown here for
+// the operator to copy and send from Messenger / Instagram themselves. The only
+// write it causes is the proxy's own ai_calls cost row (action + model only).
 //
 // QUERIES
 //   list:   the latest LIST_LIMIT messages (for the current channel filter),
@@ -87,9 +97,17 @@ export default function AdminSocialInbox() {
   const [thread, setThread] = useState<SocialMessageRow[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadError, setThreadError] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [draftHint, setDraftHint] = useState("");
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftCopied, setDraftCopied] = useState(false);
 
   const fetchGenRef = useRef(0);
   const threadGenRef = useRef(0);
+  // Same generation-counter pattern as threadGenRef: a draft that comes back
+  // after the operator switched conversations is dropped, never shown.
+  const draftGenRef = useRef(0);
   const inFlightRef = useRef(false);
   const lastSuccessRef = useRef(0);
   const hasLoadedOnceRef = useRef(false);
@@ -158,6 +176,41 @@ export default function AdminSocialInbox() {
       if (gen === threadGenRef.current) setThreadLoading(false);
     }
   }
+
+  async function requestDraft(conv: Conversation) {
+    const gen = ++draftGenRef.current;
+    setDraftLoading(true);
+    setDraftError(null);
+    setDraftCopied(false);
+    const result = await socialReplyDraft(conv.channel, conv.customerId, draftHint);
+    if (gen !== draftGenRef.current) return;
+    if ("message" in result) {
+      setDraftError(result.message);
+    } else {
+      setDraft(result.text);
+    }
+    setDraftLoading(false);
+  }
+
+  async function copyDraft() {
+    try {
+      await navigator.clipboard.writeText(draft);
+      setDraftCopied(true);
+    } catch {
+      setDraftError("კოპირება ვერ მოხერხდა — მონიშნეთ ტექსტი და დააკოპირეთ ხელით.");
+    }
+  }
+
+  // A different conversation starts with a clean draft panel; bumping the
+  // generation also discards any draft request still in flight.
+  useEffect(() => {
+    draftGenRef.current += 1;
+    setDraft("");
+    setDraftHint("");
+    setDraftError(null);
+    setDraftLoading(false);
+    setDraftCopied(false);
+  }, [selectedKey]);
 
   // Load (and reload on filter change) once auth has settled.
   useEffect(() => {
@@ -307,6 +360,16 @@ export default function AdminSocialInbox() {
               {selected.customerId}
             </span>
             <span className="ml-auto shrink-0 text-xs text-muted-foreground">{selected.count} შეტყობინება</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 gap-1.5"
+              onClick={() => requestDraft(selected)}
+              disabled={draftLoading || threadLoading}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {draftLoading ? "მზადდება…" : "პასუხის პროექტი"}
+            </Button>
           </div>
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
             {threadLoading && thread.length === 0 ? (
@@ -353,6 +416,38 @@ export default function AdminSocialInbox() {
                 );
               })
             )}
+          </div>
+          <div className="space-y-2 border-t border-border px-3 py-2">
+            <Input
+              value={draftHint}
+              onChange={(e) => setDraftHint(e.target.value.slice(0, HINT_MAX_CHARS))}
+              maxLength={HINT_MAX_CHARS}
+              placeholder="მინიშნება AI-სთვის (არასავალდებულო), მაგ.: შეკვეთა ხვალ გაიგზავნება"
+              aria-label="მინიშნება AI-სთვის"
+              className="h-8 text-xs"
+              disabled={draftLoading}
+            />
+            {draft && (
+              <>
+                <Textarea
+                  value={draft}
+                  readOnly
+                  rows={5}
+                  aria-label="AI პასუხის პროექტი"
+                  className="text-sm"
+                />
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={copyDraft}>
+                    <Copy className="h-3.5 w-3.5" />
+                    {draftCopied ? "დაკოპირდა" : "კოპირება"}
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground">
+                    AI პროექტი — გადაამოწმეთ გაგზავნამდე. აქედან არაფერი იგზავნება.
+                  </span>
+                </div>
+              </>
+            )}
+            {draftError && <p className="text-xs text-destructive">{draftError}</p>}
           </div>
           <div className="border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
             მხოლოდ ნახვა — პასუხი იგზავნება Messenger-იდან / Instagram-იდან.
