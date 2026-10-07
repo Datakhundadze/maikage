@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button";
 // BlogPosting + BreadcrumbList JSON-LD. Body is markdown rendered by the
 // shared MarkdownView (raw HTML disabled — no XSS surface).
 
+// One automatic retry for a failed post query before the error state shows.
+const POST_RETRY_DELAY_MS = 1500;
+
 interface Post {
   slug: string;
   title_ka: string;
@@ -44,33 +47,58 @@ export default function BlogPostPage() {
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // A failed query is not a missing post — kept separate so a transient
+  // failure never renders the noindex not-found state. Mirrors DesignDetailPage.
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     setNotFound(false);
-    (async () => {
+    setLoadError(false);
+    const fetchPost = async (attempt: number) => {
       // blog_posts is schema-ahead-of-types — cast mirrors the gallery pages.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("blog_posts")
         .select("slug, title_ka, body_md, cover_path, meta_description_ka, published_at, created_at, updated_at")
         .eq("slug", slug)
         .eq("published", true)
         .limit(1);
       if (cancelled) return;
+      // Only a successful query with zero rows means "not found". On error,
+      // retry once, then show the (indexable) error state.
+      if (error) {
+        if (attempt === 0) {
+          retryTimer = setTimeout(() => { void fetchPost(1); }, POST_RETRY_DELAY_MS);
+          return;
+        }
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
       const row: Post | undefined = (data as Post[] | null)?.[0];
       if (!row) setNotFound(true);
       else setPost(row);
       setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [slug]);
+    };
+    void fetchPost(0);
+    return () => {
+      cancelled = true;
+      clearTimeout(retryTimer);
+    };
+  }, [slug, reloadKey]);
+
+  // Self-canonical to the requested URL for every early exit below.
+  const requestedUrl = `${SITE_URL}/blog/${slug}`;
 
   if (loading) {
     return (
       <div className="flex flex-col h-screen">
+        <SeoHead url={requestedUrl} />
         <AppHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -79,9 +107,31 @@ export default function BlogPostPage() {
     );
   }
 
+  // Load error: the post may exist — only the query failed. Indexable, never
+  // noindex; checked before `!post` because a previous slug's post can still
+  // be in state.
+  if (loadError) {
+    return (
+      <div className="flex flex-col h-screen">
+        <SeoHead url={requestedUrl} />
+        <AppHeader />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
+          <Newspaper className="h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">სტატიის ჩატვირთვა ვერ მოხერხდა</p>
+          <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>
+            ხელახლა ცდა
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (notFound || !post) {
     return (
       <div className="flex flex-col h-screen">
+        {/* A slug with no published post is a soft 404 — keep it out of the
+            index, consistent with DesignDetailPage. */}
+        <SeoHead url={requestedUrl} noindex />
         <AppHeader />
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
           <Newspaper className="h-10 w-10 text-muted-foreground/40" />

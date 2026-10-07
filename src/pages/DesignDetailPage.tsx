@@ -52,6 +52,9 @@ interface RelatedDesignRow {
 
 const RELATED_LIMIT = 8;
 
+// One automatic retry for a failed design query before the error state shows.
+const DESIGN_RETRY_DELAY_MS = 1500;
+
 // catalog_designs isn't in the generated Supabase types, so a query against it
 // needs an escape hatch. The rest of this file reaches for `supabase as any`;
 // this describes the builder shape instead, so the chain below still
@@ -104,6 +107,12 @@ export default function DesignDetailPage() {
   const [product, setProduct] = useState<ProductRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // A failed query (network, 5xx, rate limit) is NOT a missing design. Kept
+  // separate from notFound so a transient failure — e.g. inside Googlebot's
+  // renderer — never ships a noindex on a live, published design.
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by the error state's retry button to re-run the fetch effect.
+  const [reloadKey, setReloadKey] = useState(0);
 
   const [selectedColor, setSelectedColor] = useState<string>("White");
   const [selectedSize, setSelectedSize] = useState<string>("");
@@ -134,17 +143,31 @@ export default function DesignDetailPage() {
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
     let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     setLoading(true);
     setNotFound(false);
+    setLoadError(false);
 
-    (async () => {
-      const { data: rows } = await (supabase as any)
+    const fetchDesign = async (attempt: number) => {
+      const { data: rows, error } = await (supabase as any)
         .from("catalog_designs")
         .select("id, slug, title_ka, print_file_url, thumbnail_url, category, default_product_id, default_color, meta_description_ka, description_ka, tags")
         .eq("slug", slug)
         .eq("is_published", true)
         .limit(1);
       if (cancelled) return;
+
+      // Only a successful query with zero rows means "not found". On error,
+      // retry once, then fall through to the (indexable) error state.
+      if (error) {
+        if (attempt === 0) {
+          retryTimer = setTimeout(() => { void fetchDesign(1); }, DESIGN_RETRY_DELAY_MS);
+          return;
+        }
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
 
       const row: CatalogDesignRow | undefined = rows?.[0];
       if (!row) { setNotFound(true); setLoading(false); return; }
@@ -176,10 +199,14 @@ export default function DesignDetailPage() {
         setSelectedColor(colorChoice);
       }
       setLoading(false);
-    })();
+    };
+    void fetchDesign(0);
 
-    return () => { cancelled = true; };
-  }, [slug]);
+    return () => {
+      cancelled = true;
+      clearTimeout(retryTimer);
+    };
+  }, [slug, reloadKey]);
 
   // Related designs. Separate from the effect above so it runs off the loaded
   // design rather than delaying the main render, and so a failure here leaves
@@ -342,7 +369,7 @@ export default function DesignDetailPage() {
   const categoryLabel = design?.category ? CATEGORY_LABEL[design.category] ?? design.category : null;
 
   // ── States ────────────────────────────────────────────────────────────────
-  // Each of the three early exits below renders its own <SeoHead>. They are
+  // Each of the four early exits below renders its own <SeoHead>. They are
   // the only branches on the site that returned markup without one, and with
   // the static canonical now gone from index.html they would otherwise ship a
   // page with NO canonical at all. Self-canonical to the requested design URL
@@ -358,6 +385,25 @@ export default function DesignDetailPage() {
         <AppHeader />
         <div className="flex-1 flex items-center justify-center">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
+
+  // Load error: the design may well exist — only the query failed. Indexable
+  // and self-canonical, never noindex; checked before `!design` because a
+  // previous slug's design can still be in state.
+  if (loadError) {
+    return (
+      <div className="flex flex-col h-screen">
+        <SeoHead url={requestedUrl} />
+        <AppHeader />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
+          <ImageOff className="h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">დიზაინის ჩატვირთვა ვერ მოხერხდა</p>
+          <Button variant="outline" onClick={() => setReloadKey((k) => k + 1)}>
+            ხელახლა ცდა
+          </Button>
         </div>
       </div>
     );
