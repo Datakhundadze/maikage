@@ -137,7 +137,7 @@ function renderLayerImage(layer: DesignLayer, zone: PlacementCoords | undefined)
           transform: "translate(-50%, -50%)",
         }}
         loading="eager"
-        fetchPriority="high"
+        fetchpriority="high"
       />
     );
   }
@@ -153,7 +153,7 @@ function renderLayerImage(layer: DesignLayer, zone: PlacementCoords | undefined)
       height={800}
       className={`w-full h-full ${isText ? "object-contain" : "object-cover"}`}
       loading="eager"
-      fetchPriority="high"
+      fetchpriority="high"
     />
   );
 }
@@ -335,7 +335,7 @@ export default function ProductPreview({
                 height={800}
                 className="w-full h-full object-cover"
                 loading="eager"
-                fetchPriority="high"
+                fetchpriority="high"
               />
             )}
           </DraggablePlacement>

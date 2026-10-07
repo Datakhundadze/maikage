@@ -283,7 +283,7 @@ export default function LandingPage() {
                     className="absolute inset-0 w-full h-full object-contain rounded-2xl transition-opacity duration-700"
                     style={{ opacity: i === sportPhotoIdx ? 1 : 0 }}
                     loading={i === 0 ? "eager" : "lazy"}
-                    fetchPriority={i === 0 ? "low" : "auto"}
+                    fetchpriority={i === 0 ? "low" : "auto"}
                   />
                 ))}
                 {/* Dot indicators */}

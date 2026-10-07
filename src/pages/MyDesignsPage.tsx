@@ -190,7 +190,7 @@ export default function MyDesignsPage() {
                             height={800}
                             className="w-full h-full object-contain"
                             loading={idx === 0 ? "eager" : "lazy"}
-                            fetchPriority={idx === 0 ? "high" : "auto"}
+                            fetchpriority={idx === 0 ? "high" : "auto"}
                           />
                         )}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
