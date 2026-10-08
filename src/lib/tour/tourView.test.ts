@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import {
   EDGE_MARGIN,
   clampToCoverage,
@@ -8,7 +10,7 @@ import {
   type TourCoverage,
   type TourPosition,
 } from "@/lib/tour/tourView";
-import { TOUR_NODES, partialPanoData } from "@/lib/tour/tourConfig";
+import { TOUR_NODES, partialPanoData, type TourNode } from "@/lib/tour/tourConfig";
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const hFovOf = (vDeg: number, aspect: number) => (2 * Math.atan(Math.tan(rad(vDeg) / 2) * aspect) * 180) / Math.PI;
@@ -45,10 +47,33 @@ function outsidePoints(pos: TourPosition, vDeg: number, aspect: number, c: TourC
   return bad;
 }
 
-const NODES = [
-  { name: "center", c: coverageFor(2000, 1351, 170) },
-  { name: "counter", c: coverageFor(2000, 1023, 150) },
-];
+/** Pixel size of a baseline/progressive JPEG, read from its SOF segment. */
+function jpegSize(file: string): { width: number; height: number } {
+  const b = readFileSync(file);
+  let i = 2;
+  while (i < b.length) {
+    const marker = b[i + 1];
+    const len = b.readUInt16BE(i + 2);
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return { height: b.readUInt16BE(i + 5), width: b.readUInt16BE(i + 7) };
+    }
+    i += 2 + len;
+  }
+  throw new Error(`no SOF in ${file}`);
+}
+
+/** Coverage of a configured node, computed from its actual image file. */
+function nodeCoverage(node: TourNode): TourCoverage | null {
+  const { width, height } = jpegSize(path.join(process.cwd(), "public", node.panoramaUrl));
+  if (node.horizontalFovDeg == null) return null;
+  return coverageFor(width, height, node.horizontalFovDeg);
+}
+
+const NODES = TOUR_NODES.map((n) => {
+  const c = nodeCoverage(n);
+  if (!c) throw new Error(`${n.id}: expected a partial panorama`);
+  return { name: n.id, c };
+});
 const SCREENS = [
   { name: "desktop 1280×800", aspect: 1280 / 744 },
   { name: "phone 390×844", aspect: 390 / 788 },
@@ -111,12 +136,32 @@ describe("no black outside the photo", () => {
 });
 
 describe("tour config", () => {
-  it("puts every link inside its node's horizontal coverage", () => {
+  const deg = (r: number) => (r * 180) / Math.PI;
+
+  it("puts every floor ring inside its node's photo (yaw AND pitch)", () => {
     for (const node of TOUR_NODES) {
-      const half = (node.horizontalFovDeg ?? 360) / 2;
+      const c = nodeCoverage(node);
       for (const link of node.links) {
-        expect(Math.abs(link.yaw)).toBeLessThan(half);
         expect(TOUR_NODES.some((n) => n.id === link.nodeId)).toBe(true);
+        expect(link.pitch).toBeLessThan(0); // on the floor
+        if (!c) continue;
+        expect(link.yaw).toBeGreaterThan(deg(c.yawMin));
+        expect(link.yaw).toBeLessThan(deg(c.yawMax));
+        expect(link.pitch).toBeGreaterThan(deg(c.pitchMin));
+        expect(link.pitch).toBeLessThan(deg(c.pitchMax));
+      }
+    }
+  });
+
+  it("puts every arrival direction inside the target photo", () => {
+    for (const node of TOUR_NODES) {
+      for (const link of node.links) {
+        const target = TOUR_NODES.find((n) => n.id === link.nodeId);
+        const c = target && nodeCoverage(target);
+        if (!c) continue;
+        const arrive = link.arriveYaw ?? 0;
+        expect(arrive).toBeGreaterThan(deg(c.yawMin));
+        expect(arrive).toBeLessThan(deg(c.yawMax));
       }
     }
   });

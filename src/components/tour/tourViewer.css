@@ -27,3 +27,62 @@
 .tour-viewer .psv-navbar {
   width: calc(100% - 5.5rem);
 }
+
+/*
+ * Floor rings (tour links). The marker box is at least 44 × 44 px so it is
+ * easy to tap; the ring inside is an ellipse whose height/width is
+ * --tour-ring-squash (set per link from its pitch: a circle on the floor seen
+ * from eye height).
+ */
+.tour-floor-ring {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.tour-floor-ring__ring,
+.tour-floor-ring__pulse {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 88px;
+  height: calc(88px * var(--tour-ring-squash, 0.4));
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.tour-floor-ring__ring {
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25), 0 2px 10px rgba(0, 0, 0, 0.35);
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+.tour-floor-ring:hover .tour-floor-ring__ring {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.tour-floor-ring__pulse {
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  animation: tour-ring-pulse 1.8s ease-out infinite;
+}
+
+@keyframes tour-ring-pulse {
+  from {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.8;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1.45);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-floor-ring__pulse {
+    animation: none;
+    opacity: 0;
+  }
+}
