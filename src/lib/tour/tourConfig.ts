@@ -16,16 +16,24 @@
 import type { PanoData, PanoDataProvider } from "@photo-sphere-viewer/core";
 
 export interface TourLink {
-  /** id of the node this arrow leads to */
+  /** id of the node this link leads to */
   nodeId: string;
-  /** where the arrow sits in THIS panorama, degrees */
+  /**
+   * Where the floor ring sits in THIS panorama, degrees. yaw must lie inside
+   * this node's horizontal coverage; pitch is below the horizon, on the floor.
+   */
   yaw: number;
   pitch: number;
+  /**
+   * Direction the visitor faces on arrival in the TARGET panorama (direction
+   * of travel), degrees. Default 0 = centre of the photo. Clamped to coverage.
+   */
+  arriveYaw?: number;
 }
 
 export interface TourNode {
   id: string;
-  /** Georgian label: navbar caption and arrow tooltip */
+  /** Georgian label: navbar caption and the floor ring's label */
   name_ka: string;
   panoramaUrl: string;
   /**
@@ -79,8 +87,10 @@ export function nodePanoData(node: TourNode): PanoData | PanoDataProvider | unde
 //
 // TUNING: horizontalFovDeg is how wide the photo is treated as being (the
 // angle the shot actually swept gives the most natural perspective); the
-// vertical span scales with it. Link yaw/pitch place the arrows; yaw must stay
-// within ±horizontalFovDeg/2 or the arrow can never be reached.
+// vertical span scales with it. Link yaw/pitch place the floor ring: yaw must
+// stay within ±horizontalFovDeg/2 and pitch within the photo's vertical span
+// (unit-tested against the actual image files). arriveYaw is where the next
+// photo opens.
 export const TOUR_NODES: TourNode[] = [
   {
     id: "center",
@@ -88,7 +98,7 @@ export const TOUR_NODES: TourNode[] = [
     panoramaUrl: "/tour/center.jpg",
     horizontalFovDeg: 170,
     // toward the counter and the blue chair, right side of the photo
-    links: [{ nodeId: "counter", yaw: 70, pitch: -5 }],
+    links: [{ nodeId: "counter", yaw: 70, pitch: -22, arriveYaw: -20 }],
   },
   {
     id: "counter",
@@ -96,7 +106,7 @@ export const TOUR_NODES: TourNode[] = [
     panoramaUrl: "/tour/counter.jpg",
     horizontalFovDeg: 150,
     // toward the t-shirt racks, left side of the photo
-    links: [{ nodeId: "center", yaw: -60, pitch: -5 }],
+    links: [{ nodeId: "center", yaw: -60, pitch: -20, arriveYaw: 0 }],
   },
 ];
 
