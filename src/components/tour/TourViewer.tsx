@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Viewer } from "@photo-sphere-viewer/core";
+import { Viewer, type PanoData, type Position } from "@photo-sphere-viewer/core";
 import { MarkersPlugin } from "@photo-sphere-viewer/markers-plugin";
 import {
   VirtualTourPlugin,
@@ -10,7 +10,13 @@ import "@photo-sphere-viewer/core/index.css";
 import "@photo-sphere-viewer/markers-plugin/index.css";
 import "@photo-sphere-viewer/virtual-tour-plugin/index.css";
 import "./tourViewer.css";
-import type { TourNode } from "@/lib/tour/tourConfig";
+import { nodePanoData, type TourNode } from "@/lib/tour/tourConfig";
+import {
+  clampToCoverage,
+  coverageFromPanoData,
+  maxVFovDeg,
+  type TourCoverage,
+} from "@/lib/tour/tourView";
 
 // 360° tour viewer for /showroom. Photo Sphere Viewer and its CSS are imported
 // HERE ONLY (and this file only from the lazy ShowroomPage), so three.js and
@@ -20,6 +26,21 @@ import type { TourNode } from "@/lib/tour/tourConfig";
 // internally (up to 9999) is contained inside it and the whole tour sits below
 // the sitewide chat launcher (z-50). The navbar is also kept clear of the
 // launcher's corner (tourViewer.css).
+//
+// NO BLACK OUTSIDE THE PHOTO. Partial panoramas cover only part of the sphere.
+// For the node on screen we derive its coverage from the crop data once the
+// image has loaded, then
+//   - cap zoom-out (maxFov) at the widest FOV whose viewport still fits the
+//     photo — recomputed when the viewer is resized (aspect changes it);
+//   - clamp every camera move (drag, inertia, animation, zoom) to the nearest
+//     position whose whole viewport, corners included, is photo.
+// Math lives in lib/tour/tourView.ts. While a node change fades, zoom is
+// capped for BOTH photos, and the transition runs without camera rotation and
+// lands on the centre of the new photo (yaw 0, pitch 0), so neither photo can
+// show an edge during the fade.
+
+/** Default narrowest FOV (deepest zoom), same as the library default. */
+const MIN_FOV_DEG = 30;
 
 const DEG = Math.PI / 180;
 
@@ -59,7 +80,7 @@ function toViewerNode(node: TourNode): VirtualTourNode {
     panorama: node.panoramaUrl,
     name: node.name_ka,
     caption: node.name_ka,
-    panoData: node.panoData,
+    panoData: nodePanoData(node),
     links: node.links.map((l) => ({
       nodeId: l.nodeId,
       position: { yaw: l.yaw * DEG, pitch: l.pitch * DEG },
@@ -86,6 +107,9 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
       nodes: nodes.map(toViewerNode),
       startNodeId,
       preload: true,
+      // Fade only, camera still; the new photo opens at its centre.
+      // (Callback form: only it may set rotateTo; the rest keeps the defaults.)
+      transitionOptions: () => ({ rotation: false, rotateTo: { yaw: 0, pitch: 0 } }),
     };
 
     const viewer = new Viewer({
@@ -95,6 +119,68 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
       navbar: ["zoom", "caption", "fullscreen"],
       plugins: [MarkersPlugin, [VirtualTourPlugin, tourConfig]],
     });
+
+    // Coverage of the photo on screen; null = full sphere, nothing to clamp.
+    let coverage: TourCoverage | null = null;
+    // Coverage of the outgoing photo while a node change is fading.
+    let fadingFrom: TourCoverage | null = null;
+    let loadedOnce = false;
+
+    const clampPosition = (position: Position, vFov = viewer.state.vFov): Position =>
+      coverage
+        ? clampToCoverage(position, vFov, viewer.dataHelper.vFovToHFov(vFov), coverage)
+        : position;
+
+    const moveIntoRange = () => {
+      const current = viewer.getPosition();
+      const ranged = clampPosition(current);
+      if (Math.abs(ranged.yaw - current.yaw) > 1e-6 || Math.abs(ranged.pitch - current.pitch) > 1e-6) {
+        viewer.rotate(ranged);
+      }
+    };
+
+    const applyZoomLimits = () => {
+      const aspect = viewer.state.aspect;
+      let maxFov = maxVFovDeg(coverage, aspect);
+      if (fadingFrom) maxFov = Math.min(maxFov, maxVFovDeg(fadingFrom, aspect));
+      const minFov = Math.min(MIN_FOV_DEG, maxFov);
+      // Setting fov limits re-derives the zoom level from the current FOV.
+      viewer.setOptions({ minFov, maxFov });
+      // …but when that level is already at its end stop (fully zoomed out =
+      // 0) the library sees no change and leaves the old, too-wide FOV on
+      // screen. Nudge the level so the FOV is recomputed within the new limits.
+      const vFov = viewer.state.vFov;
+      if (vFov > maxFov + 1e-3 || vFov < minFov - 1e-3) {
+        const level = viewer.getZoomLevel();
+        viewer.zoom(level > 50 ? level - 0.01 : level + 0.01);
+        viewer.zoom(level);
+      }
+      moveIntoRange();
+    };
+
+    viewer.addEventListener("panorama-loaded", ({ data }) => {
+      // Fired before the fade starts, so the limits are in place for it.
+      fadingFrom = loadedOnce ? coverage : null;
+      loadedOnce = true;
+      coverage = coverageFromPanoData(data.panoData as PanoData | undefined);
+      applyZoomLimits();
+    });
+    viewer.addEventListener("transition-done", () => {
+      fadingFrom = null;
+      applyZoomLimits();
+    });
+    viewer.addEventListener("size-updated", applyZoomLimits);
+    viewer.addEventListener("before-rotate", (e) => {
+      e.position = clampPosition(e.position);
+    });
+    viewer.addEventListener("before-animate", (e) => {
+      if (!e.position) return;
+      const vFov = e.zoomLevel != null ? viewer.dataHelper.zoomLevelToFov(e.zoomLevel) : viewer.state.vFov;
+      e.position = clampPosition(e.position, vFov);
+    });
+    // Inertia after a drag moves the camera without before-rotate.
+    viewer.addEventListener("position-updated", moveIntoRange);
+    viewer.addEventListener("zoom-updated", moveIntoRange);
 
     return () => viewer.destroy();
   }, [webgl, nodes, startNodeId]);

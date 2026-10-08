@@ -28,13 +28,17 @@ export interface TourNode {
   /** Georgian label: navbar caption and arrow tooltip */
   name_ka: string;
   panoramaUrl: string;
-  links: TourLink[];
   /**
-   * Omit for a full 2:1 equirectangular sphere. For a partial / cylindrical
-   * shot (iPhone Pano) pass partialPanoData(), or a fixed PanoData when the
-   * crop is known.
+   * How many degrees the photo spans left to right. Omit for a full 360°
+   * equirectangular sphere. For a partial / cylindrical shot (iPhone Pano)
+   * set this; the vertical span follows from the image aspect ratio
+   * (partialPanoData), and TourViewer keeps the camera inside both.
    */
+  horizontalFovDeg?: number;
+  /** Explicit crop data; wins over horizontalFovDeg when both are set. */
   panoData?: PanoData | PanoDataProvider;
+  /** Every link's yaw must lie inside this node's horizontal coverage. */
+  links: TourLink[];
 }
 
 /**
@@ -64,23 +68,36 @@ export function partialPanoData(horizontalFovDeg = 360): PanoDataProvider {
   };
 }
 
-// Temporary placeholders (public/tour/). Node 1 is a full sphere; node 2 is a
-// 360° × 60° strip, so both panorama shapes are exercised before real shots
-// arrive.
+/** Crop data for a node: explicit panoData, else derived from horizontalFovDeg. */
+export function nodePanoData(node: TourNode): PanoData | PanoDataProvider | undefined {
+  if (node.panoData) return node.panoData;
+  return node.horizontalFovDeg != null ? partialPanoData(node.horizontalFovDeg) : undefined;
+}
+
+// Real shop photos, both PARTIAL iPhone Pano shots (temporary copies in
+// public/tour/; final files will come from Supabase storage).
+//
+// TUNING: horizontalFovDeg is how wide the photo is treated as being (the
+// angle the shot actually swept gives the most natural perspective); the
+// vertical span scales with it. Link yaw/pitch place the arrows; yaw must stay
+// within ±horizontalFovDeg/2 or the arrow can never be reached.
 export const TOUR_NODES: TourNode[] = [
   {
-    id: "entrance",
-    name_ka: "შესასვლელი",
-    panoramaUrl: "/tour/placeholder-entrance.jpg",
-    links: [{ nodeId: "hall", yaw: 0, pitch: -10 }],
+    id: "center",
+    name_ka: "ცენტრი",
+    panoramaUrl: "/tour/center.jpg",
+    horizontalFovDeg: 170,
+    // toward the counter and the blue chair, right side of the photo
+    links: [{ nodeId: "counter", yaw: 70, pitch: -5 }],
   },
   {
-    id: "hall",
-    name_ka: "დარბაზი",
-    panoramaUrl: "/tour/placeholder-hall.jpg",
-    panoData: partialPanoData(360),
-    links: [{ nodeId: "entrance", yaw: 180, pitch: -10 }],
+    id: "counter",
+    name_ka: "დახლი",
+    panoramaUrl: "/tour/counter.jpg",
+    horizontalFovDeg: 150,
+    // toward the t-shirt racks, left side of the photo
+    links: [{ nodeId: "center", yaw: -60, pitch: -5 }],
   },
 ];
 
-export const TOUR_START_NODE_ID = "entrance";
+export const TOUR_START_NODE_ID = "center";
