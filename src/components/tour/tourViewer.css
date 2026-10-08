@@ -1,0 +1,29 @@
+/*
+ * Scoped to the tour viewer only.
+ *
+ * Tailwind's preflight restyles bare elements site-wide (img/video
+ * max-width:100%, img/svg/canvas display:block, vertical-align:middle).
+ * Photo Sphere Viewer is built against browser defaults, so inside the viewer
+ * those are handed back to the browser.
+ *
+ * :where() gives the scope zero specificity: these rules tie with preflight's
+ * element selectors and win because this file loads later (with the lazy
+ * /showroom chunk), while Photo Sphere Viewer's own class selectors still win
+ * over them.
+ */
+:where(.tour-viewer) :is(img, svg, video, canvas) {
+  display: revert;
+  vertical-align: revert;
+}
+
+:where(.tour-viewer) :is(img, video) {
+  max-width: revert;
+}
+
+/*
+ * Keep the navbar clear of the sitewide chat launcher, which sits at
+ * bottom-4 right-4 (bottom-6 right-6 from sm) and is 3.5rem wide.
+ */
+.tour-viewer .psv-navbar {
+  width: calc(100% - 5.5rem);
+}
