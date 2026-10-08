@@ -20,7 +20,7 @@ import SeoHead from "@/components/SeoHead";
 // notice while any placeholder remains.
 
 const CONTACT_EMAIL = "maika@maika.ge";
-const LAST_UPDATED = "2026-10-06";
+const LAST_UPDATED = "2026-10-08";
 
 // ── Placeholders the owner must fill in ──────────────────────────────────
 // Kept in one place so the draft banner can detect them. Replace the values
@@ -227,8 +227,8 @@ export default function PrivacyPage() {
             <p>
               {t(
                 L,
-                "დიზაინის გენერაცია, ფონის მოხსნა, რედაქტირება, გადიდება, ვირტუალური მოსინჯვა და ჩატის ასისტენტი Google-ის Gemini მოდელებს იყენებს, რომლებსაც Lovable-ის AI შლუზის (gateway) მეშვეობით ვუკავშირდებით. თქვენი ატვირთული სურათები, მოსინჯვის ფოტო და თქვენ მიერ დაწერილი აღწერები ამ მოდელებს დამუშავებისთვის ეგზავნება. ჩატის ტექსტი მოდელს მასკირების გარეშე ეგზავნება; მასკირება მხოლოდ ჩვენს ბაზაში შენახვისას ხდება.",
-                "Design generation, background removal, editing, upscaling, virtual try-on and the chat assistant use Google's Gemini models, which we reach through the Lovable AI gateway. Your uploaded pictures, your try-on photo and the descriptions you type are sent to those models for processing. Chat text is sent to the model unmasked; masking happens only when we store it in our database.",
+                "დიზაინის გენერაცია, ფონის მოხსნა, რედაქტირება, გადიდება, ვირტუალური მოსინჯვა, ჩატის ასისტენტი და Messenger/Instagram მიმოწერაზე თანამშრომლის პასუხის პროექტები (იხ. მე-6 ნაწილი) Google-ის Gemini მოდელებს იყენებს, რომლებსაც Lovable-ის AI შლუზის (gateway) მეშვეობით ვუკავშირდებით. თქვენი ატვირთული სურათები, მოსინჯვის ფოტო და თქვენ მიერ დაწერილი აღწერები ამ მოდელებს დამუშავებისთვის ეგზავნება. ჩატის ტექსტი მოდელს მასკირების გარეშე ეგზავნება; მასკირება მხოლოდ ჩვენს ბაზაში შენახვისას ხდება.",
+                "Design generation, background removal, editing, upscaling, virtual try-on, the chat assistant and staff reply drafts for Messenger and Instagram messages (see section 6) use Google's Gemini models, which we reach through the Lovable AI gateway. Your uploaded pictures, your try-on photo and the descriptions you type are sent to those models for processing. Chat text is sent to the model unmasked; masking happens only when we store it in our database.",
               )}
             </p>
             <p>
@@ -246,6 +246,13 @@ export default function PrivacyPage() {
                 L,
                 "თუ გვწერთ Facebook Messenger-ში ან Instagram-ის პირად შეტყობინებებში, Meta-ს Messenger Platform API-ის მეშვეობით ვიღებთ თქვენს შეტყობინებებს და ჩვენს პასუხებს და ვინახავთ ჩვენს ბაზაში, რათა შევძლოთ საუბრების გადახედვა და მომსახურების გაუმჯობესება. ვინახავთ: შეტყობინების ტექსტს (ტელეფონის ნომრები და ელფოსტები მასკირებულია, ისევე როგორც საიტის ჩატში), დანართების ტიპსა და Meta-ს დროებით ბმულს, შეტყობინების დროს, არხს (Messenger ან Instagram) და Meta-ს მიერ მინიჭებულ ანონიმურ იდენტიფიკატორებს (Page-Scoped ID / Instagram-Scoped ID).",
                 "If you message us on Facebook Messenger or in Instagram direct messages, we receive your messages and our replies through Meta's Messenger Platform API and store them in our database so we can review conversations and improve our service. We store: the message text (phone numbers and emails masked, exactly as in the site chat), the type of any attachment and Meta's temporary link to it, the time the message was sent, the channel (Messenger or Instagram), and the anonymous identifiers Meta assigns (Page-Scoped ID / Instagram-Scoped ID).",
+              )}
+            </p>
+            <p>
+              {t(
+                L,
+                "როდესაც ჩვენი თანამშრომელი პასუხის პროექტს ითხოვს, ამ საუბრის ტექსტი (ტელეფონის ნომრები და ელფოსტის მისამართები დაფარულია) Lovable AI gateway-ის გავლით Google-ის Gemini მოდელებს გადაეცემა პროექტის მოსამზადებლად. ყველა პასუხს თანამშრომელი თავად ამოწმებს, ასწორებს და აგზავნის; ავტომატურად არცერთი პასუხი არ იგზავნება.",
+                "When a member of our staff requests a suggested reply, the text of that conversation (with phone numbers and email addresses masked) is sent to Google's Gemini models through the Lovable AI gateway to prepare a draft. A staff member reviews, edits and sends every reply themselves; no reply is sent automatically.",
               )}
             </p>
             <p>
