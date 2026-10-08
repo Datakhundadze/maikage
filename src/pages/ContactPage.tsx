@@ -15,8 +15,8 @@ const MAPS_PLACE_URL =
 // Keyless interactive embed centered on the pin.
 const MAPS_EMBED_URL = `https://www.google.com/maps?q=${LAT},${LNG}&z=17&hl=ka&output=embed`;
 
-// Phones: friendly display text + a dialable E.164 tel: href (mobile carries
-// the full +995 country code even though it's shown locally).
+// Phones: friendly display text + a dialable E.164 tel: href. Both the
+// displayed text and the href carry the +995 country code.
 const PHONES = [
   { display: "+(995 32) 2 05 06 20", tel: "+995322050620", mobile: false },
   { display: "+995 599 05 08 07", tel: "+995599050807", mobile: true },
@@ -35,7 +35,7 @@ const LOCAL_BUSINESS_SCHEMA = {
   email: "maika@maika.ge",
   address: {
     "@type": "PostalAddress",
-    streetAddress: "დინამოს სტადიონი, კარი #10",
+    streetAddress: "ა. წერეთლის #2, დინამოს სტადიონი, კარი #10",
     addressLocality: "Tbilisi",
     addressCountry: "GE",
   },
@@ -96,7 +96,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
       <SeoHead
         title="კონტაქტი და შოურუმი | Maika.ge"
-        description="მოგვაკითხეთ შოურუმში — დინამოს სტადიონი, კარი #10. სამუშაო საათები, ტელეფონი, ელფოსტა და მდებარეობა რუკაზე."
+        description="მოგვაკითხეთ შოურუმში — ა. წერეთლის #2, დინამოს სტადიონი, კარი #10, თბილისი. სამუშაო საათები, ტელეფონი, ელფოსტა და მდებარეობა რუკაზე."
         url={`${SITE_URL}/contact`}
         schemas={[LOCAL_BUSINESS_SCHEMA]}
       />
