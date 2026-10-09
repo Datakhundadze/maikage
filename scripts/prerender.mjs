@@ -468,8 +468,31 @@ async function emit(kind, rows, build, stats) {
   }
 }
 
+/**
+ * HOSTING PROBE (temporary). Writes dist/200.html and dist/404.html as
+ * byte-for-byte copies of the SPA shell plus one trailing HTML comment naming
+ * the file, so a request for a path with no file of its own shows which file
+ * the host falls back to: index.html (no comment), 200.html or 404.html.
+ * Both copies stay fully working shells. dist/index.html is only read, never
+ * written. Remove once the answer is known.
+ */
+async function writeFallbackProbes() {
+  try {
+    const shell = await readFile(TEMPLATE);
+    const sep = shell.length > 0 && shell[shell.length - 1] !== 0x0a ? "\n" : "";
+    for (const name of ["200.html", "404.html"]) {
+      const marker = Buffer.from(`${sep}<!-- fallback-probe: ${name} -->\n`, "utf8");
+      await writeFile(resolve(DIST, name), Buffer.concat([shell, marker]));
+    }
+    console.log(`${LOG} fallback probe: wrote dist/200.html and dist/404.html.`);
+  } catch (e) {
+    console.warn(`${LOG} WARNING: fallback probe failed: ${e?.message ?? e}. Continuing.`);
+  }
+}
+
 async function main() {
   const started = Date.now();
+  await writeFallbackProbes();
   let template;
   try {
     template = await readFile(TEMPLATE, "utf8");
