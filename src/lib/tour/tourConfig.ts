@@ -29,6 +29,14 @@ export interface TourLink {
    * of travel), degrees. Default 0 = centre of the photo. Clamped to coverage.
    */
   arriveYaw?: number;
+  /**
+   * Forward-motion magnification for the walk: this photo zooms in by this
+   * factor (on the tangent of the half-FOV, i.e. on-screen size) so the
+   * subject ends the zoom at about the size it has in the TARGET photo at
+   * default zoom; then the two cross-fade. Going back runs the reverse.
+   * Default 1.4.
+   */
+  walkZoom?: number;
 }
 
 export interface TourNode {
@@ -82,32 +90,50 @@ export function nodePanoData(node: TourNode): PanoData | PanoDataProvider | unde
   return node.horizontalFovDeg != null ? partialPanoData(node.horizontalFovDeg) : undefined;
 }
 
-// Real shop photos, both PARTIAL iPhone Pano shots (temporary copies in
-// public/tour/; final files will come from Supabase storage).
+/**
+ * Default look-down for every view, degrees (clamped to the photo). Eyes a
+ * little below the horizon keep the floor — and the floor rings — in view.
+ */
+export const TOUR_EYE_PITCH_DEG = -7;
+
+// A 3-step walk from the entrance to the counter: iPhone Pano shots taken on
+// one line toward the counter, each closer. The JPEGs in public/tour/ are
+// reprojected from the phone's cylindrical output to equirectangular at a 62°
+// true vertical span (horizon at mid-height), so horizontalFovDeg is exact for
+// each file: horizontalFovDeg = 62 × width / height.
 //
-// TUNING: horizontalFovDeg is how wide the photo is treated as being (the
-// angle the shot actually swept gives the most natural perspective); the
-// vertical span scales with it. Link yaw/pitch place the floor ring: yaw must
-// stay within ±horizontalFovDeg/2 and pitch within the photo's vertical span
-// (unit-tested against the actual image files). arriveYaw is where the next
-// photo opens.
+// Each forward ring sits at the yaw of the counter's green football-pitch
+// panel; arriveYaw is that panel's yaw in the next photo, so the view stays on
+// the counter through the whole walk. walkZoom: start from the panel's angular
+// width (20.4° → 32.7° → 43.2°, i.e. 1.63 and 1.35 on screen), then checked
+// in the browser by comparing the last zoomed frame with the arrival frame:
+// step1 → step2 overshot by ~7 % (parallax), so 1.5; step2 → step3 matched.
 export const TOUR_NODES: TourNode[] = [
   {
-    id: "center",
-    name_ka: "ცენტრი",
-    panoramaUrl: "/tour/center.jpg",
-    horizontalFovDeg: 170,
-    // toward the counter and the blue chair, right side of the photo
-    links: [{ nodeId: "counter", yaw: 70, pitch: -22, arriveYaw: -20 }],
+    id: "step1",
+    name_ka: "შესასვლელი",
+    panoramaUrl: "/tour/step1.jpg",
+    horizontalFovDeg: 263.16,
+    // panel x 1200–1400 of 2576; floor in front of it from −22° down
+    links: [{ nodeId: "step2", yaw: 1.2, pitch: -25.5, arriveYaw: 7.2, walkZoom: 1.5 }],
   },
   {
-    id: "counter",
+    id: "step2",
+    name_ka: "დარბაზი",
+    panoramaUrl: "/tour/step2.jpg",
+    horizontalFovDeg: 291.72,
+    // panel x 1207–1496; it reaches the bottom of the photo (no floor visible
+    // in front of it), so the ring sits on the lower panel
+    links: [{ nodeId: "step3", yaw: 7.2, pitch: -25, arriveYaw: -3, walkZoom: 1.35 }],
+  },
+  {
+    id: "step3",
     name_ka: "დახლი",
-    panoramaUrl: "/tour/counter.jpg",
-    horizontalFovDeg: 150,
-    // toward the t-shirt racks, left side of the photo
-    links: [{ nodeId: "center", yaw: -60, pitch: -20, arriveYaw: 0 }],
+    panoramaUrl: "/tour/step3.jpg",
+    horizontalFovDeg: 296.6,
+    // panel x 1075–1450, centred at −3°
+    links: [],
   },
 ];
 
-export const TOUR_START_NODE_ID = "center";
+export const TOUR_START_NODE_ID = "step1";

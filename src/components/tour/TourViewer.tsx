@@ -10,14 +10,27 @@ import "@photo-sphere-viewer/core/index.css";
 import "@photo-sphere-viewer/markers-plugin/index.css";
 import "@photo-sphere-viewer/virtual-tour-plugin/index.css";
 import "./tourViewer.css";
-import { nodePanoData, type TourLink, type TourNode } from "@/lib/tour/tourConfig";
+import {
+  TOUR_EYE_PITCH_DEG,
+  nodePanoData,
+  partialPanoData,
+  type TourLink,
+  type TourNode,
+} from "@/lib/tour/tourConfig";
 import {
   clampToCoverage,
   coverageFromPanoData,
   maxVFovDeg,
   type TourCoverage,
 } from "@/lib/tour/tourView";
-import { WALK, easeInOutCubic, floorRingSquash, lerpYaw, phase } from "@/lib/tour/tourWalk";
+import {
+  WALK,
+  easeInOutCubic,
+  floorRingSquash,
+  lerpYaw,
+  magnifiedFovDeg,
+  phase,
+} from "@/lib/tour/tourWalk";
 
 // 360° tour viewer for /showroom. Photo Sphere Viewer and its CSS are imported
 // HERE ONLY (and this file only from the lazy ShowroomPage), so three.js and
@@ -37,20 +50,21 @@ import { WALK, easeInOutCubic, floorRingSquash, lerpYaw, phase } from "@/lib/tou
 //     position whose whole viewport, corners included, is photo.
 // Math lives in lib/tour/tourView.ts.
 //
-// LINKS are flat rings on the floor (MarkersPlugin HTML markers), not the
-// tour plugin's arrows. Clicking one runs the WALK (lib/tour/tourWalk.ts):
-//   1. turn toward the ring, eyes level — every frame through rotate(), so the
-//      clamp applies;
-//   2. push forward: the FOV shrinks, overlapping the start of the fade;
-//   3. cross-fade (tour plugin, camera still, no rotation). During the fade
-//      both photos share one camera, so it must be valid for BOTH:
-//        - zoom is capped for both photos (panorama-loaded fires before the
-//          fade) and only ever shrinks while fading;
-//        - the camera does not move while fading (no clamping, no rotate);
-//        - the new photo is placed at its arrival position clamped for the
-//          WIDER default FOV it will settle at, so it stays valid all the way;
-//   4. settle: on the new photo, ease back out to its default zoom.
-// prefers-reduced-motion: steps 1, 2 and 4 are skipped — a plain fade.
+// WALK (lib/tour/tourWalk.ts). Links are flat rings on the floor. Tapping one:
+//   1. turns toward the ring if it is off-centre and pushes in on this photo
+//      by the link's walkZoom — every frame through rotate()/zoom(), clamped;
+//   2. takes a SNAPSHOT of that last frame into an overlay canvas above the
+//      photo (below the rings and navbar);
+//   3. switches node instantly underneath, at default zoom, facing arriveYaw;
+//   4. fades the snapshot out (still scaling up a little: forward motion).
+// The cross-fade has to be done this way: with one camera, "this photo zoomed
+// in" and "the next photo at default zoom" cannot both be on screen at once.
+// No black at any frame: the snapshot is a copy of a clamped frame and only
+// scales up while it is opaque enough to matter; the live viewer underneath is
+// always clamped.
+// BACK („← უკან") is the reverse: snapshot, switch to the previous photo
+// zoomed in by the same walkZoom on the counter, fade out while easing out.
+// prefers-reduced-motion: snapshot cross-fade only, no turn or zoom.
 
 /** Default narrowest FOV (deepest zoom), same as the library default. */
 const MIN_FOV_DEG = 30;
@@ -132,18 +146,34 @@ function toViewerNode(node: TourNode, nodes: TourNode[]): VirtualTourNode {
   };
 }
 
+/** The node that links forward to `nodeId`, and that link (for „უკან"). */
+function previousOf(nodes: TourNode[], nodeId: string): { node: TourNode; link: TourLink } | null {
+  for (const node of nodes) {
+    const link = node.links.find((l) => l.nodeId === nodeId);
+    if (link) return { node, link };
+  }
+  return null;
+}
+
 interface TourViewerProps {
   nodes: TourNode[];
   startNodeId: string;
 }
 
 export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const goBackRef = useRef<() => void>(() => {});
   const [webgl] = useState(hasWebGL);
+  const [currentId, setCurrentId] = useState(startNodeId);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    const wrapper = wrapperRef.current;
     const container = containerRef.current;
-    if (!webgl || !container) return;
+    const overlay = overlayRef.current;
+    if (!webgl || !wrapper || !container || !overlay) return;
 
     const tourConfig: VirtualTourPluginConfig = {
       positionMode: "manual",
@@ -157,6 +187,7 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
       lang: LANG_KA,
       loadingTxt: LANG_KA.loading,
       navbar: ["zoom", "caption", "fullscreen"],
+      defaultPitch: TOUR_EYE_PITCH_DEG * DEG,
       plugins: [MarkersPlugin, [VirtualTourPlugin, tourConfig]],
     });
     const tour = viewer.getPlugin<VirtualTourPlugin>(VirtualTourPlugin);
@@ -168,29 +199,21 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
 
     // Coverage of the photo on screen; null = full sphere, nothing to clamp.
     let coverage: TourCoverage | null = null;
-    // Coverage of the outgoing photo while a node change is fading.
-    let fadingFrom: TourCoverage | null = null;
-    let loadedOnce = false;
     // Mirror of the FOV limits last applied, to map FOV ↔ zoom level smoothly.
     let fovLimits = { min: MIN_FOV_DEG, max: 90 };
+    // A walk may zoom deeper than the normal limit; lowered only while it runs.
+    let minFovOverride: number | null = null;
     let walking = false;
-    let fading = false;
-    // During a walk: the FOV the next photo settles at (its default zoom).
-    let settleFov: number | null = null;
     let destroyed = false;
+    let currentNodeId = startNodeId;
+    // Pixel size of every photo, from our own preload: lets a walk know the
+    // NEXT photo's coverage (and so its default zoom) before switching.
+    const imageSizes = new Map<string, { width: number; height: number }>();
 
-    // While fading, positions for the NEW photo are clamped for the FOV it
-    // will settle at, so the same position stays valid as the zoom eases out.
-    const clampFovFor = (vFov: number) => (fading && settleFov ? Math.max(vFov, settleFov) : vFov);
-
-    const clampPosition = (position: Position, vFov = viewer.state.vFov): Position => {
-      if (!coverage) return position;
-      const f = clampFovFor(vFov);
-      return clampToCoverage(position, f, viewer.dataHelper.vFovToHFov(f), coverage);
-    };
+    const clampPosition = (position: Position, vFov = viewer.state.vFov): Position =>
+      coverage ? clampToCoverage(position, vFov, viewer.dataHelper.vFovToHFov(vFov), coverage) : position;
 
     const moveIntoRange = () => {
-      if (fading) return; // the camera holds still during a fade (see header)
       const current = viewer.getPosition();
       const ranged = clampPosition(current);
       if (Math.abs(ranged.yaw - current.yaw) > 1e-6 || Math.abs(ranged.pitch - current.pitch) > 1e-6) {
@@ -198,9 +221,16 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
       }
     };
 
+    const coverageOf = (node: TourNode): TourCoverage | null => {
+      const size = imageSizes.get(node.id);
+      if (!size || node.horizontalFovDeg == null) return null;
+      return coverageFromPanoData(partialPanoData(node.horizontalFovDeg)(size as HTMLImageElement));
+    };
+
+    /** Default zoom (level 50) for a coverage at the current viewer aspect. */
     const defaultFovFor = (c: TourCoverage | null) => {
       const max = maxVFovDeg(c, viewer.state.aspect);
-      return (Math.min(MIN_FOV_DEG, max) + max) / 2; // zoom level 50
+      return (Math.min(MIN_FOV_DEG, max) + max) / 2;
     };
 
     /** Zoom to an exact FOV (the library's own conversion rounds to whole levels). */
@@ -211,10 +241,8 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
     };
 
     const applyZoomLimits = () => {
-      const aspect = viewer.state.aspect;
-      let maxFov = maxVFovDeg(coverage, aspect);
-      if (fadingFrom) maxFov = Math.min(maxFov, maxVFovDeg(fadingFrom, aspect));
-      const minFov = Math.min(MIN_FOV_DEG, maxFov);
+      const maxFov = maxVFovDeg(coverage, viewer.state.aspect);
+      const minFov = Math.min(MIN_FOV_DEG, maxFov, minFovOverride ?? Infinity);
       fovLimits = { min: minFov, max: maxFov };
       // Setting fov limits re-derives the zoom level from the current FOV.
       viewer.setOptions({ minFov, maxFov });
@@ -241,77 +269,150 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
         requestAnimationFrame(step);
       });
 
+    /** Resolves right after the viewer's next render (forcing one). */
+    const nextRender = () =>
+      new Promise<void>((resolve) => {
+        const onRender = () => {
+          viewer.removeEventListener("render", onRender);
+          resolve();
+        };
+        viewer.addEventListener("render", onRender);
+        viewer.needsUpdate();
+      });
+
+    /** Copies the frame on screen into the overlay and shows it. */
+    const snapshot = async () => {
+      const source = container.querySelector<HTMLCanvasElement>(".psv-canvas-container canvas") ?? container.querySelector("canvas");
+      const ctx = overlay.getContext("2d");
+      if (!source || !ctx) return false;
+      // Read the WebGL canvas in the same task as a render, before the browser
+      // clears its drawing buffer.
+      await new Promise<void>((resolve) => {
+        const onRender = () => {
+          viewer.removeEventListener("render", onRender);
+          overlay.width = source.width;
+          overlay.height = source.height;
+          ctx.drawImage(source, 0, 0);
+          resolve();
+        };
+        viewer.addEventListener("render", onRender);
+        viewer.needsUpdate();
+      });
+      overlay.style.transform = "scale(1)";
+      overlay.style.opacity = "1";
+      overlay.style.visibility = "visible";
+      return true;
+    };
+
+    const fadeOutSnapshot = (toScale: number, alongside?: (k: number) => void, durationMs: number = WALK.fadeMs) =>
+      animate((ms) => {
+        const k = easeInOutCubic(phase(ms, 0, durationMs));
+        overlay.style.opacity = String(1 - k);
+        overlay.style.transform = `scale(${1 + (toScale - 1) * k})`;
+        alongside?.(k);
+        return k < 1;
+      }).then(() => {
+        overlay.style.visibility = "hidden";
+      });
+
+    /** Switches node instantly (under the snapshot) and sets the view there. */
+    const switchTo = async (nodeId: string, view: Position, fov: number) => {
+      await tour.setCurrentNode(nodeId, { effect: "none", rotation: false, rotateTo: view, showLoader: false });
+      // panorama-loaded has applied the new photo's limits by now
+      setFov(fov);
+      viewer.rotate(view);
+      await nextRender();
+    };
+
+    const setWalking = (on: boolean) => {
+      walking = on;
+      wrapper.classList.toggle("tour-walking", on);
+      setBusy(on);
+    };
+
+    const finishWalk = () => {
+      if (destroyed) return;
+      minFovOverride = null;
+      applyZoomLimits();
+      setWalking(false);
+    };
+
     const walk = async (link: TourLink) => {
       if (walking || destroyed) return;
-      walking = true;
-      const arrive: Position = { yaw: (link.arriveYaw ?? 0) * DEG, pitch: 0 };
-      const startFade = () => {
-        fading = true;
-        return tour.setCurrentNode(link.nodeId, {
-          effect: "fade",
-          speed: WALK.fadeMs,
-          rotation: false,
-          rotateTo: arrive,
-          showLoader: false,
-        });
-      };
+      const target = nodes.find((n) => n.id === link.nodeId);
+      if (!target) return;
+      setWalking(true);
       try {
-        if (reduceMotion) {
-          await startFade();
-        } else {
+        const eye = TOUR_EYE_PITCH_DEG * DEG;
+        const arrive: Position = { yaw: (link.arriveYaw ?? 0) * DEG, pitch: eye };
+        const targetDefaultFov = defaultFovFor(coverageOf(target) ?? coverage);
+
+        if (!reduceMotion) {
+          const m = link.walkZoom ?? WALK.defaultWalkZoom;
+          // End of the push-in: the counter about as big as in the next photo.
+          const fovEnd = Math.min(viewer.state.vFov, magnifiedFovDeg(targetDefaultFov, m));
+          if (fovEnd < fovLimits.min) {
+            minFovOverride = fovEnd;
+            applyZoomLimits();
+          }
           const from = viewer.getPosition();
-          // Face the ring with eyes level; the clamp keeps the view on photo.
-          const goal = clampPosition({ yaw: link.yaw * DEG, pitch: 0 });
+          const goal = clampPosition({ yaw: link.yaw * DEG, pitch: eye }, fovEnd);
+          const needTurn = Math.abs(lerpYaw(from.yaw, goal.yaw, 1) - from.yaw) > WALK.turnThresholdDeg * DEG || Math.abs(goal.pitch - from.pitch) > WALK.turnThresholdDeg * DEG;
+          const turnMs = needTurn ? WALK.turnMs : 0;
           const fov0 = viewer.state.vFov;
-          const fovIn = Math.max(fovLimits.min, fov0 * WALK.zoomFactor);
-          let fade: Promise<boolean> | null = null;
           await animate((ms) => {
-            if (!fade) {
-              const k = easeInOutCubic(phase(ms, 0, WALK.rotateMs));
-              viewer.rotate({ yaw: lerpYaw(from.yaw, goal.yaw, k), pitch: from.pitch + (goal.pitch - from.pitch) * k });
-              if (k >= 1) fade = startFade();
-            }
-            // Zooming IN only shrinks the view, so it is safe on either photo.
-            setFov(fov0 + (fovIn - fov0) * easeInOutCubic(phase(ms, WALK.zoomStartMs, WALK.zoomMs)));
-            return !fade || ms < WALK.zoomStartMs + WALK.zoomMs;
+            const kt = easeInOutCubic(phase(ms, 0, turnMs));
+            viewer.rotate({ yaw: lerpYaw(from.yaw, goal.yaw, kt), pitch: from.pitch + (goal.pitch - from.pitch) * kt });
+            // Zooming IN only shrinks the view, so it never shows an edge.
+            setFov(fov0 + (fovEnd - fov0) * easeInOutCubic(phase(ms, WALK.zoomStartMs, WALK.zoomMs)));
+            return ms < Math.max(turnMs, WALK.zoomStartMs + WALK.zoomMs);
           });
-          await fade;
         }
-        // Settle on the new photo at its default zoom.
-        fading = false;
-        const target = settleFov;
-        settleFov = null;
-        if (target != null && !destroyed) {
-          const fovFrom = viewer.state.vFov;
-          if (reduceMotion) setFov(target);
-          else
-            await animate((ms) => {
-              const k = easeInOutCubic(phase(ms, 0, WALK.settleMs));
-              setFov(fovFrom + (target - fovFrom) * k);
-              return k < 1;
-            });
-        }
+
+        const shot = await snapshot();
+        minFovOverride = null;
+        await switchTo(target.id, arrive, targetDefaultFov);
+        if (shot) await fadeOutSnapshot(reduceMotion ? 1 : WALK.fadeScaleForward);
       } catch {
-        // aborted or failed load: stay where we are, usable
+        overlay.style.visibility = "hidden"; // aborted or failed load: stay usable
       } finally {
-        fading = false;
-        settleFov = null;
-        walking = false;
-        if (!destroyed) moveIntoRange();
+        finishWalk();
       }
     };
 
+    const goBack = async () => {
+      if (walking || destroyed) return;
+      const prev = previousOf(nodes, currentNodeId);
+      if (!prev) return;
+      setWalking(true);
+      try {
+        const view: Position = { yaw: prev.link.yaw * DEG, pitch: TOUR_EYE_PITCH_DEG * DEG };
+        const prevDefaultFov = defaultFovFor(coverageOf(prev.node) ?? coverage);
+        const fovStart = reduceMotion
+          ? prevDefaultFov
+          : magnifiedFovDeg(prevDefaultFov, prev.link.walkZoom ?? WALK.defaultWalkZoom);
+        const shot = await snapshot();
+        if (fovStart < MIN_FOV_DEG) minFovOverride = fovStart;
+        await switchTo(prev.node.id, view, fovStart);
+        if (shot) {
+          await fadeOutSnapshot(
+            reduceMotion ? 1 : WALK.fadeScaleBack,
+            // Zooming OUT is clamped every frame (zoom-updated → moveIntoRange).
+            reduceMotion ? undefined : (k) => setFov(fovStart + (prevDefaultFov - fovStart) * k),
+            reduceMotion ? WALK.fadeMs : WALK.backZoomMs,
+          );
+        }
+        if (!reduceMotion) setFov(prevDefaultFov);
+      } catch {
+        overlay.style.visibility = "hidden";
+      } finally {
+        finishWalk();
+      }
+    };
+    goBackRef.current = () => void goBack();
+
     viewer.addEventListener("panorama-loaded", ({ data }) => {
-      // Fired before the fade starts, so the limits are in place for it.
-      fadingFrom = loadedOnce ? coverage : null;
-      loadedOnce = true;
       coverage = coverageFromPanoData(data.panoData as PanoData | undefined);
-      if (walking) settleFov = defaultFovFor(coverage);
-      applyZoomLimits();
-    });
-    viewer.addEventListener("transition-done", () => {
-      fadingFrom = null;
-      fading = false;
       applyZoomLimits();
     });
     viewer.addEventListener("size-updated", applyZoomLimits);
@@ -327,9 +428,20 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
     viewer.addEventListener("position-updated", moveIntoRange);
     viewer.addEventListener("zoom-updated", moveIntoRange);
 
+    tour.addEventListener("node-changed", ({ node }) => {
+      currentNodeId = node.id;
+      setCurrentId(node.id);
+    });
+
     viewer.addEventListener("ready", () => {
-      // Warm every photo so a walk never waits on the network.
-      for (const node of nodes) viewer.textureLoader.preloadPanorama(node.panoramaUrl).catch(() => undefined);
+      // Preload every photo (three small files: all of them are neighbours)
+      // into the viewer's cache, and read their sizes for the walk maths.
+      for (const node of nodes) {
+        viewer.textureLoader.preloadPanorama(node.panoramaUrl).catch(() => undefined);
+        const img = new Image();
+        img.onload = () => imageSizes.set(node.id, { width: img.naturalWidth, height: img.naturalHeight });
+        img.src = node.panoramaUrl;
+      }
     });
 
     markers.addEventListener("select-marker", ({ marker }) => {
@@ -339,6 +451,7 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
 
     return () => {
       destroyed = true;
+      goBackRef.current = () => {};
       viewer.destroy();
     };
   }, [webgl, nodes, startNodeId]);
@@ -362,5 +475,28 @@ export default function TourViewer({ nodes, startNodeId }: TourViewerProps) {
     );
   }
 
-  return <div ref={containerRef} className="tour-viewer relative isolate h-full w-full bg-black" />;
+  const canGoBack = previousOf(nodes, currentId) !== null;
+
+  return (
+    <div ref={wrapperRef} className="tour-viewer relative isolate h-full w-full overflow-hidden bg-black">
+      <div ref={containerRef} className="absolute inset-0" />
+      {/* Walk snapshot: above the photo (z 0), below the rings (z 10+). */}
+      <canvas
+        ref={overlayRef}
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-[5] h-full w-full origin-center"
+        style={{ visibility: "hidden" }}
+      />
+      {canGoBack && (
+        <button
+          type="button"
+          onClick={() => goBackRef.current()}
+          disabled={busy}
+          className="absolute left-3 top-3 z-[40] inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/55 px-4 text-sm font-medium text-white shadow-lg backdrop-blur-sm transition-opacity hover:bg-black/70 disabled:opacity-60"
+        >
+          ← უკან
+        </button>
+      )}
+    </div>
+  );
 }
