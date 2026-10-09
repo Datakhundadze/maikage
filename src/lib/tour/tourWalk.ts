@@ -1,21 +1,28 @@
 // Timing and small helpers for the tour's "walk" transition (TourViewer).
 //
-// TIMELINE (ms from the click)
-//   0 ──── ROTATE ────┤ turn toward the floor ring (eyes level, clamped)
-//        ├──────── ZOOM ────────┤ push forward (FOV shrinks)
-//                   ├──── FADE ────┤ cross-fade to the next photo
-//                                  ├─ SETTLE ─┤ new photo eases to default zoom
-// Total ≈ 1.1 s. With prefers-reduced-motion only the fade runs.
+// FORWARD (ms from the tap)
+//   0 ── TURN ──┤ face the ring (only if it is off-centre)
+//      ├────── ZOOM ──────┤ push in on this photo by the link's walkZoom
+//                         ├──── FADE ────┤ snapshot of the zoomed view fades
+//                                          out over the next photo, which is
+//                                          already at its default zoom
+// BACK: snapshot of this photo fades out over the previous photo, which
+// starts zoomed in by the same walkZoom and eases out to default zoom.
+// ~1.1 s either way. With prefers-reduced-motion only the fade runs.
 
 export const WALK = {
-  rotateMs: 380,
-  zoomStartMs: 180,
-  zoomMs: 500,
-  /** the fade starts as the turn ends, overlapping the second half of the zoom */
+  turnMs: 350,
+  zoomStartMs: 120,
+  zoomMs: 520,
   fadeMs: 450,
-  settleMs: 250,
-  /** forward push: the FOV shrinks to this fraction (never below minFov) */
-  zoomFactor: 0.62,
+  /** back: the previous photo's zoom-out runs a little longer than the fade */
+  backZoomMs: 600,
+  /** snapshot scale over the fade: forward keeps pushing in, back pulls out */
+  fadeScaleForward: 1.06,
+  fadeScaleBack: 0.95,
+  /** skip the turn when the ring is already this close to centre (degrees) */
+  turnThresholdDeg: 3,
+  defaultWalkZoom: 1.4,
 } as const;
 
 /** Smooth start and end; t in [0, 1]. */
@@ -36,6 +43,15 @@ export function lerpYaw(from: number, to: number, k: number): number {
   let d = (((to - from) % TWO_PI) + TWO_PI) % TWO_PI;
   if (d > Math.PI) d -= TWO_PI;
   return from + d * k;
+}
+
+/**
+ * FOV (degrees) that magnifies the view by `m`: on-screen size scales with
+ * 1 / tan(fov / 2), so the magnified FOV is 2·atan(tan(fov / 2) / m).
+ */
+export function magnifiedFovDeg(fovDeg: number, m: number): number {
+  const half = (fovDeg * Math.PI) / 360;
+  return (360 / Math.PI) * Math.atan(Math.tan(half) / Math.max(m, 1e-6));
 }
 
 /**

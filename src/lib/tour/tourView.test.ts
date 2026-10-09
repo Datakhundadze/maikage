@@ -138,6 +138,23 @@ describe("no black outside the photo", () => {
 describe("tour config", () => {
   const deg = (r: number) => (r * 180) / Math.PI;
 
+  it("is a chain step1 → step2 → step3 starting at the entrance", () => {
+    expect(TOUR_NODES.map((n) => n.id)).toEqual(["step1", "step2", "step3"]);
+    expect(TOUR_NODES[0].links.map((l) => l.nodeId)).toEqual(["step2"]);
+    expect(TOUR_NODES[1].links.map((l) => l.nodeId)).toEqual(["step3"]);
+    expect(TOUR_NODES[2].links).toEqual([]);
+  });
+
+  it("derives a 60–65° vertical span from each photo's real size", () => {
+    for (const node of TOUR_NODES) {
+      const c = nodeCoverage(node);
+      expect(c).not.toBeNull();
+      const span = deg(c!.pitchMax - c!.pitchMin);
+      expect(span).toBeGreaterThanOrEqual(60);
+      expect(span).toBeLessThanOrEqual(65);
+    }
+  });
+
   it("puts every floor ring inside its node's photo (yaw AND pitch)", () => {
     for (const node of TOUR_NODES) {
       const c = nodeCoverage(node);
@@ -153,9 +170,10 @@ describe("tour config", () => {
     }
   });
 
-  it("puts every arrival direction inside the target photo", () => {
+  it("puts every arrival direction inside the target photo, and zooms forward", () => {
     for (const node of TOUR_NODES) {
       for (const link of node.links) {
+        expect(link.walkZoom ?? 1.4).toBeGreaterThanOrEqual(1);
         const target = TOUR_NODES.find((n) => n.id === link.nodeId);
         const c = target && nodeCoverage(target);
         if (!c) continue;

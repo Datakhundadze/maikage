@@ -1,21 +1,35 @@
 import { describe, it, expect } from "vitest";
-import { WALK, easeInOutCubic, floorRingSquash, lerpYaw, phase } from "@/lib/tour/tourWalk";
+import { WALK, easeInOutCubic, floorRingSquash, lerpYaw, magnifiedFovDeg, phase } from "@/lib/tour/tourWalk";
 
 describe("walk timeline", () => {
-  it("fits in about 1.2 s and the zoom overlaps the start of the fade", () => {
-    const fadeStart = WALK.rotateMs;
-    const total = fadeStart + WALK.fadeMs + WALK.settleMs;
-    expect(total).toBeLessThanOrEqual(1200);
-    expect(WALK.zoomStartMs).toBeLessThan(fadeStart);
-    expect(WALK.zoomStartMs + WALK.zoomMs).toBeGreaterThan(fadeStart);
+  it("forward and back each fit in about 1.2 s", () => {
+    const forward = Math.max(WALK.turnMs, WALK.zoomStartMs + WALK.zoomMs) + WALK.fadeMs;
+    expect(forward).toBeLessThanOrEqual(1200);
+    expect(Math.max(WALK.fadeMs, WALK.backZoomMs)).toBeLessThanOrEqual(1200);
+  });
+  it("the forward snapshot keeps pushing in; the back one pulls out", () => {
+    expect(WALK.fadeScaleForward).toBeGreaterThan(1);
+    expect(WALK.fadeScaleBack).toBeLessThan(1);
   });
   it("phase and easing stay in [0, 1]", () => {
     expect(phase(-50, 0, 100)).toBe(0);
     expect(phase(50, 0, 100)).toBe(0.5);
     expect(phase(500, 0, 100)).toBe(1);
+    expect(phase(10, 0, 0)).toBe(1);
     expect(easeInOutCubic(0)).toBe(0);
     expect(easeInOutCubic(1)).toBe(1);
     expect(easeInOutCubic(0.5)).toBeCloseTo(0.5, 6);
+  });
+});
+
+describe("magnifiedFovDeg", () => {
+  it("magnifies on-screen size by m (tangent of the half-FOV)", () => {
+    const fov = 46;
+    const m = 1.63;
+    const f2 = magnifiedFovDeg(fov, m);
+    const t = (d: number) => Math.tan((d * Math.PI) / 360);
+    expect(t(fov) / t(f2)).toBeCloseTo(m, 9);
+    expect(magnifiedFovDeg(fov, 1)).toBeCloseTo(fov, 9);
   });
 });
 

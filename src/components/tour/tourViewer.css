@@ -86,3 +86,11 @@
     opacity: 0;
   }
 }
+
+/*
+ * While a walk runs the viewer briefly writes its "loading" text into the
+ * navbar caption as it swaps photos; hide the caption until the new name is in.
+ */
+.tour-walking .psv-caption-content {
+  visibility: hidden;
+}
