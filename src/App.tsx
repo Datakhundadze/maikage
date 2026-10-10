@@ -10,6 +10,7 @@ import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { AppStateProvider, useAppState } from "@/hooks/useAppState";
 import { CartProvider } from "@/hooks/useCart";
 import { RouteChangeTracker } from "@/components/RouteChangeTracker";
+import { LANDING_PRODUCT_SLUGS } from "@/lib/productRouteSlugs";
 
 // Each route component is a separate JS chunk after Vite build. Customers
 // visiting the landing page no longer download the admin / catalog /
@@ -36,6 +37,7 @@ const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
 const BlogPage = lazy(() => import("./pages/BlogPage"));
 const BlogPostPage = lazy(() => import("./pages/BlogPostPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
+const ProductLandingPage = lazy(() => import("./pages/ProductLandingPage"));
 const ShowroomPage = lazy(() => import("./pages/ShowroomPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 // Sitewide FAQ chat bubble — lazy so it never lands in the initial bundle.
@@ -128,6 +130,17 @@ function AppRoutes() {
       {/* Standalone full-page FAQ chat, linked from the social auto-responders
           after hours. noindex + deliberately absent from the sitemap. */}
       <Route path="/chat" element={<ChatPage />} />
+      {/* Product landing routes for ad clicks (/hoodie, /hoodie/premium-washed):
+          the constructor with that product/brand preselected. Only known,
+          visible product slugs are registered, so any other path still
+          reaches NotFound below. Entry points only — nothing links here
+          from inside the constructor. */}
+      {LANDING_PRODUCT_SLUGS.map((slug) => (
+        <Route key={slug} path={`/${slug}`} element={<ProductLandingPage productSlug={slug} />} />
+      ))}
+      {LANDING_PRODUCT_SLUGS.map((slug) => (
+        <Route key={`${slug}/:brandSlug`} path={`/${slug}/:brandSlug`} element={<ProductLandingPage productSlug={slug} />} />
+      ))}
       <Route path="/showroom" element={<ShowroomPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

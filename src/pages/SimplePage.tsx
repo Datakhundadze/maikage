@@ -897,7 +897,14 @@ let photoIdCounter = 0;
 let chatMsgCounter = 0;
 let textIdCounter = 0;
 
-export default function SimplePage() {
+// Optional SEO override for the product landing routes (/hoodie, …). Absent at
+// "/", where SeoHead below receives exactly the strings it always had.
+interface SimplePageProps {
+  seoTitle?: string;
+  seoDescription?: string;
+}
+
+export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps = {}) {
   const { lang, theme, toggleTheme } = useAppState();
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
@@ -3212,8 +3219,8 @@ export default function SimplePage() {
   return (
     <div className="flex flex-col h-screen">
       <SeoHead
-        title="ფოტო და ტექსტი მაისურზე — Maika.ge"
-        description="ატვირთე ფოტო და დაბეჭდე უნიკალური დიზაინი მაისურზე, oversize ჰუდიზე, ჩანთაზე ან ქეისზე. რეცხვაგამძლე ეკოლოგიური საღებავი, შეკვეთიდან იმავე ან მეორე დღეს."
+        title={seoTitle ?? "ფოტო და ტექსტი მაისურზე — Maika.ge"}
+        description={seoDescription ?? "ატვირთე ფოტო და დაბეჭდე უნიკალური დიზაინი მაისურზე, oversize ჰუდიზე, ჩანთაზე ან ქეისზე. რეცხვაგამძლე ეკოლოგიური საღებავი, შეკვეთიდან იმავე ან მეორე დღეს."}
       />
       <AppHeader />
       <ContactBar />
