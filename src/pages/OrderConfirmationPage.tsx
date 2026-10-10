@@ -30,6 +30,11 @@ export default function OrderConfirmationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isLoggedIn = !!user && !isAnonymous;
+  // Any session, guest accounts included, may read its own order rows ("Users
+  // can read own orders": auth.uid() = user_id — a guest account's orders
+  // carry its uid). Used ONLY to give the purchase event its value; the
+  // visible order summary below stays gated on isLoggedIn.
+  const canReadOwnOrders = !!user;
 
   const payParam = searchParams.get("payment");
   // orderId from the redirect URL; fall back to the legacy localStorage marker
@@ -91,10 +96,11 @@ export default function OrderConfirmationPage() {
     return () => { pollingRef.current = false; };
   }, [orderId, payParam]);
 
-  // Logged-in: read this checkout's order(s) (RLS: auth.uid() = user_id) and
-  // group by cart_id. Guests intentionally don't read orders client-side.
+  // With a session (signed-in or guest account): read this checkout's
+  // order(s) (RLS: auth.uid() = user_id) and group by cart_id. Sessionless
+  // guests match no SELECT policy and don't read orders client-side.
   useEffect(() => {
-    if (!isLoggedIn || !orderId) { setGroups(null); return; }
+    if (!canReadOwnOrders || !orderId) { setGroups(null); return; }
     let cancelled = false;
     (async () => {
       const { data: head } = await supabase.from("orders").select(CUSTOMER_ORDER_COLUMNS).eq("id", orderId).maybeSingle();
@@ -113,22 +119,24 @@ export default function OrderConfirmationPage() {
       if (!cancelled) setGroups(groupOrdersByCart(rows));
     })();
     return () => { cancelled = true; };
-  }, [isLoggedIn, orderId]);
+  }, [canReadOwnOrders, orderId]);
 
   // GA4 conversion: fire `purchase` ONCE per order, ONLY on confirmed success
   // (paymentState === "paid", which is set only when check-payment returns
   // "paid" — never on failed/pending/processing). Double-fire guard: an
   // in-mount ref + a sessionStorage flag keyed by orderId so a page refresh
   // can't double-count revenue. value/items come from the order rows the page
-  // already loads for logged-in users (RLS); guests can't read orders
-  // client-side, so their hit carries transaction_id + a generic item (the
-  // conversion still counts; revenue lives in the orders table / admin panel).
+  // loads for any session — signed-in users and guest accounts (RLS);
+  // sessionless guests can't read orders client-side, so their hit carries
+  // transaction_id + a generic item (the conversion still counts; revenue
+  // lives in the orders table / admin panel).
   const purchaseTrackedRef = useRef(false);
   useEffect(() => {
     if (paymentState !== "paid" || !orderId) return;
     if (purchaseTrackedRef.current) return;
-    // For logged-in users wait until the order rows load so value/items are real.
-    if (isLoggedIn && groups === null) return;
+    // With a session (signed-in or guest account) wait until the order rows
+    // load so value/items are real.
+    if (canReadOwnOrders && groups === null) return;
 
     const flagKey = `ga4_purchase_${orderId}`;
     try {
@@ -164,7 +172,7 @@ export default function OrderConfirmationPage() {
       ...(value > 0 ? { value, currency: "GEL", shipping } : {}),
       items,
     });
-  }, [paymentState, orderId, isLoggedIn, groups]);
+  }, [paymentState, orderId, canReadOwnOrders, groups]);
 
   const isFailed = paymentState === "failed";
   const isPaid = paymentState === "paid";

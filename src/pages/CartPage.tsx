@@ -15,6 +15,7 @@ import { BAG_FEE, BAG_FEE_LABEL_KA } from "@/lib/fees";
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import SeoHead from "@/components/SeoHead";
 import { submitOrder } from "@/lib/orderSubmission";
+import { trackEvent } from "@/lib/gtag";
 
 // Mirror a cart item's originals into order-originals/{orderId}/ so the
 // admin's "ორიგინალი" download buttons (which list that folder) show up
@@ -168,6 +169,19 @@ export default function CartPage() {
       focusField("address");
       return;
     }
+    // GA4 + Meta funnel: begin_checkout for the cart path (OrderDialog fires
+    // its own for direct orders). Valid form, before anything is submitted;
+    // value is the same orderTotal shown as "სულ". trackEvent never throws.
+    trackEvent("begin_checkout", {
+      currency: "GEL",
+      value: orderTotal,
+      items: items.map((item) => ({
+        item_name: [item.product, item.subProduct, item.color].filter(Boolean).join(" "),
+        item_category: item.product,
+        price: item.productPrice,
+        quantity: item.quantity,
+      })),
+    });
     setSubmitting(true);
 
     try {

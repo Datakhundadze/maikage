@@ -20,7 +20,7 @@ import SeoHead from "@/components/SeoHead";
 // notice while any placeholder remains.
 
 const CONTACT_EMAIL = "maika@maika.ge";
-const LAST_UPDATED = "2026-10-08";
+const LAST_UPDATED = "2026-10-10";
 
 // ── Placeholders the owner must fill in ──────────────────────────────────
 // Kept in one place so the draft banner can detect them. Replace the values
@@ -288,6 +288,13 @@ export default function PrivacyPage() {
                 L,
                 "საიტი იყენებს Google Analytics 4-ს და Google Tag Manager-ს, რომლებიც Google-ის ქუქიებს აყენებს და ვიზიტების სტატისტიკას Google-ს უგზავნის. გარდა ამისა, ჩვენს ბაზაში ვინახავთ საკუთარ მოვლენებს: შესული მომხმარებლების გვერდის ვიზიტებს, დიზაინის გენერაციას და პროდუქტის არჩევას, ასევე კონსტრუქტორის ტექნიკურ მოვლენებს ანონიმური სესიის იდენტიფიკატორით.",
                 "The site uses Google Analytics 4 and Google Tag Manager, which set Google cookies and send visit statistics to Google. We also store our own events in our database: signed-in users' page visits, design generations and product selections, and technical constructor events under an anonymous session identifier.",
+              )}
+            </p>
+            <p>
+              {t(
+                L,
+                "Facebook-ისა და Instagram-ის რეკლამების შედეგის გასაზომად საიტი იყენებს Meta-ს პიქსელს (Meta Platforms). პიქსელი Meta-ს ქუქიებს აყენებს და Meta-ს უგზავნის: რომელ გვერდებს ნახულობთ, კალათაში დამატებას, შეკვეთის დაწყებას და დასრულებულ შეკვეთას (შეკვეთის ნომრითა და თანხით), რომელ ღილაკებს აჭერთ, ასევე ბრაუზერისა და მოწყობილობის ტექნიკურ მონაცემებს, მაგალითად IP მისამართს. თქვენს სახელს, ელფოსტას, ტელეფონს ან მისამართს Meta-ს არ ვუგზავნით. თუ Facebook-ში ან Instagram-ში შესული ხართ, Meta-ს შეუძლია ეს მოვლენები თქვენს ანგარიშს დაუკავშიროს და მათ საკუთარი კონფიდენციალურობის პოლიტიკით ამუშავებს. პიქსელის დაბლოკვა შეგიძლიათ რეკლამის ბლოკერით, რეკლამის პარამეტრების მართვა კი — Facebook-ის ან Instagram-ის რეკლამის პარამეტრებში.",
+                "To measure how our Facebook and Instagram ads perform, the site uses the Meta pixel (Meta Platforms). The pixel sets Meta cookies and sends Meta the pages you view, adding to cart, starting checkout and completed orders (with the order number and amount), the buttons you click, and technical browser and device data such as your IP address. We do not send Meta your name, email, phone number or address. If you are logged in to Facebook or Instagram, Meta can link these events to your account and processes them under its own privacy policy. You can block the pixel with an ad blocker and manage your ad preferences in your Facebook or Instagram ad settings.",
               )}
             </p>
             <p>
