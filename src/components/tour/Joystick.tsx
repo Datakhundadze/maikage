@@ -1,10 +1,11 @@
 import { useRef } from "react";
-import type { StickInput } from "@/lib/tour/walkMotion";
+import type { StickAxes } from "@/lib/tour/walkMotion";
 
-// On-screen thumb pad for walking (phones). Bottom-LEFT, clear of the chat
-// launcher in the bottom-right corner. Reports a stick vector (forward /
-// strafe, each −1…1) through `onChange` on every move — no React re-render;
-// the knob is moved by writing its transform directly.
+// On-screen thumb pad for walking and turning (phones). Bottom-LEFT, clear of
+// the chat launcher in the bottom-right corner. Reports the raw knob position
+// (x right, y up, inside the unit circle) through `onChange` on every move —
+// no React re-render; the knob is moved by writing its transform directly.
+// What the axes do (walk / turn, dead zone) is decided by joystickToInput.
 //
 // It owns its pointer (setPointerCapture), so a second finger can drag the
 // canvas to look around at the same time.
@@ -12,10 +13,9 @@ import type { StickInput } from "@/lib/tour/walkMotion";
 const BASE_PX = 128; // ≥ 96 px tap target
 const KNOB_PX = 56;
 const RADIUS = (BASE_PX - KNOB_PX) / 2;
-const DEADZONE = 0.12;
 
 interface JoystickProps {
-  onChange: (input: StickInput) => void;
+  onChange: (axes: StickAxes) => void;
 }
 
 export default function Joystick({ onChange }: JoystickProps) {
@@ -35,18 +35,13 @@ export default function Joystick({ onChange }: JoystickProps) {
       dy = (dy / len) * RADIUS;
     }
     if (knobRef.current) knobRef.current.style.transform = `translate(${dx}px, ${dy}px)`;
-    const sx = dx / RADIUS;
-    const sy = dy / RADIUS;
-    const mag = Math.hypot(sx, sy);
-    // dead zone, then rescale so the response starts at 0 just outside it
-    const k = mag < DEADZONE ? 0 : (mag - DEADZONE) / (1 - DEADZONE) / mag;
-    onChange({ forward: -sy * k, strafe: sx * k });
+    onChange({ x: dx / RADIUS, y: -dy / RADIUS });
   };
 
   const release = () => {
     pointerId.current = null;
     if (knobRef.current) knobRef.current.style.transform = "translate(0px, 0px)";
-    onChange({ forward: 0, strafe: 0 });
+    onChange({ x: 0, y: 0 });
   };
 
   return (

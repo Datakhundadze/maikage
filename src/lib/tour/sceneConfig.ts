@@ -28,11 +28,13 @@
 //   - start: inside the polygon, 0.74 m from its nearest edge, facing −x:
 //     the colourful clock wall, the blue door and the brown couch.
 //
-// FEEL: `bob` (head bob, src/lib/tour/walkBob.ts) and `footsteps` (sound,
-// src/lib/tour/footsteps.ts) are tunable here.
+// FEEL: `bob` (head bob, src/lib/tour/walkBob.ts), `footsteps` (sound,
+// src/lib/tour/footsteps.ts) and `steering` (joystick / A-D turning,
+// src/lib/tour/walkMotion.ts) are tunable here.
 
 import type { BobConfig } from "@/lib/tour/walkBob";
 import type { FootstepConfig } from "@/lib/tour/footsteps";
+import type { SteeringConfig } from "@/lib/tour/walkMotion";
 
 export interface ScenePose {
   x: number;
@@ -59,6 +61,8 @@ export interface SceneConfig {
   accelTime: number;
   /** Look up/down limit, degrees either way. */
   pitchLimitDeg: number;
+  /** Turning: joystick X axis and A/D, ←/→. */
+  steering: SteeringConfig;
   /** Head bob while walking (visual only; off with reduced motion). */
   bob: BobConfig;
   /** Footstep sound (off until the visitor turns it on). */
@@ -81,6 +85,11 @@ export const SCENE: SceneConfig = {
   walkSpeed: 1.2,
   accelTime: 0.25,
   pitchLimitDeg: 60,
+  steering: {
+    maxTurnRateDeg: 90,
+    deadZone: 0.12,
+    turnSmoothTime: 0.12,
+  },
   bob: {
     stepLength: 0.7,
     verticalAmp: 0.03,

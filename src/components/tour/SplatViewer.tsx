@@ -9,9 +9,13 @@ import { BOB_REST, bobOffset, stepBob, type BobOffset, type BobState } from "@/l
 import { clampStep, ensureInside, type Vec2 } from "@/lib/tour/walkBounds";
 import {
   applyLook,
+  easeTurnRate,
   easeVelocity,
+  joystickToInput,
   keysToStick,
   MAX_DT,
+  NO_INPUT,
+  targetTurnRate,
   targetVelocity,
   type StickInput,
 } from "@/lib/tour/walkMotion";
@@ -21,9 +25,10 @@ import {
 // from the lazy ShowroomPage, so none of it reaches the main bundle.
 //
 // CONTROLS
-//   phone:   joystick bottom-left walks; dragging anywhere else looks around
-//            (both at once with two fingers).
-//   desktop: WASD / arrow keys walk; mouse drag looks around.
+//   phone:   joystick bottom-left steers: up/down walks along the heading,
+//            left/right turns (no strafing); dragging anywhere else looks
+//            around (both at once with two fingers; the yaw inputs add).
+//   desktop: W/S ↑/↓ walk, A/D ←/→ turn, Q/E strafe; mouse drag looks.
 // The walker stays at eye height above the floor, moves only on the floor
 // plane, and looks at most ±60° up/down. Every step goes through clampStep,
 // so the walker can't leave the walkable polygon (sceneConfig.ts).
@@ -121,15 +126,19 @@ declare global {
       footstepsPlayed: number;
       audio: string;
       reducedMotion: boolean;
-      /** Frames rendered so far. */
+      /** Frames rendered so far, and seconds of motion integrated. */
       frame: number;
+      simTime: number;
+      turnRateDeg: number;
+      /** Seconds of motion integrated while a turn input was held. */
+      turnInputTime: number;
     };
   }
 }
 
 export default function SplatViewer() {
   const hostRef = useRef<HTMLDivElement>(null);
-  const stickRef = useRef<StickInput>({ forward: 0, strafe: 0 });
+  const stickRef = useRef<StickInput>(NO_INPUT);
   const [status, setStatus] = useState<Status>(() => (hasWebGL2() ? "loading" : "nowebgl"));
   const [progress, setProgress] = useState<number | null>(null);
   const [touch] = useState(prefersTouch);
@@ -203,6 +212,9 @@ export default function SplatViewer() {
     // ── pose ────────────────────────────────────────────────────────────
     let pos: Vec2 = ensureInside([SCENE.start.x, SCENE.start.z], SCENE.walkable);
     let vel: Vec2 = [0, 0];
+    let turnRate = 0; // rad/s, eased
+    let simTime = 0; // seconds of motion integrated (dt is capped per frame)
+    let turnInputTime = 0; // of which a turn input was held (debug readout)
     let yaw = SCENE.start.yawDeg * DEG;
     let pitch = SCENE.start.pitchDeg * DEG;
     const pitchLimit = SCENE.pitchLimitDeg * DEG;
@@ -236,6 +248,9 @@ export default function SplatViewer() {
         audio: footstepsRef.current?.state ?? "none",
         reducedMotion,
         frame: frameCount,
+        simTime,
+        turnRateDeg: turnRate / DEG,
+        turnInputTime,
       });
     }
 
@@ -264,7 +279,9 @@ export default function SplatViewer() {
 
     // ── keyboard ────────────────────────────────────────────────────────
     const keys = new Set<string>();
-    const WALK_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
+    const WALK_KEYS = new Set([
+      "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+    ]);
     const onKeyDown = (e: KeyboardEvent) => {
       if (!WALK_KEYS.has(e.code) || isTypingTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       keys.add(e.code);
@@ -328,7 +345,21 @@ export default function SplatViewer() {
       const dt = Math.min((now - last) / 1000, MAX_DT);
       last = now;
 
-      const stick = stickRef.current.forward || stickRef.current.strafe ? stickRef.current : keysToStick(keys);
+      const joy = stickRef.current;
+      const stick = joy.forward || joy.turn ? joy : keysToStick(keys);
+      // turn first, so this frame's step already follows the new heading
+      turnRate = easeTurnRate(
+        turnRate,
+        targetTurnRate(stick.turn, SCENE.steering.maxTurnRateDeg),
+        dt,
+        SCENE.steering.turnSmoothTime,
+      );
+      if (turnRate) {
+        yaw += turnRate * dt;
+        moved = true;
+      }
+      simTime += dt;
+      if (stick.turn) turnInputTime += dt;
       const target = targetVelocity(stick, yaw, SCENE.walkSpeed);
       vel = easeVelocity(vel, target, dt, SCENE.accelTime);
       const from = pos;
@@ -448,8 +479,8 @@ export default function SplatViewer() {
       {status === "ready" && hintVisible && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
           {touch
-            ? "ჯოისტიკით — სიარული, თითით გადაათრიეთ — მიმოხედვა"
-            : "WASD ან ისრები — სიარული, მაუსით გადაათრიეთ — მიმოხედვა"}
+            ? "ჯოისტიკით — სიარული და მობრუნება, თითით გადაათრიეთ — მიმოხედვა"
+            : "W/S — სიარული, A/D — მობრუნება, Q/E — გვერდით, მაუსით გადაათრიეთ — მიმოხედვა"}
         </p>
       )}
 
@@ -468,7 +499,7 @@ export default function SplatViewer() {
       {touch && status === "ready" && (
         <Joystick
           onChange={(input) => {
-            stickRef.current = input;
+            stickRef.current = joystickToInput(input, SCENE.steering.deadZone);
           }}
         />
       )}
