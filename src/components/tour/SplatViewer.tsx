@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
+import { Volume2, VolumeX } from "lucide-react";
 import Joystick from "./Joystick";
 import { SCENE } from "@/lib/tour/sceneConfig";
+import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
+import { BOB_REST, bobOffset, stepBob, type BobOffset, type BobState } from "@/lib/tour/walkBob";
 import { clampStep, ensureInside, type Vec2 } from "@/lib/tour/walkBounds";
 import {
   applyLook,
@@ -21,9 +24,15 @@ import {
 //   phone:   joystick bottom-left walks; dragging anywhere else looks around
 //            (both at once with two fingers).
 //   desktop: WASD / arrow keys walk; mouse drag looks around.
-// The camera stays at eye height above the floor, moves only on the floor
-// plane, never rolls, and looks at most ±60° up/down. Every step goes through
-// clampStep, so the walker can't leave the walkable polygon (sceneConfig.ts).
+// The walker stays at eye height above the floor, moves only on the floor
+// plane, and looks at most ±60° up/down. Every step goes through clampStep,
+// so the walker can't leave the walkable polygon (sceneConfig.ts).
+//
+// WALKING FEEL: a head bob (walkBob.ts) driven by the distance actually
+// moved is added to the camera as an offset only; the logical position and
+// the bounds clamp never see it. Reduced motion turns the bob off. Footstep
+// thuds (footsteps.ts) play at each footfall once the visitor turns sound on
+// with the speaker button; the AudioContext is created on that tap.
 //
 // LAYERS: the wrapper is `isolate`, so everything here sits below the sitewide
 // chat launcher (z-50); nothing is placed in the bottom-right corner.
@@ -32,6 +41,8 @@ const DEG = Math.PI / 180;
 const MAX_DPR = 2;
 /** Horizontal field of view the camera aims for; vertical is derived. */
 const TARGET_HFOV_DEG = 80;
+const SOUND_KEY = "maika.showroom.sound";
+const NO_BOB: BobOffset = { y: 0, lateral: 0, roll: 0 };
 
 type Status = "loading" | "ready" | "error" | "nowebgl";
 
@@ -62,6 +73,30 @@ function verticalFovDeg(aspect: number): number {
   return Math.min(85, Math.max(50, v));
 }
 
+function prefersReducedMotion(): MediaQueryList | null {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)");
+  } catch {
+    return null;
+  }
+}
+
+function loadSoundPref(): boolean {
+  try {
+    return window.localStorage.getItem(SOUND_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
+
+function saveSoundPref(on: boolean): void {
+  try {
+    window.localStorage.setItem(SOUND_KEY, on ? "on" : "off");
+  } catch {
+    // storage blocked (private mode etc.): the choice just isn't remembered
+  }
+}
+
 function isTypingTarget(t: EventTarget | null): boolean {
   return t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 }
@@ -69,7 +104,26 @@ function isTypingTarget(t: EventTarget | null): boolean {
 declare global {
   interface Window {
     /** Read-only camera pose, only with ?tourDebug=1 (used by browser checks). */
-    __tourPose?: () => { x: number; z: number; yawDeg: number; pitchDeg: number; dpr: number };
+    __tourPose?: () => {
+      x: number;
+      z: number;
+      yawDeg: number;
+      pitchDeg: number;
+      dpr: number;
+      /** Camera height (with bob) and the logical eye height, metres. */
+      camY: number;
+      eyeY: number;
+      rollDeg: number;
+      bobAmp: number;
+      walked: number;
+      footfalls: number;
+      /** Footstep sounds actually played, and the audio state. */
+      footstepsPlayed: number;
+      audio: string;
+      reducedMotion: boolean;
+      /** Frames rendered so far. */
+      frame: number;
+    };
   }
 }
 
@@ -80,6 +134,32 @@ export default function SplatViewer() {
   const [progress, setProgress] = useState<number | null>(null);
   const [touch] = useState(prefersTouch);
   const [hintVisible, setHintVisible] = useState(true);
+  const [soundOn, setSoundOn] = useState(loadSoundPref);
+  const soundOnRef = useRef(soundOn);
+  const footstepsRef = useRef<Footsteps | null>(null);
+
+  // Creates the AudioContext; called only from a user gesture.
+  const startAudio = () => {
+    if (!footstepsRef.current) footstepsRef.current = createFootsteps(SCENE.footsteps);
+    footstepsRef.current?.resume().catch(() => {});
+  };
+
+  const toggleSound = () => {
+    const next = !soundOnRef.current;
+    soundOnRef.current = next;
+    setSoundOn(next);
+    saveSoundPref(next);
+    if (next) startAudio();
+    else footstepsRef.current?.suspend().catch(() => {});
+  };
+
+  useEffect(
+    () => () => {
+      footstepsRef.current?.close().catch(() => {});
+      footstepsRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     const host = hostRef.current;
@@ -129,9 +209,34 @@ export default function SplatViewer() {
     const eyeY = SCENE.floorY + SCENE.eyeHeight;
     let moved = false;
     let hintShown = true;
+    let bob: BobState = BOB_REST;
+    let footstepsPlayed = 0;
+    let frameCount = 0;
+    const motionQuery = prefersReducedMotion();
+    let reducedMotion = motionQuery?.matches ?? false;
+    const onMotionChange = (e: MediaQueryListEvent) => {
+      reducedMotion = e.matches;
+    };
+    motionQuery?.addEventListener?.("change", onMotionChange);
 
     if (new URLSearchParams(window.location.search).get("tourDebug") === "1") {
-      window.__tourPose = () => ({ x: pos[0], z: pos[1], yawDeg: yaw / DEG, pitchDeg: pitch / DEG, dpr });
+      window.__tourPose = () => ({
+        x: pos[0],
+        z: pos[1],
+        yawDeg: yaw / DEG,
+        pitchDeg: pitch / DEG,
+        dpr,
+        camY: camera.position.y,
+        eyeY,
+        rollDeg: -camera.rotation.z / DEG,
+        bobAmp: bob.amp,
+        walked: bob.distance,
+        footfalls: bob.steps,
+        footstepsPlayed,
+        audio: footstepsRef.current?.state ?? "none",
+        reducedMotion,
+        frame: frameCount,
+      });
     }
 
     // ── size ────────────────────────────────────────────────────────────
@@ -147,6 +252,16 @@ export default function SplatViewer() {
     const ro = new ResizeObserver(resize);
     ro.observe(host);
 
+    // Sound remembered as on from an earlier visit: browsers only allow audio
+    // after a gesture, so it starts with the visitor's first walk or look.
+    const resumeRememberedSound = () => {
+      if (soundOnRef.current && footstepsRef.current?.state !== "running") startAudio();
+    };
+    const onFirstGesture = () => resumeRememberedSound();
+    const wrapper = host.parentElement;
+    wrapper?.addEventListener("pointerdown", onFirstGesture);
+    wrapper?.addEventListener("pointerup", onFirstGesture); // touch: audio unlocks on release
+
     // ── keyboard ────────────────────────────────────────────────────────
     const keys = new Set<string>();
     const WALK_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
@@ -154,6 +269,7 @@ export default function SplatViewer() {
       if (!WALK_KEYS.has(e.code) || isTypingTarget(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
       keys.add(e.code);
       e.preventDefault();
+      resumeRememberedSound();
     };
     const onKeyUp = (e: KeyboardEvent) => {
       keys.delete(e.code);
@@ -215,13 +331,28 @@ export default function SplatViewer() {
       const stick = stickRef.current.forward || stickRef.current.strafe ? stickRef.current : keysToStick(keys);
       const target = targetVelocity(stick, yaw, SCENE.walkSpeed);
       vel = easeVelocity(vel, target, dt, SCENE.accelTime);
+      const from = pos;
       if (vel[0] || vel[1]) {
         pos = clampStep(pos, [pos[0] + vel[0] * dt, pos[1] + vel[1] * dt], SCENE.walkable);
         moved = true;
       }
-      camera.position.set(pos[0], eyeY, pos[1]);
-      camera.rotation.set(pitch, yaw, 0);
+
+      // Head bob + footsteps from the distance really moved (0 against a wall).
+      const stepped = stepBob(bob, Math.hypot(pos[0] - from[0], pos[1] - from[1]), dt, SCENE.walkSpeed, SCENE.bob);
+      bob = stepped.state;
+      const steps = footstepsRef.current;
+      if (soundOnRef.current && steps) {
+        for (const foot of stepped.footfalls) {
+          steps.play(foot, bob.amp);
+          footstepsPlayed++;
+        }
+      }
+      const off = reducedMotion ? NO_BOB : bobOffset(bob, SCENE.bob);
+      // offset only: sway along the camera's right vector (cos yaw, −sin yaw)
+      camera.position.set(pos[0] + Math.cos(yaw) * off.lateral, eyeY + off.y, pos[1] - Math.sin(yaw) * off.lateral);
+      camera.rotation.set(pitch, yaw, -off.roll);
       renderer.render(scene, camera);
+      frameCount++;
 
       // Keep motion smooth: step the resolution down on slow devices.
       frames++;
@@ -258,6 +389,9 @@ export default function SplatViewer() {
       disposed = true;
       renderer.setAnimationLoop(null);
       document.removeEventListener("visibilitychange", onVisibility);
+      motionQuery?.removeEventListener?.("change", onMotionChange);
+      wrapper?.removeEventListener("pointerdown", onFirstGesture);
+      wrapper?.removeEventListener("pointerup", onFirstGesture);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
@@ -317,6 +451,18 @@ export default function SplatViewer() {
             ? "ჯოისტიკით — სიარული, თითით გადაათრიეთ — მიმოხედვა"
             : "WASD ან ისრები — სიარული, მაუსით გადაათრიეთ — მიმოხედვა"}
         </p>
+      )}
+
+      {status === "ready" && (
+        <button
+          type="button"
+          onClick={toggleSound}
+          aria-pressed={soundOn}
+          aria-label={soundOn ? "ხმის გამორთვა" : "ხმის ჩართვა"}
+          className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          {soundOn ? <Volume2 className="h-5 w-5" aria-hidden /> : <VolumeX className="h-5 w-5" aria-hidden />}
+        </button>
       )}
 
       {touch && status === "ready" && (
