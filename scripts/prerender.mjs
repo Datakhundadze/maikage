@@ -10,8 +10,11 @@
 //   dist/blog/index.html      every published post (title, date, summary)
 //   dist/contact/index.html   business facts copied verbatim from the app
 //
-// dist/index.html is NEVER written: it is the SPA fallback for every route
-// that has no file of its own.
+// dist/index.html is the SPA fallback for every route that has no file of
+// its own. It is written exactly once, LAST, by writeHomeShell(): static home
+// content inside #root plus an inline script that empties #root again on any
+// path other than "/". Its <head> is never changed. Every other page above is
+// built from the ORIGINAL shell read into memory before that step.
 //
 // Why this exists: the SPA shell (dist/index.html) is byte-identical for every
 // URL, so a crawler that doesn't run JS — or snapshots before the data fetch
@@ -39,7 +42,7 @@
 // template or a throw inside one page logs a warning; the process exits 0 and
 // the SPA fallback keeps serving those URLs exactly as before.
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, rename, unlink } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "vite";
@@ -468,31 +471,8 @@ async function emit(kind, rows, build, stats) {
   }
 }
 
-/**
- * HOSTING PROBE (temporary). Writes dist/200.html and dist/404.html as
- * byte-for-byte copies of the SPA shell plus one trailing HTML comment naming
- * the file, so a request for a path with no file of its own shows which file
- * the host falls back to: index.html (no comment), 200.html or 404.html.
- * Both copies stay fully working shells. dist/index.html is only read, never
- * written. Remove once the answer is known.
- */
-async function writeFallbackProbes() {
-  try {
-    const shell = await readFile(TEMPLATE);
-    const sep = shell.length > 0 && shell[shell.length - 1] !== 0x0a ? "\n" : "";
-    for (const name of ["200.html", "404.html"]) {
-      const marker = Buffer.from(`${sep}<!-- fallback-probe: ${name} -->\n`, "utf8");
-      await writeFile(resolve(DIST, name), Buffer.concat([shell, marker]));
-    }
-    console.log(`${LOG} fallback probe: wrote dist/200.html and dist/404.html.`);
-  } catch (e) {
-    console.warn(`${LOG} WARNING: fallback probe failed: ${e?.message ?? e}. Continuing.`);
-  }
-}
-
-async function main() {
+async function writePages() {
   const started = Date.now();
-  await writeFallbackProbes();
   let template;
   try {
     template = await readFile(TEMPLATE, "utf8");
@@ -620,6 +600,112 @@ async function main() {
       ` + lists [${stats.lists.join(", ")}]` +
       ` (${stats.skipped.length} skipped, ${stats.failed.length} failed) in ${Date.now() - started}ms.`,
   );
+}
+
+// ── Home content in the SPA shell ───────────────────────────────────────────
+//
+// The host's only fallback is dist/index.html (verified in production:
+// 200.html / 404.html are never used as fallback), so "/" cannot get a file of
+// its own. Instead the shell's #root carries static home content, and an
+// inline script right after it empties #root on every other path before first
+// paint. React's createRoot replaces #root's children on mount either way.
+//
+// Every string is copied verbatim from the codebase (sources noted). No
+// prices, no production times.
+const HOME = {
+  h1: "შექმენი შენი სტილი მარტივად",        // LandingPage.tsx:129 + :131 ("შექმენი შენი სტილი " + "მარტივად")
+  tagline: "Create your unique design easily", // LandingPage.tsx:135 (the non-"en" branch; it is English in the source)
+  links: [
+    { href: "/designs", text: "კატალოგი" },                     // i18n.ts:228 nav.catalog
+    { href: "/blog", text: "ბლოგი" },                           // BlogPage.tsx:58
+    { href: "/contact", text: "კონტაქტი" },                     // i18n.ts:230 nav.contact
+    { href: "/faq", text: "ხშირად დასმული კითხვები" },          // FaqPage.tsx:165
+    { href: "/corporate", text: "კორპორატიული განყოფილება" },   // CorporatePage.tsx:27
+    { href: "/portfolio", text: "პორტფოლიო" },                  // i18n.ts:229 nav.portfolio
+    { href: "/privacy", text: "კონფიდენციალურობის პოლიტიკა" },  // PrivacyPage.tsx:102
+  ],
+};
+
+// Empties #root on any path but "/". Runs synchronously while the parser is
+// still inside #root, so the home content is gone before first paint.
+const HOME_GUARD =
+  '<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML=""}</script>';
+
+function homeRoot() {
+  const c = CONTACT;
+  const ext = (href, text) =>
+    `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="${STYLE.a}">${esc(text)}</a>`;
+  return [
+    `<main style="${STYLE.main}">`,
+    `<h1 style="${STYLE.h1}">${esc(HOME.h1)}</h1>`,
+    `<p style="${STYLE.p}">${esc(HOME.tagline)}</p>`,
+    `<p style="${STYLE.p}">${esc(c.about)}</p>`,
+    `<nav><ul style="${STYLE.ul}">${HOME.links.map((l) => `<li style="${STYLE.li}">${link(l.href, l.text)}</li>`).join("")}</ul></nav>`,
+    `<h2 style="${STYLE.h3}">${esc(c.addressLabel)}</h2>`,
+    `<p style="${STYLE.p}">${ext(c.mapUrl, c.address)}</p>`,
+    `<h2 style="${STYLE.h3}">${esc(c.hoursLabel)}</h2>`,
+    `<ul style="${STYLE.ul}">${c.hours.map((h) => `<li style="${STYLE.li}">${esc(h)}</li>`).join("")}</ul>`,
+    `<h2 style="${STYLE.h3}">${esc(c.phoneLabel)}</h2>`,
+    `<ul style="${STYLE.ul}">${c.phones.map((p) => `<li style="${STYLE.li}">${link(`tel:${p.tel}`, p.display)}</li>`).join("")}</ul>`,
+    `<h2 style="${STYLE.h3}">${esc(c.emailLabel)}</h2>`,
+    `<p style="${STYLE.p}">${link(`mailto:${c.email}`, c.email)}</p>`,
+    `</main>`,
+  ].join("\n");
+}
+
+/**
+ * Inserts the home block into dist/index.html — the fallback for EVERY route,
+ * so it is defensive at each step and leaves the file untouched on any doubt:
+ *  - exactly one empty <div id="root"></div>, else skip;
+ *  - the result minus the inserted block must equal the original bytes, and
+ *    everything up to </head> must be unchanged, else skip;
+ *  - written to a temp file in dist/ and renamed over index.html.
+ */
+async function writeHomeShell() {
+  const tmp = `${TEMPLATE}.home-tmp`;
+  try {
+    const original = await readFile(TEMPLATE);
+    const html = original.toString("utf8");
+    if (!Buffer.from(html, "utf8").equals(original)) {
+      console.warn(`${LOG} home shell: dist/index.html is not clean UTF-8 — left untouched.`);
+      return;
+    }
+    const EMPTY_ROOT = '<div id="root"></div>';
+    const count = html.split(EMPTY_ROOT).length - 1;
+    if (count !== 1) {
+      console.warn(`${LOG} home shell: expected exactly one ${EMPTY_ROOT}, found ${count} — dist/index.html left untouched.`);
+      return;
+    }
+    const block = homeRoot() + HOME_GUARD;
+    const at = html.indexOf(EMPTY_ROOT) + '<div id="root">'.length;
+    const enriched = html.slice(0, at) + block + html.slice(at);
+
+    const headEnd = html.indexOf("</head>");
+    const restored = enriched.slice(0, at) + enriched.slice(at + block.length);
+    if (
+      headEnd === -1 ||
+      at <= headEnd ||
+      !Buffer.from(restored, "utf8").equals(original) ||
+      enriched.slice(0, headEnd) !== html.slice(0, headEnd)
+    ) {
+      console.warn(`${LOG} home shell: verification failed — dist/index.html left untouched.`);
+      return;
+    }
+
+    await writeFile(tmp, enriched, "utf8");
+    await rename(tmp, TEMPLATE);
+    console.log(`${LOG} home shell: added ${Buffer.byteLength(block, "utf8")} bytes of home content to dist/index.html #root.`);
+  } catch (e) {
+    console.warn(`${LOG} WARNING: home shell failed: ${e?.message ?? e}. dist/index.html left untouched.`);
+    try { await unlink(tmp); } catch { /* no temp file */ }
+  }
+}
+
+async function main() {
+  // Every other page first, all from the ORIGINAL shell held in memory…
+  await writePages();
+  // …then, last, the home content into the shell itself.
+  await writeHomeShell();
 }
 
 main()
