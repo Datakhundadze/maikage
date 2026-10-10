@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { applyLook, easeVelocity, keysToStick, MAX_DT, normalizeStick, targetVelocity } from "@/lib/tour/walkMotion";
+import {
+  applyDeadZone,
+  applyLook,
+  easeTurnRate,
+  easeVelocity,
+  joystickToInput,
+  keysToStick,
+  MAX_DT,
+  normalizeStick,
+  targetTurnRate,
+  targetVelocity,
+} from "@/lib/tour/walkMotion";
 import type { Vec2 } from "@/lib/tour/walkBounds";
 
 const deg = (d: number) => (d * Math.PI) / 180;
@@ -62,10 +73,106 @@ describe("applyLook", () => {
 });
 
 describe("keysToStick", () => {
-  it("maps WASD and arrows", () => {
-    expect(keysToStick(new Set(["KeyW"]))).toEqual({ forward: 1, strafe: 0 });
-    expect(keysToStick(new Set(["ArrowDown", "ArrowLeft"]))).toEqual({ forward: -1, strafe: -1 });
-    expect(keysToStick(new Set(["KeyW", "KeyS"]))).toEqual({ forward: 0, strafe: 0 });
-    expect(keysToStick(new Set(["KeyD"]))).toEqual({ forward: 0, strafe: 1 });
+  it("W/S and ↑/↓ walk, A/D and ←/→ turn, Q/E strafe", () => {
+    expect(keysToStick(new Set(["KeyW"]))).toEqual({ forward: 1, strafe: 0, turn: 0 });
+    expect(keysToStick(new Set(["ArrowDown", "ArrowLeft"]))).toEqual({ forward: -1, strafe: 0, turn: -1 });
+    expect(keysToStick(new Set(["KeyW", "KeyS"]))).toEqual({ forward: 0, strafe: 0, turn: 0 });
+    expect(keysToStick(new Set(["KeyD"]))).toEqual({ forward: 0, strafe: 0, turn: 1 });
+    expect(keysToStick(new Set(["ArrowRight"]))).toEqual({ forward: 0, strafe: 0, turn: 1 });
+    expect(keysToStick(new Set(["KeyQ"]))).toEqual({ forward: 0, strafe: -1, turn: 0 });
+    expect(keysToStick(new Set(["KeyE", "KeyW"]))).toEqual({ forward: 1, strafe: 1, turn: 0 });
+  });
+});
+
+describe("joystick mapping (follow steering)", () => {
+  const DZ = 0.12;
+
+  it("dead zone on each axis: small deflections do nothing, response starts at 0 at its edge", () => {
+    expect(joystickToInput({ x: 0.1, y: -0.11 }, DZ)).toEqual({ forward: 0, strafe: 0, turn: 0 });
+    expect(applyDeadZone(DZ, DZ)).toBe(0);
+    expect(applyDeadZone(-DZ, DZ)).toBe(0);
+    expect(applyDeadZone(DZ + 0.01, DZ)).toBeCloseTo(0.01 / (1 - DZ), 12);
+    expect(applyDeadZone(-1, DZ)).toBe(-1);
+    expect(applyDeadZone(0.56, DZ)).toBeCloseTo(0.5, 12);
+  });
+
+  it("pure forward gives zero turn, even with a little sideways wobble", () => {
+    for (const x of [0, 0.05, -0.1, 0.119]) {
+      const i = joystickToInput({ x, y: 1 }, DZ);
+      expect(i.turn).toBe(0);
+      expect(i.forward).toBe(1);
+      expect(Math.abs(targetTurnRate(i.turn, 90))).toBe(0);
+    }
+  });
+
+  it("pure sideways gives zero translation (turns in place, never strafes)", () => {
+    for (const [x, y] of [
+      [1, 0],
+      [-1, 0],
+      [0.7, 0.1],
+      [-0.4, -0.11],
+    ]) {
+      const i = joystickToInput({ x, y }, DZ);
+      expect(i.forward).toBe(0);
+      expect(i.strafe).toBe(0);
+      expect(i.turn).not.toBe(0);
+      expect(Math.hypot(...targetVelocity(i, deg(37), 1.2))).toBe(0);
+    }
+  });
+
+  it("full deflection gives the max turn rate; stick right turns right (yaw decreases)", () => {
+    expect(targetTurnRate(joystickToInput({ x: 1, y: 0 }, DZ).turn, 90)).toBeCloseTo(-deg(90), 12);
+    expect(targetTurnRate(joystickToInput({ x: -1, y: 0 }, DZ).turn, 90)).toBeCloseTo(deg(90), 12);
+    // half way (after the dead zone) → half rate, proportional
+    expect(targetTurnRate(joystickToInput({ x: 0.56, y: 0 }, DZ).turn, 90)).toBeCloseTo(-deg(45), 12);
+  });
+
+  it("stick left turns the view left also when walking backward", () => {
+    const back = joystickToInput({ x: -0.8, y: -0.6 }, DZ);
+    expect(back.forward).toBeLessThan(0);
+    expect(targetTurnRate(back.turn, 90)).toBeGreaterThan(0);
+    const fwd = joystickToInput({ x: -0.8, y: 0.6 }, DZ);
+    expect(Math.sign(targetTurnRate(fwd.turn, 90))).toBe(Math.sign(targetTurnRate(back.turn, 90)));
+  });
+
+  it("diagonal forward-right walks and turns at once", () => {
+    const i = joystickToInput({ x: Math.SQRT1_2, y: Math.SQRT1_2 }, DZ);
+    expect(i.forward).toBeGreaterThan(0.6);
+    expect(i.turn).toBeCloseTo(i.forward, 12);
+    expect(i.strafe).toBe(0);
+  });
+});
+
+describe("easeTurnRate", () => {
+  it("eases in and out within about turnSmoothTime and stops exactly", () => {
+    const dt = 1 / 60;
+    const max = deg(90);
+    let r = 0;
+    let t = 0;
+    while (Math.abs(r) < max * 0.95) {
+      r = easeTurnRate(r, -max, dt, 0.12);
+      t += dt;
+    }
+    expect(t).toBeGreaterThan(0.09);
+    expect(t).toBeLessThan(0.15);
+    for (let i = 0; i < 60; i++) r = easeTurnRate(r, 0, dt, 0.12);
+    expect(r).toBe(0);
+  });
+
+  it("holding full right for 1 s turns about 90°", () => {
+    const dt = 1 / 60;
+    let r = 0;
+    let yaw = 0;
+    for (let i = 0; i < 60; i++) {
+      r = easeTurnRate(r, targetTurnRate(1, 90), dt, 0.12);
+      yaw += r * dt;
+    }
+    // released: the short ease-out adds back roughly what the ease-in lost
+    for (let i = 0; i < 60; i++) {
+      r = easeTurnRate(r, 0, dt, 0.12);
+      yaw += r * dt;
+    }
+    expect(yaw / deg(1)).toBeGreaterThan(-93);
+    expect(yaw / deg(1)).toBeLessThan(-87);
   });
 });
