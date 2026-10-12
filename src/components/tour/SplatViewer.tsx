@@ -181,7 +181,11 @@ export default function SplatViewer() {
       setStatus("nowebgl");
       return;
     }
-    let dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR, isLowEndDevice() ? 1.5 : MAX_DPR);
+    // Phones and low-end machines get a lower pixel-ratio cap and cheaper
+    // splat settings (the full-shop scan is ~1.26M splats).
+    const lowEnd = touch || isLowEndDevice();
+    const cheap = SCENE.lowEndRender;
+    let dpr = Math.min(window.devicePixelRatio || 1, lowEnd ? cheap.maxDpr : MAX_DPR);
     renderer.setPixelRatio(dpr);
     const canvas = renderer.domElement;
     canvas.className = "block h-full w-full touch-none select-none outline-none";
@@ -194,7 +198,16 @@ export default function SplatViewer() {
     const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 600);
     camera.rotation.order = "YXZ"; // yaw, then pitch; roll stays 0
 
-    const spark = new SparkRenderer({ renderer });
+    const spark = new SparkRenderer(
+      lowEnd
+        ? {
+            renderer,
+            maxStdDev: cheap.maxStdDev,
+            maxPixelRadius: cheap.maxPixelRadius,
+            minSortIntervalMs: cheap.minSortIntervalMs,
+          }
+        : { renderer },
+    );
     scene.add(spark);
     const mesh = new SplatMesh({
       url: SCENE.url,
@@ -203,6 +216,8 @@ export default function SplatViewer() {
       },
     });
     mesh.rotation.set(SCENE.orientationDeg.x * DEG, SCENE.orientationDeg.y * DEG, SCENE.orientationDeg.z * DEG);
+    // file units → metres; everything else (walk, eye height, bounds) is metric
+    mesh.scale.setScalar(SCENE.sceneScale);
     scene.add(mesh);
     let disposed = false;
     mesh.initialized
