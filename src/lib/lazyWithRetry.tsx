@@ -1,5 +1,10 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
-import { lazy } from "react";
+import {
+  Component,
+  lazy,
+  type ComponentType,
+  type ErrorInfo,
+  type ReactNode,
+} from "react";
 
 // Why this file exists
 // ────────────────────
@@ -69,10 +74,10 @@ function markReload() {
  *
  * Drop-in replacement for `lazy()` — the call site stays identical.
  */
-export function lazyWithRetry<T extends { default: React.ComponentType<unknown> }>(
-  factory: () => Promise<T>,
+export function lazyWithRetry<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>,
 ) {
-  return lazy(async () => {
+  return lazy<T>(async () => {
     let lastError: unknown;
     for (let attempt = 0; attempt <= RETRY_DELAY_MS.length; attempt++) {
       try {

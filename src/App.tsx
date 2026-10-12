@@ -17,33 +17,33 @@ import { LANDING_PRODUCT_SLUGS } from "@/lib/productRouteSlugs";
 // simple-mode code unless they navigate there. Suspense renders a small
 // spinner while the next chunk loads (typically < 200 ms on a warm
 // cache, ~1 s cold over 4G).
-const CartPage = lazy(() => import("./pages/CartPage"));
-const LoginPage = lazy(() => import("./pages/LoginPage"));
-const MyDesignsPage = lazy(() => import("./pages/MyDesignsPage"));
-const CatalogPage = lazy(() => import("./pages/CatalogPage"));
-const DesignDetailPage = lazy(() => import("./pages/DesignDetailPage"));
-const AdminPage = lazy(() => import("./pages/AdminPage"));
-const LandingPage = lazy(() => import("./pages/LandingPage"));
-const SimplePage = lazy(() => import("./pages/SimplePage"));
-const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmationPage"));
-const TermsPage = lazy(() => import("./pages/TermsPage"));
-const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
-const CorporatePage = lazy(() => import("./pages/CorporatePage"));
-const SportPage = lazy(() => import("./pages/SportPage"));
-const AboutPage = lazy(() => import("./pages/AboutPage"));
-const FaqPage = lazy(() => import("./pages/FaqPage"));
-const ContactPage = lazy(() => import("./pages/ContactPage"));
-const PortfolioPage = lazy(() => import("./pages/PortfolioPage"));
-const BlogPage = lazy(() => import("./pages/BlogPage"));
-const BlogPostPage = lazy(() => import("./pages/BlogPostPage"));
-const ChatPage = lazy(() => import("./pages/ChatPage"));
-const ProductLandingPage = lazy(() => import("./pages/ProductLandingPage"));
-const ShowroomPage = lazy(() => import("./pages/ShowroomPage"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const CartPage = lazyWithRetry(() => import("./pages/CartPage"));
+const LoginPage = lazyWithRetry(() => import("./pages/LoginPage"));
+const MyDesignsPage = lazyWithRetry(() => import("./pages/MyDesignsPage"));
+const CatalogPage = lazyWithRetry(() => import("./pages/CatalogPage"));
+const DesignDetailPage = lazyWithRetry(() => import("./pages/DesignDetailPage"));
+const AdminPage = lazyWithRetry(() => import("./pages/AdminPage"));
+const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
+const SimplePage = lazyWithRetry(() => import("./pages/SimplePage"));
+const OrderConfirmationPage = lazyWithRetry(() => import("./pages/OrderConfirmationPage"));
+const TermsPage = lazyWithRetry(() => import("./pages/TermsPage"));
+const PrivacyPage = lazyWithRetry(() => import("./pages/PrivacyPage"));
+const CorporatePage = lazyWithRetry(() => import("./pages/CorporatePage"));
+const SportPage = lazyWithRetry(() => import("./pages/SportPage"));
+const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"));
+const FaqPage = lazyWithRetry(() => import("./pages/FaqPage"));
+const ContactPage = lazyWithRetry(() => import("./pages/ContactPage"));
+const PortfolioPage = lazyWithRetry(() => import("./pages/PortfolioPage"));
+const BlogPage = lazyWithRetry(() => import("./pages/BlogPage"));
+const BlogPostPage = lazyWithRetry(() => import("./pages/BlogPostPage"));
+const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
+const ProductLandingPage = lazyWithRetry(() => import("./pages/ProductLandingPage"));
+const ShowroomPage = lazyWithRetry(() => import("./pages/ShowroomPage"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 // Sitewide FAQ chat bubble — lazy so it never lands in the initial bundle.
 // Mounted once below (inside BrowserRouter) so it shows on every route; the
 // component itself hides on /admin.
-const ChatWidget = lazy(() => import("./components/ChatWidget"));
+const ChatWidget = lazyWithRetry(() => import("./components/ChatWidget"));
 
 // LoginPage is currently unused at the routing layer (no <LoginPage />
 // renders in this file) but kept as a lazy import so its bundle stays
