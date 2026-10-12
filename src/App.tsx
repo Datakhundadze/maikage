@@ -4,13 +4,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { AppStateProvider, useAppState } from "@/hooks/useAppState";
 import { CartProvider } from "@/hooks/useCart";
 import { RouteChangeTracker } from "@/components/RouteChangeTracker";
 import { LANDING_PRODUCT_SLUGS } from "@/lib/productRouteSlugs";
+import { ChunkErrorBoundary, lazyWithRetry } from "@/lib/lazyWithRetry";
 
 // Each route component is a separate JS chunk after Vite build. Customers
 // visiting the landing page no longer download the admin / catalog /
@@ -171,13 +172,15 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <BrowserRouter>
-                <RouteChangeTracker />
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <AppRoutes />
-                </Suspense>
-                <ChatWidgetMount />
-              </BrowserRouter>
+              <ChunkErrorBoundary>
+                <BrowserRouter>
+                  <RouteChangeTracker />
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <AppRoutes />
+                  </Suspense>
+                  <ChatWidgetMount />
+                </BrowserRouter>
+              </ChunkErrorBoundary>
             </TooltipProvider>
           </CartProvider>
         </AuthProvider>
