@@ -59,6 +59,38 @@ const STATIC_URLS: { loc: string; priority: string; changefreq: string }[] = [
   { loc: "/blog",      priority: "0.7", changefreq: "weekly" },
   { loc: "/contact",   priority: "0.6", changefreq: "monthly" },
   { loc: "/privacy",   priority: "0.3", changefreq: "yearly" },
+  // ── Product landing routes ────────────────────────────────────────────
+  // ⚠️ KEEP IN SYNC with src/lib/productRouteSlugs.ts (PRODUCT_SLUGS) and
+  // src/lib/productSlugs.ts (BRAND_SLUGS). This function cannot import from
+  // src/, so the slugs are copied; src/test/sitemapProductRoutes.test.ts fails
+  // when this block and those maps differ. Product routes rank slightly above
+  // their brand routes. Canonical paths, no trailing slash.
+  // BEGIN product-routes
+  { loc: "/t-shirt", priority: "0.8", changefreq: "monthly" },
+  { loc: "/hoodie", priority: "0.8", changefreq: "monthly" },
+  { loc: "/tote-bag", priority: "0.8", changefreq: "monthly" },
+  { loc: "/cap", priority: "0.8", changefreq: "monthly" },
+  { loc: "/apron", priority: "0.8", changefreq: "monthly" },
+  { loc: "/phone-case", priority: "0.8", changefreq: "monthly" },
+  { loc: "/mug", priority: "0.8", changefreq: "monthly" },
+  { loc: "/t-shirt/gildan", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/sols", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/gildan-hummer", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/th", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/jel", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/giordano", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/khundadze", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/nike", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/polo", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/oversize", priority: "0.7", changefreq: "monthly" },
+  { loc: "/t-shirt/gildan-kids", priority: "0.7", changefreq: "monthly" },
+  { loc: "/hoodie/gildan", priority: "0.7", changefreq: "monthly" },
+  { loc: "/hoodie/premium-washed", priority: "0.7", changefreq: "monthly" },
+  { loc: "/hoodie/jel-standard", priority: "0.7", changefreq: "monthly" },
+  { loc: "/hoodie/jel-zipper", priority: "0.7", changefreq: "monthly" },
+  { loc: "/hoodie/jel-standard-zipper", priority: "0.7", changefreq: "monthly" },
+  { loc: "/hoodie/gildan-bomber", priority: "0.7", changefreq: "monthly" },
+  // END product-routes
 ];
 
 const ESCAPE: Record<string, string> = {
