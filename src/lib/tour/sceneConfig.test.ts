@@ -36,12 +36,19 @@ describe("scene config", () => {
     expect(Math.abs(SCENE.start.pitchDeg)).toBeLessThanOrEqual(SCENE.pitchLimitDeg);
   });
 
-  it("points at a real SPZ v3 file in public/", () => {
+  it("points at a real SPZ file in public/ (v2 or v3)", () => {
     const file = path.join(process.cwd(), "public", SCENE.url);
     expect(existsSync(file)).toBe(true);
     const head = gunzipSync(readFileSync(file)).subarray(0, 16);
     expect(head.toString("latin1", 0, 4)).toBe("NGSP");
-    expect(head.readUInt32LE(4)).toBe(3);
+    expect([2, 3]).toContain(head.readUInt32LE(4));
     expect(head.readUInt32LE(8)).toBeGreaterThan(100000);
+  });
+
+  it("scales the scan to metres, keeping the eye below a ~4 m ceiling", () => {
+    expect(SCENE.sceneScale).toBeGreaterThan(1);
+    expect(SCENE.sceneScale).toBeLessThan(2.5);
+    expect(SCENE.eyeHeight).toBeCloseTo(1.6, 5);
+    expect(Math.abs(SCENE.floorY)).toBeLessThan(0.05);
   });
 });
