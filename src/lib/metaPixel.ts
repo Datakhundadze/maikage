@@ -7,9 +7,10 @@
 // script's error handler marks the pixel blocked and every later call is a
 // no-op (until then the standard stub only queues).
 //
-// Sends page views and the funnel events gtag.ts maps (AddToCart,
-// InitiateCheckout, Purchase) with order value and currency only. No advanced
-// matching: no name, email, phone or address is ever passed to Meta.
+// Sends page views and the events gtag.ts maps: add_to_cart → AddToCart,
+// begin_checkout → InitiateCheckout, purchase → Purchase (order value and
+// currency only), and design_start → CustomizeProduct (no parameters). No
+// advanced matching: no name, email, phone or address is ever passed to Meta.
 // Disclosed in PrivacyPage section 8.
 
 export const META_PIXEL_ID = "1446729430731985";
