@@ -35,6 +35,88 @@
         192,
         943
       ]
+    },
+    "gray": {
+      "front": [
+        712,
+        950
+      ],
+      "side": [
+        187,
+        950
+      ]
+    },
+    "green": {
+      "front": [
+        724,
+        965
+      ],
+      "side": [
+        184,
+        965
+      ]
+    },
+    "red": {
+      "front": [
+        706,
+        961
+      ],
+      "side": [
+        186,
+        961
+      ]
+    },
+    "yellow": {
+      "front": [
+        675,
+        929
+      ],
+      "side": [
+        181,
+        929
+      ]
+    },
+    "blue": {
+      "front": [
+        724,
+        930
+      ],
+      "side": [
+        207,
+        930
+      ]
+    },
+    "hoodie-black": {
+      "front": [
+        811,
+        951
+      ],
+      "side": [
+        301,
+        951
+      ],
+      "printBox": {
+        "l": 0.335,
+        "t": 0.3,
+        "w": 0.33,
+        "h": 0.28
+      }
+    },
+    "hoodie-green": {
+      "front": [
+        818,
+        952
+      ],
+      "side": [
+        300,
+        952
+      ],
+      "printBox": {
+        "l": 0.335,
+        "t": 0.3,
+        "w": 0.33,
+        "h": 0.28
+      }
     }
   },
   "rail": {
@@ -52,5 +134,5 @@
     },
     "pipeCenterFraction": 0.503
   },
-  "note": "printBox = fractions of the FRONT image (left, top, width, height). shade map covers exactly the printBox."
+  "note": "printBox = fractions of the FRONT image (left, top, width, height); a garment entry may override it with its own printBox (hoodies do). shade map covers exactly that box. Tee files: tee-<key>-*.webp; hoodie files: <key>-*.webp where key starts with 'hoodie-'."
 }
