@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Star, Trash2, Upload, Package } from "lucide-react";
+import { Eye, EyeOff, Star, Trash2, Upload, Package, Download } from "lucide-react";
 import DesignUploadDialog from "./DesignUploadDialog";
 import BulkDesignUploadDialog from "./BulkDesignUploadDialog";
 import MockupColorPicker from "./MockupColorPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { COLORS } from "@/lib/catalog";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+import { downloadDesignsZip } from "@/lib/downloadDesignsZip";
 
 interface CatalogDesign {
   id: string;
@@ -41,6 +42,7 @@ export default function CatalogDesigns() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [zipProgress, setZipProgress] = useState<{ done: number; total: number } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -74,6 +76,25 @@ export default function CatalogDesigns() {
       return true;
     });
   }, [designs, search, statusFilter, categoryFilter]);
+
+  // ZIP download: the selection if there is one, otherwise everything the filters show
+  const downloadSet = useMemo(
+    () => (selected.size > 0 ? designs.filter((d) => selected.has(d.id)) : filtered),
+    [designs, filtered, selected],
+  );
+
+  const downloadZip = async () => {
+    if (zipProgress || downloadSet.length === 0) return;
+    setZipProgress({ done: 0, total: downloadSet.length });
+    try {
+      const { downloaded, failed } = await downloadDesignsZip(downloadSet, (done, total) => setZipProgress({ done, total }));
+      toast({ title: `ჩამოიტვირთა ${downloaded} დიზაინი${failed > 0 ? ` · ${failed} ვერ ჩამოიტვირთა` : ""}` });
+    } catch (e) {
+      toast({ title: "შეცდომა", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setZipProgress(null);
+    }
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -178,6 +199,10 @@ export default function CatalogDesigns() {
               </Button>
             </>
           )}
+          <Button size="sm" variant="outline" onClick={downloadZip} disabled={zipProgress !== null || downloadSet.length === 0}>
+            <Download className="h-4 w-4 mr-1" />
+            {zipProgress ? `იტვირთება… ${zipProgress.done}/${zipProgress.total}` : `ჩამოტვირთვა (${downloadSet.length})`}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setBulkUploadOpen(true)}>
             <Package className="h-4 w-4 mr-1" /> ჯგუფური ატვირთვა
           </Button>
@@ -186,6 +211,10 @@ export default function CatalogDesigns() {
           </Button>
         </div>
       </div>
+
+      {downloadSet.length > 100 && (
+        <p className="text-xs text-muted-foreground">დიდი ფაილია — კომპიუტერზე ჩამოტვირთე</p>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">იტვირთება...</p>
