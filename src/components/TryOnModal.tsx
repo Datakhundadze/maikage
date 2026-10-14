@@ -53,13 +53,18 @@ interface TryOnModalProps {
   open: boolean;
   onClose: () => void;
   designImage: string; // transparent design or mockup data URL
+  /** Optional — the composited product mockup (the garment in its colour and
+   *  fabric, with the print). When set, it is sent as the garment to wear
+   *  (`useMockupStyle`), so the try-on keeps the product's real colour instead
+   *  of the handler's default white t-shirt. */
+  garmentImage?: string | null;
   /** Optional — when provided, an "Order" CTA appears below the try-on
    *  result so the user can proceed straight to the order flow with this
    *  design. Omitted by generic callers (e.g. Studio), hiding the button. */
   onOrder?: () => void;
 }
 
-export default function TryOnModal({ open, onClose, designImage, onOrder }: TryOnModalProps) {
+export default function TryOnModal({ open, onClose, designImage, garmentImage, onOrder }: TryOnModalProps) {
   const { toast } = useToast();
   const { lang } = useAppState();
   const [personImage, setPersonImage] = useState<string | null>(null);
@@ -110,7 +115,9 @@ export default function TryOnModal({ open, onClose, designImage, onOrder }: TryO
       const { data, error } = await supabase.functions.invoke("gemini-proxy", {
         body: {
           action: "virtual-tryon",
-          params: { personImage, designImage },
+          params: garmentImage
+            ? { personImage, designImage: garmentImage, useMockupStyle: true }
+            : { personImage, designImage },
         },
       });
 
