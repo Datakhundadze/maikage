@@ -17,6 +17,9 @@ interface ProductConfigPanelProps {
   onSizeChange?: (size: string) => void;
   excludeProducts?: ProductType[];
   sizeError?: boolean;
+  /** Whether the product picker starts expanded. Default true (unchanged);
+   *  the product landing routes pass false — the product is already chosen. */
+  productInitiallyOpen?: boolean;
 }
 
 export default function ProductConfigPanel({
@@ -30,9 +33,10 @@ export default function ProductConfigPanel({
   onSizeChange,
   excludeProducts = [],
   sizeError = false,
+  productInitiallyOpen = true,
 }: ProductConfigPanelProps) {
   const { lang } = useAppState();
-  const [productOpen, setProductOpen] = useState(true);
+  const [productOpen, setProductOpen] = useState(productInitiallyOpen);
   const [brandOpen, setBrandOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(true);
 

@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { Navigate, useLocation, useNavigationType, useParams } from "react-router-dom";
 import SimplePage from "@/pages/SimplePage";
 import NotFound from "@/pages/NotFound";
+import LandingHero from "@/components/landing/LandingHero";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { productTypeKa } from "@/lib/i18n";
 import { BRAND_SLUGS, defaultBrandFor, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
@@ -75,8 +76,12 @@ function isArrival(navigationType: string, pathname: string): boolean {
 //   "შეუკვეთე ონლაინ Maika.ge-ზე."                             designMetaDescription.ts:41,43
 // plus the product's Georgian label (i18n.ts products) and the brand string
 // exactly as the brand picker shows it (catalog.ts SUB_PRODUCTS).
-function seoFor(productKa: string, brand: string | null) {
-  const name = brand ? `${productKa} · ${brand}` : productKa;
+// The page's display name — the SEO title's and the landing hero's H1's.
+function landingName(productKa: string, brand: string | null): string {
+  return brand ? `${productKa} · ${brand}` : productKa;
+}
+
+function seoFor(name: string) {
   return {
     title: `${name} — შექმენი დიზაინი | Maika.ge`,
     description: `${name}. ატვირთე ფოტო, დაწერე ტექსტი, ან აღწერე და AI შეგიქმნის. შეუკვეთე ონლაინ Maika.ge-ზე.`,
@@ -121,6 +126,18 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
   // trailing slash → the clean URL. Ad query strings (utm_*, gclid) are kept.
   if (!isCanonical) return <Navigate to={`${canonicalPath}${search}${hash}`} replace />;
 
-  const seo = seoFor(productTypeKa(product), brand);
-  return <SimplePage seoTitle={seo.title} seoDescription={seo.description} />;
+  const name = landingName(productTypeKa(product), brand);
+  const seo = seoFor(name);
+  // The hero and a collapsed product picker exist only on these routes; "/"
+  // renders SimplePage with neither.
+  return (
+    <SimplePage
+      seoTitle={seo.title}
+      seoDescription={seo.description}
+      productPickerInitiallyOpen={false}
+      hero={({ onUploadClick }) => (
+        <LandingHero product={product} brand={brand} name={name} onUploadClick={onUploadClick} />
+      )}
+    />
+  );
 }

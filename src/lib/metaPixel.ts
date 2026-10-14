@@ -86,6 +86,7 @@ export function metaEventFor(
   const money = value !== null ? { value, currency: "GEL" } : {};
   if (name === "add_to_cart") return { event: "AddToCart", params: money };
   if (name === "begin_checkout") return { event: "InitiateCheckout", params: money };
+  if (name === "design_start") return { event: "CustomizeProduct", params: {} };
   if (name === "purchase") {
     const id = params.transaction_id;
     const eventID = typeof id === "string" && id ? id : undefined;
