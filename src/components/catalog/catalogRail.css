@@ -79,8 +79,19 @@
   height: 40px;
   display: flex;
   z-index: 0;
-  filter: drop-shadow(0 7px 6px rgba(40, 30, 20, 0.28));
   pointer-events: none;
+}
+/* the pipe's shadow on the wall: a static gradient strip (no filter) */
+.cr-rail::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 26px;
+  height: 14px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(40, 30, 20, 0.26), rgba(40, 30, 20, 0));
 }
 .cr-rail .l, .cr-rail .r { flex: 0 0 auto; height: 40px; width: auto; }
 .cr-rail .m { flex: 1; background-image: url("/showroom/rail-mid.webp"); background-repeat: repeat-x; background-size: auto 40px; }
@@ -96,7 +107,6 @@
   color: inherit;
   text-decoration: none;
   cursor: pointer;
-  transition: opacity 0.4s;
   -webkit-tap-highlight-color: transparent;
 }
 /* hoodies hang in full-width slots, after a 14px gap from the tees */
@@ -104,12 +114,27 @@
 /* will-change is set from JS only while a garment is moving */
 .cr-swing { position: absolute; inset: 0; transform-origin: 50% 3%; perspective: 900px; }
 .cr-g:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
-.cr-face { position: absolute; top: 0; left: 50%; height: 100%; transform-origin: 50% 50%; backface-visibility: hidden; }
+/* No CSS filters anywhere on the rail: filtered, 3D-turned faces were costly on
+   weak GPUs and their drop-shadow ended in a hard-edged box at the row's clip.
+   Faces swap by opacity at 90°, so backface-visibility isn't needed either. */
+.cr-face { position: absolute; top: 0; left: 50%; height: 100%; transform-origin: 50% 50%; }
 .cr-face img { display: block; height: 100%; width: auto; max-width: none; pointer-events: none; user-select: none; }
-.cr-side { transform: translateX(-50%); filter: drop-shadow(2px 8px 6px rgba(0, 0, 0, 0.18)); }
-.cr-front { transform: translateX(-50%) rotateY(-90deg); opacity: 0; filter: drop-shadow(0 22px 20px rgba(0, 0, 0, 0.26)); }
+.cr-side { transform: translateX(-50%); }
+.cr-front { transform: translateX(-50%) rotateY(-90deg); opacity: 0; }
+/* the garment's shadow on the wall: one static soft gradient, only its opacity
+   follows the turn. It fades out before the row's bottom edge (no hard cut). */
+.cr-shadow {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  top: 7%;
+  bottom: -22px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(30, 22, 14, 0.3), rgba(30, 22, 14, 0.16) 55%, rgba(30, 22, 14, 0));
+  opacity: 0;
+  pointer-events: none;
+}
 .cr-g.on { z-index: 2; }
-.cr-track.has-on .cr-g:not(.on) { opacity: 0.9; }
 .cr-face img.cr-print, .cr-face img.cr-shade { position: absolute; pointer-events: none; }
 .cr-face img.cr-print { object-fit: contain; object-position: 50% 0; opacity: 0; transition: opacity 0.15s; }
 .cr-face img.cr-print.in { opacity: 1; }
@@ -140,6 +165,14 @@
 }
 .cr-stage.on { opacity: 1; }
 .cr-hero { position: relative; justify-self: center; height: min(78vh, 640px); aspect-ratio: var(--ar); }
+.cr-hero::before {
+  content: "";
+  position: absolute;
+  inset: 8% -6% -5%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.32), rgba(0, 0, 0, 0.14) 60%, rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
 .cr-hero .cr-face {
   position: absolute;
   inset: 0;
@@ -148,7 +181,6 @@
   transform: none;
   opacity: 1 !important;
   transform-origin: 50% 3%;
-  filter: drop-shadow(0 24px 28px rgba(0, 0, 0, 0.25));
 }
 .cr-hero .cr-face img:not(.cr-print):not(.cr-shade) { width: 100%; height: 100%; }
 .cr-panel {
@@ -180,7 +212,7 @@
   font-weight: 600;
   width: max-content;
 }
-.cr-cta:hover { filter: brightness(1.1); }
+.cr-cta:hover { background: #8e2533; }
 .cr-nav { display: flex; gap: 8px; }
 .cr-nav button, .cr-close {
   font: inherit;
@@ -202,5 +234,5 @@
   .cr-panel { justify-self: center; text-align: center; justify-items: center; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cr-stage, .cr-panel, .cr-g, .cr-face img.cr-print { transition: none !important; }
+  .cr-stage, .cr-panel, .cr-face img.cr-print { transition: none !important; }
 }

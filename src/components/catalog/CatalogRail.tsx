@@ -303,6 +303,7 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
 
     // cached per garment: the nodes it writes to and its widths
     const parts = els.map((g) => ({
+      sh: g.querySelector<HTMLElement>(".cr-shadow")!,
       sw: g.querySelector<HTMLElement>(".cr-swing")!,
       sd: g.querySelector<HTMLElement>(".cr-side")!,
       fr: g.querySelector<HTMLElement>(".cr-front")!,
@@ -328,7 +329,10 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
           }
           const lift = -10 * Math.sin(Math.PI * clamp(b.p, 0, 1));
           P.sw.style.transform = `translateY(${(b.y + lift).toFixed(2)}px) rotate(${b.th.toFixed(3)}deg)`;
-          P.sw.style.opacity = b.hold && t < b.hold ? "0" : "1";
+          const held = b.hold && t < b.hold;
+          P.sw.style.opacity = held ? "0" : "1";
+          // shadow: faint behind the side view, full once facing you; gone while dropping in
+          P.sh.style.opacity = held ? "0" : ((0.4 + 0.6 * q) * clamp(1 - Math.abs(b.y) / 60, 0, 1)).toFixed(3);
         },
         // compositor layers only while moving
         onWake: () => {
@@ -376,7 +380,6 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
         }
       }
       onEl = g;
-      track.classList.toggle("has-on", !!g);
       if (!g) return;
       g.classList.add("on");
       const i = index.get(g) ?? -1;
@@ -498,7 +501,6 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
       cleanups.forEach((f) => f());
-      track.classList.remove("has-on");
       bodies.forEach(release);
       items.forEach((it) => {
         if (registry.get(it.index)?.rail === rail) registry.delete(it.index);
@@ -560,6 +562,7 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
                 onClick={(e) => onGarmentClick(e, it.index)}
                 onFocus={fine ? (e) => railRef.current?.setOn(e.currentTarget) : undefined}
               >
+                <div className="cr-shadow" />
                 <div className="cr-swing">
                   <div className="cr-face cr-side">
                     <img src={garmentSrc(it.m, "side")} alt="" draggable={false} />
