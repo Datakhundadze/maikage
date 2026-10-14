@@ -1,0 +1,56 @@
+{
+  "printBox": {
+    "l": 0.32,
+    "t": 0.335,
+    "w": 0.36,
+    "h": 0.39
+  },
+  "garments": {
+    "white": {
+      "front": [
+        648,
+        950
+      ],
+      "side": [
+        192,
+        950
+      ]
+    },
+    "black": {
+      "front": [
+        661,
+        945
+      ],
+      "side": [
+        192,
+        945
+      ]
+    },
+    "navy": {
+      "front": [
+        661,
+        943
+      ],
+      "side": [
+        192,
+        943
+      ]
+    }
+  },
+  "rail": {
+    "rail-left": {
+      "cssWidth": 42,
+      "cssHeight": 40
+    },
+    "rail-mid": {
+      "cssWidth": 25,
+      "cssHeight": 40
+    },
+    "rail-right": {
+      "cssWidth": 42,
+      "cssHeight": 40
+    },
+    "pipeCenterFraction": 0.503
+  },
+  "note": "printBox = fractions of the FRONT image (left, top, width, height). shade map covers exactly the printBox."
+}

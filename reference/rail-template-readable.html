@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maika ქართული რეილი</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600&family=Noto+Serif+Georgian:wght@500;700&display=swap">
+<style>
+/* Layout: showroom wall — garments hang side-on on steel rails; hover turns one to face you; tap brings it forward */
+:root{
+  --wall:#c7c1ba; --wall-lo:#b9b2aa; --ink:#1b1c1e; --muted:#4f4b46;
+  --steel-hi:#f7f8f9; --steel-lo:#8d9298; --accent:#7a1f2b;
+  --display:"Noto Serif Georgian",Georgia,serif; --body:"Noto Sans Georgian",system-ui,sans-serif;
+  --H:300px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--wall);background-size:cover;background-position:center;background-attachment:fixed;color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding:0 16px 48px}
+header{max-width:1200px;margin:0 auto;padding-block:28px 4px;display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:700;font-size:22px}
+.brand span{color:var(--accent)}
+header p{margin:0;color:var(--muted);font-size:13px}
+main{max-width:1200px;margin:0 auto;display:grid;gap:28px;padding-top:12px}
+main>section{min-width:0}
+.sign{display:flex;gap:10px;align-items:baseline;margin:0 0 2px 4px}
+.sign h2{margin:0;font-family:var(--display);font-weight:500;font-size:18px}
+.sign small{color:var(--muted);font-size:12px;letter-spacing:.06em}
+.track{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.rail-wrap{position:relative;display:flex;justify-content:center;align-items:flex-start;min-width:max-content;width:100%;padding:26px 52px 30px;gap:2px}
+.rail{position:absolute;left:8px;right:8px;top:calc(26px + var(--H)*.03 - 20px);height:40px;display:flex;z-index:0;filter:drop-shadow(0 7px 6px rgba(40,30,20,.28));pointer-events:none}
+.rail .l,.rail .r{flex:0 0 auto;height:40px;width:auto}
+.rail .m{flex:1;background-repeat:repeat-x;background-size:auto 40px}
+
+/* garment */
+.g{position:relative;z-index:1;flex:0 0 auto;height:var(--H);width:var(--sw);border:0;padding:0;background:none;cursor:pointer;transition:filter .4s;will-change:width;-webkit-tap-highlight-color:transparent}
+.swing{position:absolute;inset:0;transform-origin:50% 3%;perspective:900px;will-change:transform}
+.g:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
+.face{position:absolute;top:0;left:50%;height:100%;transform-origin:50% 50%;backface-visibility:hidden}
+.face img{display:block;height:100%;width:auto;pointer-events:none;user-select:none}
+.side{transform:translateX(-50%);filter:drop-shadow(2px 8px 6px rgba(0,0,0,.18))}
+.front{transform:translateX(-50%) rotateY(-90deg);opacity:0;filter:drop-shadow(0 22px 20px rgba(0,0,0,.26))}
+.g.on{z-index:2}
+.track.has-on .g:not(.on){filter:brightness(.96) saturate(.9)}
+.print,.shade,.fallback{position:absolute;pointer-events:none}
+.print{object-fit:contain;object-position:50% 0}
+.light .print{mix-blend-mode:multiply}
+.shade{mix-blend-mode:overlay;opacity:.9;-webkit-mask-image:radial-gradient(closest-side,#000 70%,transparent);mask-image:radial-gradient(closest-side,#000 70%,transparent)}
+.fallback{display:grid;place-items:center;text-align:center;font-family:var(--display);font-size:12px;line-height:1.2}
+.g.picked{visibility:hidden}
+
+/* stage */
+.stage{position:fixed;inset:0;z-index:10;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);align-items:center;gap:24px;padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));background:rgba(235,235,234,.55);backdrop-filter:blur(16px) saturate(.8);-webkit-backdrop-filter:blur(16px) saturate(.8);opacity:0;transition:opacity .3s}
+.stage.on{opacity:1}
+.hero{position:relative;justify-self:center;height:min(78vh,640px);aspect-ratio:var(--ar)}
+.hero .face{position:absolute;inset:0;left:0;width:100%!important;transform:none;opacity:1!important;filter:drop-shadow(0 24px 28px rgba(0,0,0,.25))}
+.hero .face img{width:100%;height:100%}
+.panel{max-width:360px;display:grid;gap:14px;opacity:0;transform:translateY(8px);transition:opacity .35s .15s,transform .35s .15s}
+.stage.on .panel{opacity:1;transform:none}
+.panel .tag{font-size:12px;letter-spacing:.08em;color:var(--muted)}
+.panel h3{margin:0;font-family:var(--display);font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.15;text-wrap:balance}
+.meta{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px}
+.dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.2)}
+.cta{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:999px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;width:max-content}
+.cta:hover{filter:brightness(1.1)}
+.nav{display:flex;gap:8px}
+.nav button,.close{font:inherit;border:1px solid rgba(0,0,0,.18);background:rgba(255,255,255,.65);color:var(--ink);border-radius:999px;padding:8px 14px;cursor:pointer}
+.nav button:hover,.close:hover{background:#fff}
+.close{position:absolute;top:max(16px,env(safe-area-inset-top));right:16px}
+.note{max-width:1200px;margin:24px auto 0;color:var(--muted);font-size:12px}
+@media (max-width:700px){
+  :root{--H:250px}
+  .rail-wrap{justify-content:flex-start;padding-inline:40vw}
+  .stage{grid-template-columns:1fr;align-content:center;gap:10px;overflow-y:auto}
+  .hero{height:min(52vh,440px)}
+  .panel{justify-self:center;text-align:center;justify-items:center}
+}
+@media (prefers-reduced-motion:reduce){.stage,.panel{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">maika<span>.</span>ge — ქართული კოლექცია</div>
+  <p id="hint">მიიტანე კურსორი — შემობრუნდება. დააჭირე — ახლოს ნახავ.</p>
+</header>
+<main id="wall"></main>
+<p class="note">პროტოტიპი · 50 ქართული დიზაინი maika.ge-ის კატალოგიდან. მაისურის ფერი ჯერ სამია (თეთრი, შავი, მუქი ლურჯი); სხვა ფერის დიზაინები დროებით მათზე ზის.</p>
+
+<div class="stage" id="stage" hidden>
+  <button class="close" id="close" aria-label="დახურვა">დახურვა ✕</button>
+  <div class="hero" id="hero"></div>
+  <div class="panel">
+    <div class="tag" id="pTag"></div>
+    <h3 id="pTitle"></h3>
+    <div class="meta"><span class="dot" id="pDot"></span><span id="pMeta"></span></div>
+    <a class="cta" id="pLink" target="_blank" rel="noopener">არჩევა და შეკვეთა →</a>
+    <div class="nav"><button id="prev">← წინა</button><button id="next">შემდეგი →</button></div>
+  </div>
+</div>
+
+<script>
+const A=/*ASSETS*/null;
+const S="https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/";
+const MOCK={white:"white",black:"black","dark navy":"navy",gray:"white",yellow:"white",green:"navy",red:"black","sol's electric":"navy"};
+const DOT={white:"#f3f2ee",black:"#1f2023",navy:"#202a43"};
+const COLOR_KA={white:"თეთრი",black:"შავი",navy:"მუქი ლურჯი"};
+const RACKS=/*RACKS*/null;
+const B=A.box;
+const SC=/*SCENE*/null;
+document.body.style.backgroundImage=`radial-gradient(ellipse 80% 55% at 50% 0%,rgba(255,250,242,.38),transparent 70%),linear-gradient(rgba(0,0,0,0),rgba(40,30,20,.10)),url(${SC.wall})`;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fine=matchMedia("(hover:hover) and (pointer:fine)").matches;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- physics: every garment is a damped pendulum + a spring for the turn ---------- */
+const live=new Set(); let running=false, lastT=0;
+function wake(b){ live.add(b); if(!running){ running=true; lastT=performance.now(); requestAnimationFrame(tick); } }
+function kick(b,deg,delay=0){ if(reduce||!b)return; const go=()=>{ b.tv=clamp(b.tv+deg,-90,90); wake(b); }; delay?setTimeout(go,delay):go(); }
+function tick(t){
+  const dt=Math.min((t-lastT)/1000,1/30); lastT=t;
+  for(const b of live){
+    if(b.hold && t<b.hold){ b.render(t); continue; }
+    b.hold=0;
+    // turn: underdamped spring → slight overshoot past "facing you", then settles
+    const pa=(b.pt-b.p)*b.ks - b.pv*b.kd; b.pv+=pa*dt; b.p+=b.pv*dt;
+    // swing: pendulum around the hook
+    const ta=-b.k*b.th - b.c*b.tv; b.tv+=ta*dt; b.th+=b.tv*dt;
+    // vertical settle (entrance drop)
+    const ya=-170*b.y - 15*b.yv; b.yv+=ya*dt; b.y+=b.yv*dt;
+    b.render(t);
+    if(Math.abs(b.pt-b.p)<.0015&&Math.abs(b.pv)<.002&&Math.abs(b.th)<.02&&Math.abs(b.tv)<.03&&Math.abs(b.y)<.05&&Math.abs(b.yv)<.05){
+      b.p=b.pt; b.pv=b.th=b.tv=b.y=b.yv=0; b.render(t); live.delete(b);
+    }
+  }
+  if(live.size) requestAnimationFrame(tick); else running=false;
+}
+function mkBody(extra){ return Object.assign({p:0,pv:0,pt:0,th:0,tv:0,y:0,yv:0,hold:0,
+  k:38*(.85+Math.random()*.3), c:2.6*(.85+Math.random()*.3), ks:150, kd:15},extra); }
+
+/* ---------- building blocks ---------- */
+function front(it){
+  const [slug,title,color,src]=it, m=MOCK[(color||"white").toLowerCase()]||"white", a=A[m];
+  const f=document.createElement("div"); f.className="face front "+(m==="white"?"light":"dark");
+  const base=new Image(); base.src=a.front; base.alt=""; f.appendChild(base);
+  const pos=`left:${B.l*100}%;top:${B.t*100}%;width:${B.w*100}%;height:${B.h*100}%`;
+  const p=new Image(); p.className="print"; p.alt=""; p.decoding="async"; p.style.cssText=pos;
+  p.src=src;
+  f.appendChild(p);
+  const sh=new Image(); sh.className="shade"; sh.alt=""; sh.src=a.shade; sh.style.cssText=pos; f.appendChild(sh);
+  return {el:f,m,a};
+}
+function garment(it,idx,track){
+  const {el:fr,m,a}=front(it);
+  const g=document.createElement("button"); g.type="button"; g.className="g"; g.dataset.i=idx; g.setAttribute("aria-label",it[1]);
+  const sd=document.createElement("div"); sd.className="face side"; sd.innerHTML=`<img alt="" src="${a.side}">`;
+  const sw=document.createElement("div"); sw.className="swing"; sw.append(sd,fr); g.append(sw);
+  const b=mkBody({g,track,a});
+  b.render=function(t){
+    const p=Math.max(0,this.p), q=Math.min(p,1);
+    g.style.width=(this.swW+(this.fwW-this.swW)*Math.min(p,1.06)).toFixed(1)+"px";
+    const ang=p*180;
+    if(ang<90){ sd.style.opacity=1; fr.style.opacity=0; sd.style.transform=`translateX(-50%) rotateY(${ang.toFixed(2)}deg)`; }
+    else { sd.style.opacity=0; fr.style.opacity=1;
+      fr.style.transform=`translateX(-50%) translateY(${(7*q).toFixed(2)}px) scale(${(1+.08*Math.min(p,1.15)).toFixed(4)}) rotateY(${(ang-180).toFixed(2)}deg)`; }
+    const lift=-10*Math.sin(Math.PI*clamp(this.p,0,1));
+    sw.style.transform=`translateY(${(this.y+lift).toFixed(2)}px) rotate(${this.th.toFixed(3)}deg)`;
+    sw.style.opacity=(this.hold&&t<this.hold)?0:1;
+  };
+  g._b=b; return g;
+}
+function sizeAll(){
+  const H=parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--H"));
+  document.querySelectorAll(".g").forEach(g=>{const b=g._b,a=b.a;
+    b.swW=Math.round(a.sw/a.sh*H*.62); b.fwW=Math.round(a.fw/a.fh*H);
+    g.querySelector(".side").style.width=Math.round(a.sw/a.sh*H)+"px";
+    g.querySelector(".front").style.width=b.fwW+"px";
+    b.render(0);
+  });
+}
+
+/* ---------- wall ---------- */
+const wall=document.getElementById("wall"), flat=[];
+RACKS.forEach(r=>{
+  const sec=document.createElement("section");
+  sec.innerHTML=`<div class="sign"><h2>${r.name}</h2><small>${r.items.length} დიზაინი</small></div>`;
+  const track=document.createElement("div"); track.className="track";
+  const wrap=document.createElement("div"); wrap.className="rail-wrap"; wrap.innerHTML=`<div class="rail"><img class="l" alt="" src="${SC.railL[0]}"><div class="m" style="background-image:url(${SC.railM[0]})"></div><img class="r" alt="" src="${SC.railR[0]}"></div>`;
+  r.items.forEach(it=>{const i=flat.length; flat.push({it,rack:r.name}); wrap.appendChild(garment(it,i,track))});
+  track.appendChild(wrap); sec.appendChild(track); wall.appendChild(sec);
+});
+sizeAll(); addEventListener("resize",sizeAll);
+const bodiesOf=track=>[...track.querySelectorAll(".g")].map(g=>g._b);
+
+/* turning one garment: it springs round, its neighbours get shoved and swing */
+function setOn(track,g){
+  const prev=track.querySelector(".g.on"); if(prev===g)return;
+  if(prev){ prev.classList.remove("on"); prev._b.pt=0; wake(prev._b); kick(prev._b,(Math.random()<.5?1:-1)*22,60); }
+  track.classList.toggle("has-on",!!g); if(!g)return;
+  g.classList.add("on"); const b=g._b; b.pt=1; wake(b);
+  const bs=bodiesOf(track), i=bs.indexOf(b);
+  bs.forEach((x,j)=>{const d=Math.abs(j-i); if(!d||d>6)return; kick(x,(j<i?1:-1)*48/Math.pow(d,.8),20+d*45)});
+  kick(b,(Math.random()<.5?1:-1)*30,180);
+}
+document.querySelectorAll(".track").forEach(track=>{
+  /* inertia: the rail moves, the garments lag behind and swing back when it stops */
+  let last=track.scrollLeft, lt=performance.now(), v=0, stop;
+  const shove=dv=>bodiesOf(track).forEach(b=>kick(b,clamp(-dv*14*(.8+Math.random()*.4),-45,45)));
+  track.addEventListener("scroll",()=>{
+    const now=performance.now(), nv=(track.scrollLeft-last)/Math.max(8,now-lt); last=track.scrollLeft; lt=now;
+    if(Math.abs(nv-v)>.15){ shove(nv-v); v=nv; }
+    clearTimeout(stop); stop=setTimeout(()=>{ shove(-v); v=0; },90);
+  },{passive:true});
+  if(fine){
+    track.addEventListener("pointerover",e=>{const g=e.target.closest(".g"); if(g)setOn(track,g)});
+    track.addEventListener("pointerleave",()=>setOn(track,null));
+    /* brushing: running the cursor through the rail pushes the clothes it passes */
+    track.addEventListener("pointermove",e=>{const g=e.target.closest(".g"); if(!g||!e.movementX)return;
+      const bs=bodiesOf(track), i=bs.indexOf(g._b), f=clamp(-e.movementX*1.6,-18,18);
+      kick(bs[i],f); kick(bs[i-1],f*.45); kick(bs[i+1],f*.45);});
+  }else{
+    const pick=()=>{if(performance.now()<(track._auto||0))return; const c=track.getBoundingClientRect().left+track.clientWidth/2; let best=null,d=1e9;
+      track.querySelectorAll(".g").forEach(g=>{const r=g.getBoundingClientRect(),x=Math.abs(r.left+r.width/2-c); if(x<d){d=x;best=g}}); setOn(track,best)};
+    track.addEventListener("scroll",()=>{clearTimeout(track._t);track._t=setTimeout(pick,110)},{passive:true});
+    const gs=[...track.querySelectorAll(".g")], mid=gs[Math.floor(gs.length/2)];
+    const centre=(g,smooth)=>{track._auto=performance.now()+900; track.scrollTo({left:g.offsetLeft+g.offsetWidth/2-track.clientWidth/2,behavior:smooth?"smooth":"auto"});};
+    track._centre=centre;
+    setTimeout(()=>{centre(mid); setOn(track,mid); setTimeout(()=>centre(mid,true),750)},300);
+  }
+});
+if(!fine)document.getElementById("hint").textContent="გადაასრიალე — შუაში მოხვედრილი შემობრუნდება. დააჭირე — ახლოს ნახავ.";
+
+/* entrance: garments drop onto the rail one after another and swing to rest */
+if(!reduce){
+  const io=new IntersectionObserver(es=>es.forEach(e=>{ if(!e.isIntersecting)return; io.unobserve(e.target);
+    const t0=performance.now();
+    bodiesOf(e.target).forEach((b,j)=>{ b.hold=t0+j*60; b.y=-46; b.th=(Math.random()*2-1)*7; b.tv=(Math.random()*2-1)*20; wake(b); });
+  }),{threshold:.2});
+  document.querySelectorAll(".track").forEach(t=>io.observe(t));
+}
+
+wall.addEventListener("click",e=>{const g=e.target.closest(".g"); if(!g)return; const track=g.closest(".track");
+  if(!fine && !g.classList.contains("on")){setOn(track,g); setTimeout(()=>track._centre(g,true),650); return}
+  open(+g.dataset.i,g)});
+
+/* ---------- stage ---------- */
+const stage=document.getElementById("stage"),hero=document.getElementById("hero");
+const heroBody=mkBody({k:30,c:2.2}); heroBody.render=function(){ const f=hero.firstElementChild; if(f) f.style.transform=`rotate(${this.th.toFixed(3)}deg)`; };
+let cur=-1;
+function fill(i){
+  const {it,rack}=flat[i]; const {el,m,a}=front(it);
+  el.style.transformOrigin="50% 3%";
+  hero.style.setProperty("--ar",a.fw+"/"+a.fh); hero.replaceChildren(el);
+  document.getElementById("pTag").textContent=rack;
+  document.getElementById("pTitle").textContent=it[1];
+  document.getElementById("pDot").style.background=DOT[m];
+  document.getElementById("pMeta").textContent="GILDAN მაისური · "+COLOR_KA[m];
+  document.getElementById("pLink").href="https://maika.ge/design/"+it[0];
+}
+function fromTo(g){const a=g.querySelector(".front").getBoundingClientRect(), b=hero.getBoundingClientRect(); return `translate(${a.left-b.left}px,${a.top-b.top}px) scale(${a.width/b.width})`}
+function open(i,g){
+  cur=i; fill(i); stage.hidden=false;
+  const from=g.classList.contains("on")?fromTo(g):null;
+  g.classList.add("picked");
+  requestAnimationFrame(()=>stage.classList.add("on"));
+  if(!reduce&&from) hero.animate([{transform:from,transformOrigin:"0 0"},{transform:"none",transformOrigin:"0 0"}],{duration:620,easing:"cubic-bezier(.16,1,.3,1)"});
+  kick(heroBody,-26,380);
+  document.getElementById("close").focus({preventScroll:true});
+}
+function close(){
+  if(cur<0)return; const g=wall.querySelector(`[data-i="${cur}"]`);
+  stage.classList.remove("on");
+  const done=()=>{stage.hidden=true;g.classList.remove("picked");if(fine)setOn(g.closest(".track"),null);kick(g._b,30);g.focus({preventScroll:true})};
+  if(reduce)done(); else hero.animate([{transform:"none",transformOrigin:"0 0"},{transform:fromTo(g),transformOrigin:"0 0"}],{duration:420,easing:"cubic-bezier(.5,0,.2,1)"}).onfinish=done;
+  cur=-1;
+}
+function step(d){
+  if(cur<0)return; const old=wall.querySelector(`[data-i="${cur}"]`); old.classList.remove("picked");
+  cur=(cur+d+flat.length)%flat.length; const g=wall.querySelector(`[data-i="${cur}"]`), track=g.closest(".track");
+  setOn(track,g); g.classList.add("picked"); track.scrollTo({left:g.offsetLeft+g.offsetWidth/2-track.clientWidth/2}); fill(cur);
+  if(!reduce) hero.animate([{opacity:0,transform:`translateX(${d*40}px)`},{opacity:1,transform:"none"}],{duration:420,easing:"cubic-bezier(.16,1,.3,1)"});
+  kick(heroBody,d*-34,60);
+}
+document.getElementById("close").onclick=close;
+document.getElementById("prev").onclick=()=>step(-1);
+document.getElementById("next").onclick=()=>step(1);
+stage.addEventListener("click",e=>{if(e.target===stage)close()});
+addEventListener("keydown",e=>{if(cur<0)return;if(e.key==="Escape")close();if(e.key==="ArrowRight")step(1);if(e.key==="ArrowLeft")step(-1)});
+
+</script>
+</body>
+</html>
