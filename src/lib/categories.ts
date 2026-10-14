@@ -21,3 +21,8 @@ export const CATEGORIES = [
 ] as const;
 
 export type CategorySlug = typeof CATEGORIES[number]["slug"];
+
+/** Georgian label for a stored category slug (catalog grid and rail). */
+export const CATEGORY_LABEL_BY_SLUG: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.slug, c.label_ka]),
+);

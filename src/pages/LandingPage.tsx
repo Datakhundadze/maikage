@@ -75,9 +75,9 @@ export default function LandingPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Page nav — surface Portfolio + Contact above the footer. */}
-          <Link to="/portfolio" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-            {lang === "en" ? "Portfolio" : "პორტფოლიო"}
+          {/* Page nav — surface Catalog + Contact above the footer. */}
+          <Link to="/designs" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+            {lang === "en" ? "Catalog" : "კატალოგი"}
           </Link>
           <Link to="/contact" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             {lang === "en" ? "Contact" : "კონტაქტი"}
