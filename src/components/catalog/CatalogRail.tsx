@@ -30,38 +30,72 @@ interface DesignRow {
   category: string | null;
   created_at: string;
   default_color: string | null;
+  default_product_id: string | null;
+  product: { type: string; display_name_ka: string | null } | null;
 }
 
+type PrintBox = { l: number; t: number; w: number; h: number };
+
 interface ShowroomScene {
-  printBox: { l: number; t: number; w: number; h: number };
-  garments: Record<string, { front: [number, number]; side: [number, number] }>;
+  printBox: PrintBox;
+  /** Per garment: front/side image sizes, optionally its own print box (hoodies). */
+  garments: Record<string, { front: [number, number]; side: [number, number]; printBox?: PrintBox }>;
 }
 
 // ── Mockups ─────────────────────────────────────────────────────────────────
-// Blank tees in public/showroom: tee-<key>-{front,side,shade}.webp, sizes in
-// showroom.json. A design's default_color (any case) picks the tee; anything
-// unlisted wears white. New colour on an existing tee = one line in
-// MOCKUP_BY_COLOR; a new tee = its files + one line in MOCKUPS.
+// Blank garments in public/showroom: tees are tee-<key>-{front,side,shade}.webp,
+// hoodies hoodie-<colour>-{front,side,shade}.webp (key "hoodie-<colour>").
+// Sizes (and a hoodie's own print box) come from showroom.json. A design's
+// default_color (any case) picks the garment; anything unlisted wears white
+// (hoodies: black). New colour on an existing garment = one line in a colour
+// map; a new garment = its files + one line in MOCKUPS.
 const MOCKUPS = {
   white: { dot: "#f3f2ee", label_ka: "თეთრი", light: true },
   black: { dot: "#1f2023", label_ka: "შავი", light: false },
   navy: { dot: "#202a43", label_ka: "მუქი ლურჯი", light: false },
+  gray: { dot: "#9a9a9a", label_ka: "რუხი", light: true },
+  green: { dot: "#1f4d2e", label_ka: "მწვანე", light: false },
+  red: { dot: "#c8141c", label_ka: "წითელი", light: false },
+  yellow: { dot: "#f0c419", label_ka: "ყვითელი", light: true },
+  blue: { dot: "#1f4fd1", label_ka: "ლურჯი", light: false },
+  "hoodie-black": { dot: "#1f2023", label_ka: "შავი", light: false },
+  "hoodie-green": { dot: "#1f4d2e", label_ka: "მწვანე", light: false },
 } as const;
 type MockupKey = keyof typeof MOCKUPS;
 
-const MOCKUP_BY_COLOR: Record<string, MockupKey> = {
+const TEE_BY_COLOR: Record<string, MockupKey> = {
   white: "white",
   black: "black",
   "dark navy": "navy",
-  gray: "white",
-  yellow: "white",
-  green: "navy",
-  red: "black",
-  "sol's electric": "navy",
+  gray: "gray",
+  "light gray": "gray",
+  "light gray melange": "gray",
+  green: "green",
+  red: "red",
+  burgundy: "red",
+  yellow: "yellow",
+  "sol's electric": "blue",
+  "electric blue": "blue",
+  "standard blue": "blue",
+  "light blue": "blue",
 };
 
-const mockupFor = (color: string | null): MockupKey => MOCKUP_BY_COLOR[(color || "white").toLowerCase()] ?? "white";
-const teeSrc = (m: MockupKey, part: "front" | "side" | "shade") => `/showroom/tee-${m}-${part}.webp`;
+const HOODIE_BY_COLOR: Record<string, MockupKey> = {
+  black: "hoodie-black",
+  green: "hoodie-green",
+};
+
+/** The design's product row (embedded via the default_product_id FK), if any. */
+const productOf = (d: DesignRow) => (Array.isArray(d.product) ? d.product[0] : d.product) ?? null;
+
+function mockupFor(d: DesignRow): MockupKey {
+  const color = (d.default_color || "").toLowerCase();
+  if (productOf(d)?.type === "Hoodie") return HOODIE_BY_COLOR[color] ?? "hoodie-black";
+  return TEE_BY_COLOR[color] ?? "white";
+}
+
+const garmentSrc = (m: MockupKey, part: "front" | "side" | "shade") =>
+  m.startsWith("hoodie-") ? `/showroom/${m}-${part}.webp` : `/showroom/tee-${m}-${part}.webp`;
 
 let scenePromise: Promise<ShowroomScene> | null = null;
 function loadScene(): Promise<ShowroomScene> {
@@ -159,15 +193,15 @@ const GarmentFront = forwardRef<HTMLDivElement, FrontProps>(function GarmentFron
   { design, scene, loadPrint, className, style },
   ref,
 ) {
-  const m = mockupFor(design.default_color);
+  const m = mockupFor(design);
   const print = useTrimmedPrint(design.thumbnail_url || design.print_file_url, loadPrint);
-  const B = scene.printBox;
+  const B = scene.garments[m]?.printBox ?? scene.printBox;
   const box: React.CSSProperties = { left: `${B.l * 100}%`, top: `${B.t * 100}%`, width: `${B.w * 100}%`, height: `${B.h * 100}%` };
   return (
     <div ref={ref} className={`${className} ${MOCKUPS[m].light ? "cr-light" : "cr-dark"}`} style={style}>
-      <img src={teeSrc(m, "front")} alt="" draggable={false} />
+      <img src={garmentSrc(m, "front")} alt="" draggable={false} />
       {print && <img className="cr-print" src={print} alt="" decoding="async" draggable={false} style={box} />}
-      <img className="cr-shade" src={teeSrc(m, "shade")} alt="" draggable={false} style={box} />
+      <img className="cr-shade" src={garmentSrc(m, "shade")} alt="" draggable={false} style={box} />
     </div>
   );
 });
@@ -481,7 +515,7 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
           </div>
           {near
             ? rack.items.map((d, j) => {
-                const m = mockupFor(d.default_color);
+                const m = mockupFor(d);
                 return (
                   <a
                     key={d.id}
@@ -498,7 +532,7 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
                   >
                     <div className="cr-swing">
                       <div className="cr-face cr-side">
-                        <img src={teeSrc(m, "side")} alt="" draggable={false} />
+                        <img src={garmentSrc(m, "side")} alt="" draggable={false} />
                       </div>
                       <GarmentFront design={d} scene={scene} loadPrint={seen} className="cr-face cr-front" />
                     </div>
@@ -532,13 +566,16 @@ export default function CatalogRail() {
     setRailReducedMotion(reduce);
   }, [reduce]);
 
-  // Same query the catalog grid uses (published designs, newest first).
+  // The catalog grid's query (published designs, newest first), plus the
+  // design's default product (hoodie mockups, stage label).
   useEffect(() => {
     let cancelled = false;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- catalog_designs is not in the generated types (same cast as the grid)
     (supabase as any)
       .from("catalog_designs")
-      .select("id, slug, title_ka, thumbnail_url, print_file_url, category, created_at, default_color")
+      .select(
+        "id, slug, title_ka, thumbnail_url, print_file_url, category, created_at, default_color, default_product_id, product:products!catalog_designs_default_product_id_fkey(type, display_name_ka)",
+      )
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .then(({ data }: { data: DesignRow[] | null }) => {
@@ -709,7 +746,7 @@ export default function CatalogRail() {
 
   const markSimpleMode = () => setMode("simple");
   const staged = cur !== null ? flat[cur] : null;
-  const stagedMockup = staged ? mockupFor(staged.d.default_color) : "white";
+  const stagedMockup: MockupKey = staged ? mockupFor(staged.d) : "white";
   const stagedDims = scene?.garments[stagedMockup]?.front ?? [648, 950];
 
   return (
@@ -766,7 +803,9 @@ export default function CatalogRail() {
             <h3>{staged.d.title_ka}</h3>
             <div className="cr-meta">
               <span className="cr-dot" style={{ background: MOCKUPS[stagedMockup].dot }} />
-              <span>GILDAN მაისური · {MOCKUPS[stagedMockup].label_ka}</span>
+              <span>
+                {(staged && productOf(staged.d)?.display_name_ka) || "GILDAN მაისური"} · {MOCKUPS[stagedMockup].label_ka}
+              </span>
             </div>
             <Link className="cr-cta" to={`/design/${staged.d.slug}`} onClick={markSimpleMode}>
               არჩევა და შეკვეთა →
