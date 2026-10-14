@@ -1084,6 +1084,9 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
     });
   }, []);
   const [showTryOn, setShowTryOn] = useState(false);
+  // Opens the try-on with freshly composited mockups (set further down, once
+  // computeFresh exists; handleAiTryOn is declared before it).
+  const openTryOnFreshRef = useRef<(() => Promise<void>) | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginModalMessage, setLoginModalMessage] = useState<string | undefined>();
   // Anti-abuse generation block (server-enforced): true → persistent "place an
@@ -1804,7 +1807,8 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
   // including its own 429 handling, so the user stays inside Simple.
   const handleAiTryOn = useCallback(() => {
     if (!aiResult) return;
-    setShowTryOn(true);
+    if (openTryOnFreshRef.current) void openTryOnFreshRef.current();
+    else setShowTryOn(true);
   }, [aiResult]);
 
   // Proceed from a try-on RESULT straight to the order flow. Ensures the
@@ -3009,6 +3013,20 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
     return { fm, bm, fdo, bdo };
   }, [frontData, backData, compositeSide, compositeDesignOnly]);
 
+  // The try-on wears the composited mockup (garmentImage), so it must not be
+  // stale either: recompute before opening, same as the order button.
+  const openTryOnFresh = useCallback(async () => {
+    try {
+      await computeFresh();
+    } catch (e) {
+      console.warn("[Simple] mockup refresh before try-on failed:", e);
+    }
+    setShowTryOn(true);
+  }, [computeFresh]);
+  useEffect(() => {
+    openTryOnFreshRef.current = openTryOnFresh;
+  }, [openTryOnFresh]);
+
   const handleOrderClick = useCallback(async () => {
     if (needsSize && !productConfig.config.size) {
       setSizeError(true);
@@ -3090,8 +3108,8 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
 
   const handleTryOnOpen = useCallback(() => {
     if (!tryOnDesignImage) return;
-    setShowTryOn(true);
-  }, [tryOnDesignImage]);
+    void openTryOnFresh();
+  }, [tryOnDesignImage, openTryOnFresh]);
 
   // Order from a try-on: with an aiResult delegate to the untouched
   // handleAiOrder (which also places the generated design if needed);
@@ -3234,6 +3252,7 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
           open={showTryOn}
           onClose={() => setShowTryOn(false)}
           designImage={tryOnDesignImage}
+          garmentImage={frontMockup ?? backMockup ?? null}
           onOrder={handleTryOnOrder}
         />
       )}

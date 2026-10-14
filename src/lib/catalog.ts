@@ -327,6 +327,9 @@ const DEFAULT_BACK: PlacementCoords = { x: 0.5, y: 0.42, scale: 0.35 };
 // Hoodie-specific: design sits lower on the chest, below collar/zipper
 const HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.51, scale: 0.28, scaleY: 0.28 };
 const HOODIE_BACK: PlacementCoords = { x: 0.5, y: 0.48, scale: 0.28, scaleY: 0.28 };
+// Premium Washed Hoodie front: its kangaroo pocket starts higher on the
+// mockup, so the zone sits higher to keep the print off the pocket.
+const PREMIUM_WASHED_HOODIE_FRONT: PlacementCoords = { x: 0.50, y: 0.44, scale: 0.28, scaleY: 0.28 };
 
 // Tote Bag-specific: move design zone down by 18%
 const TOTE_BAG_FRONT: PlacementCoords = { ...DEFAULT_FRONT, y: DEFAULT_FRONT.y + 0.18 };
@@ -521,7 +524,9 @@ function generateCatalog(): CatalogEntry[] {
             view,
             filename: `${product.type.toLowerCase().replace(/\s/g, "-")}-${sub.toLowerCase().replace(/\s/g, "-")}-${color.toLowerCase().replace(/\s/g, "-")}-${view}.png`,
             placementZone: product.type === "Hoodie"
-              ? (view === "front" ? HOODIE_FRONT : HOODIE_BACK)
+              ? (view === "front"
+                ? (sub === "Premium Washed Hoodie" ? PREMIUM_WASHED_HOODIE_FRONT : HOODIE_FRONT)
+                : HOODIE_BACK)
               : product.type === "Tote Bag"
                 ? (view === "front" ? TOTE_BAG_FRONT : TOTE_BAG_BACK)
                 : product.type === "Mug"
