@@ -1,12 +1,12 @@
 import AppHeader from "@/components/AppHeader";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
-import SplatViewer from "@/components/tour/SplatViewer";
+import PhotoRoomViewer from "@/components/tour/PhotoRoomViewer";
 
-// /showroom — walkable 3D scan of the shop (Gaussian splats).
-// Lazy route: this page and everything it imports (three.js, Spark, the scan
-// config) load only when /showroom is visited.
+// /showroom — walkable 3D room of the shop, built from photos.
+// Lazy route: this page and everything it imports (three.js, the scene config,
+// photos) load only when /showroom is visited.
 //
-// noindex while the scene is a test scan of one corner of the shop.
+// noindex while the photo room is a test.
 
 export default function ShowroomPage() {
   return (
@@ -20,7 +20,7 @@ export default function ShowroomPage() {
       <AppHeader />
       <main className="relative min-h-0 flex-1">
         <h1 className="sr-only">ვირტუალური შოურუმი</h1>
-        <SplatViewer />
+        <PhotoRoomViewer />
       </main>
     </div>
   );

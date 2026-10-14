@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { SparkRenderer, SplatMesh } from "@sparkjsdev/spark";
 import { Volume2, VolumeX } from "lucide-react";
 import Joystick from "./Joystick";
-import { SCENE } from "@/lib/tour/sceneConfig";
+import { buildPhotoRoom, loadRoomTextures, type PhotoRoom } from "./photoRoom";
+import { SCENE, type RackId } from "@/lib/tour/sceneConfig";
+import { buildWalkArea, usedImages } from "@/lib/tour/roomGeometry";
 import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { BOB_REST, bobOffset, stepBob, type BobOffset, type BobState } from "@/lib/tour/walkBob";
-import { clampStep, ensureInside, type Vec2 } from "@/lib/tour/walkBounds";
+import { clampStep, closestOnArea, ensureInside, pointInArea, type Vec2 } from "@/lib/tour/walkBounds";
 import {
   applyLook,
   easeTurnRate,
@@ -20,9 +21,10 @@ import {
   type StickInput,
 } from "@/lib/tour/walkMotion";
 
-// Walkable 3D showroom: a Gaussian-splat scan (Spark on three.js), walked in
-// first person. three.js and Spark are imported HERE ONLY, and this file only
-// from the lazy ShowroomPage, so none of it reaches the main bundle.
+// Walkable 3D showroom: a box room built from photos of the shop (walls and
+// rack billboards, photoRoom.ts), walked in first person. three.js is
+// imported only by this file and photoRoom.ts, and they only from the lazy
+// ShowroomPage, so none of it reaches the main bundle.
 //
 // CONTROLS
 //   phone:   joystick bottom-left steers: up/down walks along the heading,
@@ -31,7 +33,13 @@ import {
 //   desktop: W/S ↑/↓ walk, A/D ←/→ turn, Q/E strafe; mouse drag looks.
 // The walker stays at eye height above the floor, moves only on the floor
 // plane, and looks at most ±60° up/down. Every step goes through clampStep,
-// so the walker can't leave the walkable polygon (sceneConfig.ts).
+// so the walker can't leave the walkable area: the room minus a margin from
+// the walls and around every rack (sceneConfig.ts → roomGeometry.ts).
+//
+// RACKS: each rack has an invisible pick volume. With a mouse, hovering one
+// outlines it; a tap or click (press and release without dragging) selects
+// it, and tapping it again clears the selection. `onRackSelect` reports the
+// selection; phase 2 hangs the product cards on it.
 //
 // WALKING FEEL: a head bob (walkBob.ts) driven by the distance actually
 // moved is added to the camera as an offset only; the logical position and
@@ -44,6 +52,9 @@ import {
 
 const DEG = Math.PI / 180;
 const MAX_DPR = 2;
+/** A press that moves less than this (px) and is shorter than TAP_MS is a tap. */
+const TAP_PX = 8;
+const TAP_MS = 500;
 /** Horizontal field of view the camera aims for; vertical is derived. */
 const TARGET_HFOV_DEG = 80;
 const SOUND_KEY = "maika.showroom.sound";
@@ -132,11 +143,25 @@ declare global {
       turnRateDeg: number;
       /** Seconds of motion integrated while a turn input was held. */
       turnInputTime: number;
+      /** Rack under the mouse, selected rack, and the outlined one. */
+      hoverRack: RackId | null;
+      selectedRack: RackId | null;
+      highlightedRack: RackId | null;
+      /** Photos loaded / needed. */
+      textures: string;
+      /** Position is walkable, and its distance to the nearest wall/rack margin, metres. */
+      inBounds: boolean;
+      clearance: number;
     };
   }
 }
 
-export default function SplatViewer() {
+interface PhotoRoomViewerProps {
+  /** Called when a rack is selected (tap/click) or the selection is cleared. */
+  onRackSelect?: (id: RackId | null) => void;
+}
+
+export default function PhotoRoomViewer({ onRackSelect }: PhotoRoomViewerProps = {}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef<StickInput>(NO_INPUT);
   const [status, setStatus] = useState<Status>(() => (hasWebGL2() ? "loading" : "nowebgl"));
@@ -146,6 +171,8 @@ export default function SplatViewer() {
   const [soundOn, setSoundOn] = useState(loadSoundPref);
   const soundOnRef = useRef(soundOn);
   const footstepsRef = useRef<Footsteps | null>(null);
+  const onRackSelectRef = useRef(onRackSelect);
+  onRackSelectRef.current = onRackSelect;
 
   // Creates the AudioContext; called only from a user gesture.
   const startAudio = () => {
@@ -176,15 +203,15 @@ export default function SplatViewer() {
 
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     } catch {
       setStatus("nowebgl");
       return;
     }
-    // Phones and low-end machines get a lower pixel-ratio cap and cheaper
-    // splat settings (the full-shop scan is ~1.26M splats).
+    // Phones and low-end machines get a lower pixel-ratio cap and smaller
+    // photo textures (12 photos at 2048 px are ~200 MB of GPU memory).
     const lowEnd = touch || isLowEndDevice();
-    const cheap = SCENE.lowEndRender;
+    const cheap = SCENE.lowEnd;
     let dpr = Math.min(window.devicePixelRatio || 1, lowEnd ? cheap.maxDpr : MAX_DPR);
     renderer.setPixelRatio(dpr);
     const canvas = renderer.domElement;
@@ -195,37 +222,38 @@ export default function SplatViewer() {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("#101010");
-    const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 600);
+    const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 60);
     camera.rotation.order = "YXZ"; // yaw, then pitch; roll stays 0
 
-    const spark = new SparkRenderer(
-      lowEnd
-        ? {
-            renderer,
-            maxStdDev: cheap.maxStdDev,
-            maxPixelRadius: cheap.maxPixelRadius,
-            minSortIntervalMs: cheap.minSortIntervalMs,
-          }
-        : { renderer },
-    );
-    scene.add(spark);
-    const mesh = new SplatMesh({
-      url: SCENE.url,
-      onProgress: (e) => {
-        if (e.lengthComputable && e.total > 0) setProgress(Math.min(100, Math.round((100 * e.loaded) / e.total)));
-      },
-    });
-    mesh.rotation.set(SCENE.orientationDeg.x * DEG, SCENE.orientationDeg.y * DEG, SCENE.orientationDeg.z * DEG);
-    // file units → metres; everything else (walk, eye height, bounds) is metric
-    mesh.scale.setScalar(SCENE.sceneScale);
-    scene.add(mesh);
+    // ── room: preload every photo, then build ──────────────────────────
+    const anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    const images = usedImages(SCENE);
+    let room: PhotoRoom | null = null;
     let disposed = false;
-    mesh.initialized
-      .then(() => !disposed && setStatus("ready"))
+    let texturesDone = 0;
+    loadRoomTextures(images, lowEnd ? cheap.maxTextureSize : 4096, anisotropy, (done, total) => {
+      texturesDone = done;
+      if (!disposed) setProgress(Math.round((100 * done) / total));
+    })
+      .then((textures) => {
+        if (disposed) {
+          for (const t of textures.values()) t.dispose();
+          return;
+        }
+        room = buildPhotoRoom(textures, anisotropy);
+        scene.add(room.group);
+        // upload everything now, not on the first frame that sees each wall
+        renderer.compile(scene, camera);
+        for (const t of textures.values()) renderer.initTexture(t);
+        setStatus("ready");
+        last = performance.now();
+        renderer.setAnimationLoop(tick);
+      })
       .catch(() => !disposed && setStatus("error"));
 
     // ── pose ────────────────────────────────────────────────────────────
-    let pos: Vec2 = ensureInside([SCENE.start.x, SCENE.start.z], SCENE.walkable);
+    const walkArea = buildWalkArea(SCENE);
+    let pos: Vec2 = ensureInside([SCENE.start.x, SCENE.start.z], walkArea);
     let vel: Vec2 = [0, 0];
     let turnRate = 0; // rad/s, eased
     let simTime = 0; // seconds of motion integrated (dt is capped per frame)
@@ -233,11 +261,19 @@ export default function SplatViewer() {
     let yaw = SCENE.start.yawDeg * DEG;
     let pitch = SCENE.start.pitchDeg * DEG;
     const pitchLimit = SCENE.pitchLimitDeg * DEG;
-    const eyeY = SCENE.floorY + SCENE.eyeHeight;
+    const eyeY = SCENE.eyeHeight;
     let moved = false;
     let hintShown = true;
     let bob: BobState = BOB_REST;
     let footstepsPlayed = 0;
+    let hoverRack: RackId | null = null;
+    let selectedRack: RackId | null = null;
+    /** Mouse position for hover picking (NDC), null when not over the canvas. */
+    let hoverNdc: { x: number; y: number } | null = null;
+    /** A tap waiting to be picked in the next frame (NDC). */
+    let tapNdc: { x: number; y: number } | null = null;
+    const raycaster = new THREE.Raycaster();
+    const ndcVec = new THREE.Vector2();
     let frameCount = 0;
     const motionQuery = prefersReducedMotion();
     let reducedMotion = motionQuery?.matches ?? false;
@@ -266,6 +302,12 @@ export default function SplatViewer() {
         simTime,
         turnRateDeg: turnRate / DEG,
         turnInputTime,
+        hoverRack,
+        selectedRack,
+        highlightedRack: hoverRack ?? selectedRack,
+        textures: `${texturesDone}/${images.length}`,
+        inBounds: pointInArea(pos, walkArea),
+        clearance: closestOnArea(pos, walkArea).distance,
       });
     }
 
@@ -315,17 +357,29 @@ export default function SplatViewer() {
     let lookPointer: number | null = null;
     let lastX = 0;
     let lastY = 0;
+    let downX = 0;
+    let downY = 0;
+    let downTime = 0;
+    let dragged = false;
+    const toNdc = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      return { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
+    };
     const lookSpeed = () => ((camera.fov * DEG) / Math.max(1, host.clientHeight)) * 1.2;
     const onPointerDown = (e: PointerEvent) => {
       if (lookPointer !== null || (e.pointerType === "mouse" && e.button !== 0)) return;
       lookPointer = e.pointerId;
-      lastX = e.clientX;
-      lastY = e.clientY;
+      lastX = downX = e.clientX;
+      lastY = downY = e.clientY;
+      downTime = performance.now();
+      dragged = false;
       canvas.setPointerCapture(e.pointerId);
       canvas.focus({ preventScroll: true });
     };
     const onPointerMove = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") hoverNdc = toNdc(e);
       if (e.pointerId !== lookPointer) return;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > TAP_PX) dragged = true;
       const next = applyLook(yaw, pitch, e.clientX - lastX, e.clientY - lastY, lookSpeed(), pitchLimit);
       yaw = next.yaw;
       pitch = next.pitch;
@@ -334,13 +388,19 @@ export default function SplatViewer() {
       moved = true;
     };
     const onPointerEnd = (e: PointerEvent) => {
-      if (e.pointerId === lookPointer) lookPointer = null;
+      if (e.pointerId !== lookPointer) return;
+      lookPointer = null;
+      if (e.type === "pointerup" && !dragged && performance.now() - downTime < TAP_MS) tapNdc = toNdc(e);
+    };
+    const onPointerLeave = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") hoverNdc = null;
     };
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerEnd);
     canvas.addEventListener("pointercancel", onPointerEnd);
     canvas.addEventListener("lostpointercapture", onPointerEnd);
+    canvas.addEventListener("pointerleave", onPointerLeave);
 
     // Touch gestures belong to the camera: no page scroll, pinch-zoom or
     // pull-to-refresh while on the viewer.
@@ -379,7 +439,7 @@ export default function SplatViewer() {
       vel = easeVelocity(vel, target, dt, SCENE.accelTime);
       const from = pos;
       if (vel[0] || vel[1]) {
-        pos = clampStep(pos, [pos[0] + vel[0] * dt, pos[1] + vel[1] * dt], SCENE.walkable);
+        pos = clampStep(pos, [pos[0] + vel[0] * dt, pos[1] + vel[1] * dt], walkArea);
         moved = true;
       }
 
@@ -397,6 +457,32 @@ export default function SplatViewer() {
       // offset only: sway along the camera's right vector (cos yaw, −sin yaw)
       camera.position.set(pos[0] + Math.cos(yaw) * off.lateral, eyeY + off.y, pos[1] - Math.sin(yaw) * off.lateral);
       camera.rotation.set(pitch, yaw, -off.roll);
+      camera.updateMatrixWorld();
+
+      // Rack picking: hover (mouse) every frame, taps once.
+      const built = room;
+      if (built) {
+        const pick = (ndc: { x: number; y: number }): RackId | null => {
+          raycaster.setFromCamera(ndcVec.set(ndc.x, ndc.y), camera);
+          const hit = raycaster.intersectObjects(built.pickables, false)[0];
+          return (hit?.object.userData.rackId as RackId | undefined) ?? null;
+        };
+        const nextHover = hoverNdc && lookPointer === null ? pick(hoverNdc) : null;
+        if (nextHover !== hoverRack) {
+          hoverRack = nextHover;
+          canvas.style.cursor = hoverRack ? "pointer" : "";
+        }
+        if (tapNdc) {
+          const hit = pick(tapNdc);
+          tapNdc = null;
+          const next = hit === selectedRack ? null : hit;
+          if (next !== selectedRack) {
+            selectedRack = next;
+            onRackSelectRef.current?.(selectedRack);
+          }
+        }
+        built.setHighlight(hoverRack ?? selectedRack);
+      }
       renderer.render(scene, camera);
       frameCount++;
 
@@ -419,12 +505,12 @@ export default function SplatViewer() {
       }
       moved = false;
     };
-    renderer.setAnimationLoop(tick);
+    // the loop starts once the room is built (see the texture preload above)
     const onVisibility = () => {
       if (document.hidden) {
         renderer.setAnimationLoop(null);
         keys.clear();
-      } else {
+      } else if (room) {
         last = performance.now();
         renderer.setAnimationLoop(tick);
       }
@@ -447,9 +533,10 @@ export default function SplatViewer() {
       document.body.style.overscrollBehavior = prevOverscroll[1];
       ro.disconnect();
       delete window.__tourPose;
-      scene.remove(mesh);
-      mesh.dispose();
-      spark.dispose();
+      if (room) {
+        scene.remove(room.group);
+        room.dispose();
+      }
       renderer.dispose();
       canvas.remove();
     };
@@ -474,7 +561,7 @@ export default function SplatViewer() {
       {status === "loading" && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#101010]/80 text-white">
           <p className="text-sm font-medium" aria-live="polite">
-            იტვირთება…{progress !== null ? ` ${progress}%` : ""}
+            შოურუმის ფოტოები იტვირთება…{progress !== null ? ` ${progress}%` : ""}
           </p>
           <div className="h-1.5 w-48 overflow-hidden rounded-full bg-white/15">
             <div
