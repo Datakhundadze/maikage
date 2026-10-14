@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, useEffect, lazy, Suspense } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, lazy, Suspense, type ReactNode } from "react";
 import { useAppState } from "@/hooks/useAppState";
 import ProductConfigPanel from "@/components/ProductConfigPanel";
 import ProductPreview, { type DesignLayer } from "@/components/ProductPreview";
@@ -22,6 +22,7 @@ import { styleForLang } from "@/lib/generateSuggestion";
 import { TEXT_COLORS, resolveTextColorHex, contrastingTextColorHex } from "@/lib/textColors";
 import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { createDesignStartTracker } from "@/lib/designStart";
 import { calculatePrice } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -899,12 +900,19 @@ let textIdCounter = 0;
 
 // Optional SEO override for the product landing routes (/hoodie, …). Absent at
 // "/", where SeoHead below receives exactly the strings it always had.
+//
+// `hero` and `productPickerInitiallyOpen` are likewise passed only by
+// ProductLandingPage: at "/" there is no hero and the product picker starts
+// open (ProductConfigPanel's own default), exactly as before. `hero` may be a
+// function so it can be handed the constructor's own photo picker.
 interface SimplePageProps {
   seoTitle?: string;
   seoDescription?: string;
+  hero?: ReactNode | ((api: { onUploadClick: () => void }) => ReactNode);
+  productPickerInitiallyOpen?: boolean;
 }
 
-export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps = {}) {
+export default function SimplePage({ seoTitle, seoDescription, hero, productPickerInitiallyOpen }: SimplePageProps = {}) {
   const { lang, theme, toggleTheme } = useAppState();
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
@@ -916,6 +924,7 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
   const [sizeError, setSizeError] = useState(false);
   const [quantity, setQuantity] = useState<number>(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const designStartRef = useRef(createDesignStartTracker());
 
   useEffect(() => {
     trackEvent("page_visit", { page: "simple" });
@@ -1204,6 +1213,7 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    designStartRef.current("upload");
     const reader = new FileReader();
     reader.onload = () => addPhotoLayer(reader.result as string);
     reader.readAsDataURL(file);
@@ -1774,6 +1784,7 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
   const handleChatSubmit = useCallback(() => {
     const text = aiPrompt.trim();
     if (!text || chatBusy) return;
+    designStartRef.current("ai");
     pushChat({ role: "user", text });
     if (activeChatPhoto) {
       handleChatEdit(activeChatPhoto, text, "edit");
@@ -1852,6 +1863,7 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
 
   // ── Text layers (multi-text) ──────────────────────────────────────────
   const addTextLayer = useCallback(() => {
+    designStartRef.current("text");
     const id = `text-${++textIdCounter}`;
     setSideData(prev => {
       if (prev.texts.length >= MAX_TEXTS) return prev;
@@ -3262,10 +3274,14 @@ export default function SimplePage({ seoTitle, seoDescription }: SimplePageProps
       <aside className="w-full lg:w-[450px] lg:min-w-[450px] shrink-0 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border lg:overflow-hidden">
 
         <div className="overflow-y-auto flex-1 p-4 space-y-6">
+          {/* Landing hero — product landing routes only (ProductLandingPage). */}
+          {typeof hero === "function" ? hero({ onUploadClick: () => fileInputRef.current?.click() }) : hero}
+
           {/* Product config */}
           <ProductConfigPanel
             config={productConfig.config}
             locked={false}
+            productInitiallyOpen={productPickerInitiallyOpen}
             onProductChange={(p) => { productConfig.setProduct(p); setSizeError(false); }}
             onSubProductChange={(s) => { productConfig.setSubProduct(s); setSizeError(false); }}
             onColorChange={productConfig.setColor}
