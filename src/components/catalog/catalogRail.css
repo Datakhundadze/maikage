@@ -1,0 +1,180 @@
+/* Showroom rail (/designs): garments hang side-on on steel rails; hover turns
+   one to face you; a click brings it forward. Ported from the rail prototype.
+   Everything is scoped under .cr-scene. */
+.cr-scene {
+  --wall: #c7c1ba;
+  --ink: #1b1c1e;
+  --muted: #4f4b46;
+  --accent: #7a1f2b;
+  --H: 300px;
+  color-scheme: light;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.5;
+  padding: 0 16px 48px;
+  background-color: var(--wall);
+  background-image:
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgba(255, 250, 242, 0.38), transparent 70%),
+    linear-gradient(rgba(0, 0, 0, 0), rgba(40, 30, 20, 0.1)),
+    url("/showroom/wall.webp");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+.cr-scene * { box-sizing: border-box; }
+.cr-head {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-block: 28px 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cr-head h1 { margin: 0; font-weight: 700; font-size: 22px; }
+.cr-head p { margin: 0; color: var(--muted); font-size: 13px; }
+.cr-wall { max-width: 1200px; margin: 0 auto; display: grid; gap: 28px; padding-top: 12px; }
+.cr-wall > section { min-width: 0; }
+.cr-status { max-width: 1200px; margin: 48px auto 0; color: var(--muted); text-align: center; }
+.cr-sign { display: flex; gap: 10px; align-items: baseline; margin: 0 0 2px 4px; }
+.cr-sign h2 { margin: 0; font-weight: 500; font-size: 18px; }
+.cr-sign small { color: var(--muted); font-size: 12px; letter-spacing: 0.06em; }
+.cr-track {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.cr-rail-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-width: max-content;
+  width: 100%;
+  min-height: calc(var(--H) + 56px);
+  padding: 26px 52px 30px;
+  gap: 2px;
+}
+/* pipe centre (20px into the 40px pipe) sits at the hook: 3% down the garment */
+.cr-rail {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: calc(26px + var(--H) * 0.03 - 20px);
+  height: 40px;
+  display: flex;
+  z-index: 0;
+  filter: drop-shadow(0 7px 6px rgba(40, 30, 20, 0.28));
+  pointer-events: none;
+}
+.cr-rail .l, .cr-rail .r { flex: 0 0 auto; height: 40px; width: auto; }
+.cr-rail .m { flex: 1; background-image: url("/showroom/rail-mid.webp"); background-repeat: repeat-x; background-size: auto 40px; }
+
+/* garment */
+.cr-g {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: block;
+  height: var(--H);
+  width: var(--sw);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 0.4s;
+  will-change: width;
+  -webkit-tap-highlight-color: transparent;
+}
+.cr-swing { position: absolute; inset: 0; transform-origin: 50% 3%; perspective: 900px; will-change: transform; }
+.cr-g:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+.cr-face { position: absolute; top: 0; left: 50%; height: 100%; transform-origin: 50% 50%; backface-visibility: hidden; }
+.cr-face img { display: block; height: 100%; width: auto; max-width: none; pointer-events: none; user-select: none; }
+.cr-side { transform: translateX(-50%); filter: drop-shadow(2px 8px 6px rgba(0, 0, 0, 0.18)); }
+.cr-front { transform: translateX(-50%) rotateY(-90deg); opacity: 0; filter: drop-shadow(0 22px 20px rgba(0, 0, 0, 0.26)); }
+.cr-g.on { z-index: 2; }
+.cr-track.has-on .cr-g:not(.on) { filter: brightness(0.96) saturate(0.9); }
+.cr-face img.cr-print, .cr-face img.cr-shade { position: absolute; pointer-events: none; }
+.cr-face img.cr-print { object-fit: contain; object-position: 50% 0; }
+.cr-light img.cr-print { mix-blend-mode: multiply; }
+.cr-face img.cr-shade {
+  mix-blend-mode: overlay;
+  opacity: 0.9;
+  -webkit-mask-image: radial-gradient(closest-side, #000 70%, transparent);
+  mask-image: radial-gradient(closest-side, #000 70%, transparent);
+}
+.cr-g.picked { visibility: hidden; }
+
+/* stage */
+.cr-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: 24px;
+  padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+  color: var(--ink);
+  background: rgba(235, 235, 234, 0.55);
+  backdrop-filter: blur(16px) saturate(0.8);
+  -webkit-backdrop-filter: blur(16px) saturate(0.8);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.cr-stage.on { opacity: 1; }
+.cr-hero { position: relative; justify-self: center; height: min(78vh, 640px); aspect-ratio: var(--ar); }
+.cr-hero .cr-face {
+  position: absolute;
+  inset: 0;
+  left: 0;
+  width: 100% !important;
+  transform: none;
+  opacity: 1 !important;
+  transform-origin: 50% 3%;
+  filter: drop-shadow(0 24px 28px rgba(0, 0, 0, 0.25));
+}
+.cr-hero .cr-face img:not(.cr-print):not(.cr-shade) { width: 100%; height: 100%; }
+.cr-panel { max-width: 360px; display: grid; gap: 14px; opacity: 0; transform: translateY(8px); transition: opacity 0.35s 0.15s, transform 0.35s 0.15s; }
+.cr-stage.on .cr-panel { opacity: 1; transform: none; }
+.cr-panel .cr-tag { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+.cr-panel h3 { margin: 0; font-weight: 700; font-size: clamp(26px, 4vw, 38px); line-height: 1.15; text-wrap: balance; }
+.cr-meta { display: flex; gap: 10px; align-items: center; color: var(--muted); font-size: 14px; }
+.cr-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.2); }
+.cr-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  width: max-content;
+}
+.cr-cta:hover { filter: brightness(1.1); }
+.cr-nav { display: flex; gap: 8px; }
+.cr-nav button, .cr-close {
+  font: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.cr-nav button:hover, .cr-close:hover { background: #fff; }
+.cr-close { position: absolute; top: max(16px, env(safe-area-inset-top)); right: 16px; }
+
+@media (max-width: 700px) {
+  .cr-scene { --H: 250px; }
+  .cr-rail-wrap { justify-content: flex-start; padding-inline: 40vw; }
+  .cr-stage { grid-template-columns: 1fr; align-content: center; gap: 10px; overflow-y: auto; }
+  .cr-hero { height: min(52vh, 440px); }
+  .cr-panel { justify-self: center; text-align: center; justify-items: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cr-stage, .cr-panel, .cr-g { transition: none !important; }
+}
