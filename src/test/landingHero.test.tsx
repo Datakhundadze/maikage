@@ -6,6 +6,7 @@ import { calculatePrice } from "@/lib/pricing";
 import { BRAND_SLUGS, LANDING_PRODUCT_SLUGS, PRODUCT_SLUGS, defaultBrandFor } from "@/lib/productSlugs";
 import { fromPrice } from "@/lib/landingPrice";
 import { LEAD_TIME_KA } from "@/lib/leadTime";
+import { heroTitle } from "@/lib/heroTitle";
 import { createDesignStartTracker } from "@/lib/designStart";
 import { metaEventFor } from "@/lib/metaPixel";
 import PriceDisplay from "@/components/PriceDisplay";
@@ -82,16 +83,24 @@ const renderHero = (product: ProductType = "Hoodie", brand: string | null = "Pre
   const onUploadClick = vi.fn();
   render(
     <MemoryRouter>
-      <LandingHero product={product} brand={brand} name="ჰუდი · Premium Washed Hoodie" onUploadClick={onUploadClick} />
+      <LandingHero product={product} brand={brand} title={heroTitle("ჰუდი", brand)} onUploadClick={onUploadClick} />
     </MemoryRouter>,
   );
   return { onUploadClick };
 };
 
+describe("heroTitle", () => {
+  it("is the brand alone when the URL names one, the product label otherwise", () => {
+    expect(heroTitle("ჰუდი", "Premium Washed Hoodie")).toBe("Premium Washed Hoodie");
+    expect(heroTitle("ჰუდი", null)).toBe("ჰუდი");
+    expect(heroTitle("ჭიქა", null)).toBe("ჭიქა");
+  });
+});
+
 describe("LandingHero", () => {
   it("shows the H1, the from-price + lead-time line, the CTA and the chat link", async () => {
     const { onUploadClick } = renderHero();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("ჰუდი · Premium Washed Hoodie — შენი დიზაინით");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Premium Washed Hoodie — შენი დიზაინით");
     expect(screen.getByText(`${fromPrice("Hoodie", "Premium Washed Hoodie")} ₾-დან`)).toBeInTheDocument();
     expect(screen.getByText(new RegExp(`მზადდება ${LEAD_TIME_KA}`))).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /ატვირთე ფოტო/ }));
@@ -109,6 +118,8 @@ describe("LandingHero", () => {
     ];
     renderHero();
     const strip = await screen.findByRole("list");
+    // Same row as the price.
+    expect(strip.parentElement).toContainElement(screen.getByText(`${fromPrice("Hoodie", "Premium Washed Hoodie")} ₾-დან`));
     const imgs = within(strip).getAllByRole("img");
     expect(imgs).toHaveLength(2);
     expect(imgs[0]).toHaveAttribute(

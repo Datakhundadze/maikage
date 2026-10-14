@@ -5,6 +5,7 @@ import NotFound from "@/pages/NotFound";
 import LandingHero from "@/components/landing/LandingHero";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { productTypeKa } from "@/lib/i18n";
+import { heroTitle } from "@/lib/heroTitle";
 import { BRAND_SLUGS, defaultBrandFor, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
 
 // Product landing routes (/hoodie, /hoodie/premium-washed, …) — ENTRY POINTS
@@ -126,7 +127,8 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
   // trailing slash → the clean URL. Ad query strings (utm_*, gclid) are kept.
   if (!isCanonical) return <Navigate to={`${canonicalPath}${search}${hash}`} replace />;
 
-  const name = landingName(productTypeKa(product), brand);
+  const productKa = productTypeKa(product);
+  const name = landingName(productKa, brand);
   const seo = seoFor(name);
   // The hero and a collapsed product picker exist only on these routes; "/"
   // renders SimplePage with neither.
@@ -136,7 +138,7 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
       seoDescription={seo.description}
       productPickerInitiallyOpen={false}
       hero={({ onUploadClick }) => (
-        <LandingHero product={product} brand={brand} name={name} onUploadClick={onUploadClick} />
+        <LandingHero product={product} brand={brand} title={heroTitle(productKa, brand)} onUploadClick={onUploadClick} />
       )}
     />
   );
