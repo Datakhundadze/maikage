@@ -6,9 +6,11 @@
 // One shared requestAnimationFrame loop advances every awake body and sleeps
 // when they are all at rest. Ported from the rail prototype.
 //
-// Bodies render themselves (`render(t)` writes transforms to the DOM); this
-// module only integrates. With reduced motion, wake() snaps a body to its
-// target and kick() does nothing, so nothing animates.
+// Bodies render themselves (`render(t)` writes transforms to the DOM and must
+// not read layout); this module only integrates. onWake/onSleep fire when a
+// body starts/stops moving (e.g. to set will-change only while it animates).
+// With reduced motion, wake() snaps a body to its target and kick() does
+// nothing, so nothing animates.
 
 export interface RailBody {
   /** Turn: position (0 side … 1 front), velocity, target. */
@@ -32,6 +34,9 @@ export interface RailBody {
   /** Set when the body's element is gone; pending kicks are dropped. */
   dead?: boolean;
   render: (t: number) => void;
+  /** Called when the body starts moving / comes to rest. */
+  onWake?: () => void;
+  onSleep?: () => void;
 }
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -52,6 +57,7 @@ function tick(t: number): void {
   for (const b of live) {
     if (b.dead) {
       live.delete(b);
+      b.onSleep?.();
       continue;
     }
     if (b.hold && t < b.hold) {
@@ -84,6 +90,7 @@ function tick(t: number): void {
       b.pv = b.th = b.tv = b.y = b.yv = 0;
       b.render(t);
       live.delete(b);
+      b.onSleep?.();
     }
   }
   if (live.size) requestAnimationFrame(tick);
@@ -100,7 +107,10 @@ export function wake(b: RailBody): void {
     b.render(performance.now());
     return;
   }
-  live.add(b);
+  if (!live.has(b)) {
+    live.add(b);
+    b.onWake?.();
+  }
   if (!running) {
     running = true;
     lastT = performance.now();
@@ -123,7 +133,7 @@ export function kick(b: RailBody | undefined | null, deg: number, delay = 0): vo
 /** Stop a body for good (its element is being removed). */
 export function release(b: RailBody): void {
   b.dead = true;
-  live.delete(b);
+  if (live.delete(b)) b.onSleep?.();
 }
 
 /** A body at rest, with slightly randomised pendulum constants so a rail never swings in lockstep. */

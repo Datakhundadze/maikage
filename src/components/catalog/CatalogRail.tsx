@@ -1,25 +1,36 @@
-import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, memo, startTransition, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
 import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES, CATEGORY_LABEL_BY_SLUG } from "@/lib/categories";
 import { kick, mkBody, release, setRailReducedMotion, wake, type RailBody } from "@/lib/railPhysics";
+import { bumpPrint, readyPrint, requestPrint } from "./printLoader";
 import "./catalogRail.css";
 
 // /designs default view — the showroom rail, ported from the rail prototype.
 //
-// One rail per category. Garments hang side-on; on a mouse, hovering one turns
-// it to face you (spring), shoves its neighbours (ripple), and brushing the
-// cursor through the rail pushes the clothes; scrolling a rail swings them by
-// inertia; rails drop in on first view. On touch the garment nearest the rail
-// centre turns; tapping another turns and centres it, tapping the turned one
-// opens it. Opening flies the garment to a "stage" with its details and the
-// order button.
+// One category = one heading + its rails. Garments hang side-on; on a mouse,
+// hovering one turns it to face you (spring), shoves its neighbours (ripple),
+// and brushing the cursor through the rail pushes the clothes; rails drop in on
+// first view. Desktop (fine pointer, > 700 px): no horizontal scrolling — a
+// category is split into as many stacked rails as needed so each fits the
+// width with room for one turned garment. Phone (≤ 700 px or touch): one
+// swipeable rail per category (scrollbar hidden, soft edge fades); scrolling
+// swings the clothes by inertia, the garment nearest the centre turns, tapping
+// another turns and centres it, tapping the turned one opens it. Opening flies
+// the garment to a "stage" with its details and the order button.
+//
+// Tees hang first, hoodies grouped at the end of a category.
 //
 // Each garment is a real <a href="/design/:slug"> so the catalog stays
 // crawlable; plain clicks are handled here (preventDefault) to turn/open.
-// Rails mount their garments only within ~1 viewport of the screen and load
-// the design images only once visible.
+// Garments mount within ~1 viewport; prints preload within ~1.5 viewports
+// (the first category immediately).
+//
+// Performance: hover/turn/swing never touch React state — bodies write
+// transforms straight to the DOM (no layout reads per frame), each rail row is
+// `contain: layout paint`, and the stage is its own component so opening it
+// doesn't re-render the rails.
 
 interface DesignRow {
   id: string;
@@ -87,15 +98,18 @@ const HOODIE_BY_COLOR: Record<string, MockupKey> = {
 
 /** The design's product row (embedded via the default_product_id FK), if any. */
 const productOf = (d: DesignRow) => (Array.isArray(d.product) ? d.product[0] : d.product) ?? null;
+const isHoodie = (d: DesignRow) => productOf(d)?.type === "Hoodie";
 
 function mockupFor(d: DesignRow): MockupKey {
   const color = (d.default_color || "").toLowerCase();
-  if (productOf(d)?.type === "Hoodie") return HOODIE_BY_COLOR[color] ?? "hoodie-black";
+  if (isHoodie(d)) return HOODIE_BY_COLOR[color] ?? "hoodie-black";
   return TEE_BY_COLOR[color] ?? "white";
 }
 
 const garmentSrc = (m: MockupKey, part: "front" | "side" | "shade") =>
   m.startsWith("hoodie-") ? `/showroom/${m}-${part}.webp` : `/showroom/tee-${m}-${part}.webp`;
+
+const printRaw = (d: DesignRow) => d.thumbnail_url || d.print_file_url;
 
 let scenePromise: Promise<ShowroomScene> | null = null;
 function loadScene(): Promise<ShowroomScene> {
@@ -106,113 +120,141 @@ function loadScene(): Promise<ShowroomScene> {
   return scenePromise;
 }
 
-// ── Print trimming ──────────────────────────────────────────────────────────
-// Designs often carry wide transparent margins; trimmed to their opaque
-// bounding box they sit right in the print box. Best effort: if the image
-// can't be read (CORS-tainted canvas) or anything else fails, the original
-// URL is used untouched.
-const trimCache = new Map<string, Promise<string>>();
+// ── Slot geometry (shared by the row split and the physics sizing) ──────────
+const DESKTOP_H = 300;
+const ROW_PAD_X = 52; // .cr-rail-wrap padding-inline on desktop
+const ITEM_GAP = 2; // .cr-rail-wrap gap
+const HOODIE_GAP = 14; // gap before the hoodie group (incl. ITEM_GAP)
 
-function trimTransparent(url: string): Promise<string> {
-  let p = trimCache.get(url);
-  if (!p) {
-    p = new Promise<string>((resolve) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.decoding = "async";
-      img.onerror = () => resolve(url);
-      img.onload = () => {
-        try {
-          const w = img.naturalWidth;
-          const h = img.naturalHeight;
-          if (!w || !h) return resolve(url);
-          const s = Math.min(1, 400 / Math.max(w, h));
-          const cw = Math.max(1, Math.round(w * s));
-          const ch = Math.max(1, Math.round(h * s));
-          const c = document.createElement("canvas");
-          c.width = cw;
-          c.height = ch;
-          const ctx = c.getContext("2d", { willReadFrequently: true });
-          if (!ctx) return resolve(url);
-          ctx.drawImage(img, 0, 0, cw, ch);
-          const data = ctx.getImageData(0, 0, cw, ch).data; // throws if tainted
-          let x0 = cw, y0 = ch, x1 = -1, y1 = -1;
-          for (let y = 0; y < ch; y++) {
-            for (let x = 0; x < cw; x++) {
-              if (data[(y * cw + x) * 4 + 3] > 20) {
-                if (x < x0) x0 = x;
-                if (x > x1) x1 = x;
-                if (y < y0) y0 = y;
-                if (y > y1) y1 = y;
-              }
-            }
-          }
-          if (x1 < 0 || (x0 === 0 && y0 === 0 && x1 === cw - 1 && y1 === ch - 1)) return resolve(url);
-          // crop the original at full resolution (capped at 800 px)
-          const sx = x0 / s, sy = y0 / s, sw = (x1 - x0 + 1) / s, sh = (y1 - y0 + 1) / s;
-          const o = Math.min(1, 800 / Math.max(sw, sh));
-          const out = document.createElement("canvas");
-          out.width = Math.max(1, Math.round(sw * o));
-          out.height = Math.max(1, Math.round(sh * o));
-          out.getContext("2d")?.drawImage(img, sx, sy, sw, sh, 0, 0, out.width, out.height);
-          resolve(out.toDataURL("image/png"));
-        } catch {
-          resolve(url);
-        }
-      };
-      img.src = url;
-    });
-    trimCache.set(url, p);
-  }
-  return p;
+interface Geometry {
+  /** Width of the side image. */
+  side: number;
+  /** Slot width while side-on: tees overlap (62 % of the side image), hoodies don't (+6 px). */
+  slot: number;
+  /** Width while turned to the front. */
+  front: number;
 }
 
-function useTrimmedPrint(url: string, enabled: boolean): string | null {
-  const [src, setSrc] = useState<string | null>(null);
+function geometry(scene: ShowroomScene, m: MockupKey, H: number): Geometry {
+  const dims = scene.garments[m] ?? scene.garments.white;
+  const [fw, fh] = dims.front;
+  const [sw, sh] = dims.side;
+  const side = Math.round((sw / sh) * H);
+  return {
+    side,
+    slot: m.startsWith("hoodie-") ? side + 6 : Math.round((sw / sh) * H * 0.62),
+    front: Math.round((fw / fh) * H),
+  };
+}
+
+// ── Prints ──────────────────────────────────────────────────────────────────
+function usePrint(raw: string, high = false): string | null {
+  const [url, setUrl] = useState<string | null>(() => readyPrint(raw) ?? null);
   useEffect(() => {
-    if (!enabled || !url) return;
     let alive = true;
-    trimTransparent(url).then((s) => alive && setSrc(s));
+    const ready = readyPrint(raw);
+    if (ready) {
+      setUrl(ready);
+      return;
+    }
+    requestPrint(raw, high).then((u) => alive && setUrl(u));
     return () => {
       alive = false;
     };
-  }, [url, enabled]);
-  return enabled ? src : null;
+  }, [raw, high]);
+  return url;
 }
 
-// ── Garment front (tee + print + shade) ─────────────────────────────────────
 interface FrontProps {
   design: DesignRow;
   scene: ShowroomScene;
-  loadPrint: boolean;
   className: string;
-  style?: React.CSSProperties;
+  high?: boolean;
 }
 
-const GarmentFront = forwardRef<HTMLDivElement, FrontProps>(function GarmentFront(
-  { design, scene, loadPrint, className, style },
-  ref,
-) {
-  const m = mockupFor(design);
-  const print = useTrimmedPrint(design.thumbnail_url || design.print_file_url, loadPrint);
-  const B = scene.garments[m]?.printBox ?? scene.printBox;
-  const box: React.CSSProperties = { left: `${B.l * 100}%`, top: `${B.t * 100}%`, width: `${B.w * 100}%`, height: `${B.h * 100}%` };
-  return (
-    <div ref={ref} className={`${className} ${MOCKUPS[m].light ? "cr-light" : "cr-dark"}`} style={style}>
-      <img src={garmentSrc(m, "front")} alt="" draggable={false} />
-      {print && <img className="cr-print" src={print} alt="" decoding="async" draggable={false} style={box} />}
-      <img className="cr-shade" src={garmentSrc(m, "shade")} alt="" draggable={false} style={box} />
-    </div>
-  );
-});
+/** Garment front: blank garment + print (fades in when ready) + shade map. */
+const GarmentFront = memo(
+  forwardRef<HTMLDivElement, FrontProps>(function GarmentFront({ design, scene, className, high }, ref) {
+    const m = mockupFor(design);
+    const print = usePrint(printRaw(design), high);
+    const B = scene.garments[m]?.printBox ?? scene.printBox;
+    const box: React.CSSProperties = { left: `${B.l * 100}%`, top: `${B.t * 100}%`, width: `${B.w * 100}%`, height: `${B.h * 100}%` };
+    return (
+      <div ref={ref} className={`${className} ${MOCKUPS[m].light ? "cr-light" : "cr-dark"}`}>
+        <img src={garmentSrc(m, "front")} alt="" draggable={false} />
+        {print && (
+          <img
+            className="cr-print"
+            src={print}
+            alt=""
+            decoding="async"
+            draggable={false}
+            style={box}
+            onLoad={(e) => e.currentTarget.classList.add("in")}
+          />
+        )}
+        <img className="cr-shade" src={garmentSrc(m, "shade")} alt="" draggable={false} style={box} />
+      </div>
+    );
+  }),
+);
 
-// ── Rails ───────────────────────────────────────────────────────────────────
+// ── Layout: categories → rows ───────────────────────────────────────────────
+interface Item {
+  d: DesignRow;
+  /** Position in the page-wide order (stage prev/next). */
+  index: number;
+  m: MockupKey;
+  hoodie: boolean;
+}
+
 interface Rack {
   slug: string;
   label: string;
-  items: DesignRow[];
+  items: Item[];
 }
 
+/** Rows of one category on desktop: each fits `usable` px with room for one turned garment. */
+function splitRows(items: Item[], scene: ShowroomScene, usable: number): Item[][] {
+  const g = items.map((it) => geometry(scene, it.m, DESKTOP_H));
+  const rowWidth = (from: number, to: number) => {
+    let w = 0;
+    let extra = 0;
+    for (let i = from; i < to; i++) {
+      if (i > from) w += !items[i - 1].hoodie && items[i].hoodie ? HOODIE_GAP : ITEM_GAP;
+      w += g[i].slot;
+      extra = Math.max(extra, Math.ceil(g[i].front * 1.06) - g[i].slot);
+    }
+    return w + extra;
+  };
+  // greedy: as many per row as fit
+  const greedy: [number, number][] = [];
+  let start = 0;
+  for (let i = 1; i <= items.length; i++) {
+    if (i === items.length || rowWidth(start, i + 1) > usable) {
+      greedy.push([start, i]);
+      start = i;
+    }
+  }
+  if (greedy.length <= 1) return greedy.map(([a, b]) => items.slice(a, b));
+  // then even the rows out (same count), so the last one isn't a stub
+  const n = greedy.length;
+  const target = rowWidth(0, items.length) / n;
+  const rows: [number, number][] = [];
+  start = 0;
+  for (let i = 1; i <= items.length; i++) {
+    const left = n - rows.length;
+    const mustBreak = i < items.length && (rowWidth(start, i + 1) > usable || (left > 1 && rowWidth(start, i + 1) > target * 1.02));
+    if (i === items.length || (mustBreak && left > 1)) {
+      rows.push([start, i]);
+      start = i;
+    }
+  }
+  const ok = rows.length === n && rows.every(([a, b]) => rowWidth(a, b) <= usable);
+  return (ok ? rows : greedy).map(([a, b]) => items.slice(a, b));
+}
+
+// ── Rails ───────────────────────────────────────────────────────────────────
 interface RailApi {
   setOn: (g: HTMLAnchorElement | null) => void;
   centre: (g: HTMLAnchorElement, smooth: boolean) => void;
@@ -225,93 +267,75 @@ interface GarmentHandle {
   rail: RailApi;
 }
 
+type Registry = Map<number, GarmentHandle>;
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-interface RailSectionProps {
-  rack: Rack;
-  start: number;
+interface RowProps {
+  items: Item[];
   scene: ShowroomScene;
-  scrollRoot: HTMLElement | null;
+  desktop: boolean;
   fine: boolean;
   reduce: boolean;
-  registry: Map<number, GarmentHandle>;
+  /** Section is within ~1 viewport (garments mounted) / has been seen (drop in). */
+  near: boolean;
+  seen: boolean;
+  /** Stagger offset for the entrance drop (garments before this row in the section). */
+  dropOffset: number;
+  registry: Registry;
   onOpen: (index: number, el: HTMLAnchorElement) => void;
 }
 
-function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, onOpen }: RailSectionProps) {
-  const sectionRef = useRef<HTMLElement>(null);
+const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, near, seen, dropOffset, registry, onOpen }: RowProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const garmentEls = useRef<(HTMLAnchorElement | null)[]>([]);
   const bodiesRef = useRef<RailBody[]>([]);
   const railRef = useRef<RailApi | null>(null);
   const droppedRef = useRef(false);
-  const onOpenRef = useRef(onOpen);
-  const [near, setNear] = useState(false);
-  const [seen, setSeen] = useState(false);
-
-  useEffect(() => {
-    onOpenRef.current = onOpen;
-  }, [onOpen]);
-
-  // Mount garments within ~1 viewport; load images once actually visible.
-  useEffect(() => {
-    const section = sectionRef.current;
-    const track = trackRef.current;
-    if (!section || !track || !scrollRoot) return;
-    const nearIo = new IntersectionObserver(([e]) => setNear(e.isIntersecting), {
-      root: scrollRoot,
-      rootMargin: "100% 0px",
-    });
-    const seenIo = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) {
-          setSeen(true);
-          seenIo.disconnect();
-        }
-      },
-      { root: scrollRoot, threshold: 0.2 },
-    );
-    nearIo.observe(section);
-    seenIo.observe(track);
-    return () => {
-      nearIo.disconnect();
-      seenIo.disconnect();
-    };
-  }, [scrollRoot]);
 
   // Bodies, sizing and the rail's interactions, while the garments are mounted.
   useLayoutEffect(() => {
     const track = trackRef.current;
     if (!near || !track) return;
-    const els = garmentEls.current.slice(0, rack.items.length).filter((g): g is HTMLAnchorElement => !!g);
+    const els = garmentEls.current.slice(0, items.length).filter((g): g is HTMLAnchorElement => !!g);
+    const index = new Map<HTMLAnchorElement, number>(els.map((g, j) => [g, j]));
     const timers: number[] = [];
     const later = (fn: () => void, ms: number) => timers.push(window.setTimeout(fn, ms));
 
-    const sizes: { swW: number; fwW: number }[] = [];
+    // cached per garment: the nodes it writes to and its widths
+    const parts = els.map((g) => ({
+      sw: g.querySelector<HTMLElement>(".cr-swing")!,
+      sd: g.querySelector<HTMLElement>(".cr-side")!,
+      fr: g.querySelector<HTMLElement>(".cr-front")!,
+      swW: 0,
+      fwW: 0,
+    }));
     const bodies = els.map((g, j) => {
-      const sw = g.querySelector<HTMLElement>(".cr-swing")!;
-      const sd = g.querySelector<HTMLElement>(".cr-side")!;
-      const fr = g.querySelector<HTMLElement>(".cr-front")!;
-      sizes[j] = { swW: 0, fwW: 0 };
+      const P = parts[j];
       const b = mkBody({
         render(t: number) {
-          const { swW, fwW } = sizes[j];
           const p = Math.max(0, b.p);
           const q = Math.min(p, 1);
-          g.style.width = (swW + (fwW - swW) * Math.min(p, 1.06)).toFixed(1) + "px";
+          g.style.width = (P.swW + (P.fwW - P.swW) * Math.min(p, 1.06)).toFixed(1) + "px";
           const ang = p * 180;
           if (ang < 90) {
-            sd.style.opacity = "1";
-            fr.style.opacity = "0";
-            sd.style.transform = `translateX(-50%) rotateY(${ang.toFixed(2)}deg)`;
+            P.sd.style.opacity = "1";
+            P.fr.style.opacity = "0";
+            P.sd.style.transform = `translateX(-50%) rotateY(${ang.toFixed(2)}deg)`;
           } else {
-            sd.style.opacity = "0";
-            fr.style.opacity = "1";
-            fr.style.transform = `translateX(-50%) translateY(${(7 * q).toFixed(2)}px) scale(${(1 + 0.08 * Math.min(p, 1.15)).toFixed(4)}) rotateY(${(ang - 180).toFixed(2)}deg)`;
+            P.sd.style.opacity = "0";
+            P.fr.style.opacity = "1";
+            P.fr.style.transform = `translateX(-50%) translateY(${(7 * q).toFixed(2)}px) scale(${(1 + 0.08 * Math.min(p, 1.15)).toFixed(4)}) rotateY(${(ang - 180).toFixed(2)}deg)`;
           }
           const lift = -10 * Math.sin(Math.PI * clamp(b.p, 0, 1));
-          sw.style.transform = `translateY(${(b.y + lift).toFixed(2)}px) rotate(${b.th.toFixed(3)}deg)`;
-          sw.style.opacity = b.hold && t < b.hold ? "0" : "1";
+          P.sw.style.transform = `translateY(${(b.y + lift).toFixed(2)}px) rotate(${b.th.toFixed(3)}deg)`;
+          P.sw.style.opacity = b.hold && t < b.hold ? "0" : "1";
+        },
+        // compositor layers only while moving
+        onWake: () => {
+          P.sw.style.willChange = "transform";
+        },
+        onSleep: () => {
+          P.sw.style.willChange = "";
         },
       });
       return b;
@@ -319,19 +343,23 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
     bodiesRef.current = bodies;
 
     const sizeAll = () => {
-      const H = parseFloat(getComputedStyle(track).getPropertyValue("--H")) || 300;
+      const H = parseFloat(getComputedStyle(track).getPropertyValue("--H")) || DESKTOP_H;
       els.forEach((g, j) => {
-        const dims = scene.garments[g.dataset.m ?? "white"] ?? scene.garments.white;
-        const [fw, fh] = dims.front;
-        const [sw, sh] = dims.side;
-        sizes[j] = { swW: Math.round((sw / sh) * H * 0.62), fwW: Math.round((fw / fh) * H) };
-        g.querySelector<HTMLElement>(".cr-side")!.style.width = Math.round((sw / sh) * H) + "px";
-        g.querySelector<HTMLElement>(".cr-front")!.style.width = sizes[j].fwW + "px";
+        const geo = geometry(scene, items[j].m, H);
+        parts[j].swW = geo.slot;
+        parts[j].fwW = geo.front;
+        parts[j].sd.style.width = geo.side + "px";
+        parts[j].fr.style.width = geo.front + "px";
         bodies[j].render(0);
       });
     };
     sizeAll();
-    window.addEventListener("resize", sizeAll);
+    let resizeTimer = 0;
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(sizeAll, 150);
+    };
+    window.addEventListener("resize", onResize);
 
     // turning one garment: it springs round, its neighbours get shoved and swing
     let onEl: HTMLAnchorElement | null = null;
@@ -340,7 +368,7 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
       if (prev === g) return;
       if (prev) {
         prev.classList.remove("on");
-        const pb = bodies[els.indexOf(prev)];
+        const pb = bodies[index.get(prev) ?? -1];
         if (pb) {
           pb.pt = 0;
           wake(pb);
@@ -351,9 +379,12 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
       track.classList.toggle("has-on", !!g);
       if (!g) return;
       g.classList.add("on");
-      const i = els.indexOf(g);
+      const i = index.get(g) ?? -1;
       const b = bodies[i];
       if (!b) return;
+      // its print is needed now
+      const raw = g.dataset.print;
+      if (raw) bumpPrint(raw);
       b.pt = 1;
       wake(b);
       bodies.forEach((x, j) => {
@@ -370,43 +401,49 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
     };
     const rail: RailApi = { setOn, centre, track };
     railRef.current = rail;
-    els.forEach((el, j) => registry.set(start + j, { el, body: bodies[j], rail }));
-
-    // inertia: the rail moves, the garments lag behind and swing back when it stops
-    let last = track.scrollLeft;
-    let lt = performance.now();
-    let v = 0;
-    let stopTimer = 0;
-    const shove = (dv: number) => bodies.forEach((b) => kick(b, clamp(-dv * 14 * (0.8 + Math.random() * 0.4), -45, 45)));
-    const onScroll = () => {
-      const now = performance.now();
-      const nv = (track.scrollLeft - last) / Math.max(8, now - lt);
-      last = track.scrollLeft;
-      lt = now;
-      if (Math.abs(nv - v) > 0.15) {
-        shove(nv - v);
-        v = nv;
-      }
-      window.clearTimeout(stopTimer);
-      stopTimer = window.setTimeout(() => {
-        shove(-v);
-        v = 0;
-      }, 90);
-    };
-    track.addEventListener("scroll", onScroll, { passive: true });
+    els.forEach((el, j) => registry.set(items[j].index, { el, body: bodies[j], rail }));
 
     const cleanups: (() => void)[] = [];
+    if (!desktop) {
+      // inertia: the rail moves, the garments lag behind and swing back when it stops
+      let last = track.scrollLeft;
+      let lt = performance.now();
+      let v = 0;
+      let stopTimer = 0;
+      const shove = (dv: number) => bodies.forEach((b) => kick(b, clamp(-dv * 14 * (0.8 + Math.random() * 0.4), -45, 45)));
+      const onScroll = () => {
+        const now = performance.now();
+        const nv = (track.scrollLeft - last) / Math.max(8, now - lt);
+        last = track.scrollLeft;
+        lt = now;
+        if (Math.abs(nv - v) > 0.15) {
+          shove(nv - v);
+          v = nv;
+        }
+        window.clearTimeout(stopTimer);
+        stopTimer = window.setTimeout(() => {
+          shove(-v);
+          v = 0;
+        }, 90);
+      };
+      track.addEventListener("scroll", onScroll, { passive: true });
+      cleanups.push(() => {
+        track.removeEventListener("scroll", onScroll);
+        window.clearTimeout(stopTimer);
+      });
+    }
     if (fine) {
+      const garmentOf = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLAnchorElement>(".cr-g") : null);
       const onOver = (e: PointerEvent) => {
-        const g = (e.target as Element).closest<HTMLAnchorElement>(".cr-g");
-        if (g) setOn(g);
+        const g = garmentOf(e.target);
+        if (g && index.has(g)) setOn(g);
       };
       const onLeave = () => setOn(null);
       // brushing: running the cursor through the rail pushes the clothes it passes
       const onMove = (e: PointerEvent) => {
-        const g = (e.target as Element).closest<HTMLAnchorElement>(".cr-g");
-        if (!g || !e.movementX) return;
-        const i = els.indexOf(g);
+        if (!e.movementX) return;
+        const i = index.get(garmentOf(e.target) as HTMLAnchorElement) ?? -1;
+        if (i < 0) return;
         const f = clamp(-e.movementX * 1.6, -18, 18);
         kick(bodies[i], f);
         kick(bodies[i - 1], f * 0.45);
@@ -421,21 +458,20 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
         track.removeEventListener("pointermove", onMove);
       });
     } else {
-      // touch: the garment nearest the rail centre turns
+      // touch: the garment nearest the rail centre turns (centres from cached offsets)
       let pickTimer = 0;
       const pick = () => {
         if (performance.now() < autoUntil) return;
-        const c = track.getBoundingClientRect().left + track.clientWidth / 2;
+        const c = track.scrollLeft + track.clientWidth / 2;
         let best: HTMLAnchorElement | null = null;
         let d = 1e9;
-        els.forEach((g) => {
-          const r = g.getBoundingClientRect();
-          const x = Math.abs(r.left + r.width / 2 - c);
+        for (const g of els) {
+          const x = Math.abs(g.offsetLeft + g.offsetWidth / 2 - c);
           if (x < d) {
             d = x;
             best = g;
           }
-        });
+        }
         setOn(best);
       };
       const onTouchScroll = () => {
@@ -459,17 +495,18 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
 
     return () => {
       timers.forEach((t) => window.clearTimeout(t));
-      window.clearTimeout(stopTimer);
-      window.removeEventListener("resize", sizeAll);
-      track.removeEventListener("scroll", onScroll);
+      window.clearTimeout(resizeTimer);
+      window.removeEventListener("resize", onResize);
       cleanups.forEach((f) => f());
       track.classList.remove("has-on");
       bodies.forEach(release);
-      els.forEach((_, j) => registry.delete(start + j));
+      items.forEach((it) => {
+        if (registry.get(it.index)?.rail === rail) registry.delete(it.index);
+      });
       bodiesRef.current = [];
       railRef.current = null;
     };
-  }, [near, fine, rack.items.length, scene, registry, start]);
+  }, [near, fine, desktop, items, scene, registry]);
 
   // entrance: garments drop onto the rail one after another and swing to rest
   useEffect(() => {
@@ -478,13 +515,13 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
     if (reduce) return;
     const t0 = performance.now();
     bodiesRef.current.forEach((b, j) => {
-      b.hold = t0 + j * 60;
+      b.hold = t0 + (dropOffset + j) * 60;
       b.y = -46;
       b.th = (Math.random() * 2 - 1) * 7;
       b.tv = (Math.random() * 2 - 1) * 20;
       wake(b);
     });
-  }, [near, seen, reduce]);
+  }, [near, seen, reduce, dropOffset]);
 
   const onGarmentClick = (e: React.MouseEvent<HTMLAnchorElement>, index: number) => {
     // modified clicks (new tab etc.) behave like the plain link they are
@@ -497,71 +534,358 @@ function RailSection({ rack, start, scene, scrollRoot, fine, reduce, registry, o
       window.setTimeout(() => rail.centre(g, true), 650);
       return;
     }
-    onOpenRef.current(index, g);
+    onOpen(index, g);
   };
 
   return (
-    <section ref={sectionRef} id={`cr-rail-${rack.slug}`} aria-label={rack.label}>
+    <div className={`cr-track${desktop ? " cr-track--fit" : " cr-track--swipe"}`} ref={trackRef}>
+      <div className="cr-rail-wrap">
+        <div className="cr-rail">
+          <img className="l" src="/showroom/rail-left.webp" alt="" />
+          <div className="m" />
+          <img className="r" src="/showroom/rail-right.webp" alt="" />
+        </div>
+        {near
+          ? items.map((it, j) => (
+              <a
+                key={it.d.id}
+                ref={(el) => {
+                  garmentEls.current[j] = el;
+                }}
+                href={`/design/${it.d.slug}`}
+                className={`cr-g${it.hoodie ? " cr-hoodie" : ""}${it.hoodie && j > 0 && !items[j - 1].hoodie ? " cr-hoodie-first" : ""}`}
+                data-i={it.index}
+                data-print={printRaw(it.d)}
+                aria-label={it.d.title_ka}
+                onClick={(e) => onGarmentClick(e, it.index)}
+                onFocus={fine ? (e) => railRef.current?.setOn(e.currentTarget) : undefined}
+              >
+                <div className="cr-swing">
+                  <div className="cr-face cr-side">
+                    <img src={garmentSrc(it.m, "side")} alt="" draggable={false} />
+                  </div>
+                  <GarmentFront design={it.d} scene={scene} className="cr-face cr-front" />
+                </div>
+              </a>
+            ))
+          : // far from view: plain links only, so the rail stays crawlable
+            items.map((it) => (
+              <a key={it.d.id} href={`/design/${it.d.slug}`} className="sr-only">
+                {it.d.title_ka}
+              </a>
+            ))}
+      </div>
+    </div>
+  );
+});
+
+interface SectionProps {
+  rack: Rack;
+  rows: Item[][];
+  first: boolean;
+  scene: ShowroomScene;
+  scrollRoot: HTMLElement | null;
+  desktop: boolean;
+  fine: boolean;
+  reduce: boolean;
+  registry: Registry;
+  onOpen: (index: number, el: HTMLAnchorElement) => void;
+}
+
+const CategorySection = memo(function CategorySection({ rack, rows, first, scene, scrollRoot, desktop, fine, reduce, registry, onOpen }: SectionProps) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const [near, setNear] = useState(false);
+  const [preload, setPreload] = useState(first);
+  const [seen, setSeen] = useState(false);
+
+  // mount within ~1 viewport, preload prints within ~1.5, drop in once 20 % visible
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section || !scrollRoot) return;
+    // a transition: mounting a rail's garments is time-sliced instead of one long task mid-scroll
+    const nearIo = new IntersectionObserver(([e]) => startTransition(() => setNear(e.isIntersecting)), {
+      root: scrollRoot,
+      rootMargin: "100% 0px",
+    });
+    const preIo = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setPreload(true);
+          preIo.disconnect();
+        }
+      },
+      { root: scrollRoot, rootMargin: "150% 0px" },
+    );
+    const seenIo = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setSeen(true);
+          seenIo.disconnect();
+        }
+      },
+      { root: scrollRoot, threshold: 0.2 },
+    );
+    nearIo.observe(section);
+    preIo.observe(section);
+    seenIo.observe(section);
+    return () => {
+      nearIo.disconnect();
+      preIo.disconnect();
+      seenIo.disconnect();
+    };
+  }, [scrollRoot]);
+
+  useEffect(() => {
+    if (preload) rack.items.forEach((it) => void requestPrint(printRaw(it.d)));
+  }, [preload, rack.items]);
+
+  let offset = 0;
+  return (
+    <section ref={sectionRef} id={`cr-rail-${rack.slug}`} aria-label={rack.label} className="cr-cat">
       <div className="cr-sign">
         <h2>{rack.label}</h2>
         <small>{rack.items.length} დიზაინი</small>
       </div>
-      <div className="cr-track" ref={trackRef}>
-        <div className="cr-rail-wrap">
-          <div className="cr-rail">
-            <img className="l" src="/showroom/rail-left.webp" alt="" />
-            <div className="m" />
-            <img className="r" src="/showroom/rail-right.webp" alt="" />
-          </div>
-          {near
-            ? rack.items.map((d, j) => {
-                const m = mockupFor(d);
-                return (
-                  <a
-                    key={d.id}
-                    ref={(el) => {
-                      garmentEls.current[j] = el;
-                    }}
-                    href={`/design/${d.slug}`}
-                    className="cr-g"
-                    data-i={start + j}
-                    data-m={m}
-                    aria-label={d.title_ka}
-                    onClick={(e) => onGarmentClick(e, start + j)}
-                    onFocus={fine ? (e) => railRef.current?.setOn(e.currentTarget) : undefined}
-                  >
-                    <div className="cr-swing">
-                      <div className="cr-face cr-side">
-                        <img src={garmentSrc(m, "side")} alt="" draggable={false} />
-                      </div>
-                      <GarmentFront design={d} scene={scene} loadPrint={seen} className="cr-face cr-front" />
-                    </div>
-                  </a>
-                );
-              })
-            : // far from view: plain links only, so the rail stays crawlable
-              rack.items.map((d) => (
-                <a key={d.id} href={`/design/${d.slug}`} className="sr-only">
-                  {d.title_ka}
-                </a>
-              ))}
-        </div>
+      <div className="cr-rows">
+        {rows.map((row) => {
+          const dropOffset = offset;
+          offset += row.length;
+          return (
+            <RailRow
+              key={row[0].d.id}
+              items={row}
+              scene={scene}
+              desktop={desktop}
+              fine={fine}
+              reduce={reduce}
+              near={near}
+              seen={seen}
+              dropOffset={dropOffset}
+              registry={registry}
+              onOpen={onOpen}
+            />
+          );
+        })}
       </div>
     </section>
   );
+});
+
+// ── Stage ───────────────────────────────────────────────────────────────────
+interface StageApi {
+  open: (index: number, el: HTMLAnchorElement) => void;
 }
 
-// ── Page ────────────────────────────────────────────────────────────────────
-export default function CatalogRail() {
+interface StageProps {
+  flat: { d: DesignRow; rack: string }[];
+  scene: ShowroomScene;
+  registry: Registry;
+  fine: boolean;
+  reduce: boolean;
+}
+
+const Stage = forwardRef<StageApi, StageProps>(function Stage({ flat, scene, registry, fine, reduce }, ref) {
   const { setMode } = useAppState();
+  const [cur, setCur] = useState<number | null>(null);
+  const [on, setOn] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const heroFaceRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const curRef = useRef<number | null>(null);
+  const pendingRef = useRef<{ kind: "open"; g: HTMLAnchorElement; wasOn: boolean } | { kind: "step"; d: number } | null>(null);
+  // the staged garment swings on its own hook too
+  const heroBody = useMemo(
+    () =>
+      mkBody({
+        k: 30,
+        c: 2.2,
+        render(this: RailBody) {
+          const f = heroFaceRef.current;
+          if (f) f.style.transform = `rotate(${this.th.toFixed(3)}deg)`;
+        },
+      }),
+    [],
+  );
+
+  /** FLIP "from" transform: the garment's front face relative to the hero box (one layout read). */
+  const fromTo = (g: HTMLAnchorElement): string | null => {
+    const front = g.querySelector(".cr-front");
+    const hero = heroRef.current;
+    if (!front || !hero) return null;
+    const a = front.getBoundingClientRect();
+    const b = hero.getBoundingClientRect();
+    if (!b.width) return null;
+    return `translate(${a.left - b.left}px,${a.top - b.top}px) scale(${a.width / b.width})`;
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      open(i, g) {
+        pendingRef.current = { kind: "open", g, wasOn: g.classList.contains("on") };
+        curRef.current = i;
+        setCur(i);
+      },
+    }),
+    [],
+  );
+
+  // after the stage (or the next design) has rendered: fly / slide the hero in
+  useLayoutEffect(() => {
+    const pending = pendingRef.current;
+    pendingRef.current = null;
+    const hero = heroRef.current;
+    if (!pending || !hero || cur === null) return;
+    if (pending.kind === "open") {
+      const from = pending.wasOn ? fromTo(pending.g) : null;
+      pending.g.classList.add("picked");
+      requestAnimationFrame(() => setOn(true));
+      if (!reduce && from) {
+        hero.animate(
+          [
+            { transform: from, transformOrigin: "0 0", opacity: 1 },
+            { transform: "none", transformOrigin: "0 0", opacity: 1 },
+          ],
+          { duration: 520, easing: "cubic-bezier(.16,1,.3,1)" },
+        );
+      } else if (!reduce) {
+        hero.animate([{ opacity: 0, transform: "scale(.96)" }, { opacity: 1, transform: "none" }], { duration: 260, easing: "ease-out" });
+      }
+      kick(heroBody, -26, 380);
+      closeRef.current?.focus({ preventScroll: true });
+    } else {
+      if (!reduce) {
+        hero.animate([{ opacity: 0, transform: `translateX(${pending.d * 40}px)` }, { opacity: 1, transform: "none" }], {
+          duration: 380,
+          easing: "cubic-bezier(.16,1,.3,1)",
+        });
+      }
+      kick(heroBody, pending.d * -34, 60);
+    }
+  }, [cur, reduce, heroBody]);
+
+  const close = useCallback(() => {
+    const i = curRef.current;
+    if (i === null) return;
+    curRef.current = null;
+    const h = registry.get(i);
+    setOn(false);
+    const done = () => {
+      setCur(null);
+      if (!h) return;
+      h.el.classList.remove("picked");
+      if (fine) h.rail.setOn(null);
+      kick(h.body, 30);
+      h.el.focus({ preventScroll: true });
+    };
+    const hero = heroRef.current;
+    const to = h && hero ? fromTo(h.el) : null;
+    if (reduce || !hero) done();
+    else
+      hero.animate(
+        to
+          ? [
+              { transform: "none", transformOrigin: "0 0", opacity: 1 },
+              { transform: to, transformOrigin: "0 0", opacity: 1 },
+            ]
+          : [{ opacity: 1 }, { opacity: 0 }],
+        { duration: 360, easing: "cubic-bezier(.5,0,.2,1)" },
+      ).onfinish = done;
+  }, [registry, fine, reduce]);
+
+  const step = useCallback(
+    (d: number) => {
+      const i = curRef.current;
+      if (i === null || flat.length === 0) return;
+      registry.get(i)?.el.classList.remove("picked");
+      const next = (i + d + flat.length) % flat.length;
+      const h = registry.get(next);
+      if (h) {
+        h.rail.setOn(h.el);
+        h.el.classList.add("picked");
+        if (h.rail.track.scrollWidth > h.rail.track.clientWidth) {
+          h.rail.track.scrollTo({ left: h.el.offsetLeft + h.el.offsetWidth / 2 - h.rail.track.clientWidth / 2 });
+        }
+      }
+      pendingRef.current = { kind: "step", d };
+      curRef.current = next;
+      setCur(next);
+    },
+    [flat.length, registry],
+  );
+
+  useEffect(() => {
+    if (cur === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+      if (e.key === "ArrowRight") step(1);
+      if (e.key === "ArrowLeft") step(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cur, close, step]);
+
+  const staged = cur !== null ? flat[cur] : null;
+  if (!staged) return null;
+  const m: MockupKey = mockupFor(staged.d);
+  const dims = scene.garments[m]?.front ?? [648, 950];
+  return (
+    <div
+      className={`cr-stage${on ? " on" : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={staged.d.title_ka}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close();
+      }}
+    >
+      <button ref={closeRef} type="button" className="cr-close" aria-label="დახურვა" onClick={close}>
+        დახურვა ✕
+      </button>
+      <div ref={heroRef} className="cr-hero" style={{ "--ar": `${dims[0]}/${dims[1]}` } as React.CSSProperties}>
+        <GarmentFront ref={heroFaceRef} key={staged.d.id} design={staged.d} scene={scene} className="cr-face cr-front" high />
+      </div>
+      <div className="cr-panel">
+        <div className="cr-tag">{staged.rack}</div>
+        <h3>{staged.d.title_ka}</h3>
+        <div className="cr-meta">
+          <span className="cr-dot" style={{ background: MOCKUPS[m].dot }} />
+          <span>
+            {productOf(staged.d)?.display_name_ka || "GILDAN მაისური"} · {MOCKUPS[m].label_ka}
+          </span>
+        </div>
+        <Link className="cr-cta" to={`/design/${staged.d.slug}`} onClick={() => setMode("simple")}>
+          არჩევა და შეკვეთა →
+        </Link>
+        <div className="cr-nav">
+          <button type="button" onClick={() => step(-1)}>
+            ← წინა
+          </button>
+          <button type="button" onClick={() => step(1)}>
+            შემდეგი →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// ── Page ────────────────────────────────────────────────────────────────────
+const isDesktopNow = (fine: boolean) => fine && window.innerWidth > 700;
+
+export default function CatalogRail() {
   const [searchParams] = useSearchParams();
   const [designs, setDesigns] = useState<DesignRow[] | null>(null);
   const [scene, setScene] = useState<ShowroomScene | null>(null);
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
-  const registry = useMemo(() => new Map<number, GarmentHandle>(), []);
+  const [wall, setWall] = useState<HTMLElement | null>(null);
+  const [wallWidth, setWallWidth] = useState(0);
+  const registry = useMemo<Registry>(() => new Map(), []);
+  const stageRef = useRef<StageApi>(null);
 
   const [reduce] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [fine] = useState(() => window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+  const [desktop, setDesktop] = useState(() => isDesktopNow(fine));
   useEffect(() => {
     setRailReducedMotion(reduce);
   }, [reduce]);
@@ -589,7 +913,28 @@ export default function CatalogRail() {
     };
   }, []);
 
-  // One rail per category, in CATEGORIES order; unknown categories after them.
+  // Desktop/phone mode and the wall width (rows are re-split on resize, debounced).
+  useEffect(() => {
+    if (!wall) return;
+    let timer = 0;
+    const measure = () => {
+      setDesktop(isDesktopNow(fine));
+      setWallWidth(wall.clientWidth);
+    };
+    measure();
+    const ro = new ResizeObserver(() => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(measure, 150);
+    });
+    ro.observe(wall);
+    return () => {
+      ro.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [wall, fine]);
+
+  // One category per rack, in CATEGORIES order (unknown categories after them);
+  // within a category tees first, hoodies grouped at the end.
   const racks = useMemo<Rack[]>(() => {
     if (!designs) return [];
     const by = new Map<string, DesignRow[]>();
@@ -599,20 +944,28 @@ export default function CatalogRail() {
       by.get(k)!.push(d);
     }
     const order = [...CATEGORIES.map((c) => c.slug as string), ...[...by.keys()].filter((k) => !CATEGORY_LABEL_BY_SLUG[k])];
-    return order.filter((k) => by.has(k)).map((k) => ({ slug: k, label: CATEGORY_LABEL_BY_SLUG[k] ?? k, items: by.get(k)! }));
+    let index = 0;
+    return order
+      .filter((k) => by.has(k))
+      .map((k) => {
+        const ds = by.get(k)!;
+        const sorted = [...ds.filter((d) => !isHoodie(d)), ...ds.filter(isHoodie)];
+        return {
+          slug: k,
+          label: CATEGORY_LABEL_BY_SLUG[k] ?? k,
+          items: sorted.map((d) => ({ d, index: index++, m: mockupFor(d), hoodie: isHoodie(d) })),
+        };
+      });
   }, [designs]);
 
-  const flat = useMemo(() => racks.flatMap((r) => r.items.map((d) => ({ d, rack: r.label }))), [racks]);
-  const starts = useMemo(() => {
-    let n = 0;
-    return racks.map((r) => {
-      const s = n;
-      n += r.items.length;
-      return s;
-    });
-  }, [racks]);
+  const flat = useMemo(() => racks.flatMap((r) => r.items.map((it) => ({ d: it.d, rack: r.label }))), [racks]);
 
-  // ?category=<slug>: scroll to that rail once the rails are laid out
+  const rowsByRack = useMemo(() => {
+    if (!scene) return [];
+    return racks.map((r) => (desktop && wallWidth > 0 ? splitRows(r.items, scene, wallWidth - 2 * ROW_PAD_X) : [r.items]));
+  }, [racks, scene, desktop, wallWidth]);
+
+  // ?category=<slug>: scroll to that category once the rails are laid out
   const wantedCategory = searchParams.get("category");
   useEffect(() => {
     if (!wantedCategory || !scrollRoot || !scene || racks.length === 0) return;
@@ -623,131 +976,7 @@ export default function CatalogRail() {
     }
   }, [wantedCategory, scrollRoot, scene, racks]);
 
-  // ── Stage ──────────────────────────────────────────────────────────────
-  const [cur, setCur] = useState<number | null>(null);
-  const [stageOn, setStageOn] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const heroFaceRef = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const curRef = useRef<number | null>(null);
-  const pendingRef = useRef<{ kind: "open"; g: HTMLAnchorElement; wasOn: boolean } | { kind: "step"; d: number } | null>(null);
-  // the staged garment swings on its own hook too
-  const heroBody = useMemo(
-    () =>
-      mkBody({
-        k: 30,
-        c: 2.2,
-        render(this: RailBody) {
-          const f = heroFaceRef.current;
-          if (f) f.style.transform = `rotate(${this.th.toFixed(3)}deg)`;
-        },
-      }),
-    [],
-  );
-
-  const fromTo = (g: HTMLAnchorElement): string | null => {
-    const front = g.querySelector(".cr-front");
-    const hero = heroRef.current;
-    if (!front || !hero) return null;
-    const a = front.getBoundingClientRect();
-    const b = hero.getBoundingClientRect();
-    if (!b.width) return null;
-    return `translate(${a.left - b.left}px,${a.top - b.top}px) scale(${a.width / b.width})`;
-  };
-
-  const open = useCallback((i: number, g: HTMLAnchorElement) => {
-    pendingRef.current = { kind: "open", g, wasOn: g.classList.contains("on") };
-    curRef.current = i;
-    setCur(i);
-  }, []);
-
-  // after the stage (or the next design) has rendered: fly / slide the hero in
-  useLayoutEffect(() => {
-    const pending = pendingRef.current;
-    pendingRef.current = null;
-    const hero = heroRef.current;
-    if (!pending || !hero || cur === null) return;
-    if (pending.kind === "open") {
-      const from = pending.wasOn ? fromTo(pending.g) : null;
-      pending.g.classList.add("picked");
-      requestAnimationFrame(() => setStageOn(true));
-      if (!reduce && from) {
-        hero.animate([{ transform: from, transformOrigin: "0 0" }, { transform: "none", transformOrigin: "0 0" }], {
-          duration: 620,
-          easing: "cubic-bezier(.16,1,.3,1)",
-        });
-      }
-      kick(heroBody, -26, 380);
-      closeRef.current?.focus({ preventScroll: true });
-    } else {
-      if (!reduce) {
-        hero.animate([{ opacity: 0, transform: `translateX(${pending.d * 40}px)` }, { opacity: 1, transform: "none" }], {
-          duration: 420,
-          easing: "cubic-bezier(.16,1,.3,1)",
-        });
-      }
-      kick(heroBody, pending.d * -34, 60);
-    }
-  }, [cur, reduce, heroBody]);
-
-  const close = useCallback(() => {
-    const i = curRef.current;
-    if (i === null) return;
-    curRef.current = null;
-    const h = registry.get(i);
-    setStageOn(false);
-    const done = () => {
-      setCur(null);
-      if (!h) return;
-      h.el.classList.remove("picked");
-      if (fine) h.rail.setOn(null);
-      kick(h.body, 30);
-      h.el.focus({ preventScroll: true });
-    };
-    const hero = heroRef.current;
-    const to = h && hero ? fromTo(h.el) : null;
-    if (reduce || !hero || !to) done();
-    else
-      hero.animate([{ transform: "none", transformOrigin: "0 0" }, { transform: to, transformOrigin: "0 0" }], {
-        duration: 420,
-        easing: "cubic-bezier(.5,0,.2,1)",
-      }).onfinish = done;
-  }, [registry, fine, reduce]);
-
-  const step = useCallback(
-    (d: number) => {
-      const i = curRef.current;
-      if (i === null || flat.length === 0) return;
-      registry.get(i)?.el.classList.remove("picked");
-      const next = (i + d + flat.length) % flat.length;
-      const h = registry.get(next);
-      if (h) {
-        h.rail.setOn(h.el);
-        h.el.classList.add("picked");
-        h.rail.track.scrollTo({ left: h.el.offsetLeft + h.el.offsetWidth / 2 - h.rail.track.clientWidth / 2 });
-      }
-      pendingRef.current = { kind: "step", d };
-      curRef.current = next;
-      setCur(next);
-    },
-    [flat.length, registry],
-  );
-
-  useEffect(() => {
-    if (cur === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-      if (e.key === "ArrowRight") step(1);
-      if (e.key === "ArrowLeft") step(-1);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [cur, close, step]);
-
-  const markSimpleMode = () => setMode("simple");
-  const staged = cur !== null ? flat[cur] : null;
-  const stagedMockup: MockupKey = staged ? mockupFor(staged.d) : "white";
-  const stagedDims = scene?.garments[stagedMockup]?.front ?? [648, 950];
+  const open = useCallback((i: number, g: HTMLAnchorElement) => stageRef.current?.open(i, g), []);
 
   return (
     <div ref={setScrollRoot} className="flex-1 overflow-y-auto cr-scene">
@@ -765,14 +994,16 @@ export default function CatalogRail() {
       ) : racks.length === 0 ? (
         <p className="cr-status">დიზაინები ვერ მოიძებნა</p>
       ) : (
-        <main className="cr-wall">
+        <main ref={setWall} className="cr-wall">
           {racks.map((r, ri) => (
-            <RailSection
+            <CategorySection
               key={r.slug}
               rack={r}
-              start={starts[ri]}
+              rows={rowsByRack[ri] ?? [r.items]}
+              first={ri === 0}
               scene={scene}
               scrollRoot={scrollRoot}
+              desktop={desktop}
               fine={fine}
               reduce={reduce}
               registry={registry}
@@ -782,45 +1013,7 @@ export default function CatalogRail() {
         </main>
       )}
 
-      {staged && scene && (
-        <div
-          className={`cr-stage${stageOn ? " on" : ""}`}
-          role="dialog"
-          aria-modal="true"
-          aria-label={staged.d.title_ka}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) close();
-          }}
-        >
-          <button ref={closeRef} type="button" className="cr-close" aria-label="დახურვა" onClick={close}>
-            დახურვა ✕
-          </button>
-          <div ref={heroRef} className="cr-hero" style={{ "--ar": `${stagedDims[0]}/${stagedDims[1]}` } as React.CSSProperties}>
-            <GarmentFront ref={heroFaceRef} key={staged.d.id} design={staged.d} scene={scene} loadPrint className="cr-face cr-front" />
-          </div>
-          <div className="cr-panel">
-            <div className="cr-tag">{staged.rack}</div>
-            <h3>{staged.d.title_ka}</h3>
-            <div className="cr-meta">
-              <span className="cr-dot" style={{ background: MOCKUPS[stagedMockup].dot }} />
-              <span>
-                {(staged && productOf(staged.d)?.display_name_ka) || "GILDAN მაისური"} · {MOCKUPS[stagedMockup].label_ka}
-              </span>
-            </div>
-            <Link className="cr-cta" to={`/design/${staged.d.slug}`} onClick={markSimpleMode}>
-              არჩევა და შეკვეთა →
-            </Link>
-            <div className="cr-nav">
-              <button type="button" onClick={() => step(-1)}>
-                ← წინა
-              </button>
-              <button type="button" onClick={() => step(1)}>
-                შემდეგი →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {scene && <Stage ref={stageRef} flat={flat} scene={scene} registry={registry} fine={fine} reduce={reduce} />}
     </div>
   );
 }
