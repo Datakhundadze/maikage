@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { CHAT_SESSION_PARAM } from "@/lib/callbacks";
 
 // FAQ chatbot history. Sessions (newest activity first, paginated) via the
 // admin_list_chat_sessions RPC; expanding a session loads its messages via
@@ -54,6 +55,11 @@ function whoLabel(s: SessionRow): string {
   return s.user_email || (s.user_id ? "—" : "სტუმარი");
 }
 
+/** A conversation opened by link that is not on the loaded page — dates unknown. */
+function isStub(s: SessionRow): boolean {
+  return !s.last_at;
+}
+
 export default function AdminChatHistory() {
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +94,28 @@ export default function AdminChatHistory() {
   }, []);
 
   useEffect(() => { fetchPage(0); }, [fetchPage]);
+
+  // Deep link from the დარეკვის მოთხოვნები tab: ?session=<id> opens that
+  // conversation once the first page has loaded. A session older than the
+  // loaded page gets a placeholder row at the top so it can still be read.
+  const [focusId] = useState<string | null>(() => {
+    try { return new URLSearchParams(window.location.search).get(CHAT_SESSION_PARAM); } catch { return null; }
+  });
+  const focusDone = useRef(false);
+  useEffect(() => {
+    if (!focusId || focusDone.current || loading) return;
+    focusDone.current = true;
+    if (!rows.some((r) => r.session_id === focusId)) {
+      setRows((prev) => [
+        { session_id: focusId, user_id: null, user_email: null, first_at: "", last_at: "", message_count: 0, last_user_snippet: null },
+        ...prev,
+      ]);
+    }
+    void toggle(focusId);
+    requestAnimationFrame(() => document.getElementById(`chat-session-${focusId}`)?.scrollIntoView({ block: "start" }));
+    // toggle is a plain function re-created each render; running once is the point.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, loading, rows]);
 
   const toggle = async (sessionId: string) => {
     if (expanded === sessionId) { setExpanded(null); return; }
@@ -144,7 +172,7 @@ export default function AdminChatHistory() {
           const isOpen = expanded === s.session_id;
           const msgs = messages[s.session_id];
           return (
-            <div key={s.session_id} className="rounded-lg border border-border bg-card overflow-hidden">
+            <div key={s.session_id} id={`chat-session-${s.session_id}`} className="rounded-lg border border-border bg-card overflow-hidden">
               <button
                 type="button"
                 onClick={() => toggle(s.session_id)}
@@ -153,11 +181,11 @@ export default function AdminChatHistory() {
                 {isOpen ? <ChevronDown className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />}
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium truncate">{whoLabel(s)}</span>
-                    <span className="text-xs text-muted-foreground shrink-0">{format(new Date(s.last_at), "dd.MM.yy HH:mm")}</span>
+                    <span className="text-sm font-medium truncate">{isStub(s) ? "დარეკვის მოთხოვნის ჩატი" : whoLabel(s)}</span>
+                    {!isStub(s) && <span className="text-xs text-muted-foreground shrink-0">{format(new Date(s.last_at), "dd.MM.yy HH:mm")}</span>}
                   </div>
                   {s.last_user_snippet && <p className="text-xs text-muted-foreground line-clamp-2">{s.last_user_snippet}</p>}
-                  <Badge variant="outline" className="text-[10px]">{s.message_count} შეტყობინება</Badge>
+                  {!isStub(s) && <Badge variant="outline" className="text-[10px]">{s.message_count} შეტყობინება</Badge>}
                 </div>
               </button>
 
