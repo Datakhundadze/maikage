@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare, MessageCircle, Newspaper, Inbox } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare, MessageCircle, Newspaper, Inbox, PhoneCall } from "lucide-react";
 // Each admin tab is large (full-page CRUD UIs with their own forms,
 // tables, and supabase fetchers). Lazy-load them so visiting /admin
 // only ships the active tab's bundle — switching tabs fetches the
@@ -25,6 +25,7 @@ const AdminBlog = lazy(() => import("@/components/admin/AdminBlog"));
 const AdminFeedback = lazy(() => import("@/components/admin/AdminFeedback"));
 const AdminChatHistory = lazy(() => import("@/components/admin/AdminChatHistory"));
 const AdminSocialInbox = lazy(() => import("@/components/admin/AdminSocialInbox"));
+const AdminCallbacks = lazy(() => import("@/components/admin/AdminCallbacks"));
 const AiAgent = lazy(() => import("@/components/admin/AiAgent"));
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
@@ -32,7 +33,7 @@ import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
 
-type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "blog" | "feedback" | "chat-history" | "social-inbox";
+type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "blog" | "feedback" | "chat-history" | "social-inbox" | "callbacks";
 type Mode = "login" | "signup" | "forgot";
 
 // Cost control — flip to true to re-enable the AI Trend Agent tab. The tab
@@ -60,6 +61,7 @@ const ALL_TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "feedback", label: "შენიშვნები", icon: MessageSquare },
   { id: "chat-history", label: "ჩატის ისტორია", icon: MessageCircle },
   { id: "social-inbox", label: "შეტყობინებები", icon: Inbox },
+  { id: "callbacks", label: "დარეკვის მოთხოვნები", icon: PhoneCall },
 ];
 
 const TABS = ALL_TABS.filter((t) => t.id !== "ai-agent" || AI_AGENT_ENABLED);
@@ -67,7 +69,7 @@ const TABS = ALL_TABS.filter((t) => t.id !== "ai-agent" || AI_AGENT_ENABLED);
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);
   const v = params.get("tab");
-  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "blog" || v === "feedback" || v === "chat-history" || v === "social-inbox") return v;
+  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "blog" || v === "feedback" || v === "chat-history" || v === "social-inbox" || v === "callbacks") return v;
   return "dashboard";
 }
 
@@ -99,9 +101,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>(() => readTabFromUrl());
   const { counts: badgeCounts, markSeen: markTabSeen } = useAdminTabBadges();
 
-  // The 5 tabs with badges. Other tabs (dashboard, analytics) are
+  // The tabs with badges. Other tabs (dashboard, analytics) are
   // aggregate views with no "new items" semantic and stay unchanged.
-  const BADGE_TABS = new Set<Tab>(["orders", "users", "designs", "catalog", "corporate"]);
+  const BADGE_TABS = new Set<Tab>(["orders", "users", "designs", "catalog", "corporate", "callbacks"]);
   const isBadgeTab = (t: Tab): t is BadgeTabId => BADGE_TABS.has(t);
 
   const handleTabClick = (tab: Tab) => {
@@ -434,6 +436,7 @@ export default function AdminPage() {
           {activeTab === "feedback" && <AdminFeedback />}
           {activeTab === "chat-history" && <AdminChatHistory />}
           {activeTab === "social-inbox" && <AdminSocialInbox />}
+          {activeTab === "callbacks" && <AdminCallbacks />}
         </Suspense>
       </div>
     </div>

@@ -2,6 +2,15 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactPii } from "./redactPii.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
+import {
+  CALLBACK_DAY_LIMIT,
+  CALLBACK_LOG_MARKER,
+  type CallbackDeps,
+  handleCallbackRequest,
+  hasCallbackBlock,
+  sendViaResend,
+  stripCallbackBlock,
+} from "./callbackRequest.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -103,6 +112,22 @@ Instead say we don't offer it, or that they should contact us to check. In parti
 claim we have official/licensed sports kits (national team, football clubs, etc.) — we don't.
 When unsure, under-promise and point to contact; a false "yes" causes real harm.
 
+⚠️ CRITICAL — STOCK / მარაგი. You do NOT see our stock.
+EN: Never say that a specific model, colour or size is in stock, available, "we have it", or
+out of stock — not even when it is listed in this document: the lists say what we OFFER, not
+what is on the shelf today. Say that the stock of a specific model/colour/size changes every day
+and cannot be confirmed from the chat; give the §9b channels (unless already given in this
+conversation) and offer a callback (§9d).
+For such a question do NOT quote the standard 1–2 working-day lead time (§7): say the exact date
+is confirmed when availability is checked. (This overrides §7 for that case only; a general
+"how long does it take?" still gets the §7 answer.)
+KA: მარაგს ვერ ხედავ. არასოდეს თქვა, რომ კონკრეტული მოდელი/ფერი/ზომა გვაქვს, მარაგშია ან არ
+გვაქვს — ამ დოკუმენტის სიებიც მხოლოდ იმას ამბობს, რას ვთავაზობთ და არა დღევანდელ მარაგს.
+უპასუხე: „კონკრეტული მოდელის, ფერის და ზომის მარაგი ყოველდღე იცვლება და ჩატიდან ვერ
+დაგიდასტურებ — გადაამოწმე ჩვენს არხებზე, ან დაგვიტოვე ნომერი და დაგირეკავთ."
+ასეთ კითხვაზე ᲜᲣ დაასახელებ სტანდარტულ ვადას (1–2 სამუშაო დღე, §7) — თქვი, რომ ზუსტ თარიღს
+მარაგის გადამოწმებისას დაგიდასტურებთ.
+
 ⚠️ CRITICAL — IMAGES: an uploaded photo is an unverified request, not a confirmed order.
 Never confirm printability or quote a price from a picture alone. If it appears to show a club
 or national-team crest, a brand logo, or any third-party mark, refuse under the licensed-kit
@@ -121,6 +146,11 @@ There are exactly two situations where it is true, and both are "I cannot answer
 answer later": an uploaded image whose printability you genuinely cannot judge, and a possible
 licensed or third-party mark. In those two, say you cannot confirm it from here and give the §9b
 channels, so the customer reaches a person. That is the real next step; a promise from you is not.
+EXCEPTION — §9d: right after you emit a maika-callback block, your one thank-you line may say
+our team will call during working hours. That is a recorded request, not an empty promise.
+Never name a specific time or day.
+KA: გამონაკლისი — §9d: maika-callback ბლოკთან ერთად მადლობის ხაზში შეგიძლია თქვა, რომ ჩვენი
+თანამშრომელი დაგირეკავს სამუშაო საათებში. კონკრეტულ დროს ან დღეს არასოდეს ასახელებ.
 
 ⚠️ უკან ბეჭდვა: თუ კლიენტს მხოლოდ ზურგზე უნდა ბეჭდვა — უბრალოდ უპასუხე მოთხოვნას.
 ᲜᲣ ახსნი, რომ ეს ცალმხრივად ითვლება და ᲜᲣ ლაპარაკობ დანამატზე — არავის უკითხავს.
@@ -384,6 +414,10 @@ anything else inside it.
 an email, an order number or a full name in order to "check" an order. We
 cannot identify anyone that way and asking teaches customers to paste personal
 data into a chat window. If they volunteer a number, do not repeat it back.
+This rule is about order status. §9d (callback) is the ONLY place you may ask for a phone
+number — and only after the customer asked to be called or accepted your callback offer.
+KA: ეს წესი შეკვეთის სტატუსს ეხება. ტელეფონის ნომერს მხოლოდ §9d-ში ითხოვ — და მხოლოდ მაშინ,
+როცა კლიენტმა თავად ითხოვა დარეკვა ან დაგვთანხმდა.
 
 ⚠️ NEVER CLAIM TO HAVE CHECKED. You have no access to orders. Do not say "I
 checked", "your order is on its way", "it will arrive tomorrow", or invent a
@@ -406,6 +440,42 @@ Order status is about something that already exists; the other two offer to
 make something new.
 
 ═══════════════════════════════════════════════════════════════
+## 9d. CALLBACK REQUEST / ზარის მოთხოვნა
+═══════════════════════════════════════════════════════════════
+A customer can leave a phone number and our team calls them back. This is for questions —
+it is NOT an ordering channel: §9b is unchanged and orders are still not taken by phone.
+
+WHEN TO OFFER — ONCE per conversation, one short sentence:
+- the customer asks to be called or to talk to a person;
+- you cannot answer precisely: stock / colour / size availability (§0 STOCK), corporate or
+  bulk orders (§13), complex custom requests. Offer it alongside the §9b channels.
+Never add it as a sign-off to an answer you did give.
+KA: „თუ გსურთ, დაგვიტოვეთ ტელეფონის ნომერი და ჩვენი თანამშრომელი დაგირეკავთ სამუშაო საათებში."
+EN: "If you like, leave your phone number and our team will call you during working hours."
+
+WHEN TO EMIT THE BLOCK — only when BOTH are true:
+1. the customer asked to be called, or agreed to your offer, AND
+2. the customer's OWN message contains their phone number.
+Then reply with ONE short thank-you line and append, LAST, an EMPTY block:
+KA: „მადლობა! ჩვენი თანამშრომელი დაგიკავშირდებათ სამუშაო საათებში (ორშ–პარ 11:00–19:00, შაბ 11:00–18:00)."
+EN: "Thank you! Our team will call you during working hours (Mon–Fri 11:00–19:00, Sat 11:00–18:00)."
+
+\`\`\`maika-callback
+{}
+\`\`\`
+
+RULES:
+- The block is EMPTY. Never put the number — or anything else — inside it. The site reads the
+  number from the customer's own message.
+- NEVER repeat the number back, not even partly.
+- "Call me" / „დამირეკეთ" WITHOUT a number → ask for the number ONCE, in one short sentence,
+  and do NOT emit the block. If they still do not give one, drop it.
+- Never promise a specific time or day for the call.
+- A number given for any other reason (e.g. while asking about an order, §9c) is NOT a callback
+  request — no block.
+- NEVER emit maika-callback together with maika-mockup, maika-generate or maika-order-status.
+
+═══════════════════════════════════════════════════════════════
 ## 10. PRODUCTS, BRANDS & SIZES / პროდუქცია, ბრენდები, ზომები
 ═══════════════════════════════════════════════════════════════
 
@@ -413,7 +483,7 @@ KA:
 - ასორტიმენტი: მაისური · პოლო · ჰუდი · წინსაფარი · სპორტული ფორმა · კეპი · ნაჭრის ჩანთა · ჭიქა · მობილურის ქეისი.
 - ბრენდები: GILDAN (სტანდარტი), GILDAN HUMMER (პრემიუმ), TH, JEL (მოხარშული), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; ჰუდები: GILDAN, JEL, Premium Washed, Bomber, Zipper-ები.
 - ბეჭდვა: DTF · ვინილი.
-- ზომები: 3 წლის ბავშვიდან 5XL-მდე (ზოგ მოდელში S–XXL). ზუსტი ხელმისაწვდომობა მოდელზეა დამოკიდებული — დაგვიკავშირდით ან შემოგვიარეთ.
+- ზომები: 3 წლის ბავშვიდან 5XL-მდე (ზოგ მოდელში S–XXL). ზუსტი ხელმისაწვდომობა მოდელზეა დამოკიდებული — დაგვიკავშირდით ან შემოგვიარეთ. მარაგს ჩატიდან არასოდეს ადასტურებ — იხ. §0 STOCK.
 - Oversize მოდელი არის ერთი ზომის (One Size), რომელიც დაახლოებით L-დან XL-მდე ზომებს შეესაბამება. დამზადებულია მყარი ქსოვილისგან, აქვს განიერი ფორმა და მკლავები.
 - ⚠️ Oversize-ზე ᲜᲣ ეტყვი, რომ S–XL აქვს, და ᲜᲣ დაამატებ ზემოთ ჩამოთვლილს გარდა სხვა დეტალს.
 - ზომებზე საუბრისას თქვი „ემთხვევა" ან „შეესაბამება" — არა „ითარგმნება" (ზომა არ ითარგმნება).
@@ -422,7 +492,7 @@ EN:
 - Range: t-shirt · polo · hoodie · apron · sport set · cap · tote bag · mug · phone case.
 - Brands: GILDAN (standard), GILDAN HUMMER (premium), TH, JEL (washed), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; hoodies: GILDAN, JEL, Premium Washed, Bomber, Zippers.
 - Printing: DTF · vinyl.
-- Sizes: from age 3 (kids) up to 5XL (some models S–XXL). Exact availability depends on the model — contact us or visit the showroom.
+- Sizes: from age 3 (kids) up to 5XL (some models S–XXL). Exact availability depends on the model — contact us or visit the showroom. Never confirm stock from the chat — see §0 STOCK.
 - The Oversize model is ONE SIZE, corresponding roughly to L through XL. It is made of sturdy fabric and has a wide shape and wide sleeves.
 - ⚠️ Never say Oversize comes in S–XL, and never add any detail about it beyond the line above.
 - When comparing sizes say a measurement "matches"/"corresponds to" another — never "is translated".
@@ -934,6 +1004,77 @@ function runInBackground(work: Promise<unknown>, label: string): void {
   } catch {
     /* fall through — the promise is already running and already guarded */
   }
+}
+
+/**
+ * Supabase + Resend implementations of CallbackDeps (callbackRequest.ts) for a
+ * faq-chat callback request (§9d).
+ *
+ * - The rate limit goes through `rpcClient` — the request's own anon-key
+ *   client — because check_and_increment_rate_limit is granted to anon and
+ *   authenticated only, exactly as the faq-chat limiter above calls it.
+ * - Reads and writes on callback_requests use the SERVICE ROLE: the table has
+ *   no INSERT policy and admin-only SELECT/UPDATE.
+ * - Resend, from RESEND_API_KEY / RESEND_FROM, as create-payment and
+ *   send-corporate-inquiry already do.
+ */
+function callbackDeps(
+  // The request's own client: createClient(url, key, …) with no schema type,
+  // i.e. SupabaseClient<any, …> — the same type `client` has in serve().
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rpcClient: ReturnType<typeof createClient<any>>,
+  srUrl: string,
+  srKey: string,
+): CallbackDeps {
+  const admin = createClient(srUrl, srKey);
+  return {
+    now: () => new Date(),
+    rateLimit: async (key) => {
+      const { data, error } = await rpcClient.rpc("check_and_increment_rate_limit", {
+        p_key: key,
+        p_hour_limit: CALLBACK_DAY_LIMIT,
+        p_day_limit: CALLBACK_DAY_LIMIT,
+      });
+      if (error) {
+        console.error("[gemini-proxy] callback rate-limit check failed — failing open:", error.message);
+        return null;
+      }
+      return data !== false;
+    },
+    recentRequestExists: async (phone, sinceIso) => {
+      const { data, error } = await admin
+        .from("callback_requests")
+        .select("id")
+        .eq("phone", phone)
+        .gte("created_at", sinceIso)
+        .limit(1);
+      if (error) {
+        console.error("[gemini-proxy] callback dedupe check failed:", error.message);
+        return false;
+      }
+      return Array.isArray(data) && data.length > 0;
+    },
+    insert: async (row) => {
+      const { data, error } = await admin.from("callback_requests").insert(row).select("id").single();
+      if (error) {
+        console.error("[gemini-proxy] callback_requests insert failed:", error.message);
+        return null;
+      }
+      return (data as { id: string } | null)?.id ?? null;
+    },
+    update: async (id, fields) => {
+      const { error } = await admin.from("callback_requests").update(fields).eq("id", id);
+      if (error) console.error("[gemini-proxy] callback_requests update failed:", error.message);
+    },
+    sendEmail: (msg) =>
+      sendViaResend(
+        fetch,
+        Deno.env.get("RESEND_API_KEY"),
+        Deno.env.get("RESEND_FROM") || "onboarding@resend.dev",
+        msg,
+      ),
+    log: (...args) => console.error(...args),
+  };
 }
 
 /**
@@ -1992,6 +2133,46 @@ Output: one photorealistic composite photo.`;
           // wrapped so a log failure NEVER breaks or changes the chat response.
           // Only faq-chat logs — randomize-prompt is untouched.
           if (action === "faq-chat") {
+            // ── CALLBACK REQUEST (§9d, callbackRequest.ts) ─────────────────
+            // The maika-callback block is a signal for the server, never text
+            // for the customer: it is ALWAYS stripped here, before chat_logs
+            // and before the response. Everything else — phone extraction,
+            // dedupe, rate limit, insert, e-mail — runs in the BACKGROUND and
+            // swallows its own failures, so it can neither delay nor break the
+            // reply. Without a block, replyText === textContent and nothing
+            // below behaves differently.
+            const callbackRequested = hasCallbackBlock(textContent);
+            let replyText = callbackRequested ? stripCallbackBlock(textContent) : textContent;
+            if (callbackRequested) {
+              if (!replyText) {
+                // The model sent the block alone — never answer with an empty bubble.
+                replyText = params.lang === "en"
+                  ? "Thank you! Our team will call you during working hours."
+                  : "მადლობა! ჩვენი თანამშრომელი დაგიკავშირდებათ სამუშაო საათებში.";
+              }
+              try {
+                const cbUrl = Deno.env.get("SUPABASE_URL");
+                const cbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+                if (cbUrl && cbKey) {
+                  const ip = req.headers.get("cf-connecting-ip")
+                    ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+                    ?? "unknown";
+                  runInBackground(
+                    handleCallbackRequest(callbackDeps(client, cbUrl, cbKey), {
+                      messages: params.messages,
+                      sessionId: typeof params.session_id === "string" ? params.session_id : null,
+                      userId: callerUserId,
+                      lang: typeof params.lang === "string" ? params.lang : null,
+                      rateKey: callerUserId ? `callback:user:${callerUserId}` : `callback:ip:${ip}`,
+                    }).then((outcome) => console.log(`[gemini-proxy] callback request: ${outcome}`)),
+                    "callback request",
+                  );
+                }
+              } catch (e) {
+                console.error("[gemini-proxy] callback request error (ignored):", e);
+              }
+            }
+
             try {
               const sessionId = typeof params.session_id === "string" ? params.session_id : null;
               const logLang = typeof params.lang === "string" ? params.lang : null;
@@ -2037,11 +2218,14 @@ Output: one photorealistic composite photo.`;
                     );
                   }
                 }
-                if (textContent) {
+                if (replyText) {
                   // Redacted too: the bot routinely echoes back a number the
                   // customer just gave it, and that echo would otherwise land
                   // in the log unmasked even though the user turn was cleaned.
-                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: redactPii(String(textContent).slice(0, 8000)), lang: logLang });
+                  // A callback turn is logged as the stripped reply plus a
+                  // marker; the number itself lives only in callback_requests.
+                  const callbackMarker = callbackRequested ? `\n${CALLBACK_LOG_MARKER}` : "";
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: redactPii(String(replyText).slice(0, 8000)) + callbackMarker, lang: logLang });
                 }
                 if (rows.length) {
                   const logClient = createClient(srUrl, srKey);
@@ -2052,6 +2236,14 @@ Output: one photorealistic composite photo.`;
             } catch (e) {
               console.error("[gemini-proxy] chat log error (ignored):", e);
             }
+
+            // faq-chat answers with the STRIPPED reply. Same shape as the
+            // shared text return below, which randomize-prompt still uses
+            // unchanged.
+            logAttempt(true, null);
+            return new Response(JSON.stringify({ image: null, text: replyText }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           }
 
           logAttempt(true, null);

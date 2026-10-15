@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Tabs that get a Gmail-style "new since you last looked" badge. The
 // other admin tabs (dashboard, analytics) are aggregate views with no
 // natural per-row "new item" semantic.
-export type BadgeTabId = "orders" | "users" | "designs" | "catalog" | "corporate";
+export type BadgeTabId = "orders" | "users" | "designs" | "catalog" | "corporate" | "callbacks";
 
 const STORAGE_KEY = "maika-admin-tab-seen-v1";
 const POLL_INTERVAL_MS = 30_000;
@@ -20,7 +20,9 @@ type SourceTable =
   | "catalog_designs"
   | "corporate_inquiries";
 
-const TAB_SOURCE: Record<BadgeTabId, SourceTable> = {
+// callback_requests is schema-ahead-of-types, so it is counted on its own
+// path below rather than through this typed map.
+const TAB_SOURCE: Record<Exclude<BadgeTabId, "callbacks">, SourceTable> = {
   orders: "orders",
   users: "profiles",
   designs: "generations",
@@ -28,12 +30,12 @@ const TAB_SOURCE: Record<BadgeTabId, SourceTable> = {
   corporate: "corporate_inquiries",
 };
 
-const TAB_IDS: BadgeTabId[] = ["orders", "users", "designs", "catalog", "corporate"];
+const TAB_IDS: BadgeTabId[] = ["orders", "users", "designs", "catalog", "corporate", "callbacks"];
 
 type SeenAtMap = Record<BadgeTabId, string>;
 type CountMap = Record<BadgeTabId, number>;
 
-const ZERO_COUNTS: CountMap = { orders: 0, users: 0, designs: 0, catalog: 0, corporate: 0 };
+const ZERO_COUNTS: CountMap = { orders: 0, users: 0, designs: 0, catalog: 0, corporate: 0, callbacks: 0 };
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -55,6 +57,7 @@ function readSeenAt(): SeenAtMap {
         designs: parsed.designs ?? seed,
         catalog: parsed.catalog ?? seed,
         corporate: parsed.corporate ?? seed,
+        callbacks: parsed.callbacks ?? seed,
       };
     }
   } catch {
@@ -67,6 +70,7 @@ function readSeenAt(): SeenAtMap {
     designs: seed,
     catalog: seed,
     corporate: seed,
+    callbacks: seed,
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
@@ -114,6 +118,18 @@ export function useAdminTabBadges(): {
     const seenAt = seenAtRef.current;
     const results = await Promise.all(
       TAB_IDS.map(async (tab) => {
+        if (tab === "callbacks") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { count, error } = await (supabase as any)
+            .from("callback_requests")
+            .select("id", { count: "exact", head: true })
+            .gt("created_at", seenAt[tab]);
+          if (error) {
+            console.warn("[useAdminTabBadges] count failed for callback_requests:", error.message);
+            return [tab, 0] as const;
+          }
+          return [tab, (count as number | null) ?? 0] as const;
+        }
         const table = TAB_SOURCE[tab];
         // Orders are displayed grouped by cart_id (a qty=3 checkout inserts
         // 3 rows sharing one cart_id), so the badge counts ORDER GROUPS:
