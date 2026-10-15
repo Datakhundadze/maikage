@@ -4,11 +4,29 @@
 //   dist/design/<slug>/index.html
 //   dist/blog/<slug>/index.html
 //
-// plus three list / info routes:
+// plus list / info routes:
 //
 //   dist/designs/index.html   every published design, linked, by category
 //   dist/blog/index.html      every published post (title, date, summary)
 //   dist/contact/index.html   business facts copied verbatim from the app
+//   dist/faq/index.html       the FAQ (lib/faqContent.ts) minus priced Q&As,
+//                             with its FAQPage JSON-LD
+//   dist/corporate/index.html CorporatePage's text
+//   dist/portfolio/index.html active portfolio_items: images (alt = title),
+//                             categories
+//   dist/showroom/index.html  ShowroomPage's heading; noindex while the page
+//                             is (lib/showroomSeo.ts)
+//   dist/<product>[/<brand>]/index.html
+//                             every product landing route App.tsx registers
+//                             (/t-shirt, /hoodie/premium-washed, …): hero
+//                             heading, lead time, constructor links
+//
+// Texts and slugs that live in src/ modules (FAQ, landing slugs, heroTitle,
+// LEAD_TIME_KA, landing titles) are loaded from those modules through Vite
+// (scripts/lib/appModules.mjs) — never retyped. Strings that exist only in a
+// page component are copied in scripts/lib/seo.mjs, and a test fails if the
+// component stops containing them. A static page shows only text its live
+// page shows as well.
 //
 // dist/index.html is the SPA fallback for every route that has no file of
 // its own. It is written exactly once, LAST, by writeHomeShell(): static home
@@ -34,6 +52,8 @@
 //
 // No price is rendered and no Product JSON-LD is emitted: price comes from
 // pricing.ts at runtime only, and the runtime page still emits its JSON-LD.
+// For the same reason the FAQ Q&As that quote a price stay out of the static
+// /faq page and its static JSON-LD; the live page shows them all.
 //
 // Data: Supabase REST with the public anon key and the same filters the pages
 // use (catalog_designs.is_published = true, blog_posts.published = true).
@@ -46,6 +66,19 @@ import { readFile, writeFile, mkdir, rename, unlink } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadEnv } from "vite";
+import { loadAppModules } from "./lib/appModules.mjs";
+import {
+  CONTACT,
+  CORPORATE,
+  LANDING_HERO,
+  LANDING_LABELS,
+  PORTFOLIO,
+  SHOWROOM,
+  faqPageSchema,
+  jsonLdText,
+  landingRoutes,
+  priceFreeFaq,
+} from "./lib/seo.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -80,11 +113,28 @@ function outputPath(kind, slug) {
   return file;
 }
 
-// The only list/info files this script may write. Anything else — above all
-// dist/index.html, the SPA fallback — is refused.
-const STATIC_ROUTES = new Set(["designs", "blog", "contact"]);
+// The only list/info files this script may write, plus the product landing
+// routes allowed one by one below. Anything else — above all dist/index.html,
+// the SPA fallback — is refused.
+const STATIC_ROUTES = new Set(["designs", "blog", "contact", "faq", "corporate", "portfolio", "showroom"]);
+const LANDING_ROUTES = new Set();
+const ROUTE_SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// Directories the per-row pages and the assets own; a landing slug never may.
+const RESERVED_DIRS = new Set(["design", "assets", ...STATIC_ROUTES]);
+
+/** Admit "<product>" or "<product>/<brand>" (lowercase slug segments only). */
+function allowLandingRoute(route) {
+  const parts = route.split("/");
+  if (parts.length < 1 || parts.length > 2 || !parts.every((p) => ROUTE_SEGMENT.test(p)) || RESERVED_DIRS.has(parts[0])) {
+    throw new Error(`refusing landing route: ${JSON.stringify(route)}`);
+  }
+  LANDING_ROUTES.add(route);
+}
+
 async function writeStatic(route, html) {
-  if (!STATIC_ROUTES.has(route)) throw new Error(`refusing to write unknown static route: ${route}`);
+  if (!STATIC_ROUTES.has(route) && !LANDING_ROUTES.has(route)) {
+    throw new Error(`refusing to write unknown static route: ${route}`);
+  }
   const file = resolve(DIST, route, "index.html");
   if (file === TEMPLATE || !file.startsWith(resolve(DIST, route) + sep)) {
     throw new Error(`refusing to write ${file}`);
@@ -182,6 +232,8 @@ const STYLE = {
   ul: "margin:0 0 16px;padding-left:20px;list-style:disc",
   li: "margin:0 0 6px",
   card: "margin:0 0 24px",
+  gallery: "display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0 0 24px;padding:0;list-style:none",
+  galleryImg: "display:block;width:100%;height:auto;border-radius:12px",
 };
 const link = (href, text) => `<a href="${esc(href)}" style="${STYLE.a}">${esc(text)}</a>`;
 
@@ -221,15 +273,20 @@ function markdownToHtml(md) {
     .join("\n");
 }
 
-/** Shell + per-page head tags + root content. */
-function renderPage(template, { title, description, canonical, image, rootHtml }) {
+/**
+ * Shell + per-page head tags + root content. `robots` and `jsonLd` are the
+ * SeoHead noindex tag and `schemas` scripts, emitted only when given.
+ */
+function renderPage(template, { title, description, canonical, image, rootHtml, robots, jsonLd }) {
   const tags = [
     `<meta data-rh="true" name="description" content="${esc(description)}" />`,
     `<link data-rh="true" rel="canonical" href="${esc(canonical)}" />`,
+    ...(robots ? [`<meta data-rh="true" name="robots" content="${esc(robots)}" />`] : []),
     `<meta data-rh="true" property="og:title" content="${esc(title)}" />`,
     `<meta data-rh="true" property="og:description" content="${esc(description)}" />`,
     `<meta data-rh="true" property="og:url" content="${esc(canonical)}" />`,
     ...(image ? [`<meta data-rh="true" property="og:image" content="${esc(image)}" />`] : []),
+    ...(jsonLd ?? []).map((schema) => `<script data-rh="true" type="application/ld+json">${jsonLdText(schema)}</script>`),
   ].join("\n    ");
 
   let html = template;
@@ -398,37 +455,7 @@ function blogIndexRoot(posts) {
   ].join("\n");
 }
 
-// /contact — every string below is copied VERBATIM from the codebase; the
-// source of each is noted. Nothing is reworded, inferred or added: no prices,
-// no production times. Change the source, then change it here.
-const CONTACT = {
-  h1: "კონტაქტი და შოურუმი",                                   // ContactPage.tsx:112
-  // SeoHead.tsx:25-26 (Organization schema description)
-  about: "Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში.",
-  addressLabel: "მისამართი",                                    // ContactPage.tsx:120
-  address: "ა. წერეთლის #2, დინამოს სტადიონი, კარი #10, თბილისი", // ContactPage.tsx:127
-  hoursLabel: "სამუშაო საათები",                                // ContactPage.tsx:136
-  hours: ["ორშ–პარ 11:00–19:00", "შაბ 11:00–18:00", "კვირა დაკეტილი"], // ContactPage.tsx:138-140
-  phoneLabel: "ტელეფონი",                                       // ContactPage.tsx:149
-  phones: [                                                     // ContactPage.tsx:21-22
-    { display: "+(995 32) 2 05 06 20", tel: "+995322050620" },
-    { display: "+995 599 05 08 07", tel: "+995599050807" },
-  ],
-  emailLabel: "ელფოსტა",                                        // ContactPage.tsx:167
-  email: "maika@maika.ge",                                      // ContactPage.tsx:168-169
-  mapLabel: "მდებარეობა",                                       // ContactPage.tsx:177
-  mapLinkText: "გახსენი Google Maps-ში",                        // ContactPage.tsx:195
-  // ContactPage.tsx:14 (MAPS_PLACE_URL)
-  mapUrl: "https://www.google.com/maps/place/Maika.ge/@41.7231446,44.7910174,17z/data=!3m1!4b1!4m6!3m5!1s0x404473c7faeeac33:0x51850ad0fd75a99b!8m2!3d41.7231446!4d44.7910174!16s%2Fg%2F11h6g3tpzr",
-  socials: [                                                    // labels: ContactBar.tsx aria-labels
-    { label: "Facebook", url: "https://www.facebook.com/maika.ge" },       // SeoHead.tsx:36
-    { label: "Instagram", url: "https://www.instagram.com/maika.ge_/" },   // SeoHead.tsx:37
-    { label: "TikTok", url: "https://www.tiktok.com/@maika.ge" },          // SeoHead.tsx:38
-    { label: "WhatsApp", url: "https://wa.me/995599050807" },              // ContactBar.tsx:21,63
-  ],
-  homeLinkText: "მთავარი გვერდი",                               // ContactPage.tsx:109
-};
-
+// /contact — CONTACT lives in scripts/lib/seo.mjs (shared with public/llms.txt).
 function contactRoot() {
   const c = CONTACT;
   const ext = (href, text) =>
@@ -451,6 +478,248 @@ function contactRoot() {
     `<p style="${STYLE.footer}">${c.socials.map((x) => ext(x.url, x.label)).join(" · ")}</p>`,
     `</main>`,
   ].join("\n");
+}
+
+/** /faq — FaqPage's heading, intro and the price-free Q&As, grouped as on the page. */
+function faqRoot(page, groups) {
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", page.backLabel)}</nav>`,
+    `<h1 style="${STYLE.h1}">${esc(page.h1)}</h1>`,
+    `<p style="${STYLE.p}">${esc(page.intro)}</p>`,
+    ...groups.map((g) =>
+      [
+        `<section>`,
+        `<h2 style="${STYLE.h2}">${esc(g.heading)}</h2>`,
+        ...g.items.map((item) => `<h3 style="${STYLE.h3}">${esc(item.q)}</h3>\n<p style="${STYLE.p}">${esc(item.a)}</p>`),
+        `</section>`,
+      ].join("\n"),
+    ),
+    `</main>`,
+  ].join("\n");
+}
+
+/** /corporate — CorporatePage's text. Its CTA opens an inquiry form there; here it links to /contact. */
+function corporateRoot() {
+  const c = CORPORATE;
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", c.backLabel)}</nav>`,
+    `<h1 style="${STYLE.h1}">${esc(c.h1)}</h1>`,
+    `<p style="${STYLE.p}">${esc(c.intro)}</p>`,
+    `<ul style="${STYLE.ul}">${c.features.map((f) => `<li style="${STYLE.li}">${esc(f)}</li>`).join("")}</ul>`,
+    `<p style="${STYLE.footer}">${link("/contact", c.cta)}</p>`,
+    `</main>`,
+  ].join("\n");
+}
+
+/**
+ * /portfolio — PortfolioPage's heading, its category chips (as text) and the
+ * gallery: same images (400w/800w), same alt (alt_text, else title, else the
+ * fallback). With no items it is the page's own empty state: heading and
+ * intro only, no catalog link.
+ */
+function portfolioRoot(items) {
+  const p = PORTFOLIO;
+  const categories = [];
+  for (const it of items) {
+    const c = String(it.category ?? "").trim();
+    if (c && !categories.includes(c)) categories.push(c);
+  }
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", p.backLabel)}</nav>`,
+    `<h1 style="${STYLE.h1}">${esc(p.h1)}</h1>`,
+    `<p style="${STYLE.p}">${esc(p.intro)}</p>`,
+    categories.length > 0 ? `<p style="${STYLE.meta}">${[p.allLabel, ...categories].map(esc).join(" · ")}</p>` : "",
+    items.length > 0
+      ? `<ul style="${STYLE.gallery}">\n` +
+        items
+          .map(
+            (it) =>
+              `<li><img src="${esc(it.url)}" srcset="${esc(it.srcSet)}" sizes="(min-width: 640px) 33vw, 50vw" alt="${esc(it.alt)}" loading="lazy" decoding="async" style="${STYLE.galleryImg}"></li>`,
+          )
+          .join("\n") +
+        `\n</ul>`
+      : "",
+    items.length > 0 ? `<p style="${STYLE.footer}">${link("/designs", p.catalogCta)}</p>` : "",
+    `</main>`,
+  ].filter(Boolean).join("\n");
+}
+
+/** /showroom — the page's (screen-reader) heading; the room itself is 3D. */
+function showroomRoot() {
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${link("/", "მთავარი")}</nav>`,
+    `<h1 style="${STYLE.h1}">${esc(SHOWROOM.h1)}</h1>`,
+    `</main>`,
+  ].join("\n");
+}
+
+/**
+ * /<product>[/<brand>] — LandingHero's heading and lead-time line, its two
+ * CTAs, and on a product route the brands the constructor's brand picker
+ * offers, each linked to its own route. The page IS the constructor, so
+ * "ატვირთე ფოტო" links to the route itself. No price (LandingHero's
+ * "… ₾-დან" comes from pricing.ts at runtime).
+ */
+function landingRoot(route, { productKa, title, leadTime, brands }) {
+  const h = LANDING_HERO;
+  const crumbs = [link("/", LANDING_LABELS.home)];
+  if (route.brandSlug) crumbs.push(link(`/${route.productSlug}`, productKa));
+  return [
+    `<main style="${STYLE.main}">`,
+    `<nav style="${STYLE.nav}">${crumbs.join(" › ")}</nav>`,
+    `<h1 style="${STYLE.h1}">${esc(title + h.h1Suffix)}</h1>`,
+    `<p style="${STYLE.p}">${esc(h.leadTimePrefix + leadTime)}</p>`,
+    `<p style="${STYLE.p}">${link(route.path, h.uploadCta)} · ${link(h.chatHref, h.chatCta)}</p>`,
+    brands.length > 0
+      ? `<h2 style="${STYLE.h3}">${esc(LANDING_LABELS.brand)}</h2>\n` +
+        `<ul style="${STYLE.ul}">${brands.map((b) => `<li style="${STYLE.li}">${link(b.path, b.brand)}</li>`).join("")}</ul>`
+      : "",
+    `</main>`,
+  ].filter(Boolean).join("\n");
+}
+
+/**
+ * Pages built from src/ modules only — no Supabase: /faq, /corporate,
+ * /showroom and every landing route. Each page fails on its own.
+ */
+async function writeAppPages(template, app, stats) {
+  const page = async (name, route, build) => {
+    try {
+      await writeStatic(route, build());
+      return true;
+    } catch (e) {
+      stats.failed.push(`${name}: ${e?.message ?? e}`);
+      return false;
+    }
+  };
+
+  if (await page("corporate", "corporate", () => renderPage(template, {
+    title: CORPORATE.title,
+    description: CORPORATE.description,
+    canonical: `${SITE_URL}/corporate`,
+    image: DEFAULT_OG_IMAGE,
+    rootHtml: corporateRoot(),
+  }))) stats.lists.push("corporate");
+
+  if (!app) return;
+
+  const faq = priceFreeFaq(app.FAQ_GROUPS);
+  for (const q of faq.dropped) stats.notes.push(`faq: left out (quotes a price) — ${q}`);
+  if (await page("faq", "faq", () => renderPage(template, {
+    title: app.FAQ_PAGE.title,
+    description: app.FAQ_PAGE.description,
+    canonical: `${SITE_URL}/faq`,
+    image: DEFAULT_OG_IMAGE,
+    jsonLd: [faqPageSchema(faq.groups)],
+    rootHtml: faqRoot(app.FAQ_PAGE, faq.groups),
+  }))) {
+    const kept = faq.groups.reduce((n, g) => n + g.items.length, 0);
+    stats.lists.push(`faq (${kept} Q&As, ${faq.dropped.length} with prices left out)`);
+  }
+
+  if (await page("showroom", "showroom", () => renderPage(template, {
+    title: SHOWROOM.title,
+    description: SHOWROOM.description,
+    canonical: `${SITE_URL}/showroom`,
+    image: DEFAULT_OG_IMAGE,
+    robots: app.SHOWROOM_INDEXABLE ? undefined : "noindex,nofollow",
+    rootHtml: showroomRoot(),
+  }))) stats.lists.push(app.SHOWROOM_INDEXABLE ? "showroom" : "showroom (noindex)");
+
+  let routes = [];
+  try {
+    routes = landingRoutes(app);
+  } catch (e) {
+    stats.failed.push(`landing routes: ${e?.message ?? e}`);
+  }
+  for (const r of routes) {
+    const route = r.path.slice(1);
+    const ok = await page(`landing ${r.path}`, route, () => {
+      allowLandingRoute(route);
+      const productKa = app.productTypeKa(r.product);
+      const seo = app.landingSeo(r.product, productKa, r.brand);
+      return renderPage(template, {
+        title: seo.title,
+        description: seo.description,
+        canonical: `${SITE_URL}${r.path}`,
+        image: DEFAULT_OG_IMAGE,
+        rootHtml: landingRoot(r, {
+          productKa,
+          title: app.heroTitle(productKa, r.brand),
+          leadTime: app.LEAD_TIME_KA,
+          brands: r.brandSlug ? [] : routes.filter((b) => b.brandSlug && b.productSlug === r.productSlug),
+        }),
+      });
+    });
+    if (ok) stats.landing++;
+  }
+}
+
+/** portfolio_items as PortfolioPage queries them: active, pinned first, then newest. */
+async function fetchPortfolio({ url, key }) {
+  const qs =
+    "select=title,image_path,category,alt_text&active=eq.true" +
+    `&order=sort_order.asc.nullslast,created_at.desc&limit=${PAGE_SIZE}`;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(`${url}/rest/v1/portfolio_items?${qs}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
+      signal: ctl.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error(`portfolio_items: HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+  const rows = await res.json();
+  if (!Array.isArray(rows)) throw new Error("portfolio_items: response is not an array");
+  return rows;
+}
+
+/**
+ * /portfolio. Needs the app modules (image transform). Without data — no
+ * Supabase config, a failed fetch, zero rows — it is the page's empty state.
+ */
+async function writePortfolio(template, app, cfg, stats) {
+  if (!app) return;
+  let items = [];
+  if (cfg) {
+    try {
+      const rows = await fetchPortfolio(cfg);
+      items = rows
+        .filter((r) => typeof r?.image_path === "string" && r.image_path)
+        .map((r) => {
+          // = supabase.storage.from("portfolio").getPublicUrl(image_path)
+          const publicUrl = encodeURI(`${cfg.publicUrl}/storage/v1/object/public/portfolio/${r.image_path.replace(/^\/+/, "")}`);
+          const w400 = app.transformedDisplayUrl(publicUrl, { width: 400 });
+          return {
+            category: r.category,
+            url: w400,
+            srcSet: `${w400} 400w, ${app.transformedDisplayUrl(publicUrl, { width: 800 })} 800w`,
+            alt: r.alt_text || r.title || PORTFOLIO.altFallback,
+          };
+        });
+    } catch (e) {
+      console.warn(`${LOG} WARNING: portfolio fetch failed: ${reason(e)}. /portfolio written without images.`);
+    }
+  }
+  try {
+    await writeStatic("portfolio", renderPage(template, {
+      title: PORTFOLIO.title,
+      description: PORTFOLIO.description,
+      canonical: `${SITE_URL}/portfolio`,
+      image: DEFAULT_OG_IMAGE,
+      rootHtml: portfolioRoot(items),
+    }));
+    stats.lists.push(`portfolio (${items.length} images)`);
+  } catch (e) {
+    stats.failed.push(`portfolio: ${e?.message ?? e}`);
+  }
 }
 
 async function emit(kind, rows, build, stats) {
@@ -485,7 +754,7 @@ async function writePages() {
     return;
   }
 
-  const stats = { design: 0, blog: 0, lists: [], skipped: [], failed: [] };
+  const stats = { design: 0, blog: 0, landing: 0, lists: [], skipped: [], failed: [], notes: [] };
 
   // /contact — no data needed, so it does not depend on Supabase at all.
   try {
@@ -501,14 +770,34 @@ async function writePages() {
     stats.failed.push(`contact: ${e?.message ?? e}`);
   }
 
-  let cfg;
+  // /faq, /corporate, /showroom, landing routes — src/ modules only.
+  const app = await loadAppModules(LOG);
+  if (!app) console.warn(`${LOG} /faq, /portfolio, /showroom and the landing routes skipped; SPA fallback serves them.`);
+  await writeAppPages(template, app, stats);
+
+  let cfg = null;
   try {
     cfg = supabaseConfig();
   } catch (e) {
     console.warn(`${LOG} ${e.message}. Skipping data-driven pages; SPA fallback serves them.`);
-    return;
   }
 
+  await writePortfolio(template, app, cfg, stats);
+
+  if (cfg) await writeDataPages(template, cfg, stats);
+
+  for (const s of stats.skipped) console.warn(`${LOG} skipped unsafe slug — ${s}`);
+  for (const f of stats.failed) console.warn(`${LOG} WARNING: page failed — ${f}`);
+  for (const n of stats.notes) console.log(`${LOG} ${n}`);
+  console.log(
+    `${LOG} wrote ${stats.design} design + ${stats.blog} blog + ${stats.landing} landing pages` +
+      ` + lists [${stats.lists.join(", ")}]` +
+      ` (${stats.skipped.length} skipped, ${stats.failed.length} failed) in ${Date.now() - started}ms.`,
+  );
+}
+
+/** /design/*, /designs, /blog/*, /blog — Supabase rows. */
+async function writeDataPages(template, cfg, stats) {
   // Designs
   try {
     const designs = await fetchAll(
@@ -592,14 +881,6 @@ async function writePages() {
   } catch (e) {
     console.warn(`${LOG} WARNING: blog fetch failed: ${reason(e)}. No blog pages written; SPA fallback serves /blog/*.`);
   }
-
-  for (const s of stats.skipped) console.warn(`${LOG} skipped unsafe slug — ${s}`);
-  for (const f of stats.failed) console.warn(`${LOG} WARNING: page failed — ${f}`);
-  console.log(
-    `${LOG} wrote ${stats.design} design + ${stats.blog} blog pages` +
-      ` + lists [${stats.lists.join(", ")}]` +
-      ` (${stats.skipped.length} skipped, ${stats.failed.length} failed) in ${Date.now() - started}ms.`,
-  );
 }
 
 // ── Home content in the SPA shell ───────────────────────────────────────────
