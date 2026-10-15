@@ -116,6 +116,51 @@ export type Database = {
         }
         Relationships: []
       }
+      callback_requests: {
+        Row: {
+          created_at: string
+          email_error: string | null
+          email_sent_at: string | null
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          lang: string | null
+          note: string | null
+          phone: string
+          session_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email_error?: string | null
+          email_sent_at?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          lang?: string | null
+          note?: string | null
+          phone: string
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email_error?: string | null
+          email_sent_at?: string | null
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          lang?: string | null
+          note?: string | null
+          phone?: string
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       catalog_designs: {
         Row: {
           ai_generated: boolean | null
