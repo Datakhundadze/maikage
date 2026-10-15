@@ -253,6 +253,15 @@ describe("FAQ_KB (gemini-proxy/index.ts) carries the new rules", () => {
     expect(src).toContain("მარაგს ჩატიდან არასოდეს ადასტურებ — იხ. §0 STOCK.");
   });
 
+  it("customer-facing KA wording is formal (თქვენობით)", () => {
+    expect(src).toContain("ჩატიდან ვერ\nდაგიდასტურებთ — გადაამოწმეთ ჩვენს არხებზე, ან დაგვიტოვეთ ნომერი და დაგირეკავთ.");
+    expect(src).toContain("თანამშრომელი დაგირეკავთ სამუშაო საათებში. კონკრეტულ დროს");
+    expect(src).not.toMatch(/ვერ\s*დაგიდასტურებ[^თ]/);
+    expect(src).not.toContain("გადაამოწმე ჩვენს არხებზე");
+    expect(src).not.toContain("დაგვიტოვე ნომერი");
+    expect(src).not.toContain("თანამშრომელი დაგირეკავს");
+  });
+
   it("keeps §9b's five ordering channels unchanged", () => {
     expect(src).toContain("KA: შეკვეთა შესაძლებელია ხუთი გზით:");
     expect(src).toContain("ინფორმაციისთვის დაგვირეკეთ (შეკვეთა ტელეფონით არ მიიღება): +995 32 2 05 06 20 · 599 05 08 07");
