@@ -43,28 +43,39 @@ type Mode = "login" | "signup" | "forgot";
 // keeps compiling.
 const AI_AGENT_ENABLED = false;
 
+// In TAB_ROWS order: row 1, then row 2.
 const ALL_TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "დეშბორდი", icon: LayoutDashboard },
   { id: "orders", label: "შეკვეთები", icon: ShoppingCart },
+  { id: "callbacks", label: "დარეკვის მოთხოვნები", icon: PhoneCall },
+  { id: "social-inbox", label: "შეტყობინებები", icon: Inbox },
+  { id: "corporate", label: "კორპორატიული", icon: Building2 },
   { id: "users", label: "მომხმარებლები", icon: Users },
   { id: "designs", label: "დიზაინები", icon: Image },
-  { id: "generations", label: "გენერაციები", icon: Wand2 },
   { id: "catalog", label: "📦 კატალოგი", icon: Package },
+  { id: "chat-history", label: "ჩატის ისტორია", icon: MessageCircle },
+  { id: "feedback", label: "შენიშვნები", icon: MessageSquare },
+  { id: "generations", label: "გენერაციები", icon: Wand2 },
+  { id: "portfolio", label: "პორტფოლიო", icon: Images },
+  { id: "showroom", label: "შოურუმი", icon: Store },
+  { id: "blog", label: "ბლოგი", icon: Newspaper },
+  { id: "partners", label: "პარტნიორები", icon: Handshake },
   { id: "seo", label: "SEO", icon: Search },
   { id: "ai-agent", label: "AI აგენტი", icon: Sparkles },
   { id: "analytics", label: "ანალიტიკა", icon: BarChart3 },
-  { id: "corporate", label: "კორპორატიული", icon: Building2 },
-  { id: "partners", label: "პარტნიორები", icon: Handshake },
-  { id: "showroom", label: "შოურუმი", icon: Store },
-  { id: "portfolio", label: "პორტფოლიო", icon: Images },
-  { id: "blog", label: "ბლოგი", icon: Newspaper },
-  { id: "feedback", label: "შენიშვნები", icon: MessageSquare },
-  { id: "chat-history", label: "ჩატის ისტორია", icon: MessageCircle },
-  { id: "social-inbox", label: "შეტყობინებები", icon: Inbox },
-  { id: "callbacks", label: "დარეკვის მოთხოვნები", icon: PhoneCall },
 ];
 
 const TABS = ALL_TABS.filter((t) => t.id !== "ai-agent" || AI_AGENT_ENABLED);
+
+// The tab bar: two rows that wrap on narrow screens (no horizontal scroll).
+// Row 1 is daily work and holds every badge tab (BADGE_TABS below); row 2 is
+// content / other. Every ALL_TABS id appears in exactly one row —
+// src/test/adminTabRows.test.ts checks both rules. A row entry missing from
+// TABS (ai-agent while disabled) is simply not rendered.
+const TAB_ROWS: Tab[][] = [
+  ["dashboard", "orders", "callbacks", "social-inbox", "corporate", "users", "designs", "catalog"],
+  ["chat-history", "feedback", "generations", "portfolio", "showroom", "blog", "partners", "seo", "ai-agent", "analytics"],
+];
 
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);
@@ -358,7 +369,9 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SeoHead title="Admin | Maika.ge" noindex />
-      <header className="border-b border-border sticky top-0 bg-background/95 backdrop-blur z-10">
+      {/* Sticky from sm up only: on a phone the two wrapped tab rows are tall
+          enough that a pinned header would cover much of the screen. */}
+      <header className="border-b border-border sm:sticky sm:top-0 bg-background/95 backdrop-blur z-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="flex items-center gap-4 h-14">
             {activeTab !== "dashboard" && (
@@ -380,31 +393,43 @@ export default function AdminPage() {
             </Button>
           </div>
 
-          <nav className="flex gap-1 -mb-px overflow-x-auto">
-            {TABS.map(tab => {
-              const active = activeTab === tab.id;
-              const badgeCount = isBadgeTab(tab.id) ? badgeCounts[tab.id] : 0;
+          <nav className="-mb-px">
+            {TAB_ROWS.map((row, rowIndex) => {
+              const secondary = rowIndex > 0;
               return (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabClick(tab.id)}
-                  className={`relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                    active
-                      ? "border-amber-500 text-foreground"
-                      : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-                  }`}
+                <div
+                  key={rowIndex}
+                  className={`flex flex-wrap gap-x-1 ${secondary ? "border-t border-border" : "pt-1"}`}
                 >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                  {badgeCount > 0 && (
-                    <span
-                      aria-label={`${badgeCount} new`}
-                      className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center"
-                    >
-                      {badgeCount > 99 ? "99+" : badgeCount}
-                    </span>
-                  )}
-                </button>
+                  {row.flatMap((id) => TABS.filter((t) => t.id === id)).map(tab => {
+                    const active = activeTab === tab.id;
+                    const badgeCount = isBadgeTab(tab.id) ? badgeCounts[tab.id] : 0;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => handleTabClick(tab.id)}
+                        className={`relative flex items-center font-medium border-b-2 transition-colors whitespace-nowrap ${
+                          secondary ? "gap-1.5 px-2 py-1.5 sm:px-3 sm:py-2 text-xs" : "gap-1.5 px-2.5 py-2 sm:gap-2 sm:px-3 sm:py-2.5 text-sm"
+                        } ${
+                          active
+                            ? "border-amber-500 text-foreground"
+                            : `border-transparent hover:text-foreground hover:border-border ${secondary ? "text-muted-foreground/80" : "text-muted-foreground"}`
+                        }`}
+                      >
+                        <tab.icon className={secondary ? "h-3.5 w-3.5" : "h-4 w-4"} />
+                        {tab.label}
+                        {badgeCount > 0 && (
+                          <span
+                            aria-label={`${badgeCount} new`}
+                            className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center"
+                          >
+                            {badgeCount > 99 ? "99+" : badgeCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               );
             })}
           </nav>
