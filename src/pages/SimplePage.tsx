@@ -50,6 +50,18 @@ import LoginModal from "@/components/LoginModal";
 import { consumeDesignRecovery, registerDesignSnapshotProvider } from "@/lib/designRecovery";
 import TryOnModal from "@/components/TryOnModal";
 import SimpleAiChatPanel, { type AiChatMessage } from "@/components/SimpleAiChatPanel";
+// Replace / add for a design from the floating chat onto a side that already
+// has a photo — see lib/placementChoice.ts.
+import PlacementChoice from "@/components/PlacementChoice";
+import { ToastAction } from "@/components/ui/toast";
+import {
+  PLACEMENT_UNDO_MS,
+  type PlacementDecision,
+  canReplace,
+  needsPlacementChoice,
+  removeSidePhotos,
+  restoreSidePhotos,
+} from "@/lib/placementChoice";
 
 const FONT_GROUPS = [
   {
@@ -912,6 +924,15 @@ interface SimplePageProps {
   productPickerInitiallyOpen?: boolean;
 }
 
+/**
+ * A design from the floating chat waiting for the customer's replace / add
+ * answer: either a constructor seed (applied by the seed drain) or the clean
+ * artwork of a generation the floating chat asked for.
+ */
+type PendingPlacement =
+  | { kind: "seed"; seed: ConstructorSeed }
+  | { kind: "transfer"; image: string };
+
 export default function SimplePage({ seoTitle, seoDescription, hero, productPickerInitiallyOpen }: SimplePageProps = {}) {
   const { lang, theme, toggleTheme } = useAppState();
   const productConfig = useProductConfig();
@@ -950,6 +971,19 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   const isFront = currentView === "front";
   const sideData = isFront ? frontData : backData;
   const setSideData = isFront ? setFrontData : setBackData;
+
+  // Replace / add (lib/placementChoice.ts). `pendingPlacement` holds a design
+  // from the floating chat until the customer answers; the decision then rides
+  // in `placementDecisionRef` through the SAME apply code that was paused.
+  const [pendingPlacement, setPendingPlacement] = useState<PendingPlacement | null>(null);
+  const placementDecisionRef = useRef<PlacementDecision | null>(null);
+  // The current side's photos as of THIS render. The seed drain runs before
+  // photosRef's own effect in a commit that switches side, so after a side
+  // change photosRef still holds the other side's photos for one run — fine for
+  // its reuse check (a layer id from the other side never matches), wrong for
+  // "does the target side already have a photo?".
+  const sidePhotosNowRef = useRef(sideData.photos);
+  sidePhotosNowRef.current = sideData.photos;
 
   // ── AI design (Phase 1) ──────────────────────────────────────────────
   // Guest quota = 2 (Studio keeps its default 5; shared hook is parameterized).
@@ -1390,15 +1424,68 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     }
   }, [aiPrompt, aiStyle, aiWithBackground, aiGenerating, checkAiLimit, recordAiGeneration, productConfig, user, saveDesign, trackEvent, toast, lang]);
 
+  // The body of handleAiTransfer, unchanged, with the new layer's id returned so
+  // a replace can be undone. `replacing`: the side's photos were just removed in
+  // the same batch, so the (render-time) MAX_PHOTOS count no longer applies —
+  // addPhotoLayer still enforces the cap against the fresh state.
+  const placeTransfer = useCallback((dataUrl: string, opts?: { replacing?: boolean }): string | null => {
+    if (!opts?.replacing && sideData.photos.length >= MAX_PHOTOS) {
+      toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
+      return null;
+    }
+    const id = addPhotoLayer(dataUrl);
+    toast({ title: t(lang, "simpleAi.transferred") });
+    return id;
+  }, [sideData.photos.length, addPhotoLayer, toast, lang]);
+
+  // In-panel "Transfer" — behaviour unchanged (always appends).
   const handleAiTransfer = useCallback(() => {
     if (!aiResult) return;
-    if (sideData.photos.length >= MAX_PHOTOS) {
-      toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
-      return;
-    }
-    addPhotoLayer(aiResult.transferImage);
-    toast({ title: t(lang, "simpleAi.transferred") });
-  }, [aiResult, sideData.photos.length, addPhotoLayer, toast, lang]);
+    placeTransfer(aiResult.transferImage);
+  }, [aiResult, placeTransfer]);
+
+  // ── Replace / add helpers ─────────────────────────────────────────────
+  // ჩანაცვლება: remove the CURRENT side's photo layers in ONE update (lettering
+  // stays), and drop every reference that could point at a removed layer: the
+  // selection, the chat-photo reuse record and the queued edit / background
+  // removals. Returns what was removed, for the undo.
+  const beginPlacementReplace = useCallback((): { side: "front" | "back"; removed: PhotoLayer[] } => {
+    const side: "front" | "back" = isFront ? "front" : "back";
+    const removed = sidePhotosNowRef.current;
+    setSideData((prev) => removeSidePhotos<PhotoLayer, SideData>(prev).next);
+    setSelectedLayerId(null);
+    chatPhotoRef.current = null;
+    setPendingEdit(null);
+    setPendingRemoveBg(null);
+    setPendingRemoveBgId(null);
+    return { side, removed };
+  }, [isFront, setSideData]);
+
+  // "დიზაინი შეიცვალა · დაბრუნება" for PLACEMENT_UNDO_MS. The snapshot lives
+  // only in this closure (memory, never storage). დაბრუნება puts the removed
+  // layers back exactly — same objects, so same ids, positions and crops — and
+  // removes what the replace placed. Written to the side the replace happened
+  // on, even if the customer has switched view since.
+  const showPlacementUndo = useCallback((side: "front" | "back", removed: PhotoLayer[], placedIds: string[]) => {
+    const setSide = side === "front" ? setFrontData : setBackData;
+    const handle = toast({
+      title: "დიზაინი შეიცვალა",
+      duration: PLACEMENT_UNDO_MS,
+      action: (
+        <ToastAction
+          altText="დაბრუნება"
+          className="min-h-11 px-4"
+          onClick={() => {
+            setSide((prev) => restoreSidePhotos<PhotoLayer, SideData>(prev, removed, placedIds));
+            setSelectedLayerId(null);
+            handle.dismiss();
+          }}
+        >
+          დაბრუნება
+        </ToastAction>
+      ),
+    });
+  }, [toast]);
 
   // Put an EARLIER generated design back on the garment.
   //
@@ -1476,13 +1563,19 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       const wasSeeded = seededRunRef.current;
       seededRunRef.current = false;
       if (wasSeeded) {
-        handleAiTransfer();
-        // …and unselected. handleAiTransfer goes through addPhotoLayer, which
-        // selects what it adds — right for the customer's own "Place on
-        // t-shirt" press, wrong for a design that placed itself while they
-        // watched. Both setters land in the same batch, so this one wins.
-        // The MANUAL press does not run this line and still arrives selected.
-        setSelectedLayerId(null);
+        if (needsPlacementChoice(sidePhotosNowRef.current.length, false)) {
+          // The side already has a photo → ask (PlacementChoice) instead of
+          // stacking the design on top of it. resolvePlacement places it.
+          setPendingPlacement({ kind: "transfer", image: aiResult.transferImage });
+        } else {
+          handleAiTransfer();
+          // …and unselected. handleAiTransfer goes through addPhotoLayer, which
+          // selects what it adds — right for the customer's own "Place on
+          // t-shirt" press, wrong for a design that placed itself while they
+          // watched. Both setters land in the same batch, so this one wins.
+          // The MANUAL press does not run this line and still arrives selected.
+          setSelectedLayerId(null);
+        }
       }
     }
   }, [aiResult, pushChat, handleAiTransfer, pruneRetainedTransfers]);
@@ -1984,6 +2077,26 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       !chest &&
       seed.placement !== "jersey-back";
 
+    // REPLACE / ADD. A photo arriving onto a side that already has one is held
+    // until the customer answers (PlacementChoice); the answer re-runs this
+    // same drain with the decision in placementDecisionRef. Read-and-clear, and
+    // read HERE — after the product ladder has settled — so a re-run that has
+    // to step through the ladder again still finds it.
+    const decision = placementDecisionRef.current;
+    placementDecisionRef.current = null;
+    if (seed.image && decision === null) {
+      const trackedNow = chatPhotoRef.current;
+      const sameChatAttachment =
+        !!trackedNow &&
+        trackedNow.source === seed.image &&
+        photosRef.current.some((p) => p.id === trackedNow.layerId);
+      if (needsPlacementChoice(sidePhotosNowRef.current.length, sameChatAttachment)) {
+        seedAppliedRef.current = true;
+        setPendingPlacement({ kind: "seed", seed });
+        return;
+      }
+    }
+
     seedAppliedRef.current = true;
 
     // A seeded GENERATION is queued, not run, and queued only HERE — after the
@@ -2026,10 +2139,15 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       // marks, not userAdjusted. It is already placed; the edit that follows
       // replaces its image and applyContainFit re-fits it from its own state,
       // exactly as the left panel's chips do.
+      // ჩანაცვლება: the side's photos go in the same batch, just before the add,
+      // so the new design lands as the side's FIRST photo (full placement, not
+      // the half-size stagger).
+      const replaced = decision === "replace" && !reuse ? beginPlacementReplace() : null;
       const targetId = reuse
         ? (tracked as { source: string; layerId: string }).layerId
         : addPhotoLayer(seed.image, { paired: pairedSeed });
       chatPhotoRef.current = { source: seed.image, layerId: targetId };
+      if (replaced) showPlacementUndo(replaced.side, replaced.removed, [targetId]);
       // Background removal and the photo EDIT are both QUEUED, not run — the
       // layer does not exist until React commits the add above. The effects
       // below wait for it and then hand it to the constructor's own
@@ -2208,7 +2326,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
           : `„${seed.textColor}" არ არის წარწერის პალიტრაში — გამოვიყენეთ ${appliedLabel}. დააჭირე წარწერას შესაცვლელად.`,
       });
     }
-  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce, toast, lang]);
+  }, [currentView, productConfig, addPhotoLayer, setSideData, nextPhotoCoords, seedNonce, toast, lang, beginPlacementReplace, showPlacementUndo]);
 
   // ── In-place handoff from the floating chat widget ────────────────────────
   //
@@ -3156,6 +3274,36 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // A seeded EDIT reports through it too, using GENERATING_DESIGN — the edit IS
   // a model call drawing on the photo, and inventing a fourth vocabulary for it
   // would say less than the words that already exist.
+  // The customer's answer to PlacementChoice. A seed goes back through the
+  // seed drain with the decision attached; a floating-chat generation goes
+  // through placeTransfer, the in-panel Transfer's own body. ჩანაცვლება is
+  // refused while an AI action runs (the button is disabled then, too).
+  const resolvePlacement = (decision: PlacementDecision) => {
+    const pending = pendingPlacement;
+    if (!pending) return;
+    if (decision === "replace" && !canReplace(chatBusy)) return;
+    setPendingPlacement(null);
+    if (pending.kind === "seed") {
+      placementDecisionRef.current = decision;
+      seedRef.current = pending.seed;
+      seedAppliedRef.current = false;
+      setSeedNonce((n) => n + 1);
+      return;
+    }
+    const replaced = decision === "replace" ? beginPlacementReplace() : null;
+    const id = placeTransfer(pending.image, { replacing: !!replaced });
+    setSelectedLayerId(null);
+    if (replaced && id) showPlacementUndo(replaced.side, replaced.removed, [id]);
+  };
+
+  const placementChoice = pendingPlacement ? (
+    <PlacementChoice
+      onReplace={() => resolvePlacement("replace")}
+      onAdd={() => resolvePlacement("add")}
+      replaceDisabled={!canReplace(chatBusy)}
+    />
+  ) : null;
+
   const seededGenerationOverlay = (seededRunActive && aiGenerating) || seededRemoveBgActive || seededEditActive ? (
     <PreviewGenerationOverlay
       status={seededRemoveBgActive ? "PROCESSING_TRANSPARENCY" : seededEditActive ? "GENERATING_DESIGN" : aiStatus}
@@ -3297,6 +3445,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
           <div className="relative lg:hidden rounded-xl overflow-hidden border border-border bg-background">
             {seededGenerationOverlay}
             {swapControl}
+            {placementChoice}
             <ProductPreview
               productName={productConfig.config.product}
               subProduct={productConfig.config.subProduct}
@@ -3658,6 +3807,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
           <div className="relative w-full max-w-[38rem]">
             {seededGenerationOverlay}
             {swapControl}
+            {placementChoice}
             <ProductPreview
               productName={productConfig.config.product}
               subProduct={productConfig.config.subProduct}
