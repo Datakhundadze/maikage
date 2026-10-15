@@ -6,6 +6,7 @@ import LandingHero from "@/components/landing/LandingHero";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { productTypeKa } from "@/lib/i18n";
 import { heroTitle } from "@/lib/heroTitle";
+import { landingSeo } from "@/lib/landingSeo";
 import { BRAND_SLUGS, defaultBrandFor, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
 
 // Product landing routes (/hoodie, /hoodie/premium-washed, …) — ENTRY POINTS
@@ -71,24 +72,6 @@ function isArrival(navigationType: string, pathname: string): boolean {
   }
 }
 
-// SEO — one fixed template. Phrases are copied from existing strings:
-//   "შექმენი დიზაინი"                                         LandingPage.tsx:159
-//   "ატვირთე ფოტო, დაწერე ტექსტი, ან აღწერე და AI შეგიქმნის."   LandingPage.tsx:164
-//   "შეუკვეთე ონლაინ Maika.ge-ზე."                             designMetaDescription.ts:41,43
-// plus the product's Georgian label (i18n.ts products) and the brand string
-// exactly as the brand picker shows it (catalog.ts SUB_PRODUCTS).
-// The page's display name — the SEO title's and the landing hero's H1's.
-function landingName(productKa: string, brand: string | null): string {
-  return brand ? `${productKa} · ${brand}` : productKa;
-}
-
-function seoFor(name: string) {
-  return {
-    title: `${name} — შექმენი დიზაინი | Maika.ge`,
-    description: `${name}. ატვირთე ფოტო, დაწერე ტექსტი, ან აღწერე და AI შეგიქმნის. შეუკვეთე ონლაინ Maika.ge-ზე.`,
-  };
-}
-
 function brandSlugOf(product: Parameters<typeof resolveBrandSlug>[0], brand: string): string | null {
   const map = BRAND_SLUGS[product] ?? {};
   return Object.keys(map).find((s) => map[s] === brand) ?? null;
@@ -128,8 +111,9 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
   if (!isCanonical) return <Navigate to={`${canonicalPath}${search}${hash}`} replace />;
 
   const productKa = productTypeKa(product);
-  const name = landingName(productKa, brand);
-  const seo = seoFor(name);
+  // Title / description: lib/landingSeo.ts — the same strings the static
+  // prerender writes (scripts/prerender.mjs), so Helmet never swaps them.
+  const seo = landingSeo(product, productKa, brand);
   // The hero and a collapsed product picker exist only on these routes; "/"
   // renders SimplePage with neither.
   return (
