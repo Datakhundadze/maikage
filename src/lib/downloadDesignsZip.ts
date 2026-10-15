@@ -82,13 +82,20 @@ function todayStamp(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function zipAsync(files: Zippable): Promise<Uint8Array> {
+// fflate's callback is typed `Uint8Array`, i.e. `Uint8Array<ArrayBufferLike>` —
+// its buffer may be an ArrayBuffer or a SharedArrayBuffer. BlobPart only accepts
+// a view over a plain ArrayBuffer, so the archive is narrowed to that here (the
+// library always allocates a fresh ArrayBuffer for its output). No copy, no
+// runtime change — the view is handed to Blob unchanged.
+function zipAsync(files: Zippable): Promise<Uint8Array<ArrayBuffer>> {
   return new Promise((resolve, reject) => {
-    zip(files, { level: 0 }, (err, data) => (err ? reject(err) : resolve(data)));
+    zip(files, { level: 0 }, (err, data) =>
+      err ? reject(err) : resolve(data as Uint8Array<ArrayBuffer>),
+    );
   });
 }
 
-function saveBlob(data: Uint8Array, filename: string): void {
+function saveBlob(data: Uint8Array<ArrayBuffer>, filename: string): void {
   const url = URL.createObjectURL(new Blob([data], { type: "application/zip" }));
   const a = document.createElement("a");
   a.href = url;
