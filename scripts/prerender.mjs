@@ -11,7 +11,8 @@
 //   dist/contact/index.html   business facts copied verbatim from the app
 //   dist/faq/index.html       the FAQ (lib/faqContent.ts) minus priced Q&As,
 //                             with its FAQPage JSON-LD
-//   dist/corporate/index.html CorporatePage's text
+//   dist/corporate/index.html CorporatePage's text and its SEO section
+//                             (title + text from lib/corporateCopy.ts)
 //   dist/portfolio/index.html active portfolio_items: images (alt = title),
 //                             categories
 //   dist/showroom/index.html  ShowroomPage's heading; noindex while the page
@@ -72,11 +73,11 @@ import { loadEnv } from "vite";
 import { loadAppModules } from "./lib/appModules.mjs";
 import {
   CONTACT,
-  CORPORATE,
   LANDING_HERO,
   LANDING_LABELS,
   PORTFOLIO,
   SHOWROOM,
+  corporatePage,
   faqPageSchema,
   jsonLdText,
   landingCopyHtml,
@@ -503,20 +504,6 @@ function faqRoot(page, groups) {
   ].join("\n");
 }
 
-/** /corporate — CorporatePage's text. Its CTA opens an inquiry form there; here it links to /contact. */
-function corporateRoot() {
-  const c = CORPORATE;
-  return [
-    `<main style="${STYLE.main}">`,
-    `<nav style="${STYLE.nav}">${link("/", c.backLabel)}</nav>`,
-    `<h1 style="${STYLE.h1}">${esc(c.h1)}</h1>`,
-    `<p style="${STYLE.p}">${esc(c.intro)}</p>`,
-    `<ul style="${STYLE.ul}">${c.features.map((f) => `<li style="${STYLE.li}">${esc(f)}</li>`).join("")}</ul>`,
-    `<p style="${STYLE.footer}">${link("/contact", c.cta)}</p>`,
-    `</main>`,
-  ].join("\n");
-}
-
 /**
  * /portfolio — PortfolioPage's heading, its category chips (as text) and the
  * gallery: same images (400w/800w), same alt (alt_text, else title, else the
@@ -602,15 +589,21 @@ async function writeAppPages(template, app, stats) {
     }
   };
 
-  if (await page("corporate", "corporate", () => renderPage(template, {
-    title: CORPORATE.title,
-    description: CORPORATE.description,
-    canonical: `${SITE_URL}/corporate`,
-    image: DEFAULT_OG_IMAGE,
-    rootHtml: corporateRoot(),
-  }))) stats.lists.push("corporate");
-
   if (!app) return;
+
+  // /corporate — CorporatePage's text plus its SEO section; title,
+  // description and section text from lib/corporateCopy.ts (seo.mjs
+  // corporatePage builds it).
+  if (await page("corporate", "corporate", () => {
+    const corp = corporatePage(app, { esc, link, style: STYLE });
+    return renderPage(template, {
+      title: corp.title,
+      description: corp.description,
+      canonical: `${SITE_URL}/corporate`,
+      image: DEFAULT_OG_IMAGE,
+      rootHtml: corp.rootHtml,
+    });
+  })) stats.lists.push("corporate");
 
   const faq = priceFreeFaq(app.FAQ_GROUPS);
   for (const q of faq.dropped) stats.notes.push(`faq: left out (quotes a price) — ${q}`);
@@ -778,7 +771,7 @@ async function writePages() {
 
   // /faq, /corporate, /showroom, landing routes — src/ modules only.
   const app = await loadAppModules(LOG);
-  if (!app) console.warn(`${LOG} /faq, /portfolio, /showroom and the landing routes skipped; SPA fallback serves them.`);
+  if (!app) console.warn(`${LOG} /faq, /corporate, /portfolio, /showroom and the landing routes skipped; SPA fallback serves them.`);
   await writeAppPages(template, app, stats);
 
   let cfg = null;

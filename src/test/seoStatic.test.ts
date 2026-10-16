@@ -38,7 +38,7 @@ describe("copied page text still matches its source", () => {
   // are copied from components (they have no module of their own); if a
   // component's wording changes, update scripts/lib/seo.mjs to match.
   const cases: [string, string[]][] = [
-    ["src/pages/CorporatePage.tsx", [CORPORATE.title, CORPORATE.description, CORPORATE.backLabel, CORPORATE.h1, CORPORATE.intro, ...CORPORATE.features, CORPORATE.cta]],
+    ["src/pages/CorporatePage.tsx", [CORPORATE.backLabel, CORPORATE.h1, CORPORATE.intro, ...CORPORATE.features, CORPORATE.cta]],
     ["src/pages/PortfolioPage.tsx", [PORTFOLIO.title, PORTFOLIO.description, PORTFOLIO.backLabel, PORTFOLIO.h1, PORTFOLIO.intro, PORTFOLIO.allLabel, PORTFOLIO.altFallback, PORTFOLIO.catalogCta]],
     ["src/pages/ShowroomPage.tsx", [SHOWROOM.title, SHOWROOM.description, SHOWROOM.h1]],
     ["src/components/landing/LandingHero.tsx", [LANDING_HERO.h1Suffix.trim(), LANDING_HERO.leadTimePrefix, LANDING_HERO.uploadCta, LANDING_HERO.chatCta, `to="${LANDING_HERO.chatHref}"`]],
@@ -55,6 +55,19 @@ describe("copied page text still matches its source", () => {
       for (const s of strings) expect(src, `${file} no longer contains ${JSON.stringify(s)}`).toContain(s);
     });
   }
+
+  it("/corporate title and description: one source (lib/corporateCopy.ts) for the page and the prerender", () => {
+    const page = source("src/pages/CorporatePage.tsx");
+    expect(page).toContain('import { CORPORATE_COPY, CORPORATE_SEO } from "@/lib/corporateCopy"');
+    expect(page).toContain("title={CORPORATE_SEO.title}");
+    expect(page).toContain("description={CORPORATE_SEO.description}");
+    expect(page).not.toContain("კორპორაციული შეკვეთები — Maika.ge");
+    expect(CORPORATE).not.toHaveProperty("title");
+    expect(CORPORATE).not.toHaveProperty("description");
+    const prerender = source("scripts/prerender.mjs");
+    expect(prerender).toContain("corporatePage(app, { esc, link, style: STYLE })");
+    expect(source("scripts/lib/appModules.mjs")).toContain('corporateCopy: "/src/lib/corporateCopy.ts"');
+  });
 
   it("the brand-list heading is the constructor's brand label", () => {
     expect(translations.ge.config.brand).toBe(LANDING_LABELS.brand);
