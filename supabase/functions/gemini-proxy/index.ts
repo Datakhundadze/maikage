@@ -1397,6 +1397,146 @@ serve(async (req) => {
     const callerIsGuest = !user || user.is_anonymous === true;
     const callerSessionId = typeof params.session_id === "string" ? params.session_id : null;
 
+    // --- probe-image-model (ADMIN ONLY, ADD-ONLY) ---------------------------
+    // A lab action for comparing image models side by side (admin → "AI
+    // მოდელების ტესტი") before any production path is switched. It is fully
+    // self-contained and returns before every other branch: no existing
+    // handler, prompt, model routing or pipeline is touched, and customers
+    // cannot reach it (admin role required, checked here).
+    //
+    // WHY IT TRIES MORE THAN ONE ENDPOINT. Lovable documents that the gateway
+    // offers OpenAI GPT Image models (and that 2.5 Flare / Sunburst can return
+    // a transparent background), but not the request format. OpenAI's own API
+    // is /v1/images/generations; production calls Gemini through
+    // /v1/chat/completions with modalities. For an openai/* model the probe
+    // tries the images endpoint first, then chat (with the OpenAI background
+    // fields), then plain chat — and STOPS AT THE FIRST IMAGE, so one click
+    // costs at most one paid image. Every attempt's status, timing and a
+    // truncated response shape come back so the format question is answered
+    // by data. google/* models use the production chat format only.
+    //
+    // COST. One ai_calls row per click (action "probe-image-model"), like
+    // every other gateway call. Not in BILLABLE_ACTIONS: admins are exempt
+    // from the rate limit anyway.
+    if (action === "probe-image-model") {
+      const probeJson = (status: number, body: unknown) =>
+        new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      let probeIsAdmin = false;
+      if (user) {
+        const { data: adminFlag } = await client.rpc("has_role", { _user_id: user.id, _role: "admin" });
+        probeIsAdmin = adminFlag === true;
+      }
+      if (!probeIsAdmin) return probeJson(403, { error: "Admins only", code: "FORBIDDEN" });
+
+      const probeModel = typeof params.model === "string" ? params.model.trim() : "";
+      if (!/^(openai|google)\/[a-z0-9.\-]{3,80}$/.test(probeModel)) {
+        return probeJson(400, { error: "Unknown model id", code: "BAD_MODEL" });
+      }
+      const probePrompt = typeof params.prompt === "string" ? params.prompt.trim().slice(0, 4000) : "";
+      if (!probePrompt) return probeJson(400, { error: "Empty prompt", code: "BAD_REQUEST" });
+      const probeTransparent = params.transparent === true;
+      const probeQuality = ["low", "medium", "high"].includes(params.quality) ? params.quality : "medium";
+      const probeIsOpenAI = probeModel.startsWith("openai/");
+      const probeKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!probeKey) return probeJson(500, { error: "LOVABLE_API_KEY is not configured", code: "CONFIG" });
+
+      const probeStarted = Date.now();
+      const probe = {
+        image: null as string | null,
+        endpoint: null as string | null,
+        usage: null as unknown,
+        attempts: [] as Array<{ label: string; endpoint: string; status: number; ms: number; ok: boolean; shape: string }>,
+      };
+      const shapeOf = (d: unknown) => {
+        try {
+          return JSON.stringify(d, (_k, v) => (typeof v === "string" && v.length > 160 ? `<${v.length} chars>` : v)).slice(0, 1500);
+        } catch {
+          return "<unserialisable>";
+        }
+      };
+      const tryProbe = async (label: string, endpoint: string, body: Record<string, unknown>): Promise<boolean> => {
+        const t0 = Date.now();
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${probeKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const text = await res.text();
+          let data: any = null;
+          try { data = JSON.parse(text); } catch { /* not JSON */ }
+          const found = data ? extractImage(data) : null;
+          probe.attempts.push({ label, endpoint, status: res.status, ms: Date.now() - t0, ok: res.ok && !!found, shape: data ? shapeOf(data) : text.slice(0, 600) });
+          if (res.ok && found) {
+            probe.image = found;
+            probe.endpoint = endpoint;
+            probe.usage = data?.usage ?? null;
+            return true;
+          }
+        } catch (e) {
+          probe.attempts.push({ label, endpoint, status: 0, ms: Date.now() - t0, ok: false, shape: String(e).slice(0, 600) });
+        }
+        return false;
+      };
+
+      const IMAGES_URL = GATEWAY_URL.replace("/chat/completions", "/images/generations");
+      const chatPrompt = probeTransparent
+        ? `${probePrompt}\n\nTransparent background: no backdrop at all, PNG with alpha channel.`
+        : probePrompt;
+      if (probeIsOpenAI) {
+        (await tryProbe("images", IMAGES_URL, {
+          model: probeModel,
+          prompt: probePrompt,
+          n: 1,
+          size: "1024x1024",
+          quality: probeQuality,
+          output_format: "png",
+          background: probeTransparent ? "transparent" : "auto",
+        })) ||
+          (await tryProbe("chat+fields", GATEWAY_URL, {
+            model: probeModel,
+            messages: [{ role: "user", content: chatPrompt }],
+            modalities: ["image", "text"],
+            background: probeTransparent ? "transparent" : "auto",
+            output_format: "png",
+            quality: probeQuality,
+          })) ||
+          (await tryProbe("chat", GATEWAY_URL, {
+            model: probeModel,
+            messages: [{ role: "user", content: chatPrompt }],
+            modalities: ["image", "text"],
+          }));
+      } else {
+        await tryProbe("chat", GATEWAY_URL, {
+          model: probeModel,
+          messages: [{ role: "user", content: chatPrompt }],
+          modalities: ["image", "text"],
+        });
+      }
+
+      const probeMs = Date.now() - probeStarted;
+      logAiCall({
+        action,
+        model: probeModel,
+        userId: callerUserId,
+        sessionId: null,
+        isGuest: false,
+        success: !!probe.image,
+        durationMs: probeMs,
+        errorCode: probe.image ? null : "probe_failed",
+      });
+      return probeJson(200, {
+        ok: !!probe.image,
+        model: probeModel,
+        image: probe.image,
+        endpoint: probe.endpoint,
+        usage: probe.usage,
+        totalMs: probeMs,
+        attempts: probe.attempts,
+      });
+    }
+
     // --- Rate limiting (billable actions only) ---
     // Keyed on user_id for authed callers, IP for anon. Admins (trusted batch
     // generation) are exempt. Enforced BEFORE any gateway call so blocked
