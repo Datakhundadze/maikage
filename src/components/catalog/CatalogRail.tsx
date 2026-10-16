@@ -10,7 +10,7 @@ import "./catalogRail.css";
 // /designs default view — the showroom rail, ported from the rail prototype.
 //
 // One category = one heading + its rails. Garments hang side-on; on a mouse,
-// hovering one turns it to face you (spring), shoves its neighbours (ripple),
+// resting on one (120 ms) turns it to face you (spring), shoves its neighbours (ripple),
 // and brushing the cursor through the rail pushes the clothes; rails drop in on
 // first view. Desktop (fine pointer, > 700 px): no horizontal scrolling — a
 // category is split into as many stacked rails as needed so each fits the
@@ -125,11 +125,13 @@ const DESKTOP_H = 300;
 const ROW_PAD_X = 52; // .cr-rail-wrap padding-inline on desktop
 const ITEM_GAP = 2; // .cr-rail-wrap gap
 const HOODIE_GAP = 14; // gap before the hoodie group (incl. ITEM_GAP)
+const SLOT_GAP = 8; // air added to every side-on slot so each garment is easy to hit
+const HOVER_INTENT_MS = 120; // fine pointer: rest this long on a garment before it turns
 
 interface Geometry {
   /** Width of the side image. */
   side: number;
-  /** Slot width while side-on: tees overlap (62 % of the side image), hoodies don't (+6 px). */
+  /** Slot width while side-on: tees 95 % of the side image, hoodies the full image + 6 px; both + SLOT_GAP. */
   slot: number;
   /** Width while turned to the front. */
   front: number;
@@ -142,7 +144,7 @@ function geometry(scene: ShowroomScene, m: MockupKey, H: number): Geometry {
   const side = Math.round((sw / sh) * H);
   return {
     side,
-    slot: m.startsWith("hoodie-") ? side + 6 : Math.round((sw / sh) * H * 0.62),
+    slot: (m.startsWith("hoodie-") ? side + 6 : Math.round((sw / sh) * H * 0.95)) + SLOT_GAP,
     front: Math.round((fw / fh) * H),
   };
 }
@@ -367,7 +369,15 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
 
     // turning one garment: it springs round, its neighbours get shoved and swing
     let onEl: HTMLAnchorElement | null = null;
+    // hover intent (fine pointer): the garment waiting out HOVER_INTENT_MS
+    let intentEl: HTMLAnchorElement | null = null;
+    let intentTimer = 0;
+    const cancelIntent = () => {
+      window.clearTimeout(intentTimer);
+      intentEl = null;
+    };
     const setOn = (g: HTMLAnchorElement | null) => {
+      cancelIntent();
       const prev = onEl;
       if (prev === g) return;
       if (prev) {
@@ -437,11 +447,24 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
     }
     if (fine) {
       const garmentOf = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLAnchorElement>(".cr-g") : null);
+      // hover intent: a garment turns only once the cursor has rested on it for
+      // HOVER_INTENT_MS; passing over (or leaving) sooner cancels, so sweeping
+      // across the rail doesn't spin and ripple every garment on the way
       const onOver = (e: PointerEvent) => {
         const g = garmentOf(e.target);
-        if (g && index.has(g)) setOn(g);
+        if (!g || !index.has(g)) {
+          cancelIntent();
+          return;
+        }
+        if (g === intentEl) return; // moved between the garment's own children
+        cancelIntent();
+        if (g === onEl) return;
+        intentEl = g;
+        intentTimer = window.setTimeout(() => setOn(g), HOVER_INTENT_MS);
       };
       const onLeave = () => setOn(null);
+      // a press opens the garment as it is: don't turn it underneath the stage
+      const onDown = () => cancelIntent();
       // brushing: running the cursor through the rail pushes the clothes it passes
       const onMove = (e: PointerEvent) => {
         if (!e.movementX) return;
@@ -455,10 +478,13 @@ const RailRow = memo(function RailRow({ items, scene, desktop, fine, reduce, nea
       track.addEventListener("pointerover", onOver);
       track.addEventListener("pointerleave", onLeave);
       track.addEventListener("pointermove", onMove);
+      track.addEventListener("pointerdown", onDown);
       cleanups.push(() => {
         track.removeEventListener("pointerover", onOver);
         track.removeEventListener("pointerleave", onLeave);
         track.removeEventListener("pointermove", onMove);
+        track.removeEventListener("pointerdown", onDown);
+        cancelIntent();
       });
     } else {
       // touch: the garment nearest the rail centre turns (centres from cached offsets)
