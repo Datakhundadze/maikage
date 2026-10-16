@@ -149,8 +149,9 @@ export function mkBody(extra: Partial<RailBody> & { render: (t: number) => void 
     hold: 0,
     k: 38 * (0.85 + Math.random() * 0.3),
     c: 2.6 * (0.85 + Math.random() * 0.3),
-    ks: 150,
-    kd: 15,
+    // ≈0.8 s turn, ~4 % overshoot past "facing you"
+    ks: 70,
+    kd: 12,
     ...extra,
   };
 }
