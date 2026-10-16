@@ -19,7 +19,10 @@
 //   dist/<product>[/<brand>]/index.html
 //                             every product landing route App.tsx registers
 //                             (/t-shirt, /hoodie/premium-washed, …): hero
-//                             heading, lead time, constructor links
+//                             heading, lead time, constructor links; a bare
+//                             product route with copy in lib/landingCopy.ts
+//                             (/t-shirt) also gets that text section, minus
+//                             its price sentence
 //
 // Texts and slugs that live in src/ modules (FAQ, landing slugs, heroTitle,
 // LEAD_TIME_KA, landing titles) are loaded from those modules through Vite
@@ -76,6 +79,7 @@ import {
   SHOWROOM,
   faqPageSchema,
   jsonLdText,
+  landingCopyHtml,
   landingRoutes,
   priceFreeFaq,
 } from "./lib/seo.mjs";
@@ -564,7 +568,7 @@ function showroomRoot() {
  * "ატვირთე ფოტო" links to the route itself. No price (LandingHero's
  * "… ₾-დან" comes from pricing.ts at runtime).
  */
-function landingRoot(route, { productKa, title, leadTime, brands }) {
+function landingRoot(route, { productKa, title, leadTime, brands, copy }) {
   const h = LANDING_HERO;
   const crumbs = [link("/", LANDING_LABELS.home)];
   if (route.brandSlug) crumbs.push(link(`/${route.productSlug}`, productKa));
@@ -578,6 +582,7 @@ function landingRoot(route, { productKa, title, leadTime, brands }) {
       ? `<h2 style="${STYLE.h3}">${esc(LANDING_LABELS.brand)}</h2>\n` +
         `<ul style="${STYLE.ul}">${brands.map((b) => `<li style="${STYLE.li}">${link(b.path, b.brand)}</li>`).join("")}</ul>`
       : "",
+    copy ? landingCopyHtml(copy, { esc, link, style: STYLE }) : "",
     `</main>`,
   ].filter(Boolean).join("\n");
 }
@@ -652,6 +657,7 @@ async function writeAppPages(template, app, stats) {
           title: app.heroTitle(productKa, r.brand),
           leadTime: app.LEAD_TIME_KA,
           brands: r.brandSlug ? [] : routes.filter((b) => b.brandSlug && b.productSlug === r.productSlug),
+          copy: app.landingCopyFor(r.productSlug, r.brandSlug),
         }),
       });
     });

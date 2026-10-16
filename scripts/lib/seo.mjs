@@ -132,6 +132,32 @@ export function landingRoutes({ LANDING_PRODUCT_SLUGS, BRAND_SLUGS, resolveProdu
   return routes;
 }
 
+/**
+ * LandingCopySection (src/components/landing/LandingCopySection.tsx) as static
+ * HTML: the same h2 / intro / h3 / body / link structure from
+ * lib/landingCopy.ts. A section's `priceLead` (the "from" price sentence) is
+ * never written — prices exist at runtime only — so the ფასი section starts
+ * at its second sentence, as the live page does when no price is available.
+ *
+ * @param copy  landingCopyFor(...) result
+ * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
+ */
+export function landingCopyHtml(copy, { esc, link, style }) {
+  return [
+    `<section>`,
+    `<h2 style="${style.h2}">${esc(copy.h2)}</h2>`,
+    `<p style="${style.p}">${esc(copy.intro)}</p>`,
+    ...copy.sections.map((s) =>
+      [
+        `<h3 style="${style.h3}">${esc(s.h3)}</h3>`,
+        `<p style="${style.p}">${esc(s.body)}</p>`,
+        s.link ? `<p style="${style.p}">${link(s.link.href, s.link.label)}</p>` : "",
+      ].filter(Boolean).join("\n"),
+    ),
+    `</section>`,
+  ].join("\n");
+}
+
 // ── Sitemap ─────────────────────────────────────────────────────────────────
 
 /** Same priorities / changefreq as the sitemap edge function's product-routes block. */

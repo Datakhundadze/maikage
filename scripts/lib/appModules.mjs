@@ -25,6 +25,7 @@ const MODULES = {
   landingSeo: "/src/lib/landingSeo.ts",
   faq: "/src/lib/faqContent.ts",
   showroom: "/src/lib/showroomSeo.ts",
+  landingCopy: "/src/lib/landingCopy.ts",
   imageTransform: "/src/lib/imageTransform.ts",
 };
 
@@ -44,6 +45,10 @@ const MODULES = {
  *   FAQ_PAGE: { title: string, description: string, h1: string, intro: string, backLabel: string },
  *   FAQ_GROUPS: { heading: string, items: { q: string, a: string }[] }[],
  *   SHOWROOM_INDEXABLE: boolean,
+ *   landingCopyFor: (productSlug: string, brandSlug: string | null) => null | {
+ *     h2: string, intro: string,
+ *     sections: { h3: string, body: string, priceLead?: Function, link?: { href: string, label: string } }[],
+ *   },
  *   transformedDisplayUrl: (url: string, opts: { width: number, quality?: number }) => string,
  * }>}
  */
@@ -76,6 +81,7 @@ export async function loadAppModules(log) {
       FAQ_PAGE: m.faq.FAQ_PAGE,
       FAQ_GROUPS: m.faq.FAQ_GROUPS,
       SHOWROOM_INDEXABLE: m.showroom.SHOWROOM_INDEXABLE,
+      landingCopyFor: m.landingCopy.landingCopyFor,
       transformedDisplayUrl: m.imageTransform.transformedDisplayUrl,
     };
   } catch (e) {

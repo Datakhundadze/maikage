@@ -917,11 +917,17 @@ let textIdCounter = 0;
 // ProductLandingPage: at "/" there is no hero and the product picker starts
 // open (ProductConfigPanel's own default), exactly as before. `hero` may be a
 // function so it can be handed the constructor's own photo picker.
+//
+// `afterContent` (ProductLandingPage, /t-shirt only) is rendered once, as the
+// last child of the sidebar's scroll column — after the order buttons, before
+// the theme footer — so it follows the whole constructor on a phone and on
+// desktop alike. Absent everywhere else: nothing is rendered in its place.
 interface SimplePageProps {
   seoTitle?: string;
   seoDescription?: string;
   hero?: ReactNode | ((api: { onUploadClick: () => void }) => ReactNode);
   productPickerInitiallyOpen?: boolean;
+  afterContent?: ReactNode;
 }
 
 /**
@@ -933,7 +939,7 @@ type PendingPlacement =
   | { kind: "seed"; seed: ConstructorSeed }
   | { kind: "transfer"; image: string };
 
-export default function SimplePage({ seoTitle, seoDescription, hero, productPickerInitiallyOpen }: SimplePageProps = {}) {
+export default function SimplePage({ seoTitle, seoDescription, hero, productPickerInitiallyOpen, afterContent }: SimplePageProps = {}) {
   const { lang, theme, toggleTheme } = useAppState();
   const productConfig = useProductConfig();
   const { trackEvent } = useAnalytics();
@@ -3775,6 +3781,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
             );
           })()}
 
+          {afterContent}
         </div>
 
         {/* Footer: theme switcher */}
