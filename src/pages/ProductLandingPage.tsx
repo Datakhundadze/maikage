@@ -3,10 +3,13 @@ import { Navigate, useLocation, useNavigationType, useParams } from "react-route
 import SimplePage from "@/pages/SimplePage";
 import NotFound from "@/pages/NotFound";
 import LandingHero from "@/components/landing/LandingHero";
+import LandingCopySection from "@/components/landing/LandingCopySection";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { productTypeKa } from "@/lib/i18n";
 import { heroTitle } from "@/lib/heroTitle";
 import { landingSeo } from "@/lib/landingSeo";
+import { landingCopyFor } from "@/lib/landingCopy";
+import { fromPrice } from "@/lib/landingPrice";
 import { BRAND_SLUGS, defaultBrandFor, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
 
 // Product landing routes (/hoodie, /hoodie/premium-washed, …) — ENTRY POINTS
@@ -72,6 +75,16 @@ function isArrival(navigationType: string, pathname: string): boolean {
   }
 }
 
+/** The hero's "from" price, or null if it cannot be computed (the copy then drops its price sentence). */
+function copyPrice(product: Parameters<typeof fromPrice>[0]): number | null {
+  try {
+    const price = fromPrice(product, null);
+    return Number.isFinite(price) && price > 0 ? price : null;
+  } catch {
+    return null;
+  }
+}
+
 function brandSlugOf(product: Parameters<typeof resolveBrandSlug>[0], brand: string): string | null {
   const map = BRAND_SLUGS[product] ?? {};
   return Object.keys(map).find((s) => map[s] === brand) ?? null;
@@ -114,6 +127,9 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
   // Title / description: lib/landingSeo.ts — the same strings the static
   // prerender writes (scripts/prerender.mjs), so Helmet never swaps them.
   const seo = landingSeo(product, productKa, brand);
+  // Text section under the constructor — the bare product route only
+  // (/t-shirt, never /t-shirt/<brand>); lib/landingCopy.ts.
+  const copy = landingCopyFor(productSlug, brandPart);
   // The hero and a collapsed product picker exist only on these routes; "/"
   // renders SimplePage with neither.
   return (
@@ -121,6 +137,7 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
       seoTitle={seo.title}
       seoDescription={seo.description}
       productPickerInitiallyOpen={false}
+      afterContent={copy ? <LandingCopySection copy={copy} price={copyPrice(product)} /> : undefined}
       hero={({ onUploadClick }) => (
         <LandingHero product={product} brand={brand} title={heroTitle(productKa, brand)} onUploadClick={onUploadClick} />
       )}
