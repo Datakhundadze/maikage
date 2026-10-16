@@ -58,6 +58,13 @@ export interface MockupSuggestion {
    * the request and prose was the only thing left to offer.
    */
   editPrompt?: string;
+  /**
+   * Make the WHITE parts of the design transparent („დიზაინიდან ამოიღე ყველა
+   * თეთრი ფერი"). Unlike removeBackground it is meaningful WITHOUT an
+   * attachment too: it then acts on the design already in a live constructor.
+   * The constructor runs its existing white-removal transparency pipeline.
+   */
+  removeWhite?: boolean;
 }
 
 /** Remove every maika-mockup fence (closed OR truncated) from displayed text. */
@@ -253,6 +260,12 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
       out.removeBackground = true;
     }
 
+    // removeWhite — same tolerance as removeBackground. Add-only field.
+    if (parsed.removeWhite === true ||
+        (typeof parsed.removeWhite === "string" && norm(parsed.removeWhite) === "true")) {
+      out.removeWhite = true;
+    }
+
     // editPrompt — the customer's own words for a change to the attached photo.
     // Bounded by the PROMPT cap: this describes a change to a picture, it is not
     // words printed on a garment. Kept verbatim otherwise — narrowing it would
@@ -321,6 +334,8 @@ function buildMockupSeed(m: MockupSuggestion, attachment?: string | null): Const
     removeBackground: attachment && m.removeBackground ? true : undefined,
     // Same rule: an edit with no photo to act on is noise.
     editPrompt: attachment && m.editPrompt ? m.editPrompt : undefined,
+    // NOT attachment-gated: without one it targets the constructor's current design.
+    removeWhite: m.removeWhite ? true : undefined,
     // jersey-back is by definition the BACK of the shirt; fill it in when the
     // model named the placement but forgot the side, without overriding an
     // explicit one.

@@ -95,6 +95,14 @@ export interface ConstructorSeed {
    * `image`.
    */
   editPrompt?: string;
+  /**
+   * Make the WHITE parts of the design transparent. With `image`: on the
+   * seeded layer (after the edit, when both are asked for). Without `image`:
+   * on the constructor's CURRENT design layer — the site assistant asked to
+   * change what the customer is already looking at. A REQUEST, handed to
+   * SimplePage's own white-removal handler (runTransparencyPipeline, unchanged).
+   */
+  removeWhite?: boolean;
   /** Which side the layers land on. */
   side?: "front" | "back";
   /**
@@ -133,7 +141,7 @@ export interface ConstructorSeed {
  *   should still open the constructor — it simply opens empty).
  */
 export function writeConstructorSeed(seed: ConstructorSeed): boolean {
-  if (!seed.text && !seed.image && !seed.product && !seed.color && !seed.generate) return false;
+  if (!seed.text && !seed.image && !seed.product && !seed.color && !seed.generate && !seed.removeWhite) return false;
   try {
     localStorage.setItem(SEED_KEY, JSON.stringify({ ...seed, ts: Date.now() }));
     return true;
@@ -315,8 +323,11 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
       }
     }
 
-    if (!text && !image && !product && !color && !generate) return null;
-    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate };
+    // Not image-gated: without a photo it targets the constructor's current design.
+    const removeWhite = parsed.removeWhite === true ? true : undefined;
+
+    if (!text && !image && !product && !color && !generate && !removeWhite) return null;
+    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}) };
   } catch {
     return null;
   }

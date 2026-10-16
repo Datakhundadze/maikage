@@ -115,6 +115,17 @@ export default function ChatSuggestionActions({
     );
   }
 
+  // A block that only removes the white acts on the design already in the
+  // constructor — "see the sketch" would describe something it does not do.
+  if (suggestion.mockup.removeWhite && !suggestion.mockup.text) {
+    return (
+      <Button onClick={() => onMockup(suggestion.mockup)} size={size} className={cls}>
+        <Shirt className={iconCls} />
+        თეთრის ამოღება
+      </Button>
+    );
+  }
+
   return (
     <Button onClick={() => onMockup(suggestion.mockup)} size={size} className={cls}>
       <Shirt className={iconCls} />

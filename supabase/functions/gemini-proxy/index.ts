@@ -22,7 +22,7 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // Actions that each cost a paid image call at the gateway → rate-limited per
 // caller. convert-bg-black (internal second half of a generate-design) and
 // randomize-prompt (cheap text) are intentionally exempt.
-const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image"]);
+const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout"]);
 
 // GUEST allowance, in UNITS, per IP (real signed-in users keep 30/hour and
 // 100/day, one unit per call, untouched).
@@ -52,7 +52,7 @@ const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale",
 // check_and_increment_rate_limit RPC — no schema or signature change.
 const GUEST_HOUR_LIMIT = 4;
 const GUEST_DAY_LIMIT = 4;
-const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image"]);
+const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout"]);
 const PRO_TIER_GUEST_UNITS = 2;
 
 // Text-only actions: they skip the image modality, run a single attempt, and
@@ -92,6 +92,22 @@ Keep answers short, warm, and helpful.
 - Answer the question asked. Do not volunteer adjacent facts they did not ask for.
 - KA: ერთი შეკითხვა — ერთი მოკლე პასუხი. არ გაიმეორო უკვე ნათქვამი და არ ჩამოწერო
   საკონტაქტო არხები ყოველ პასუხში.
+
+⚠️ GEORGIAN SCRIPT AND SITE LABELS / ქართული დამწერლობა და საიტის წარწერები
+- NEVER mix Latin letters inside a Georgian word. A real logged reply wrote
+  „construct-ორიდან" — that is a BUG; the word is „კონსტრუქტორიდან". A Georgian reply is
+  written in Georgian script throughout, never transliterated into Latin letters.
+- Refer to the site's UI ONLY by its real Georgian label, exactly as it is on screen — e.g.
+  the constructor's chip is „ფონის მოხსნა". Never an English feature name in a Georgian
+  reply ("Background Removal", "Remove background", "AI Edit"), and never a button or menu
+  this document does not name: an invented label sends the customer looking for nothing.
+- When the customer asks to change THEIR CURRENT DESIGN — remove the background, remove the
+  white, recolour something — and a block can carry it ("removeBackground", "removeWhite",
+  "editPrompt" in §12), USE THE BLOCK. Never tell them to do it by hand when the action exists.
+- KA: ქართულ სიტყვაში ლათინური ასო არასოდეს — „კონსტრუქტორიდან", არა „construct-ორიდან".
+  საიტის ღილაკები მხოლოდ მათი ნამდვილი ქართული სახელით („ფონის მოხსნა"), ინგლისური სახელები
+  და გამოგონილი ღილაკები — არასოდეს. თუ მიმდინარე დიზაინის შეცვლა (ფონის მოხსნა, თეთრის
+  ამოღება, ფერის შეცვლა) ბლოკით შეიძლება — ბლოკი, და არა ხელით გაკეთების ინსტრუქცია.
 
 If you don't know something or it's not in this document (custom quotes, special
 requests, exact corporate pricing, anything uncertain):
@@ -590,6 +606,19 @@ WORKED EXAMPLES — copy this shape; include EVERY field the customer indicated:
    Set "removeBackground" ONLY when a photo is attached AND they asked for the background
    gone („ფონი მოაშორე", „გაასუფთავე", "without background").
 
+5b. ᲗᲔᲗᲠᲘᲡ ᲐᲛᲝᲦᲔᲑᲐ / REMOVE THE WHITE — კლიენტი წერს: „დიზაინიდან ამოიღე ყველა თეთრი ფერი"
+   (მაგ. ხაზოვანი ნახატი, რომლის თეთრი ნაწილებიც თეთრ მაისურზე გამჭვირვალე უნდა იყოს)
+\`\`\`maika-mockup
+{"removeWhite":true}
+\`\`\`
+   "removeWhite" = the customer wants the WHITE parts of the design to become transparent
+   („ამოიღე თეთრი", „თეთრი ფერი მოაშორე", "remove the white", "make the white transparent").
+   It acts on the photo attached in this chat; with NO attachment it acts on the design
+   already in the constructor — so emit it even with no photo and no "text". Add the other
+   fields only if they named them. The background in general („ფონი მოაშორე") with a photo
+   attached is "removeBackground", not this. Costs one generation, like removeBackground.
+   ⚠️ Never answer this request with instructions — the block IS the answer.
+
 6. ᲤᲝᲢᲝᲡ ᲨᲔᲪᲕᲚᲐ / EDITING AN ATTACHED PHOTO — კლიენტმა ატვირთა ძაღლის ფოტო და წერს:
    „შავი მრგვალი სათვალე დაადე ძაღლს"
 \`\`\`maika-mockup
@@ -712,6 +741,7 @@ Electric Blue, Light Blue, Standard Blue. No matching colour on the brand's line
 side: front | back — "back" exists ONLY for garments and the tote bag. წინსაფარს (Apron), კეპს (Cap), ჭიქას (Mug) და მობილურის ქეისს (Phone Case) ზურგი არ აქვთ — for those four, never emit "back": omit the field or use "front".
 placement: center | small | left-chest | right-chest — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center; "small" = centred like "center" but a SMALLER print, sitting a little lower — use it ONLY when they ask for a small one („პატარა", „პატარა წარწერა", "small print"), never as a default
 removeBackground: true | omit — true ONLY with an attached photo the customer wants cut out.
+removeWhite: true | omit — true when they ask to remove the WHITE from the design (example 5b); attached photo OR the design already in the constructor.
 textColor (the LETTERING): Black | White | Red | Blue | Green | Yellow | Orange | Purple | Pink | Gray | Gold | Navy — თეთრად → White; შავად → Black; წითლად → Red; ლურჯად → Blue; მწვანედ → Green; ყვითლად → Yellow; ნარინჯისფრად → Orange; იისფრად → Purple; ვარდისფრად → Pink; ნაცრისფრად → Gray; ოქროსფრად → Gold; მუქი ლურჯი → Navy
 
 ⚠️ NEVER SEND THEM TO ვირტუალური გასახდელი TO SEE A DESIGN. To show a design on a product you
@@ -1905,6 +1935,78 @@ Output: a single photographic image of the isolated main subject (full detail, o
         role: "user",
         content: [
           { type: "text", text: `${GUARD} ${params.instruction}` },
+          { type: "image_url", image_url: { url: params.image } },
+        ],
+      }];
+
+    } else if (action === "isolate-design") {
+      // ADD-ONLY (2026-10-16). Background removal for an AI DESIGN — lettering,
+      // figures, decorative elements — as opposed to isolate-subject above,
+      // which keeps only the MAIN SUBJECT of a photo and, handed a design,
+      // deletes every letter. Same output contract as isolate-subject: the
+      // artwork on a uniform #00FF00 backdrop, keyed client-side by
+      // chromaKeyGreenDesign (src/lib/chromaKey.ts), which also keys green
+      // trapped inside letters and between elements. Pro, for the same reason
+      // isolate-subject is pro: flash returned non-green backdrops.
+      model = "google/gemini-3-pro-image";
+      messages = [{
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `This is a print design. Replace ONLY its background with a SOLID, UNIFORM, PURE BRIGHT GREEN chroma-key background (#00FF00).
+
+KEEP EVERY PART OF THE ARTWORK EXACTLY AS IT IS:
+- ALL text and lettering — Georgian and Latin — every letter, word, line and accent, with the same font, spelling, colour, size and position. Do not drop, retype, translate or re-letter anything.
+- All figures, characters, icons, shapes, outlines, rays, ornaments and decorative elements, including small and thin ones.
+- The same colours, layout, proportions, composition and framing.
+This is a background-replacement operation, NOT a re-draw. Do not add anything, and do not remove anything that belongs to the artwork.
+
+THE BACKGROUND — whatever it is now (a solid colour, a gradient, a photo or scene, or a checkerboard / grey-and-white transparency grid) — becomes uniformly pure #00FF00, edge to edge, with no shadow, gradient, texture, vignette or pattern. The gaps INSIDE letters (the holes of letters such as "o", "a", "ბ", "ო") and the spaces BETWEEN elements are background too and must be the same pure #00FF00.
+
+Never use this green (#00FF00 or any near-identical bright green) anywhere inside the artwork. Do not let the green tint or spill onto the artwork; keep clean edges.
+
+Output: one image — the unchanged artwork on a pure solid #00FF00 background.`,
+          },
+          { type: "image_url", image_url: { url: params.image } },
+        ],
+      }];
+
+    } else if (action === "edit-image-cutout") {
+      // ADD-ONLY (2026-10-16). Constructor chat: an edit request that asks for
+      // the background to go („ფონი მოაშორე", "remove the background"). Plain
+      // edit-image (unchanged above) cannot do this: the model cannot output
+      // alpha, and asked for "no background" it PAINTS a checkerboard into the
+      // pixels, which then prints. This branch carries edit-image's guard
+      // (copied, so edit-image stays byte-identical) plus a mandatory green
+      // backdrop; the client keys it with chromaKeyGreenDesign and, if the key
+      // finds no green, falls back to isolate-design on this result.
+      const CUTOUT_GUARD =
+        "Edit this image following the user's instruction. This is an EDIT, " +
+        "not a re-generation: apply ONLY the requested change and keep " +
+        "everything the instruction does not ask to change — subject " +
+        "identity, pose, colors, composition, lighting, and ALL text and " +
+        "lettering (Georgian and Latin) and every graphic element — exactly " +
+        "as in the input. Never add text, watermarks, signatures or logos " +
+        "unless the instruction explicitly asks for them. Never produce " +
+        "sexual, violent or otherwise unsafe content, and never turn the " +
+        "subject into a recognizable copyrighted or trademarked character. " +
+        "If the instruction is unclear, apply the most reasonable " +
+        "interpretation. " +
+        "BACKGROUND — MANDATORY: the result is a cutout for printing, so the " +
+        "background must go. Render the final result on a UNIFORM, PURE " +
+        "BRIGHT GREEN #00FF00 background, edge to edge, flat, with no " +
+        "shadow, gradient, texture or vignette; the gaps inside letters and " +
+        "between elements are background too and must be the same green. " +
+        "NEVER draw a checkerboard, grey-and-white squares or any " +
+        "transparency grid — replace one that is already in the input with " +
+        "the green. Never use this green anywhere inside the subject or the " +
+        "artwork. Instruction:";
+      model = "google/gemini-3-pro-image";
+      messages = [{
+        role: "user",
+        content: [
+          { type: "text", text: `${CUTOUT_GUARD} ${params.instruction}` },
           { type: "image_url", image_url: { url: params.image } },
         ],
       }];
