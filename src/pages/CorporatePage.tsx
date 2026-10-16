@@ -3,6 +3,8 @@ import { ArrowLeft, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "luci
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
+import LandingCopySection from "@/components/landing/LandingCopySection";
+import { CORPORATE_COPY, CORPORATE_SEO } from "@/lib/corporateCopy";
 
 export default function CorporatePage() {
   const { setMode } = useAppState();
@@ -10,8 +12,8 @@ export default function CorporatePage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
       <SeoHead
-        title="კორპორაციული შეკვეთები — Maika.ge"
-        description="Maika.ge კორპორატიული შეკვეთები — გუნდის ფორმები, სპორტული კომპლექტები, ბრენდირებული მაისურები. სპეციალური ფასი, ექსპრესს კურიერი Tbilisi-ში."
+        title={CORPORATE_SEO.title}
+        description={CORPORATE_SEO.description}
         url={`${SITE_URL}/corporate`}
         schemas={[LOCAL_BUSINESS_SCHEMA]}
       />
@@ -43,6 +45,12 @@ export default function CorporatePage() {
               <span className="text-xs font-medium text-muted-foreground">{label}</span>
             </div>
           ))}
+        </div>
+
+        {/* SEO text section (lib/corporateCopy.ts) — same text in the
+            prerendered dist/corporate/index.html. */}
+        <div className="mb-8">
+          <LandingCopySection copy={CORPORATE_COPY} price={null} tone="page" />
         </div>
 
         <CorporateInquiryModal>

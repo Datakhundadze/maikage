@@ -47,11 +47,13 @@ export const CONTACT = {
 // ── Page copy that exists only inside a component ───────────────────────────
 // Verbatim; seoStatic.test.ts checks each string against its source file.
 
-/** src/pages/CorporatePage.tsx */
+/**
+ * src/pages/CorporatePage.tsx. Its <title> / description and the SEO text
+ * section are NOT copied here: they live in src/lib/corporateCopy.ts
+ * (CORPORATE_SEO, CORPORATE_COPY), which prerender.mjs loads through
+ * appModules.mjs.
+ */
 export const CORPORATE = {
-  title: "კორპორაციული შეკვეთები — Maika.ge",
-  description:
-    "Maika.ge კორპორატიული შეკვეთები — გუნდის ფორმები, სპორტული კომპლექტები, ბრენდირებული მაისურები. სპეციალური ფასი, ექსპრესს კურიერი Tbilisi-ში.",
   backLabel: "მთავარი გვერდი",
   h1: "კორპორატიული განყოფილება",
   intro:
@@ -139,7 +141,11 @@ export function landingRoutes({ LANDING_PRODUCT_SLUGS, BRAND_SLUGS, resolveProdu
  * never written — prices exist at runtime only — so the ფასი section starts
  * at its second sentence, as the live page does when no price is available.
  *
- * @param copy  landingCopyFor(...) result
+ * A section's `bullets` (CORPORATE_COPY) become a <ul> of
+ * "<strong>term</strong> — text", as on the live page. Sections without
+ * bullets (all of /t-shirt's) produce exactly the markup they always did.
+ *
+ * @param copy  landingCopyFor(...) result, or CORPORATE_COPY
  * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
  */
 export function landingCopyHtml(copy, { esc, link, style }) {
@@ -150,12 +156,45 @@ export function landingCopyHtml(copy, { esc, link, style }) {
     ...copy.sections.map((s) =>
       [
         `<h3 style="${style.h3}">${esc(s.h3)}</h3>`,
-        `<p style="${style.p}">${esc(s.body)}</p>`,
+        s.body !== undefined ? `<p style="${style.p}">${esc(s.body)}</p>` : "",
+        s.bullets?.length
+          ? `<ul style="${style.ul}">${s.bullets
+              .map((b) => `<li style="${style.li}"><strong>${esc(b.term)}</strong> — ${esc(b.text)}</li>`)
+              .join("")}</ul>`
+          : "",
         s.link ? `<p style="${style.p}">${link(s.link.href, s.link.label)}</p>` : "",
       ].filter(Boolean).join("\n"),
     ),
     `</section>`,
   ].join("\n");
+}
+
+/**
+ * /corporate as static HTML: <title> / description from CORPORATE_SEO and a
+ * #root that follows CorporatePage's order — back link, h1, intro, the four
+ * feature labels, the SEO text section (CORPORATE_COPY), then the CTA. The
+ * CTA opens an inquiry form on the live page; here it links to /contact.
+ *
+ * @param app   { CORPORATE_SEO, CORPORATE_COPY } from src/lib/corporateCopy.ts
+ * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
+ * @returns {{ title: string, description: string, rootHtml: string }}
+ */
+export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY }, { esc, link, style }) {
+  const c = CORPORATE;
+  return {
+    title: CORPORATE_SEO.title,
+    description: CORPORATE_SEO.description,
+    rootHtml: [
+      `<main style="${style.main}">`,
+      `<nav style="${style.nav}">${link("/", c.backLabel)}</nav>`,
+      `<h1 style="${style.h1}">${esc(c.h1)}</h1>`,
+      `<p style="${style.p}">${esc(c.intro)}</p>`,
+      `<ul style="${style.ul}">${c.features.map((f) => `<li style="${style.li}">${esc(f)}</li>`).join("")}</ul>`,
+      landingCopyHtml(CORPORATE_COPY, { esc, link, style }),
+      `<p style="${style.footer}">${link("/contact", c.cta)}</p>`,
+      `</main>`,
+    ].join("\n"),
+  };
 }
 
 // ── Sitemap ─────────────────────────────────────────────────────────────────

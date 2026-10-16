@@ -13,11 +13,19 @@
 // always omits it. The lead time comes from LEAD_TIME_KA.
 import { LEAD_TIME_KA } from "@/lib/leadTime";
 
+/** One list item: a bold term, then " — ", then the text. */
+export interface LandingCopyBullet {
+  term: string;
+  text: string;
+}
+
 export interface LandingCopySection {
   h3: string;
   /** First sentence, built around the formatted "from" price. Optional. */
   priceLead?: (price: string) => string;
-  body: string;
+  /** A section has a body paragraph, a bullet list, or both (body first). */
+  body?: string;
+  bullets?: LandingCopyBullet[];
   link?: { href: string; label: string };
 }
 

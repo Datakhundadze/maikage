@@ -1,7 +1,8 @@
 // Loads app modules (src/**/*.ts) into the build scripts, so a script reads
 // the SAME constants the React app renders instead of keeping a retyped copy:
 // the landing slugs App.tsx registers, the FAQ text FaqPage shows, the lead
-// time LandingHero prints, the landing <title>s SeoHead sets.
+// time LandingHero prints, the landing <title>s SeoHead sets, the /corporate
+// title and text section.
 //
 // How: a bare Vite dev server in middleware mode (no config file, no plugins,
 // no dependency scan, no file watcher) and ssrLoadModule — esbuild strips the
@@ -26,6 +27,7 @@ const MODULES = {
   faq: "/src/lib/faqContent.ts",
   showroom: "/src/lib/showroomSeo.ts",
   landingCopy: "/src/lib/landingCopy.ts",
+  corporateCopy: "/src/lib/corporateCopy.ts",
   imageTransform: "/src/lib/imageTransform.ts",
 };
 
@@ -48,6 +50,11 @@ const MODULES = {
  *   landingCopyFor: (productSlug: string, brandSlug: string | null) => null | {
  *     h2: string, intro: string,
  *     sections: { h3: string, body: string, priceLead?: Function, link?: { href: string, label: string } }[],
+ *   },
+ *   CORPORATE_SEO: { title: string, description: string },
+ *   CORPORATE_COPY: {
+ *     h2: string, intro: string,
+ *     sections: { h3: string, body?: string, bullets?: { term: string, text: string }[], link?: { href: string, label: string } }[],
  *   },
  *   transformedDisplayUrl: (url: string, opts: { width: number, quality?: number }) => string,
  * }>}
@@ -82,6 +89,8 @@ export async function loadAppModules(log) {
       FAQ_GROUPS: m.faq.FAQ_GROUPS,
       SHOWROOM_INDEXABLE: m.showroom.SHOWROOM_INDEXABLE,
       landingCopyFor: m.landingCopy.landingCopyFor,
+      CORPORATE_SEO: m.corporateCopy.CORPORATE_SEO,
+      CORPORATE_COPY: m.corporateCopy.CORPORATE_COPY,
       transformedDisplayUrl: m.imageTransform.transformedDisplayUrl,
     };
   } catch (e) {
