@@ -58,7 +58,7 @@ interface ShowroomScene {
 // hoodies hoodie-<colour>-{front,side,shade}.webp (key "hoodie-<colour>").
 // Sizes (and a hoodie's own print box) come from showroom.json. A design's
 // default_color (any case) picks the garment; anything unlisted wears white
-// (hoodies: black). New colour on an existing garment = one line in a colour
+// (hoodies: white for light colours, black otherwise). New colour on an existing garment = one line in a colour
 // map; a new garment = its files + one line in MOCKUPS.
 const MOCKUPS = {
   white: { dot: "#f3f2ee", label_ka: "თეთრი", light: true },
@@ -71,6 +71,10 @@ const MOCKUPS = {
   blue: { dot: "#1f4fd1", label_ka: "ლურჯი", light: false },
   "hoodie-black": { dot: "#1f2023", label_ka: "შავი", light: false },
   "hoodie-green": { dot: "#1f4d2e", label_ka: "მწვანე", light: false },
+  "hoodie-white": { dot: "#f3f2ee", label_ka: "თეთრი", light: true },
+  "hoodie-navy": { dot: "#202a43", label_ka: "მუქი ლურჯი", light: false },
+  "hoodie-gray": { dot: "#9a9a9a", label_ka: "რუხი", light: true },
+  "hoodie-red": { dot: "#c8141c", label_ka: "წითელი", light: false },
 } as const;
 type MockupKey = keyof typeof MOCKUPS;
 
@@ -94,7 +98,19 @@ const TEE_BY_COLOR: Record<string, MockupKey> = {
 const HOODIE_BY_COLOR: Record<string, MockupKey> = {
   black: "hoodie-black",
   green: "hoodie-green",
+  white: "hoodie-white",
+  "dark navy": "hoodie-navy",
+  gray: "hoodie-gray",
+  "light gray": "hoodie-gray",
+  "light gray melange": "hoodie-gray",
+  red: "hoodie-red",
+  burgundy: "hoodie-red",
 };
+
+// A hoodie colour with no photo of its own: light colours wear the white
+// hoodie, everything else the black one (before, every unknown colour — white
+// included — fell to black).
+const LIGHT_COLORS = new Set(["beige", "yellow", "light blue", "pink", "khaki", "lime", "orange"]);
 
 /** The design's product row (embedded via the default_product_id FK), if any. */
 const productOf = (d: DesignRow) => (Array.isArray(d.product) ? d.product[0] : d.product) ?? null;
@@ -102,7 +118,7 @@ const isHoodie = (d: DesignRow) => productOf(d)?.type === "Hoodie";
 
 function mockupFor(d: DesignRow): MockupKey {
   const color = (d.default_color || "").toLowerCase();
-  if (isHoodie(d)) return HOODIE_BY_COLOR[color] ?? "hoodie-black";
+  if (isHoodie(d)) return HOODIE_BY_COLOR[color] ?? (LIGHT_COLORS.has(color) ? "hoodie-white" : "hoodie-black");
   return TEE_BY_COLOR[color] ?? "white";
 }
 
