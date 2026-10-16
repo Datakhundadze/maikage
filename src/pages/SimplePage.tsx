@@ -39,11 +39,13 @@ import { useToast } from "@/hooks/use-toast";
 import ContactBar from "@/components/ContactBar";
 import AppHeader from "@/components/AppHeader";
 import SeoHead from "@/components/SeoHead";
-import { runGenerationPipeline, callGemini, loadImage, restyleImage, editImage, RateLimitError, GenerationBlockedError } from "@/lib/generation";
+import { runGenerationPipeline, callGemini, loadImage, restyleImage, editImage, RateLimitError, GenerationBlockedError, isolateDesign, editImageCutout, runTransparencyPipeline } from "@/lib/generation";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
-import { chromaKeyGreen } from "@/lib/chromaKey";
+import { chromaKeyGreen, chromaKeyGreenDesign } from "@/lib/chromaKey";
+import { cutoutIntent } from "@/lib/cutoutIntent";
+import { keyDesignCutout, flattenOnWhite, MIN_KEYED_FRACTION } from "@/lib/designCutout";
 import { t, colorKa } from "@/lib/i18n";
 import type { AppStatus } from "@/hooks/useDesign";
 import LoginModal from "@/components/LoginModal";
@@ -395,6 +397,12 @@ interface PhotoLayer {
   sourceScale?: number;
   sourceOffsetX?: number;
   sourceOffsetY?: number;
+  /** "ai" = an AI-chat DESIGN placed on the garment (lettering, figures), as
+   *  opposed to an uploaded photo (absent). Background removal routes on it:
+   *  a design goes to isolate-design + chromaKeyGreenDesign, which keep every
+   *  letter; a photo keeps the unchanged isolate-subject path. Survives edits
+   *  because every edit writes `{ ...p, image }`. */
+  origin?: "ai";
 }
 
 // Render a photo layer onto a 2D canvas, honoring either the legacy
@@ -1177,15 +1185,17 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // RETURNS THE LAYER ID it created, so a caller that needs to act on the layer
   // afterwards can name it instead of hunting for it by data URL. Every
   // existing caller ignores the return and is unaffected.
-  const addPhotoLayer = useCallback((dataUrl: string, opts?: { paired?: boolean }): string => {
+  const addPhotoLayer = useCallback((dataUrl: string, opts?: { paired?: boolean; origin?: "ai" }): string => {
     const photoId = `photo-${++photoIdCounter}`;
     const paired = opts?.paired === true;
+    const origin = opts?.origin;
     setSideData(prev => {
       if (prev.photos.length >= MAX_PHOTOS) return prev;
       const newPhoto: PhotoLayer = {
         id: photoId,
         image: dataUrl,
         ...(paired ? { paired: true } : {}),
+        ...(origin ? { origin } : {}),
         // Paired: the bounding box of the upper strip, so the layout is already
         // right at first paint and stays right even if the probe below never
         // fires (a corrupt data URL). The probe then contain-fits INSIDE it.
@@ -1439,7 +1449,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
       return null;
     }
-    const id = addPhotoLayer(dataUrl);
+    const id = addPhotoLayer(dataUrl, { origin: "ai" });
     toast({ title: t(lang, "simpleAi.transferred") });
     return id;
   }, [sideData.photos.length, addPhotoLayer, toast, lang]);
@@ -1464,6 +1474,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     setPendingEdit(null);
     setPendingRemoveBg(null);
     setPendingRemoveBgId(null);
+    setPendingRemoveWhiteId(null);
     return { side, removed };
   }, [isFront, setSideData]);
 
@@ -1513,7 +1524,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       toast({ title: t(lang, "simpleAi.maxPhotos"), variant: "destructive" });
       return;
     }
-    addPhotoLayer(dataUrl);
+    addPhotoLayer(dataUrl, { origin: "ai" });
     toast({ title: t(lang, "simpleAi.transferred") });
   }, [sideData.photos.length, addPhotoLayer, toast, lang]);
 
@@ -1800,6 +1811,65 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     }
   }, [editingPhotoId, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, toast, lang]);
 
+  // Background removal for an AI DESIGN layer (origin "ai") — ADD-ONLY sibling
+  // of handleRemoveBgPhoto above, which stays exactly as it was for uploaded
+  // photos. isolate-subject keeps only a photo's MAIN SUBJECT and, handed a
+  // design, deleted all of its lettering; isolate-design keeps every element
+  // and replaces only the background with green, and chromaKeyGreenDesign also
+  // keys green trapped inside letters / between rays. Same quota gate, same
+  // keyed-fraction check, same toasts, same in-flight flag as the photo path.
+  const handleRemoveBgDesign = useCallback(async (photo: PhotoLayer) => {
+    if (editingPhotoId) return;
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ("reason" in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage("message" in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
+    setEditingPhotoId(photo.id);
+    try {
+      recordAiGeneration();
+      const greenBg = await isolateDesign(photo.image);
+      const { image: transparentImage, keyedFraction } = await chromaKeyGreenDesign(greenBg);
+      // Same failure rule as the photo path: no green backdrop → keep the layer.
+      if (keyedFraction < MIN_KEYED_FRACTION) {
+        toast({
+          title: lang === "en" ? "Background removal failed" : "ფონის მოხსნა ვერ მოხერხდა",
+          description: lang === "en" ? "Please try again." : "სცადე ხელახლა.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: transparentImage } : p)),
+      }));
+      applyContainFit(photo.id, transparentImage);
+      toast({ title: lang === "en" ? "Background removed ✓" : "ფონი მოიხსნა ✓" });
+    } catch (err) {
+      if (err instanceof GenerationBlockedError) {
+        setAiBlocked(true);
+      } else if (err instanceof RateLimitError) {
+        if (err.requiresLogin) {
+          setLoginModalMessage(t(lang, "rateLimit.signIn"));
+          setShowLoginModal(true);
+        } else {
+          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+        }
+      } else {
+        toast({
+          title: lang === "en" ? "Background removal failed" : "ფონის მოხსნა ვერ მოხერხდა",
+          description: err instanceof Error ? err.message : undefined,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setEditingPhotoId(null);
+    }
+  }, [editingPhotoId, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, toast, lang]);
+
   // Chat edit — the merged panel's free-text / chip edit path. Mirrors the
   // retired handleRestylePhoto pattern exactly (write the result back into the
   // SAME clean p.image slot — never watermarked, flows straight to
@@ -1868,6 +1938,132 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     }
   }, [editingPhotoId, chatEditingId, aiGenerating, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, pushChat, toast, lang]);
 
+  // Shared tail of the two ADD-ONLY chat paths below: same error handling and
+  // the same "couldn't apply that" bubble as handleChatEdit (which is untouched).
+  const reportChatEditError = useCallback((err: unknown) => {
+    if (err instanceof GenerationBlockedError) {
+      setAiBlocked(true);
+    } else if (err instanceof RateLimitError) {
+      if (err.requiresLogin) {
+        setLoginModalMessage(t(lang, "rateLimit.signIn"));
+        setShowLoginModal(true);
+      } else {
+        toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+      }
+    } else {
+      toast({
+        title: lang === "en" ? "Edit failed" : "რედაქტირება ვერ მოხერხდა",
+        description: err instanceof Error ? err.message : undefined,
+        variant: "destructive",
+      });
+    }
+    pushChat({
+      role: "assistant",
+      text: lang === "en" ? "Couldn't apply that — please try again." : "ვერ შესრულდა — სცადე თავიდან.",
+      kind: "error",
+    });
+  }, [pushChat, toast, lang]);
+
+  // Chat edit that asks for the BACKGROUND gone („ფონი მოაშორე", "remove the
+  // background and …"). ADD-ONLY: handleChatEdit sent these to edit-image, and
+  // because the model cannot output alpha it painted a checkerboard into the
+  // pixels. Here the edit runs as edit-image-cutout (result on #00FF00), the
+  // green is keyed, and if the model ignored the green the result goes through
+  // isolate-design ONCE and is keyed again. Nothing usable → the layer is left
+  // exactly as it was and the customer is told.
+  //
+  // KEY BY ORIGIN. A design (origin "ai") uses chromaKeyGreenDesign, which also
+  // keys green trapped inside letters. An uploaded photo keeps chromaKeyGreen's
+  // border-only rule, so a genuinely green area inside a photo is never holed.
+  //
+  // COST: one generation off the allowance (same gate pair as handleChatEdit);
+  // one pro-tier call, two when the fallback runs.
+  const handleChatEditCutout = useCallback(async (photo: PhotoLayer, instruction: string) => {
+    if (editingPhotoId || chatEditingId || aiGenerating) return;
+    const text = instruction.trim();
+    if (!text) return;
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ("reason" in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage("message" in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
+    setChatEditingId(photo.id);
+    try {
+      recordAiGeneration();
+      const green = await editImageCutout(photo.image, text);
+      const result = await keyDesignCutout(green, {
+        key: photo.origin === "ai" ? chromaKeyGreenDesign : chromaKeyGreen,
+        isolate: isolateDesign,
+      });
+      if (!result.image) {
+        toast({
+          title: lang === "en" ? "Background removal failed" : "ფონის მოხსნა ვერ მოხერხდა",
+          description: lang === "en" ? "Please try again." : "სცადე ხელახლა.",
+          variant: "destructive",
+        });
+        pushChat({
+          role: "assistant",
+          text: lang === "en" ? "Couldn't remove the background — please try again." : "ფონი ვერ მოიხსნა — სცადე თავიდან.",
+          kind: "error",
+        });
+        return;
+      }
+      const cutout = result.image;
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: cutout } : p)),
+      }));
+      applyContainFit(photo.id, cutout);
+      pushChat({ role: "assistant", image: cutout, kind: "edited" });
+    } catch (err) {
+      reportChatEditError(err);
+    } finally {
+      setChatEditingId(null);
+    }
+  }, [editingPhotoId, chatEditingId, aiGenerating, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, pushChat, reportChatEditError, toast, lang]);
+
+  // "Remove the WHITE from the design" („დიზაინიდან ამოიღე ყველა თეთრი ფერი")
+  // — both chats. ADD-ONLY. Runs the EXISTING white-removal transparency
+  // pipeline, runTransparencyPipeline, unchanged and called as-is
+  // (convert-bg-black + difference matting, with its own white-threshold
+  // fallback). The layer is flattened onto white first, because a design placed
+  // from the AI chat is usually already transparent and that pipeline expects
+  // artwork on clean white.
+  //
+  // COST: one generation off the allowance (same gate pair as the other AI
+  // actions here). Model side: one convert-bg-black call (flash; not in the
+  // server's BILLABLE_ACTIONS, so no server rate-limit unit).
+  const handleRemoveWhite = useCallback(async (photo: PhotoLayer) => {
+    if (editingPhotoId || chatEditingId || aiGenerating) return;
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ("reason" in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage("message" in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
+    setChatEditingId(photo.id);
+    try {
+      recordAiGeneration();
+      const onWhite = await flattenOnWhite(photo.image);
+      const { transparentImage } = await runTransparencyPipeline(onWhite, { isRealistic: false });
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: transparentImage } : p)),
+      }));
+      applyContainFit(photo.id, transparentImage);
+      pushChat({ role: "assistant", image: transparentImage, kind: "edited" });
+    } catch (err) {
+      reportChatEditError(err);
+    } finally {
+      setChatEditingId(null);
+    }
+  }, [editingPhotoId, chatEditingId, aiGenerating, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, pushChat, reportChatEditError]);
+
   // ── Chat orchestration (merged panel) ──────────────────────────────────
   // Routing rule: no photo layers → free text is a text-to-image prompt
   // (handleAiGenerate, untouched); a photo exists → free text is an edit
@@ -1885,14 +2081,21 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     if (!text || chatBusy) return;
     designStartRef.current("ai");
     pushChat({ role: "user", text });
-    if (activeChatPhoto) {
+    // Background / white removal requests get paths that produce REAL
+    // transparency (lib/cutoutIntent). Everything else is unchanged.
+    const cutout = activeChatPhoto ? cutoutIntent(text) : null;
+    if (activeChatPhoto && cutout === "white") {
+      handleRemoveWhite(activeChatPhoto);
+    } else if (activeChatPhoto && cutout === "background") {
+      handleChatEditCutout(activeChatPhoto, text);
+    } else if (activeChatPhoto) {
       handleChatEdit(activeChatPhoto, text, "edit");
     } else {
       lastGenPromptRef.current = text;
       handleAiGenerate(text);
     }
     setAiPrompt("");
-  }, [aiPrompt, chatBusy, activeChatPhoto, handleChatEdit, handleAiGenerate, pushChat]);
+  }, [aiPrompt, chatBusy, activeChatPhoto, handleChatEdit, handleChatEditCutout, handleRemoveWhite, handleAiGenerate, pushChat]);
 
   const handleChatPresetChip = useCallback((preset: { ge: string; en: string; instruction: string }) => {
     if (!activeChatPhoto || chatBusy) return;
@@ -1903,8 +2106,13 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   const handleChatRemoveBg = useCallback(() => {
     if (!activeChatPhoto || chatBusy) return;
     pushChat({ role: "user", text: lang === "en" ? "Remove background" : "ფონის მოხსნა" });
-    handleRemoveBgPhoto(activeChatPhoto);
-  }, [activeChatPhoto, chatBusy, handleRemoveBgPhoto, pushChat, lang]);
+    if (activeChatPhoto.origin === "ai") {
+      // An AI design: keep every letter (isolate-design + design key).
+      handleRemoveBgDesign(activeChatPhoto);
+    } else {
+      handleRemoveBgPhoto(activeChatPhoto);
+    }
+  }, [activeChatPhoto, chatBusy, handleRemoveBgPhoto, handleRemoveBgDesign, pushChat, lang]);
 
   const handleChatRegenerate = useCallback(() => {
     if (chatBusy || !lastGenPromptRef.current) return;
@@ -1930,7 +2138,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   const handleAiOrder = useCallback(() => {
     if (!aiResult) return;
     const alreadyPlaced = sideData.photos.some(p => p.image === aiResult.transferImage);
-    if (!alreadyPlaced) addPhotoLayer(aiResult.transferImage);
+    if (!alreadyPlaced) addPhotoLayer(aiResult.transferImage, { origin: "ai" });
     setShowTryOn(false);
     // Size gate mirrors the main order button: brand-sized products (and
     // phone cases) need a size before the order form can open.
@@ -2177,9 +2385,35 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
           layerId: targetId,
           prompt: seed.editPrompt,
           thenRemoveBg: !!seed.removeBackground,
+          ...(seed.removeWhite ? { thenRemoveWhite: true } : {}),
         });
       } else if (seed.removeBackground) {
         setPendingRemoveBg(targetId);
+      } else if (seed.removeWhite) {
+        // White removal on the seeded layer — same queue-until-committed shape.
+        // removeBackground wins when both are set, here and in the edit chain.
+        setPendingRemoveWhiteId(targetId);
+      }
+    }
+
+    // White removal with NO photo in the seed: the site assistant was asked to
+    // change the design the customer is ALREADY looking at. Target the same
+    // layer the constructor chat would (selected, else the most recent on this
+    // side). No design on the garment → say so; nothing is spent.
+    if (!seed.image && seed.removeWhite) {
+      const photosNow = photosRef.current;
+      const target =
+        photosNow.find((p) => p.id === selectedLayerIdRef.current) ??
+        photosNow[photosNow.length - 1] ??
+        null;
+      if (target) {
+        setPendingRemoveWhiteId(target.id);
+      } else {
+        toast({
+          title: lang === "en"
+            ? "There is no design on the product yet."
+            : "პროდუქტზე დიზაინი ჯერ არ არის.",
+        });
       }
     }
 
@@ -2385,6 +2619,10 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // with current data and changes nothing about when the effect runs.
   const photosRef = useRef(sideData.photos);
   useEffect(() => { photosRef.current = sideData.photos; }, [sideData.photos]);
+  // Same idea for the selection, read only by the seed drain's no-photo
+  // white-removal target (add-only).
+  const selectedLayerIdRef = useRef(selectedLayerId);
+  useEffect(() => { selectedLayerIdRef.current = selectedLayerId; }, [selectedLayerId]);
 
   // ── Seeded generation: run it through handleAiGenerate, never past it ─────
   //
@@ -2515,13 +2753,13 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // the newly added duplicate left alone. The dedup above makes that pair
   // impossible, and keying on the id makes it unrepresentable.
   const [pendingEdit, setPendingEdit] = useState<
-    { layerId: string; prompt: string; thenRemoveBg: boolean } | null
+    { layerId: string; prompt: string; thenRemoveBg: boolean; thenRemoveWhite?: boolean } | null
   >(null);
   useEffect(() => {
     if (!pendingEdit) return;
     const layer = sideData.photos.find((p) => p.id === pendingEdit.layerId);
     if (!layer) return; // the add has not committed yet; this effect re-runs
-    const { prompt, thenRemoveBg } = pendingEdit;
+    const { prompt, thenRemoveBg, thenRemoveWhite } = pendingEdit;
     setPendingEdit(null);
     setSeededEditActive(true);
     void handleChatEdit(layer, prompt, "edit").finally(() => {
@@ -2533,6 +2771,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       // customer who has one generation left should still get their background
       // removed rather than nothing.
       if (thenRemoveBg) setPendingRemoveBgId(layer.id);
+      else if (thenRemoveWhite) setPendingRemoveWhiteId(layer.id);
     });
   }, [pendingEdit, sideData.photos, handleChatEdit]);
 
@@ -2549,6 +2788,24 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     setSeededRemoveBgActive(true);
     void handleRemoveBgPhoto(layer).finally(() => setSeededRemoveBgActive(false));
   }, [pendingRemoveBgId, sideData.photos, handleRemoveBgPhoto]);
+
+  // ── Seeded WHITE removal (add-only): through handleRemoveWhite ─────────────
+  // Same contract as the two removal queues above — by layer id, cleared
+  // before the call (exactly once), dropped if the layer is gone, and reported
+  // through the same preview overlay. handleRemoveWhite owns the quota gate,
+  // the login modal and the error toast.
+  const [pendingRemoveWhiteId, setPendingRemoveWhiteId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingRemoveWhiteId) return;
+    const layer = sideData.photos.find((p) => p.id === pendingRemoveWhiteId);
+    // The add (if any) is batched into the same commit as this request, so a
+    // missing layer is gone for good (deleted, or refused at MAX_PHOTOS) —
+    // drop the request rather than leave it queued forever.
+    if (!layer) { setPendingRemoveWhiteId(null); return; }
+    setPendingRemoveWhiteId(null);
+    setSeededRemoveBgActive(true);
+    void handleRemoveWhite(layer).finally(() => setSeededRemoveBgActive(false));
+  }, [pendingRemoveWhiteId, sideData.photos, handleRemoveWhite]);
 
   // Pressing Delete or Backspace on a selected layer removes it. Skipped
   // when the focus is in a text input/textarea so the user can still edit

@@ -652,3 +652,23 @@ export async function editImage(imageBase64: string, instruction: string): Promi
   const result = await callGemini("edit-image", { image: imageBase64, instruction });
   return result.image;
 }
+
+// ── Design-safe background removal (add-only) ─────────────────────────────
+// Both return the design on a uniform #00FF00 backdrop; the caller keys it
+// with chromaKeyGreenDesign (src/lib/chromaKey.ts). Billable, pro tier —
+// 429 / generation-block surface via callGemini exactly as for editImage.
+
+// "isolate-design": replace ONLY the background of an AI design with green,
+// keeping every letter and element (isolate-subject keeps only the main
+// subject, which deletes the lettering of a design).
+export async function isolateDesign(imageBase64: string): Promise<string> {
+  const result = await callGemini("isolate-design", { image: imageBase64 });
+  return result.image;
+}
+
+// "edit-image-cutout": edit-image's guard + "render the result on #00FF00,
+// never a checkerboard". Used when a chat edit asks for the background gone.
+export async function editImageCutout(imageBase64: string, instruction: string): Promise<string> {
+  const result = await callGemini("edit-image-cutout", { image: imageBase64, instruction });
+  return result.image;
+}

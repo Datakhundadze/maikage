@@ -34,8 +34,9 @@ import { applyMockupToLiveConstructor } from "@/lib/mockupSuggestion";
  */
 export function isAutoSketchEligible(suggestion: ChatSuggestion | null | undefined): boolean {
   if (!suggestion || suggestion.kind !== "mockup") return false;
-  const { editPrompt, removeBackground } = suggestion.mockup;
-  return !editPrompt && !removeBackground;
+  // removeWhite spends from the same allowance, so it keeps the button too.
+  const { editPrompt, removeBackground, removeWhite } = suggestion.mockup;
+  return !editPrompt && !removeBackground && !removeWhite;
 }
 
 // FIRE-ONCE, keyed on the suggestion OBJECT rather than on any index or id.

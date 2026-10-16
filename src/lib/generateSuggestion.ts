@@ -266,7 +266,9 @@ export function parseChatSuggestion(
   // the KB forbids it — and the losing fence is still stripped from the text.
   if (orderStatus) return { text, suggestion: { kind: "orderStatus" } };
   if (generate) return { text, suggestion: { kind: "generate", generate } };
-  if (mockup && (mockup.text || hasAttachment)) return { text, suggestion: { kind: "mockup", mockup } };
+  // removeWhite is actionable with neither: it then targets the constructor's
+  // current design (see ConstructorSeed.removeWhite).
+  if (mockup && (mockup.text || hasAttachment || mockup.removeWhite)) return { text, suggestion: { kind: "mockup", mockup } };
   return { text, suggestion: null };
 }
 
