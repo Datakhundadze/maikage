@@ -9,8 +9,9 @@
 //   dist/designs/index.html   every published design, linked, by category
 //   dist/blog/index.html      every published post (title, date, summary)
 //   dist/contact/index.html   business facts copied verbatim from the app
-//   dist/faq/index.html       the FAQ (lib/faqContent.ts) minus priced Q&As,
-//                             with its FAQPage JSON-LD
+//   dist/faq/index.html       the whole FAQ (lib/faqContent.ts), every Q&A,
+//                             with its FAQPage JSON-LD (same builder as the
+//                             live page)
 //   dist/corporate/index.html CorporatePage's text and its SEO section
 //                             (title + text from lib/corporateCopy.ts)
 //   dist/portfolio/index.html active portfolio_items: images (alt = title),
@@ -56,8 +57,9 @@
 //
 // No price is rendered and no Product JSON-LD is emitted: price comes from
 // pricing.ts at runtime only, and the runtime page still emits its JSON-LD.
-// For the same reason the FAQ Q&As that quote a price stay out of the static
-// /faq page and its static JSON-LD; the live page shows them all.
+// The /faq page is the one exception: lib/faqContent.ts reads its prices from
+// pricing.ts / fees.ts (no hand-typed product numbers), so the static /faq and
+// its JSON-LD carry every Q&A exactly as the live page shows them.
 //
 // Data: Supabase REST with the public anon key and the same filters the pages
 // use (catalog_designs.is_published = true, blog_posts.published = true).
@@ -78,11 +80,10 @@ import {
   PORTFOLIO,
   SHOWROOM,
   corporatePage,
-  faqPageSchema,
+  faqPageHtml,
   jsonLdText,
   landingCopyHtml,
   landingRoutes,
-  priceFreeFaq,
 } from "./lib/seo.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -485,25 +486,6 @@ function contactRoot() {
   ].join("\n");
 }
 
-/** /faq — FaqPage's heading, intro and the price-free Q&As, grouped as on the page. */
-function faqRoot(page, groups) {
-  return [
-    `<main style="${STYLE.main}">`,
-    `<nav style="${STYLE.nav}">${link("/", page.backLabel)}</nav>`,
-    `<h1 style="${STYLE.h1}">${esc(page.h1)}</h1>`,
-    `<p style="${STYLE.p}">${esc(page.intro)}</p>`,
-    ...groups.map((g) =>
-      [
-        `<section>`,
-        `<h2 style="${STYLE.h2}">${esc(g.heading)}</h2>`,
-        ...g.items.map((item) => `<h3 style="${STYLE.h3}">${esc(item.q)}</h3>\n<p style="${STYLE.p}">${esc(item.a)}</p>`),
-        `</section>`,
-      ].join("\n"),
-    ),
-    `</main>`,
-  ].join("\n");
-}
-
 /**
  * /portfolio — PortfolioPage's heading, its category chips (as text) and the
  * gallery: same images (400w/800w), same alt (alt_text, else title, else the
@@ -605,18 +587,18 @@ async function writeAppPages(template, app, stats) {
     });
   })) stats.lists.push("corporate");
 
-  const faq = priceFreeFaq(app.FAQ_GROUPS);
-  for (const q of faq.dropped) stats.notes.push(`faq: left out (quotes a price) — ${q}`);
+  // /faq — every Q&A, as on the live page; JSON-LD from faqContent.ts's
+  // faqPageSchema, the builder FaqPage.tsx uses.
   if (await page("faq", "faq", () => renderPage(template, {
     title: app.FAQ_PAGE.title,
     description: app.FAQ_PAGE.description,
     canonical: `${SITE_URL}/faq`,
     image: DEFAULT_OG_IMAGE,
-    jsonLd: [faqPageSchema(faq.groups)],
-    rootHtml: faqRoot(app.FAQ_PAGE, faq.groups),
+    jsonLd: [app.faqPageSchema(app.FAQ_GROUPS)],
+    rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }),
   }))) {
-    const kept = faq.groups.reduce((n, g) => n + g.items.length, 0);
-    stats.lists.push(`faq (${kept} Q&As, ${faq.dropped.length} with prices left out)`);
+    const count = app.FAQ_GROUPS.reduce((n, g) => n + g.items.length, 0);
+    stats.lists.push(`faq (${count} Q&As)`);
   }
 
   if (await page("showroom", "showroom", () => renderPage(template, {

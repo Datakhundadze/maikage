@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { BRAND_SLUGS, LANDING_PRODUCT_SLUGS, PRODUCT_SLUGS, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
 import { productTypeKa, translations } from "@/lib/i18n";
-import { FAQ_GROUPS, FAQ_PAGE } from "@/lib/faqContent";
+import { FAQ_GROUPS, FAQ_PAGE, faqPageSchema } from "@/lib/faqContent";
 import { LANDING_TAIL_KA, landingSeo } from "@/lib/landingSeo";
 import { LEAD_TIME_KA } from "@/lib/leadTime";
 import {
@@ -16,12 +16,11 @@ import {
   SHOWROOM,
   buildLlmsTxt,
   containsPrice,
-  faqPageSchema,
+  faqPageHtml,
   jsonLdText,
   landingRoutes,
   landingSitemapEntries,
   mergeSitemapEntries,
-  priceFreeFaq,
   sitemapLocs,
 } from "../../scripts/lib/seo.mjs";
 
@@ -172,34 +171,44 @@ describe("sitemap merge", () => {
   });
 });
 
-describe("FAQ — static page and its JSON-LD carry no prices", () => {
-  const { groups, dropped } = priceFreeFaq(FAQ_GROUPS);
+describe("FAQ — static page and its JSON-LD carry EVERY Q&A (prices from pricing.ts)", () => {
+  const ESCAPE: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ESCAPE[c]);
+  const link = (href: string, text: string) => `<a href="${esc(href)}">${esc(text)}</a>`;
+  const style = { main: "", nav: "", h1: "", h2: "", h3: "", p: "", ul: "", li: "", footer: "" };
+  const all = FAQ_GROUPS.flatMap((g) => g.items);
 
-  it("containsPrice", () => {
+  it("containsPrice (still guards landing pages, /corporate and llms.txt)", () => {
     expect(containsPrice("GILDAN 35₾")).toBe(true);
     expect(containsPrice("20 ლარი")).toBe(true);
     expect(containsPrice("10 ცალიდან ზემოთ ვრცელდება ფასდაკლება")).toBe(false);
     expect(containsPrice("ორშ–პარ 11:00–19:00")).toBe(false);
   });
 
-  it("drops every priced Q&A, keeps the rest verbatim and in order", () => {
-    const all = FAQ_GROUPS.flatMap((g) => g.items);
-    const kept = groups.flatMap((g) => g.items);
-    expect(dropped.length).toBeGreaterThan(0);
-    expect(kept.length + dropped.length).toBe(all.length);
-    for (const item of kept) {
-      expect(all).toContain(item); // same object — text untouched
-      expect(containsPrice(item.q) || containsPrice(item.a)).toBe(false);
-    }
-    expect(kept).toEqual(all.filter((i) => !dropped.includes(i.q)));
-    for (const g of groups) expect(g.items.length).toBeGreaterThan(0);
+  it("the static #root lists every group and every Q&A, verbatim and in order — priced ones included", () => {
+    const html = faqPageHtml(FAQ_PAGE, FAQ_GROUPS, { esc, link, style });
+    const h2 = [...html.matchAll(/<h2 style="">([^<]*)<\/h2>/g)].map((m) => m[1]);
+    const qa = [...html.matchAll(/<h3 style="">([^<]*)<\/h3>\n<p style="">([^<]*)<\/p>/g)].map((m) => ({ q: m[1], a: m[2] }));
+    expect(h2).toEqual(FAQ_GROUPS.map((g) => esc(g.heading)));
+    expect(qa).toEqual(all.map((i) => ({ q: esc(i.q), a: esc(i.a) })));
+    expect(all.some((i) => containsPrice(i.a))).toBe(true);
+    expect(html).toContain(`>${esc(FAQ_PAGE.h1)}</h1>`);
+    expect(html).toContain(`<a href="/">${esc(FAQ_PAGE.backLabel)}</a>`);
   });
 
-  it("the FAQPage schema lists exactly the kept Q&As", () => {
-    const schema = faqPageSchema(groups);
+  it("the FAQPage schema lists every Q&A", () => {
+    const schema = faqPageSchema(FAQ_GROUPS);
     expect(schema["@type"]).toBe("FAQPage");
-    expect(schema.mainEntity.map((q: { name: string }) => q.name)).toEqual(groups.flatMap((g) => g.items.map((i) => i.q)));
-    expect(JSON.stringify(schema)).not.toContain("₾");
+    expect(schema.mainEntity.map((q) => q.name)).toEqual(all.map((i) => i.q));
+    expect(schema.mainEntity.map((q) => q.acceptedAnswer.text)).toEqual(all.map((i) => i.a));
+  });
+
+  it("prerender.mjs writes the unfiltered FAQ with the shared builders", () => {
+    const pre = source("scripts/prerender.mjs");
+    expect(pre).toContain("jsonLd: [app.faqPageSchema(app.FAQ_GROUPS)]");
+    expect(pre).toContain("rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE })");
+    expect(pre).not.toContain("priceFreeFaq");
+    expect(source("src/pages/FaqPage.tsx")).toContain("const FAQ_SCHEMA = faqPageSchema(FAQ_GROUPS);");
   });
 
   it("jsonLdText cannot close its <script>", () => {

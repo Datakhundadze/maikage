@@ -248,46 +248,42 @@ export function mergeSitemapEntries(xml, entries) {
 
 /**
  * A money amount: the lari sign, or a number followed by "ლარ…" / "GEL".
- * Prices are computed by pricing.ts at runtime only, so no static file may
- * carry one.
+ * Landing pages, /corporate and llms.txt must not carry one (their prices
+ * are computed by pricing.ts at runtime). The /faq page is the exception: its
+ * prices are read from pricing.ts at build time (see faqPageHtml).
  */
 export function containsPrice(text) {
   return /₾|\d\s*(?:ლარ|GEL\b)/i.test(String(text ?? ""));
 }
 
 /**
- * FAQ groups with every Q&A that mentions a price removed (question OR
- * answer), and groups left empty dropped. Order and wording are untouched.
+ * /faq #root — FaqPage's back link, heading, intro and EVERY Q&A, grouped as
+ * on the page (h2 = group heading, h3 = question, p = answer). The FAQ's
+ * prices are not typed anywhere: faqContent.ts reads them from pricing.ts /
+ * fees.ts, so the static page quotes exactly what the live page and the
+ * checkout show. The FAQPage JSON-LD comes from faqContent.ts faqPageSchema,
+ * the builder FaqPage.tsx uses.
  *
- * @returns {{ groups: { heading: string, items: { q: string, a: string }[] }[], dropped: string[] }}
+ * @param page    FAQ_PAGE
+ * @param groups  FAQ_GROUPS
+ * @param h       prerender.mjs's own helpers: esc, link, style (its STYLE)
  */
-export function priceFreeFaq(groups) {
-  const dropped = [];
-  const kept = [];
-  for (const g of groups) {
-    const items = g.items.filter((item) => {
-      const priced = containsPrice(item.q) || containsPrice(item.a);
-      if (priced) dropped.push(item.q);
-      return !priced;
-    });
-    if (items.length > 0) kept.push({ heading: g.heading, items });
-  }
-  return { groups: kept, dropped };
-}
-
-/** schema.org FAQPage — the same shape FaqPage.tsx builds (FAQ_SCHEMA). */
-export function faqPageSchema(groups) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: groups
-      .flatMap((g) => g.items)
-      .map((item) => ({
-        "@type": "Question",
-        name: item.q,
-        acceptedAnswer: { "@type": "Answer", text: item.a },
-      })),
-  };
+export function faqPageHtml(page, groups, { esc, link, style }) {
+  return [
+    `<main style="${style.main}">`,
+    `<nav style="${style.nav}">${link("/", page.backLabel)}</nav>`,
+    `<h1 style="${style.h1}">${esc(page.h1)}</h1>`,
+    `<p style="${style.p}">${esc(page.intro)}</p>`,
+    ...groups.map((g) =>
+      [
+        `<section>`,
+        `<h2 style="${style.h2}">${esc(g.heading)}</h2>`,
+        ...g.items.map((item) => `<h3 style="${style.h3}">${esc(item.q)}</h3>\n<p style="${style.p}">${esc(item.a)}</p>`),
+        `</section>`,
+      ].join("\n"),
+    ),
+    `</main>`,
+  ].join("\n");
 }
 
 /** JSON for an inline <script type="application/ld+json">: no "</script>" breakout. */
