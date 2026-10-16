@@ -11,8 +11,9 @@ interface PriceTier {
   backText: number;
 }
 
-// Prices keyed by subProduct (brand) name
-const PRICES: Record<string, PriceTier> = {
+// Prices keyed by subProduct (brand) name. Exported read-only for the FAQ
+// (lib/faqContent.ts), which quotes these numbers instead of retyping them.
+export const PRICES: Record<string, PriceTier> = {
   // T-Shirt brands
   "GILDAN":         { frontOnly: 35, backPhoto: 50, backText: 45 },
   "Sol's":          { frontOnly: 50, backPhoto: 65, backText: 60 },

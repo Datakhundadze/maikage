@@ -7,23 +7,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FAQ_GROUPS, FAQ_PAGE } from "@/lib/faqContent";
+import { FAQ_GROUPS, FAQ_PAGE, faqPageSchema } from "@/lib/faqContent";
 
 // FAQPage schema, derived once at module load from the same FAQ_GROUPS
-// (lib/faqContent.ts). No text duplication — edit a question or answer in FAQ_GROUPS
-// and the rich-snippet payload updates automatically.
-const FAQ_SCHEMA = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQ_GROUPS.flatMap((g) => g.items).map((item) => ({
-    "@type": "Question",
-    name: item.q,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: item.a,
-    },
-  })),
-};
+// (lib/faqContent.ts) by the same builder the static prerender uses. No text
+// duplication — edit a question or answer in FAQ_GROUPS and the rich-snippet
+// payload (live and static) updates automatically.
+const FAQ_SCHEMA = faqPageSchema(FAQ_GROUPS);
 
 export default function FaqPage() {
   const navigate = useNavigate();

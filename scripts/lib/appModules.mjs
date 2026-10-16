@@ -1,6 +1,7 @@
 // Loads app modules (src/**/*.ts) into the build scripts, so a script reads
 // the SAME constants the React app renders instead of keeping a retyped copy:
-// the landing slugs App.tsx registers, the FAQ text FaqPage shows, the lead
+// the landing slugs App.tsx registers, the FAQ text (and its FAQPage JSON-LD
+// builder) FaqPage shows, the lead
 // time LandingHero prints, the landing <title>s SeoHead sets, the /corporate
 // title and text section.
 //
@@ -8,7 +9,8 @@
 // no dependency scan, no file watcher) and ssrLoadModule — esbuild strips the
 // TypeScript and the "@/…" alias resolves as in vite.config.ts. About half a
 // second. Only plain-data / pure modules are loaded; nothing here touches
-// React, the DOM or Supabase.
+// React, the DOM or Supabase (faqContent.ts imports pricing.ts and fees.ts,
+// both pure data).
 //
 // Never throws: on any failure it returns null and logs one warning, and the
 // caller skips what needed these values (same never-fail rule as the scripts).
@@ -46,6 +48,7 @@ const MODULES = {
  *   LANDING_TAIL_KA: string,
  *   FAQ_PAGE: { title: string, description: string, h1: string, intro: string, backLabel: string },
  *   FAQ_GROUPS: { heading: string, items: { q: string, a: string }[] }[],
+ *   faqPageSchema: (groups: { heading: string, items: { q: string, a: string }[] }[]) => object,
  *   SHOWROOM_INDEXABLE: boolean,
  *   landingCopyFor: (productSlug: string, brandSlug: string | null) => null | {
  *     h2: string, intro: string,
@@ -87,6 +90,7 @@ export async function loadAppModules(log) {
       LANDING_TAIL_KA: m.landingSeo.LANDING_TAIL_KA,
       FAQ_PAGE: m.faq.FAQ_PAGE,
       FAQ_GROUPS: m.faq.FAQ_GROUPS,
+      faqPageSchema: m.faq.faqPageSchema,
       SHOWROOM_INDEXABLE: m.showroom.SHOWROOM_INDEXABLE,
       landingCopyFor: m.landingCopy.landingCopyFor,
       CORPORATE_SEO: m.corporateCopy.CORPORATE_SEO,
