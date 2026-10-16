@@ -42,7 +42,7 @@ interface DesignRow {
   created_at: string;
   default_color: string | null;
   default_product_id: string | null;
-  product: { type: string; display_name_ka: string | null } | null;
+  product: { type: string; display_name_ka: string | null; slug?: string | null } | null;
 }
 
 type PrintBox = { l: number; t: number; w: number; h: number };
@@ -75,6 +75,10 @@ const MOCKUPS = {
   "hoodie-navy": { dot: "#202a43", label_ka: "მუქი ლურჯი", light: false },
   "hoodie-gray": { dot: "#9a9a9a", label_ka: "რუხი", light: true },
   "hoodie-red": { dot: "#c8141c", label_ka: "წითელი", light: false },
+  "hoodie-washed-black": { dot: "#2b2b2b", label_ka: "შავი", light: false },
+  "hoodie-washed-gray": { dot: "#6f6f6f", label_ka: "რუხი", light: false },
+  "hoodie-washed-khaki": { dot: "#8a7d62", label_ka: "ხაკი", light: true },
+  "hoodie-washed-pink": { dot: "#c97b8a", label_ka: "ვარდისფერი", light: true },
 } as const;
 type MockupKey = keyof typeof MOCKUPS;
 
@@ -107,6 +111,18 @@ const HOODIE_BY_COLOR: Record<string, MockupKey> = {
   burgundy: "hoodie-red",
 };
 
+// Premium Washed (garment-dyed, stone-washed): its own photos. Colours the
+// shop stocks: black, gray, khaki, pink; anything else wears washed black.
+const WASHED_BY_COLOR: Record<string, MockupKey> = {
+  black: "hoodie-washed-black",
+  gray: "hoodie-washed-gray",
+  "light gray": "hoodie-washed-gray",
+  khaki: "hoodie-washed-khaki",
+  beige: "hoodie-washed-khaki",
+  pink: "hoodie-washed-pink",
+};
+const isWashed = (d: DesignRow) => productOf(d)?.slug === "hoodie-premium-washed";
+
 // A hoodie colour with no photo of its own: light colours wear the white
 // hoodie, everything else the black one (before, every unknown colour — white
 // included — fell to black).
@@ -118,6 +134,7 @@ const isHoodie = (d: DesignRow) => productOf(d)?.type === "Hoodie";
 
 function mockupFor(d: DesignRow): MockupKey {
   const color = (d.default_color || "").toLowerCase();
+  if (isWashed(d)) return WASHED_BY_COLOR[color] ?? "hoodie-washed-black";
   if (isHoodie(d)) return HOODIE_BY_COLOR[color] ?? (LIGHT_COLORS.has(color) ? "hoodie-white" : "hoodie-black");
   return TEE_BY_COLOR[color] ?? "white";
 }
@@ -943,7 +960,7 @@ export default function CatalogRail() {
     (supabase as any)
       .from("catalog_designs")
       .select(
-        "id, slug, title_ka, thumbnail_url, print_file_url, category, created_at, default_color, default_product_id, product:products!catalog_designs_default_product_id_fkey(type, display_name_ka)",
+        "id, slug, title_ka, thumbnail_url, print_file_url, category, created_at, default_color, default_product_id, product:products!catalog_designs_default_product_id_fkey(type, display_name_ka, slug)",
       )
       .eq("is_published", true)
       .order("created_at", { ascending: false })
