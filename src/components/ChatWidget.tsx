@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, Suspense } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useLocation, useNavigate } from "react-router-dom";
 import { MessageCircle, X, Minus, ChevronUp, Send, ImagePlus } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
@@ -34,7 +35,7 @@ import ChatMarkdown from "@/components/ChatMarkdown";
 // Only mounted once the order-status card's sign-in button is pressed, so the
 // chat bundle does not carry the auth UI for every visitor. Same lazy treatment
 // AppHeader gives it.
-const LoginModal = lazy(() => import("@/components/LoginModal"));
+const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
 
 const ACCENT = "#26BB89";
 

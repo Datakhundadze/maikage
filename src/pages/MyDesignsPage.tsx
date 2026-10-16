@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +17,7 @@ import {
   type CustomerOrder,
   type OrderGroup,
 } from "@/lib/orderGrouping";
-const Lightbox = lazy(() => import("@/components/Lightbox"));
+const Lightbox = lazyWithRetry(() => import("@/components/Lightbox"));
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 
 interface Design {
