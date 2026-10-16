@@ -33,7 +33,7 @@ export const PRICES: Record<string, PriceTier> = {
   "JEL Standard Hoodie": { frontOnly: 85, backPhoto: 100, backText: 95 },
   "JEL Standard Zipper": { frontOnly: 95, backPhoto: 110, backText: 105 },
   "JEL Zipper":          { frontOnly: 105, backPhoto: 120, backText: 115 },
-  "GILDAN Bomber":       { frontOnly: 75, backPhoto: 90, backText: 85 },
+  "GILDAN Bomber":       { frontOnly: 70, backPhoto: 85, backText: 80 },
 
   // Sport
   "Sport Set": { frontOnly: 65, backPhoto: 80, backText: 75 },
