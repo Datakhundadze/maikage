@@ -27,9 +27,9 @@ import {
 // shows a short message with a working reload button instead of a blank
 // page, so the customer is never stranded.
 //
-// Bilingual by design: the app is en/ka, so the copy is picked from
-// localStorage the same way the rest of the UI does it, with English as the
-// fallback.
+// Bilingual by design: the app is en/ge, so the copy is picked from
+// localStorage the same way the rest of the UI does it, with Georgian as the
+// default (same as useAppState).
 
 const RELOAD_FLAG = "maika-chunk-reload-at";
 // A second reload within this window means the first one did not help, so
@@ -106,11 +106,21 @@ export function lazyWithRetry<T extends ComponentType<any>>(
   });
 }
 
+/**
+ * Language for the fallback message, from the raw `maika-lang` value.
+ * Mirrors useAppState: the stored Lang is "en" | "ge" and an unset value
+ * means "ge", so only an explicit "en" gets English.
+ */
+export function chunkErrorLang(stored: string | null): "ge" | "en" {
+  return stored === "en" ? "en" : "ge";
+}
+
 function isGeorgian() {
   try {
-    return localStorage.getItem("maika-lang") === "ka";
+    return chunkErrorLang(localStorage.getItem("maika-lang")) === "ge";
   } catch {
-    return false;
+    // Same default useAppState falls back to when storage throws.
+    return true;
   }
 }
 

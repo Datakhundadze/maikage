@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,24 +10,24 @@ import { lazyWithRetry } from "@/lib/lazyWithRetry";
 // rest on demand. The Dashboard is also lazy: even though it's the
 // default tab, the chunking lets later tabs avoid landing in the
 // same bundle.
-const AdminDashboard = lazy(() => import("@/components/admin/AdminDashboard"));
-const AdminOrders = lazy(() => import("@/components/admin/AdminOrders"));
-const AdminDesigns = lazy(() => import("@/components/admin/AdminDesigns"));
-const AdminGenerations = lazy(() => import("@/components/admin/AdminGenerations"));
-const AdminUsers = lazy(() => import("@/components/admin/AdminUsers"));
-const AdminAnalytics = lazy(() => import("@/components/admin/AdminAnalytics"));
-const AdminCorporate = lazy(() => import("@/components/admin/AdminCorporate"));
-const AdminCatalog = lazy(() => import("@/components/admin/AdminCatalog"));
-const AdminSEO = lazy(() => import("@/components/admin/AdminSEO"));
-const AdminPartners = lazy(() => import("@/components/admin/AdminPartners"));
-const AdminShowroom = lazy(() => import("@/components/admin/AdminShowroom"));
-const AdminPortfolio = lazy(() => import("@/components/admin/AdminPortfolio"));
-const AdminBlog = lazy(() => import("@/components/admin/AdminBlog"));
-const AdminFeedback = lazy(() => import("@/components/admin/AdminFeedback"));
-const AdminChatHistory = lazy(() => import("@/components/admin/AdminChatHistory"));
-const AdminSocialInbox = lazy(() => import("@/components/admin/AdminSocialInbox"));
-const AdminCallbacks = lazy(() => import("@/components/admin/AdminCallbacks"));
-const AiAgent = lazy(() => import("@/components/admin/AiAgent"));
+const AdminDashboard = lazyWithRetry(() => import("@/components/admin/AdminDashboard"));
+const AdminOrders = lazyWithRetry(() => import("@/components/admin/AdminOrders"));
+const AdminDesigns = lazyWithRetry(() => import("@/components/admin/AdminDesigns"));
+const AdminGenerations = lazyWithRetry(() => import("@/components/admin/AdminGenerations"));
+const AdminUsers = lazyWithRetry(() => import("@/components/admin/AdminUsers"));
+const AdminAnalytics = lazyWithRetry(() => import("@/components/admin/AdminAnalytics"));
+const AdminCorporate = lazyWithRetry(() => import("@/components/admin/AdminCorporate"));
+const AdminCatalog = lazyWithRetry(() => import("@/components/admin/AdminCatalog"));
+const AdminSEO = lazyWithRetry(() => import("@/components/admin/AdminSEO"));
+const AdminPartners = lazyWithRetry(() => import("@/components/admin/AdminPartners"));
+const AdminShowroom = lazyWithRetry(() => import("@/components/admin/AdminShowroom"));
+const AdminPortfolio = lazyWithRetry(() => import("@/components/admin/AdminPortfolio"));
+const AdminBlog = lazyWithRetry(() => import("@/components/admin/AdminBlog"));
+const AdminFeedback = lazyWithRetry(() => import("@/components/admin/AdminFeedback"));
+const AdminChatHistory = lazyWithRetry(() => import("@/components/admin/AdminChatHistory"));
+const AdminSocialInbox = lazyWithRetry(() => import("@/components/admin/AdminSocialInbox"));
+const AdminCallbacks = lazyWithRetry(() => import("@/components/admin/AdminCallbacks"));
+const AiAgent = lazyWithRetry(() => import("@/components/admin/AiAgent"));
 const AdminModelLab = lazyWithRetry(() => import("@/components/admin/AdminModelLab"));
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";

@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, Suspense } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { Link, useNavigate } from "react-router-dom";
 import { MessageCircle, Send, ImagePlus, X } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
@@ -28,7 +29,7 @@ import SeoHead from "@/components/SeoHead";
 // Only mounted once the order-status card's sign-in button is pressed, so
 // /chat does not ship the auth UI to every visitor. Same lazy treatment
 // AppHeader gives it.
-const LoginModal = lazy(() => import("@/components/LoginModal"));
+const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
 
 // Photo attachment bounds. The file is gated BEFORE it is read, so an
 // oversized pick never becomes a payload; it is then downscaled to 1024px /

@@ -1,4 +1,5 @@
-import { useState, useRef, lazy, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
@@ -7,11 +8,11 @@ import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVe
 import { Link, useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
-const LoginModal = lazy(() => import("@/components/LoginModal"));
+const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
 // The phone-width menu sheet is only needed once the customer taps the
 // hamburger, so it (and the Radix dialog it sits on) stays out of the
 // header's own bundle for the same reason.
-const MobileNav = lazy(() => import("@/components/MobileNav"));
+const MobileNav = lazyWithRetry(() => import("@/components/MobileNav"));
 const preloadMobileNav = () => import("@/components/MobileNav");
 import { useCart } from "@/hooks/useCart";
 
