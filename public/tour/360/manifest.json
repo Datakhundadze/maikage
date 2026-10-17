@@ -1,0 +1,98 @@
+[
+ {
+  "file": "s1-6k.jpg",
+  "node": "s1",
+  "source": "IMG_20261017_154506_250.JPG",
+  "width": 6144,
+  "height": 3072,
+  "bytes": 1653859
+ },
+ {
+  "file": "s1-4k.jpg",
+  "node": "s1",
+  "source": "IMG_20261017_154506_250.JPG",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 876207
+ },
+ {
+  "file": "s2-6k.jpg",
+  "node": "s2",
+  "source": "IMG_20261017_154534_991.JPG",
+  "width": 6144,
+  "height": 3072,
+  "bytes": 1584066
+ },
+ {
+  "file": "s2-4k.jpg",
+  "node": "s2",
+  "source": "IMG_20261017_154534_991.JPG",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 839111
+ },
+ {
+  "file": "s3-6k.jpg",
+  "node": "s3",
+  "source": "IMG_20261017_154601_801.JPG",
+  "width": 6144,
+  "height": 3072,
+  "bytes": 1507157
+ },
+ {
+  "file": "s3-4k.jpg",
+  "node": "s3",
+  "source": "IMG_20261017_154601_801.JPG",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 800613
+ },
+ {
+  "file": "s4-6k.jpg",
+  "node": "s4",
+  "source": "IMG_20261017_154625_805.JPG",
+  "width": 6144,
+  "height": 3072,
+  "bytes": 1495248
+ },
+ {
+  "file": "s4-4k.jpg",
+  "node": "s4",
+  "source": "IMG_20261017_154625_805.JPG",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 798559
+ },
+ {
+  "file": "s5-6k.jpg",
+  "node": "s5",
+  "source": "IMG_20261017_154645_945.JPG",
+  "width": 6144,
+  "height": 3072,
+  "bytes": 1465901
+ },
+ {
+  "file": "s5-4k.jpg",
+  "node": "s5",
+  "source": "IMG_20261017_154645_945.JPG",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 782564
+ },
+ {
+  "file": "s6-6k.jpg",
+  "node": "s6",
+  "source": "IMG_20261017_154701_124.JPG",
+  "width": 6144,
+  "height": 3072,
+  "bytes": 1498238
+ },
+ {
+  "file": "s6-4k.jpg",
+  "node": "s6",
+  "source": "IMG_20261017_154701_124.JPG",
+  "width": 4096,
+  "height": 2048,
+  "bytes": 806183
+ }
+]

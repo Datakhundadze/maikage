@@ -1,11 +1,11 @@
 import { useRef } from "react";
-import type { StickAxes } from "@/lib/tour/walkMotion";
+import type { StickAxes } from "@/lib/tour/tourMath";
 
-// On-screen thumb pad for walking and turning (phones). Bottom-LEFT, clear of
-// the chat launcher in the bottom-right corner. Reports the raw knob position
-// (x right, y up, inside the unit circle) through `onChange` on every move —
-// no React re-render; the knob is moved by writing its transform directly.
-// What the axes do (walk / turn, dead zone) is decided by joystickToInput.
+// On-screen thumb pad for turning and stepping through the tour. Bottom-LEFT,
+// clear of the chat launcher in the bottom-right corner. Reports the raw knob
+// position (x right, y up, inside the unit circle) through `onChange` on every
+// move — no React re-render; the knob is moved by writing its transform
+// directly. What the axes do (dead zone, turning, steps) is in tourMath.ts.
 //
 // It owns its pointer (setPointerCapture), so a second finger can drag the
 // canvas to look around at the same time.
@@ -48,7 +48,7 @@ export default function Joystick({ onChange }: JoystickProps) {
     <div
       ref={baseRef}
       role="application"
-      aria-label="სიარულის ჯოისტიკი"
+      aria-label="ჯოისტიკი: მარცხნივ-მარჯვნივ — მობრუნება, წინ-უკან — გადასვლა"
       className="absolute bottom-4 left-4 z-20 flex touch-none select-none items-center justify-center rounded-full border border-white/40 bg-black/25 backdrop-blur-[2px]"
       style={{ width: BASE_PX, height: BASE_PX }}
       onPointerDown={(e) => {

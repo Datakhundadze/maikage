@@ -1,14 +1,14 @@
 import AppHeader from "@/components/AppHeader";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
-import PhotoRoomViewer from "@/components/tour/PhotoRoomViewer";
+import TourViewer from "@/components/tour/TourViewer";
 import { SHOWROOM_INDEXABLE } from "@/lib/showroomSeo";
 
-// /showroom — walkable 3D room of the shop, built from photos.
-// Lazy route: this page and everything it imports (three.js, the scene config,
-// photos) load only when /showroom is visited.
+// /showroom — 360° photo tour of the shop (six panoramas along the aisle).
+// Lazy route: this page and everything it imports (Photo Sphere Viewer,
+// three.js, the tour config, photos) load only when /showroom is visited.
 //
-// noindex while the photo room is a test — lib/showroomSeo.ts, the one switch
-// the sitemap and the static prerender read too.
+// noindex while the tour is a test — lib/showroomSeo.ts, the one switch the
+// sitemap and the static prerender read too.
 
 export default function ShowroomPage() {
   return (
@@ -22,7 +22,7 @@ export default function ShowroomPage() {
       <AppHeader />
       <main className="relative min-h-0 flex-1">
         <h1 className="sr-only">ვირტუალური შოურუმი</h1>
-        <PhotoRoomViewer />
+        <TourViewer />
       </main>
     </div>
   );
