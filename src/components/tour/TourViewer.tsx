@@ -14,15 +14,19 @@ import Joystick from "./Joystick";
 import TuneOverlay, { type TunePose } from "./TuneOverlay";
 import { getNode, panoramaSize, TOUR, TOUR_NODES, type TourLink, type TourNode, type TourNodeId } from "@/lib/tour/tourConfig";
 import {
+  angleDiff,
+  autoTurnMs,
+  bobAt,
   easeToward,
+  FOOTFALLS,
   keysToStick,
   mergeSticks,
   normDeg,
   pickLink,
-  stepFromStick,
   TOUR_KEYS,
   turnRateFromStick,
-  type StepLatch,
+  walkIntent,
+  type StepIntent,
   type StickAxes,
 } from "@/lib/tour/tourMath";
 import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
@@ -34,18 +38,22 @@ import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 //
 // CONTROLS
 //   joystick (bottom-left) / ←→↑↓ / WASD: x turns (≤ 90°/s, 12 % dead zone);
-//     pushing forward past 60 % steps to the linked node closest to the view
-//     direction (within ±50°), pulling back to the one behind — one step per
-//     push (tourMath.ts).
+//     held forward past 50 % the visitor keeps walking: each step goes to the
+//     linked node closest to the view (within ±100°), turning toward it
+//     first if needed; held back walks backward the same way (tourMath.ts).
 //   drag anywhere else: look around (PSV); wheel / pinch: zoom.
-//   floor chevrons: tap to step to that neighbour.
-// STEP: turn toward the link (~300 ms), then zoom in while the next photo
-// cross-fades in (~600 ms), arriving facing the direction of travel; then the
-// zoom eases back. Every photo is turned by its northOffset (sphereCorrection),
-// so a world yaw means the same direction everywhere and the view yaw simply
-// carries over. Reduced motion: a plain fade. The old photo stays on screen
-// until the next one is loaded, so there are no black frames; neighbours are
-// preloaded once the current photo is shown (plugin `preload`).
+//   floor chevrons: tap to walk to that neighbour.
+// STEP (TOUR.walk in tourConfig.ts): turn toward the link if it is off to the
+// side, push into the current photo (first stride), then freeze that frame on
+// a 2D canvas on top, switch the next photo in underneath and let the frozen
+// frame keep growing while it fades — so the picture moves forward the whole
+// time instead of zooming in and back out. A head bob with two footfalls (and
+// the footstep sound, if on) runs over the whole step; the step lands facing
+// the direction of travel. Every photo is turned by its northOffset
+// (sphereCorrection), so a world yaw means the same direction everywhere. The
+// frozen frame stays until the next photo is loaded, so there are no black
+// frames; neighbours are preloaded once a photo is shown (plugin `preload`).
+// Reduced motion: a plain cross-fade, no bob.
 // LAYERS: the wrapper is `isolate`, so everything sits below the sitewide
 // chat launcher (z-50); nothing is placed in the bottom-right corner.
 
@@ -55,14 +63,9 @@ const MIN_FOV = 30;
 const MAX_FOV = 100;
 /** Aim for this horizontal field of view; the vertical one is capped at MAX_FOV. */
 const TARGET_HFOV = 100;
-const ROTATE_MS = 300;
-const FADE_MS = 600;
-const REDUCED_FADE_MS = 450;
-const ZOOM_BACK_MS = 260;
-/** Zoom levels added during the cross-fade (the "step forward"). */
-const STEP_ZOOM = 14;
-/** View pitch while stepping (slightly down, like looking where you walk). */
-const TRAVEL_PITCH_DEG = -4;
+const WALK = TOUR.walk;
+const clampZoom = (z: number) => Math.min(100, Math.max(0, z));
+const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
 
 type Status = "loading" | "ready" | "error" | "nowebgl";
 
@@ -172,6 +175,9 @@ function tourNodes(size: "4k" | "6k"): VirtualTourNode[] {
 
 export default function TourViewer() {
   const hostRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const frozenRef = useRef<HTMLCanvasElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
   const stickRef = useRef<StickAxes>({ x: 0, y: 0 });
   const footstepsRef = useRef<Footsteps | null>(null);
@@ -231,6 +237,8 @@ export default function TourViewer() {
         maxFov: MAX_FOV,
         defaultZoomLvl: defaultZoomFor(host.clientWidth, host.clientHeight),
         keyboard: false,
+        // keep the last frame readable so a step can freeze it on a 2D canvas
+        rendererParameters: { alpha: true, antialias: true, preserveDrawingBuffer: true },
         mousewheelCtrlKey: false,
         touchmoveTwoFingers: false,
         moveInertia: true,
@@ -246,7 +254,7 @@ export default function TourViewer() {
               startNodeId: TOUR.startNodeId,
               preload: true,
               showLinkTooltip: false,
-              transitionOptions: { showLoader: false, effect: "fade", speed: FADE_MS, rotation: false },
+              transitionOptions: { showLoader: false, effect: "fade", speed: WALK.reducedFadeMs, rotation: false },
             },
           ],
         ],
@@ -276,11 +284,17 @@ export default function TourViewer() {
       };
     };
 
-    const playSteps = () => {
+    const timers = new Set<number>();
+    const later = (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        timers.delete(id);
+        fn();
+      }, ms);
+      timers.add(id);
+    };
+    const footfall = (i: number) => {
       const f = footstepsRef.current;
-      if (!soundOnRef.current || !f) return;
-      f.play("left", 0.8);
-      window.setTimeout(() => f.play("right", 0.75), reduceMotion ? 180 : 240);
+      if (soundOnRef.current && f) f.play(i % 2 === 0 ? "left" : "right", i % 2 === 0 ? 0.8 : 0.72);
     };
 
     let noWayTimer = 0;
@@ -290,38 +304,131 @@ export default function TourViewer() {
       noWayTimer = window.setTimeout(() => setNoWayHint(false), 1600);
     };
 
-    const goTo = async (link: TourLink) => {
+    // ── head bob: a CSS transform on the stage (viewer + frozen frame) ──────
+    let bobStart = 0;
+    let bobMs = 0;
+    const applyBob = (now: number) => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      if (!bobMs) {
+        if (stage.style.transform) stage.style.transform = "";
+        return;
+      }
+      const t = (now - bobStart) / bobMs;
+      if (t >= 1) {
+        bobMs = 0;
+        stage.style.transform = "";
+        return;
+      }
+      const b = bobAt(t, WALK);
+      stage.style.transform = `translateY(${b.dyPx.toFixed(2)}px) rotate(${b.rollDeg.toFixed(3)}deg) scale(${b.scale.toFixed(4)})`;
+    };
+
+    // ── the frozen frame: last picture of the old photo, on a 2D canvas ─────
+    const freezeFrame = (): boolean => {
+      const out = frozenRef.current;
+      const src = host.querySelector("canvas");
+      if (!out || !src || !src.width || !src.height) return false;
+      try {
+        out.width = src.width;
+        out.height = src.height;
+        const ctx = out.getContext("2d");
+        if (!ctx) return false;
+        ctx.drawImage(src, 0, 0);
+      } catch {
+        return false;
+      }
+      out.style.transition = "none";
+      out.style.opacity = "1";
+      out.style.transform = "scale(1)";
+      out.style.visibility = "visible";
+      return true;
+    };
+    const releaseFrame = (scaleTo: number) => {
+      const out = frozenRef.current;
+      if (!out) return;
+      // next frame, so the "from" state above is committed before the transition
+      requestAnimationFrame(() => {
+        out.style.transition = `opacity ${WALK.blendMs}ms cubic-bezier(.3,.6,.4,1), transform ${WALK.blendMs}ms cubic-bezier(.2,.5,.4,1)`;
+        out.style.opacity = "0";
+        out.style.transform = `scale(${scaleTo})`;
+      });
+      later(() => {
+        out.style.visibility = "hidden";
+        out.style.transition = "none";
+      }, WALK.blendMs + 40);
+    };
+    const setWalking = (on: boolean) => rootRef.current?.classList.toggle("tour-walking", on);
+
+    const step = async (link: TourLink, intent: StepIntent) => {
       if (busy || disposed) return;
       busy = true;
       publish();
       setHintVisible(false);
-      playSteps();
-      const yaw = link.yawDeg * DEG;
-      const pitch = TRAVEL_PITCH_DEG * DEG;
+      setNoWayHint(false);
+      const fromLink = tour.getCurrentNode().links?.find((l) => l.nodeId === link.to);
       const baseZoom = viewer.getZoomLevel();
+      const pitch = WALK.travelPitchDeg * DEG;
+      // forward: arrive facing the way we walked. back: arrive facing away from
+      // the way we moved (as if stepping backward), so along a bending aisle the
+      // next backward step keeps going the same way instead of bouncing.
+      const arriveYaw = (intent === "forward" ? link.yawDeg : normDeg(link.yawDeg + 180)) * DEG;
       try {
-        if (!reduceMotion) await viewer.animate({ yaw, pitch, speed: ROTATE_MS });
-        const fromLink = tour.getCurrentNode().links?.find((l) => l.nodeId === link.to);
+        if (reduceMotion) {
+          await tour.setCurrentNode(
+            link.to,
+            { showLoader: false, effect: "fade", rotation: false, speed: WALK.reducedFadeMs, rotateTo: { yaw: arriveYaw, pitch }, zoomTo: baseZoom },
+            fromLink,
+          );
+          footfall(0);
+          return;
+        }
+        setWalking(true);
+        // 1. face the link (forward steps only)
+        if (intent === "forward") {
+          const turnMs = autoTurnMs(angleDiff(link.yawDeg, viewYawDeg()));
+          if (turnMs > 0) await viewer.animate({ yaw: arriveYaw, pitch, speed: turnMs, easing: "inOutSine" });
+        }
+        if (disposed) return;
+        // 2. first stride into the current photo; bob + footfalls over the whole step
+        const stepMs = WALK.outMs + WALK.blendMs;
+        bobStart = performance.now();
+        bobMs = stepMs;
+        FOOTFALLS.forEach((f, i) => later(() => footfall(i), f * stepMs));
+        const outZoom = clampZoom(baseZoom + (intent === "forward" ? WALK.outZoom : WALK.backOutZoom));
+        await viewer.animate({ zoom: outZoom, pitch, speed: WALK.outMs, easing: "inQuad" });
+        if (disposed) return;
+        // 3. freeze it, switch the next photo in underneath, blend forward
+        const frozen = freezeFrame();
+        const inZoom = clampZoom(baseZoom + (intent === "forward" ? WALK.inFromZoom : WALK.backInFromZoom));
         await tour.setCurrentNode(
           link.to,
-          {
-            showLoader: false,
-            effect: "fade",
-            rotation: false,
-            speed: reduceMotion ? REDUCED_FADE_MS : FADE_MS,
-            rotateTo: { yaw, pitch },
-            zoomTo: reduceMotion ? baseZoom : Math.min(100, baseZoom + STEP_ZOOM),
-          },
+          frozen
+            ? { showLoader: false, effect: "none", rotation: false, rotateTo: { yaw: arriveYaw, pitch }, zoomTo: inZoom }
+            : { showLoader: false, effect: "fade", rotation: false, speed: WALK.blendMs, rotateTo: { yaw: arriveYaw, pitch }, zoomTo: inZoom },
           fromLink,
         );
-        if (!disposed && !reduceMotion) await viewer.animate({ zoom: baseZoom, speed: ZOOM_BACK_MS });
+        if (disposed) return;
+        // if the photo took a while to load, the bob has run out: restart a short settle
+        if (performance.now() - bobStart > stepMs) {
+          bobStart = performance.now() - WALK.outMs;
+          bobMs = stepMs;
+        }
+        if (frozen) releaseFrame(intent === "forward" ? WALK.overlayScaleTo : WALK.backOverlayScaleTo);
+        await viewer.animate({ zoom: baseZoom, speed: WALK.blendMs, easing: "outQuad" });
       } catch {
-        // aborted (another step, unmount) — the plugin keeps a consistent node
+        // aborted (unmount) — the plugin keeps a consistent node
+        const out = frozenRef.current;
+        if (out) out.style.visibility = "hidden";
       } finally {
+        setWalking(false);
         busy = false;
         publish();
       }
     };
+
+    /** The link a push goes to, or null (shows the hint). */
+    const linkFor = (intent: StepIntent) => pickLink(getNode(nodeId).links, viewYawDeg(), intent);
 
     // ── input: joystick + keys → turning and steps ─────────────────────────
     const keys = new Set<string>();
@@ -339,14 +446,15 @@ export default function TourViewer() {
     window.addEventListener("blur", onBlur);
 
     let ready = false; // first photo shown
-    let latch: StepLatch = { armed: true };
     let turnRate = 0;
+    let deadEndShown = false; // the hint once per push, not every frame
     let last = performance.now();
     let raf = 0;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       const dt = Math.min(100, now - last);
       last = now;
+      applyBob(now);
       if (!ready) return;
       const stick = mergeSticks(stickRef.current, keysToStick(keys));
       if (busy) {
@@ -359,12 +467,17 @@ export default function TourViewer() {
         viewer.rotate({ yaw: p.yaw + turnRate * DEG * (dt / 1000), pitch: p.pitch });
         setHintVisible(false);
       } else turnRate = 0;
-      const r = stepFromStick(stick.y, latch);
-      latch = r.latch;
-      if (r.intent) {
-        const link = pickLink(getNode(nodeId).links, viewYawDeg(), r.intent);
-        if (link) void goTo(link);
-        else showNoWay();
+      // held forward / back: keep walking, one step after another
+      const intent = walkIntent(stick.y);
+      if (!intent) {
+        deadEndShown = false;
+        return;
+      }
+      const link = linkFor(intent);
+      if (link) void step(link, intent);
+      else if (!deadEndShown) {
+        deadEndShown = true;
+        showNoWay();
       }
     };
     raf = requestAnimationFrame(loop);
@@ -408,7 +521,7 @@ export default function TourViewer() {
     });
     markers.addEventListener("select-marker", ({ marker }) => {
       const link = (marker.data as { link?: TourLink } | undefined)?.link;
-      if (link) void goTo(link);
+      if (link) void step(link, "forward");
     });
 
     // a remembered "sound on" needs a gesture before audio may start
@@ -427,6 +540,8 @@ export default function TourViewer() {
       cancelAnimationFrame(raf);
       cancelAnimationFrame(poseRaf);
       window.clearTimeout(noWayTimer);
+      timers.forEach((id) => window.clearTimeout(id));
+      timers.clear();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
@@ -461,8 +576,17 @@ export default function TourViewer() {
   }
 
   return (
-    <div className="tour-viewer relative isolate h-full w-full overflow-hidden overscroll-none bg-[#101010]">
-      <div ref={hostRef} className="absolute inset-0 touch-none" />
+    <div ref={rootRef} className="tour-viewer relative isolate h-full w-full overflow-hidden overscroll-none bg-[#101010]">
+      {/* stage = viewer + frozen frame; the head bob moves both together */}
+      <div ref={stageRef} className="absolute inset-0" style={{ willChange: "transform" }}>
+        <div ref={hostRef} className="absolute inset-0 touch-none" />
+        <canvas
+          ref={frozenRef}
+          aria-hidden
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          style={{ visibility: "hidden", transformOrigin: "50% 50%" }}
+        />
+      </div>
 
       {status === "loading" && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#101010] text-white">
@@ -484,8 +608,8 @@ export default function TourViewer() {
       {status === "ready" && hintVisible && !tune && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
           {touch
-            ? "ჯოისტიკი: მარცხნივ/მარჯვნივ — მობრუნება, წინ — შემდეგ წერტილზე. თითით გადაათრიეთ — მიმოხედვა."
-            : "←/→ ან A/D — მობრუნება, ↑/↓ ან W/S — წინ/უკან. მაუსით გადაათრიეთ — მიმოხედვა, ისრებზე დაჭერით — გადასვლა."}
+            ? "ჯოისტიკი წინ გეჭიროთ — იარეთ, მარცხნივ/მარჯვნივ — მობრუნება. თითით გადაათრიეთ — მიმოხედვა."
+            : "↑/W დაჭერილი — სიარული, ←/→ ან A/D — მობრუნება, ↓/S — უკან. მაუსით გადაათრიეთ — მიმოხედვა."}
         </p>
       )}
 
@@ -495,7 +619,7 @@ export default function TourViewer() {
           className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 rounded-lg bg-black/60 px-3 py-2 text-xs text-white"
           style={{ top: 64 }}
         >
-          აქეთ გასასვლელი არ არის — მოტრიალდით ისრისკენ
+          აქ გზა მთავრდება — მოტრიალდით
         </p>
       )}
 

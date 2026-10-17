@@ -119,6 +119,36 @@ export const TOUR = {
   startPitchDeg: -6,
   /** Tripod cover at the nadir: maika.ge logo disc, this many degrees across. */
   nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 30 },
+  /**
+   * One step (TourViewer). Zoom values are PSV zoom levels (0…100) relative
+   * to the zoom when the step starts.
+   *   1. walk out (outMs): the camera pushes into the current photo by
+   *      outZoom, like taking the first stride;
+   *   2. the current frame is frozen on top, the next photo is switched in
+   *      underneath starting inFromZoom wider, and over blendMs the frozen
+   *      frame keeps growing (to overlayScaleTo) and fades out while the next
+   *      photo zooms back to normal — the picture keeps moving forward.
+   *   Head bob over the whole step (two footfalls): bobPx down, bobRollDeg
+   *   sway, bobScale to hide the moved edges. Walking backward reverses the
+   *   zooms (backOutZoom / backInFromZoom / backOverlayScaleTo).
+   */
+  walk: {
+    outMs: 420,
+    outZoom: 16,
+    blendMs: 520,
+    inFromZoom: -8,
+    overlayScaleTo: 1.18,
+    backOutZoom: -12,
+    backInFromZoom: 14,
+    backOverlayScaleTo: 0.9,
+    bobPx: 9,
+    bobRollDeg: 0.6,
+    bobScale: 1.04,
+    /** View pitch while walking (slightly down, like watching your step). */
+    travelPitchDeg: -4,
+    /** prefers-reduced-motion: plain cross-fade, no bob. */
+    reducedFadeMs: 450,
+  },
 } as const;
 
 /** Phones (coarse pointer or a narrow viewport) get the 4k files, everything else 6k. */

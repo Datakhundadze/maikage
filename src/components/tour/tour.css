@@ -29,6 +29,13 @@
   overflow: visible;
 }
 
+/* while a step runs the floor arrows would jump with the photo: hide them */
+.tour-walking .psv-marker--css3d,
+.tour-walking .tour-chevron {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tour-chevron {
     transition: none;

@@ -9,13 +9,14 @@ import {
   photoToWorldYaw,
   pickLink,
   STEERING,
-  stepFromStick,
   turnRateFromStick,
+  walkIntent,
+  autoTurnMs,
+  bobAt,
+  FOOTFALLS,
   worldToPhotoYaw,
-  type StepIntent,
-  type StepLatch,
 } from "./tourMath";
-import { getNode } from "./tourConfig";
+import { getNode, TOUR } from "./tourConfig";
 
 describe("angles", () => {
   it("normalises into (−180, 180]", () => {
@@ -66,30 +67,100 @@ describe("joystick turning", () => {
   });
 });
 
-describe("one step per push", () => {
-  const run = (ys: number[]) => {
-    let latch: StepLatch = { armed: true };
-    const steps: (StepIntent | null)[] = [];
-    for (const y of ys) {
-      const r = stepFromStick(y, latch);
-      latch = r.latch;
-      steps.push(r.intent);
+describe("hold to walk", () => {
+  it("walks while held past 50 %, either way", () => {
+    expect(walkIntent(0)).toBeNull();
+    expect(walkIntent(0.49)).toBeNull();
+    expect(walkIntent(0.5)).toBe("forward");
+    expect(walkIntent(1)).toBe("forward");
+    expect(walkIntent(-0.7)).toBe("back");
+  });
+
+  it("keeps walking along the real chain s1 → s6 without turning by hand", () => {
+    // each step lands facing its link's direction; the next push picks from there
+    let node = getNode("s1");
+    let view: number = TOUR.startYawDeg;
+    const path = [node.id];
+    for (let i = 0; i < 10; i++) {
+      const link = pickLink(node.links, view, "forward");
+      if (!link) break;
+      view = link.yawDeg;
+      node = getNode(link.to);
+      path.push(node.id);
     }
-    return steps.filter(Boolean);
-  };
-
-  it("steps once when pushed past 60 % and held", () => {
-    expect(run([0, 0.3, 0.59, 0.61, 0.9, 1, 1, 0.8])).toEqual(["forward"]);
+    expect(path).toEqual(["s1", "s2", "s3", "s4", "s5", "s6"]);
   });
 
-  it("needs a release before the next step", () => {
-    expect(run([0.9, 0.5, 0.9])).toEqual(["forward"]); // didn't come back below 30 %
-    expect(run([0.9, 0.1, 0.9])).toEqual(["forward", "forward"]);
-    expect(run([0.9, 0, -0.9])).toEqual(["forward", "back"]);
+  it("walks back s6 → s1 after turning round once", () => {
+    let node = getNode("s6");
+    let view = node.links[0].yawDeg; // facing s5
+    const path = [node.id];
+    for (let i = 0; i < 10; i++) {
+      const link = pickLink(node.links, view, "forward");
+      if (!link) break;
+      view = link.yawDeg;
+      node = getNode(link.to);
+      path.push(node.id);
+    }
+    expect(path).toEqual(["s6", "s5", "s4", "s3", "s2", "s1"]);
+  });
+});
+
+describe("walking backward", () => {
+  it("held back from s6 goes all the way to s1 (arrives facing away from the travel)", () => {
+    let node = getNode("s6");
+    let view = node.links[0].yawDeg + 180; // arrived at s6 facing away from s5
+    const path = [node.id];
+    for (let i = 0; i < 10; i++) {
+      const link = pickLink(node.links, view, "back");
+      if (!link) break;
+      view = normDeg(link.yawDeg + 180);
+      node = getNode(link.to);
+      path.push(node.id);
+    }
+    expect(path).toEqual(["s6", "s5", "s4", "s3", "s2", "s1"]);
+  });
+});
+
+describe("auto-turn before a step", () => {
+  it("doesn't turn for a link straight ahead", () => {
+    expect(autoTurnMs(0)).toBe(0);
+    expect(autoTurnMs(STEERING.autoTurnMinDeg)).toBe(0);
+    expect(autoTurnMs(-8)).toBe(0);
   });
 
-  it("does nothing below the threshold", () => {
-    expect(run([0.2, 0.5, -0.55, 0.59])).toEqual([]);
+  it("turns faster for small offsets, capped for large ones", () => {
+    expect(autoTurnMs(15)).toBe(STEERING.autoTurnMinMs);
+    expect(autoTurnMs(62)).toBeGreaterThan(STEERING.autoTurnMinMs);
+    expect(autoTurnMs(62)).toBeLessThan(STEERING.autoTurnMaxMs);
+    expect(autoTurnMs(100)).toBe(STEERING.autoTurnMaxMs);
+    expect(autoTurnMs(-62)).toBe(autoTurnMs(62));
+    expect(autoTurnMs(358)).toBe(0); // = −2°
+  });
+});
+
+describe("head bob", () => {
+  const cfg = TOUR.walk;
+  it("starts and lands still", () => {
+    for (const t of [-0.1, 0, 1, 1.2]) expect(bobAt(t, cfg)).toEqual({ dyPx: 0, rollDeg: 0, scale: 1 });
+    const near = bobAt(0.01, cfg);
+    expect(Math.abs(near.dyPx)).toBeLessThan(0.05);
+  });
+
+  it("dips at the two footfalls and sways from one foot to the other", () => {
+    const [f1, f2] = FOOTFALLS.map((t) => bobAt(t, cfg));
+    expect(f1.dyPx).toBeGreaterThan(cfg.bobPx * 0.6);
+    expect(f2.dyPx).toBeGreaterThan(cfg.bobPx * 0.6);
+    expect(Math.sign(f1.rollDeg)).toBe(-Math.sign(f2.rollDeg));
+    expect(bobAt(0.5, cfg).dyPx).toBeCloseTo(0, 6); // between the steps
+    for (let t = 0.01; t < 1; t += 0.01) {
+      const b = bobAt(t, cfg);
+      expect(b.dyPx).toBeGreaterThanOrEqual(0);
+      expect(b.dyPx).toBeLessThanOrEqual(cfg.bobPx);
+      expect(Math.abs(b.rollDeg)).toBeLessThanOrEqual(cfg.bobRollDeg);
+      expect(b.scale).toBeGreaterThanOrEqual(1);
+      expect(b.scale).toBeLessThanOrEqual(cfg.bobScale);
+    }
   });
 });
 
@@ -100,17 +171,19 @@ describe("link selection", () => {
     { to: "c", yawDeg: -150 },
   ];
 
-  it("forward picks the link closest to the view within ±50°", () => {
+  it("forward picks the link closest to the view within ±100°", () => {
     expect(pickLink(links, 10, "forward")?.to).toBe("a");
     expect(pickLink(links, 60, "forward")?.to).toBe("b"); // 30° from b, 60° from a
     expect(pickLink(links, -45, "forward")?.to).toBe("a");
-    expect(pickLink(links, -51, "forward")).toBeNull(); // a is 51° away, c 99°
+    expect(pickLink(links, -51, "forward")?.to).toBe("a"); // a 51°, c 99°
+    expect(pickLink([{ to: "a", yawDeg: 0 }], 101, "forward")).toBeNull();
   });
 
   it("back picks the link closest to the opposite direction", () => {
     expect(pickLink(links, 180, "back")?.to).toBe("a");
     expect(pickLink(links, 30, "back")?.to).toBe("c"); // behind = −150
-    expect(pickLink(links, 90, "back")).toBeNull(); // behind = −90: a 90°, c 60° away
+    expect(pickLink(links, 90, "back")?.to).toBe("c"); // behind = −90: c 60°, a 90°
+    expect(pickLink([{ to: "a", yawDeg: 0 }], 0, "back")).toBeNull(); // a is 180° from behind
   });
 
   it("wraps around ±180°", () => {
@@ -125,7 +198,7 @@ describe("link selection", () => {
     // pulling back while facing s4 goes back toward s2
     expect(pickLink(s3.links, toS4.yawDeg, "back")?.to).toBe("s2");
     // looking at a wall with no link near: nothing
-    expect(pickLink(getNode("s1").links, 120, "forward")).toBeNull();
+    expect(pickLink(getNode("s1").links, 150, "forward")).toBeNull();
   });
 });
 

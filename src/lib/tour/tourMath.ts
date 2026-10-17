@@ -1,14 +1,15 @@
 // Movement logic for the 360° tour, free of DOM and viewer code so it can be
-// unit-tested: angles, the joystick's dead zone and turn rate, the
-// one-step-per-push latch, and which link a push goes to.
+// unit-tested: angles, the joystick's dead zone and turn rate, which link a
+// push walks to, the auto-turn before a step, and the head bob of a step.
 //
 // The stick (on-screen joystick or keys) gives x (right +) and y (forward +)
 // inside the unit circle:
 //   x → turning, up to maxTurnDegPerSec, eased in so it starts softly;
-//   y → past ±stepAt one step to the linked node closest to the view
-//       direction (forward) or to its opposite (back), if one lies within
-//       ±linkConeDeg of it. Then nothing more until the stick comes back
-//       below rearmBelow — one step per push.
+//   y → while held past ±walkAt the visitor keeps walking: each step goes to
+//       the linked node closest to the view direction (forward) or to its
+//       opposite (back) within ±linkConeDeg, turning toward it first if it
+//       is more than autoTurnMinDeg off. A step lands facing the direction of
+//       travel, so the next one simply continues along the aisle.
 
 export interface StickAxes {
   /** −1 (left) … 1 (right) */
@@ -22,12 +23,16 @@ export const STEERING = {
   maxTurnDegPerSec: 90,
   /** Time constant of the turn-rate easing (ms). */
   turnEaseMs: 140,
-  /** Forward / back deflection that triggers a step. */
-  stepAt: 0.6,
-  /** The stick has to come back below this before the next step. */
-  rearmBelow: 0.3,
-  /** A link counts as "ahead" within this many degrees of the view. */
-  linkConeDeg: 50,
+  /** Forward / back deflection that keeps the visitor walking. */
+  walkAt: 0.5,
+  /** A link counts as "this way" within this many degrees of the view. */
+  linkConeDeg: 100,
+  /** Turn toward the link first when it is further off than this. */
+  autoTurnMinDeg: 10,
+  /** Speed of that turn, and its shortest / longest duration. */
+  autoTurnDegPerSec: 160,
+  autoTurnMinMs: 150,
+  autoTurnMaxMs: 600,
 } as const;
 
 export type StepIntent = "forward" | "back";
@@ -62,26 +67,50 @@ export function easeToward(current: number, target: number, dtMs: number, tauMs:
   return current + (target - current) * (1 - Math.exp(-dtMs / tauMs));
 }
 
-export interface StepLatch {
-  armed: boolean;
+/**
+ * Walking intent for the stick's y, read every frame while no step is
+ * running: held forward / back past walkAt keeps producing steps.
+ */
+export function walkIntent(y: number, cfg: { walkAt: number } = STEERING): StepIntent | null {
+  if (y >= cfg.walkAt) return "forward";
+  if (y <= -cfg.walkAt) return "back";
+  return null;
+}
+
+/** Duration (ms) of the turn toward a link `offDeg` away; 0 = no turn needed. */
+export function autoTurnMs(
+  offDeg: number,
+  cfg: { autoTurnMinDeg: number; autoTurnDegPerSec: number; autoTurnMinMs: number; autoTurnMaxMs: number } = STEERING,
+): number {
+  const off = Math.abs(normDeg(offDeg));
+  if (off <= cfg.autoTurnMinDeg) return 0;
+  return Math.round(Math.min(cfg.autoTurnMaxMs, Math.max(cfg.autoTurnMinMs, (off / cfg.autoTurnDegPerSec) * 1000)));
 }
 
 /**
- * Feed the stick's y every frame. Returns the step to take now (at most one
- * per push) and the updated latch.
+ * Head bob of one step, t = 0…1 over the whole step. Two footfalls (at t =
+ * 0.25 and 0.75, where the head is lowest), a sway from one foot to the
+ * other, faded in and out so the step starts and lands still.
+ *   dyPx  — vertical offset of the picture, + = down
+ *   rollDeg — tilt, + = clockwise
+ *   scale — slight enlargement so the moved picture never shows an edge
  */
-export function stepFromStick(
-  y: number,
-  latch: StepLatch,
-  cfg: { stepAt: number; rearmBelow: number } = STEERING,
-): { intent: StepIntent | null; latch: StepLatch } {
-  if (!latch.armed) {
-    return { intent: null, latch: { armed: Math.abs(y) < cfg.rearmBelow } };
-  }
-  if (y >= cfg.stepAt) return { intent: "forward", latch: { armed: false } };
-  if (y <= -cfg.stepAt) return { intent: "back", latch: { armed: false } };
-  return { intent: null, latch };
+export function bobAt(
+  t: number,
+  cfg: { bobPx: number; bobRollDeg: number; bobScale: number },
+): { dyPx: number; rollDeg: number; scale: number } {
+  if (!(t > 0 && t < 1)) return { dyPx: 0, rollDeg: 0, scale: 1 };
+  const env = Math.sin(Math.PI * t);
+  const s = Math.sin(2 * Math.PI * t);
+  return {
+    dyPx: cfg.bobPx * s * s * env,
+    rollDeg: cfg.bobRollDeg * s * env,
+    scale: 1 + (cfg.bobScale - 1) * env,
+  };
 }
+
+/** Footfall moments within a step (fractions of the step), lowest head points of bobAt. */
+export const FOOTFALLS = [0.25, 0.75] as const;
 
 /**
  * The link to step to: closest to the view yaw (forward) or to its opposite
