@@ -78,7 +78,7 @@ export const PORTFOLIO = {
 /** src/pages/ShowroomPage.tsx */
 export const SHOWROOM = {
   title: "ვირტუალური შოურუმი — Maika.ge",
-  description: "გაიარეთ Maika.ge-ს შოურუმში 3D-ში, პირდაპირ ბრაუზერიდან.",
+  description: "გაიარეთ Maika.ge-ს შოურუმში 360° ვიდეოში, პირდაპირ ბრაუზერიდან.",
   h1: "ვირტუალური შოურუმი",
 };
 
