@@ -286,22 +286,52 @@ export default function VideoWalk() {
       playing = false;
     };
 
-    /** Seek `v` and resolve once the frame is there (or after a timeout). */
-    const seekTo = (v: HTMLVideoElement, time: number) =>
-      new Promise<void>((resolve) => {
+    /**
+     * Seek `v`; resolves true once the frame at that time is decoded
+     * (readyState ≥ HAVE_CURRENT_DATA after "seeked"), false after
+     * `timeoutMs` without it — on a phone the bytes may still be downloading.
+     */
+    const seekTo = (v: HTMLVideoElement, time: number, timeoutMs = 1500) =>
+      new Promise<boolean>((resolve) => {
         const clamped = Math.min(Math.max(0, time), (v.duration || track.duration) - 0.05);
-        if (Math.abs(v.currentTime - clamped) < 0.01) return resolve();
+        if (Math.abs(v.currentTime - clamped) < 0.01 && v.readyState >= 2 && !v.seeking) return resolve(true);
         let done = false;
-        const finish = () => {
+        let timer = 0;
+        const finish = (ok: boolean) => {
           if (done) return;
           done = true;
-          v.removeEventListener("seeked", finish);
-          resolve();
+          window.clearTimeout(timer);
+          v.removeEventListener("seeked", onEvent);
+          v.removeEventListener("loadeddata", onEvent);
+          v.removeEventListener("canplay", onEvent);
+          resolve(ok);
         };
-        v.addEventListener("seeked", finish);
-        window.setTimeout(finish, 1500);
+        const onEvent = () => {
+          if (!v.seeking && v.readyState >= 2) finish(true);
+        };
+        v.addEventListener("seeked", onEvent);
+        v.addEventListener("loadeddata", onEvent);
+        v.addEventListener("canplay", onEvent);
+        timer = window.setTimeout(() => finish(!v.seeking && v.readyState >= 2), timeoutMs);
         v.currentTime = clamped;
       });
+
+    /** Keep the idle video parked at the same moment, so a change of direction is instant. */
+    let parking = false;
+    let lastPark = 0;
+    const parkIdle = () => {
+      if (parking || switching || jumping) return;
+      const idle: WalkDir = dir === "fwd" ? "rev" : "fwd";
+      const v = videos[idle];
+      if (v.readyState < 1) return;
+      const want = videoTime(fwdTime(), idle, track);
+      if (Math.abs(v.currentTime - want) < 0.3) return;
+      parking = true;
+      lastPark = performance.now();
+      void seekTo(v, want, 4000).then(() => {
+        parking = false;
+      });
+    };
 
     // iOS: a video may only start from a user gesture the first time; touch
     // both on the first joystick / key press
@@ -369,19 +399,27 @@ export default function VideoWalk() {
       jumping = false;
     };
 
+    // Changing direction: the other video seeks to the same moment first;
+    // until its frame is there the current picture stays (no wrong frame, no
+    // turning toward a wrong place). If it can't get there, stay put.
+    let switchFailedAt = -1e9;
     const switchDir = async (next: WalkDir) => {
-      if (switching || next === dir) return;
+      if (switching || next === dir || performance.now() - switchFailedAt < 800) return;
       switching = true;
       const t = fwdTime();
       const from = active();
       from.pause();
       playing = false;
       const to = videos[next];
-      await seekTo(to, videoTime(t, next, track));
+      const ok = await seekTo(to, videoTime(t, next, track), 5000);
       if (disposed) return;
-      dir = next;
-      material.map = textures[next];
-      textures[next].needsUpdate = true;
+      if (ok) {
+        dir = next;
+        material.map = textures[next];
+        textures[next].needsUpdate = true;
+      } else {
+        switchFailedAt = performance.now();
+      }
       switching = false;
     };
 
@@ -421,8 +459,9 @@ export default function VideoWalk() {
       pointers.set(e.pointerId, cur);
       if (pointers.size === 1) {
         const degPerPx = (vfov * userZoom) / Math.max(1, host.clientHeight);
-        yawDeg = normDeg(yawDeg - (cur.x - prev.x) * degPerPx);
-        pitchDeg = Math.max(-85, Math.min(85, pitchDeg + (cur.y - prev.y) * degPerPx));
+        // like a game camera: finger right = look right, finger down = look down
+        yawDeg = normDeg(yawDeg + (cur.x - prev.x) * degPerPx);
+        pitchDeg = Math.max(-85, Math.min(85, pitchDeg - (cur.y - prev.y) * degPerPx));
         lastDragAt = performance.now();
       } else if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
@@ -577,6 +616,7 @@ export default function VideoWalk() {
           v.pause();
           playing = false;
           rate = 0;
+          parkIdle();
         }
         if (playing) {
           const r = Math.max(0.25, Math.round(rate * 20) / 20);
@@ -595,6 +635,8 @@ export default function VideoWalk() {
             yawDeg = followStep(yawDeg, followTarget(t, dir), dt, scaled);
             pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
           }
+          // keep the other direction ready
+          if (now - lastPark > F.parkEveryMs) parkIdle();
           // the loop point
           const next = loopJump(t, dir, track);
           if (next !== null) void jumpTo(next);

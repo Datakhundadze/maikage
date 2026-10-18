@@ -57,8 +57,10 @@ export const WALK_FEEL = {
   walkAt: 0.2,
   /** Playback rate at walkAt and at full deflection (keys = full). 1 = the
    *  pace it was filmed at (a slow walk). */
-  minRate: 0.7,
-  maxRate: 1.8,
+  minRate: 0.8,
+  maxRate: 2.2,
+  /** Stick |y| that already gives maxRate (a thumb rarely reaches the rim). */
+  fullAt: 0.85,
   /** Time constant of the rate easing (ms): start / stop softly. */
   rateEaseMs: 160,
   /** Below this rate while stopping, pause. */
@@ -79,6 +81,8 @@ export const WALK_FEEL = {
   pitchEaseMs: 1200,
   /** Seconds between footsteps at playback rate 1. */
   footstepSec: 0.56,
+  /** While walking, re-park the idle video at the same moment this often (ms). */
+  parkEveryMs: 4000,
   /** Cross-fade over the loop jump (ms). */
   loopFadeMs: 450,
   /** Colour lift in the shader (on the sRGB picture): saturation and contrast
@@ -100,10 +104,13 @@ export function headingAt(t: number, track: WalkTrack = WALK_TRACK): number {
 }
 
 /** Walking direction and playback rate for a stick y (forward +), or null = stand. */
-export function walkFromStick(y: number, cfg: { walkAt: number; minRate: number; maxRate: number } = WALK_FEEL): { dir: WalkDir; rate: number } | null {
+export function walkFromStick(
+  y: number,
+  cfg: { walkAt: number; fullAt: number; minRate: number; maxRate: number } = WALK_FEEL,
+): { dir: WalkDir; rate: number } | null {
   const a = Math.abs(y);
   if (a < cfg.walkAt) return null;
-  const f = Math.min(1, (a - cfg.walkAt) / (1 - cfg.walkAt));
+  const f = Math.min(1, (a - cfg.walkAt) / (cfg.fullAt - cfg.walkAt));
   return { dir: y > 0 ? "fwd" : "rev", rate: cfg.minRate + (cfg.maxRate - cfg.minRate) * f };
 }
 
