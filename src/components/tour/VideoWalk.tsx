@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import {
+  BufferAttribute,
+  BufferGeometry,
   CircleGeometry,
+  DoubleSide,
   LinearFilter,
   Mesh,
   MeshBasicMaterial,
@@ -18,6 +21,7 @@ import { easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromS
 import {
   followStep,
   followTarget,
+  guidePath,
   forwardTime,
   loopJump,
   vfovFor,
@@ -137,6 +141,60 @@ export default function VideoWalk() {
   const [status, setStatus] = useState<Status>(() => (hasWebGL() ? "loading" : "nowebgl"));
   const [progress, setProgress] = useState(0);
   const [soundOn, setSoundOn] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  // full screen: the Fullscreen API where it exists (Android, desktop, iPad);
+  // iPhone Safari has none for a page element, so there the viewer just
+  // covers the whole window (site header and chat button hidden)
+  const [fullscreen, setFullscreen] = useState(false);
+  const [covering, setCovering] = useState(false);
+  useEffect(() => {
+    const onChange = () => {
+      const d = document as Document & { webkitFullscreenElement?: Element | null };
+      setFullscreen(!!(document.fullscreenElement || d.webkitFullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+    };
+  }, []);
+  const toggleFullscreen = useCallback(() => {
+    const el = rootRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => void }) | null;
+    const d = document as Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void };
+    if (covering) return setCovering(false);
+    if (document.fullscreenElement || d.webkitFullscreenElement) {
+      if (document.exitFullscreen) void document.exitFullscreen().catch(() => {});
+      else d.webkitExitFullscreen?.();
+      return;
+    }
+    try {
+      if (el?.requestFullscreen) {
+        void el.requestFullscreen().catch(() => setCovering(true));
+        return;
+      }
+      if (el?.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+        return;
+      }
+    } catch {
+      // fall through to covering the window
+    }
+    setCovering(true);
+  }, [covering]);
+  useEffect(() => {
+    if (!covering) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCovering(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [covering]);
   const [hintVisible, setHintVisible] = useState(true);
   const [touch] = useState(() => media("(pointer: coarse)"));
   // iPhone Safari does not load a video before a tap: after a moment without
@@ -241,6 +299,68 @@ export default function VideoWalk() {
       logoMat.needsUpdate = true;
       logo.visible = true;
     });
+
+    // ── guide lines on the floor (where the walk goes next) ────────────────
+    const G = F.guide;
+    const gN = Math.floor(G.lengthM / G.sampleM + 1e-6) + 1; // points per line
+    const gVerts = 2 * 2 * gN; // 2 lines × 2 edges
+    const gPos = new Float32Array(gVerts * 3);
+    const gCol = new Float32Array(gVerts * 4);
+    const gIdx: number[] = [];
+    for (let line = 0; line < 2; line++) {
+      for (let i = 0; i < gN - 1; i++) {
+        const a = (line * gN + i) * 2;
+        gIdx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+    }
+    const guideGeo = new BufferGeometry();
+    guideGeo.setAttribute("position", new BufferAttribute(gPos, 3));
+    guideGeo.setAttribute("color", new BufferAttribute(gCol, 4));
+    guideGeo.setIndex(gIdx);
+    const guideMat = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
+    const guide = new Mesh(guideGeo, guideMat);
+    guide.renderOrder = 2;
+    guide.frustumCulled = false;
+    guide.visible = false;
+    scene.add(guide);
+    // amber (#fbbf24), fading in near the visitor and out at the far end
+    const amber = [0.984, 0.749, 0.141];
+    const updateGuide = (t: number, d: WalkDir, alpha: number) => {
+      const pts = guidePath(t, d);
+      const y = -G.cameraHeightM;
+      for (let line = 0; line < 2; line++) {
+        const side = line === 0 ? -1 : 1;
+        for (let i = 0; i < gN; i++) {
+          const p = pts[Math.min(i, pts.length - 1)];
+          const r = p.hDeg * DEG;
+          // floor normal to the path (right of travel) = (cos h, 0, sin h)
+          const nx = Math.cos(r);
+          const nz = Math.sin(r);
+          const off = side * G.halfWidthM;
+          const w = G.lineWidthM / 2;
+          const v = ((line * gN + i) * 2) * 3;
+          gPos[v] = p.x + nx * (off - w);
+          gPos[v + 1] = y;
+          gPos[v + 2] = p.z + nz * (off - w);
+          gPos[v + 3] = p.x + nx * (off + w);
+          gPos[v + 4] = y;
+          gPos[v + 5] = p.z + nz * (off + w);
+          const f = i / (gN - 1);
+          const a = alpha * Math.min(1, f * 5) * (1 - f * f);
+          const c = ((line * gN + i) * 2) * 4;
+          for (const k of [c, c + 4]) {
+            gCol[k] = amber[0];
+            gCol[k + 1] = amber[1];
+            gCol[k + 2] = amber[2];
+            gCol[k + 3] = a;
+          }
+        }
+      }
+      guideGeo.attributes.position.needsUpdate = true;
+      guideGeo.attributes.color.needsUpdate = true;
+    };
+    let guideAlpha = 0;
+    let guideDir: WalkDir = "fwd";
 
     // ── view state ─────────────────────────────────────────────────────────
     let yawDeg = 0;
@@ -646,6 +766,17 @@ export default function VideoWalk() {
         }
       }
 
+      // guide lines: shown while the stick is held or the walk runs
+      if (ready) {
+        const st = mergeSticks(stickRef.current, keysToStick(keys));
+        const intent = walkFromStick(st.y);
+        if (intent) guideDir = intent.dir;
+        const show = !!intent || playing || Math.abs(st.y) > 0.08;
+        guideAlpha = easeToward(guideAlpha, show ? 0.85 : 0, dt, show ? 120 : 400);
+        guide.visible = guideAlpha > 0.02;
+        if (guide.visible) updateGuide(fwdTime(), guideDir, guideAlpha);
+      }
+
       camera.fov = vfov * userZoom;
       camera.updateProjectionMatrix();
       camera.rotation.y = -yawDeg * DEG;
@@ -706,6 +837,8 @@ export default function VideoWalk() {
       logoMat.map?.dispose();
       logoMat.dispose();
       logoGeo.dispose();
+      guideGeo.dispose();
+      guideMat.dispose();
       material.dispose();
       geometry.dispose();
       renderer.dispose();
@@ -731,7 +864,8 @@ export default function VideoWalk() {
 
   return (
     <div
-      className="relative isolate h-full w-full select-none overflow-hidden overscroll-none bg-[#101010]"
+      ref={rootRef}
+      className={`${covering ? "fixed inset-0 z-[70] h-[100dvh] w-screen" : "relative h-full w-full"} isolate select-none overflow-hidden overscroll-none bg-[#101010]`}
       // iPhone: a long press (holding the joystick) must not start a text selection / callout
       style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent" }}
     >
@@ -795,6 +929,18 @@ export default function VideoWalk() {
           className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           {soundOn ? <Volume2 className="h-5 w-5" aria-hidden /> : <VolumeX className="h-5 w-5" aria-hidden />}
+        </button>
+      )}
+
+      {status === "ready" && (
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          aria-pressed={fullscreen || covering}
+          aria-label={fullscreen || covering ? "სრული ეკრანიდან გასვლა" : "სრულ ეკრანზე"}
+          className="absolute right-16 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        >
+          {fullscreen || covering ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}
         </button>
       )}
 

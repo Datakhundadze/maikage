@@ -3,6 +3,7 @@ import {
   followStep,
   followTarget,
   forwardTime,
+  guidePath,
   headingAt,
   loopJump,
   vfovFor,
@@ -132,5 +133,30 @@ describe("vfovFor", () => {
     const v = vfovFor(1600, 800);
     const h = (2 * Math.atan(Math.tan((v / 2) * (Math.PI / 180)) * 2) * 180) / Math.PI;
     expect(h).toBeCloseTo(100, 0);
+  });
+});
+
+describe("guidePath", () => {
+  const cfg = { walkSpeedMps: 1, startM: 1, lengthM: 2, sampleM: 0.5 };
+  it("goes straight ahead along a straight heading", () => {
+    const pts = guidePath(0, "fwd", cfg, T); // heading 0 for the first second
+    expect(pts[0].z).toBeCloseTo(-1, 1);
+    expect(Math.abs(pts[0].x)).toBeLessThan(0.05);
+    expect(pts.length).toBe(5); // 1.0, 1.5, … 3.0 m
+  });
+  it("bends the way the path turns", () => {
+    const pts = guidePath(1, "fwd", cfg, T); // heading turns right (0 → 90 → 180)
+    expect(pts.at(-1)!.x).toBeGreaterThan(0.5);
+  });
+  it("walking backward points the other way", () => {
+    const pts = guidePath(0.5, "rev", cfg, T);
+    expect(pts[0].z).toBeGreaterThan(0.5); // behind (world yaw 180)
+  });
+  it("covers the configured length on the real track", () => {
+    const g = WALK_FEEL.guide;
+    const pts = guidePath(WALK_TRACK.start, "fwd");
+    expect(pts.length).toBe(Math.floor(g.lengthM / g.sampleM + 1e-6) + 1);
+    const d0 = Math.hypot(pts[0].x, pts[0].z);
+    expect(d0).toBeGreaterThan(g.startM * 0.9);
   });
 });

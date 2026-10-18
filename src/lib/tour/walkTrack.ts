@@ -89,6 +89,13 @@ export const WALK_FEEL = {
    *  around mid-grey, 1 = as filmed. */
   saturation: 1.22,
   contrast: 1.07,
+  /**
+   * Guide lines on the floor (like a car's parking camera) showing where the
+   * walk goes next. Metres: the camera was ~1.6 m up (face height); the walk
+   * covers ~0.75 m per second of video. Lines start startM ahead (clear of
+   * the nadir logo) and run lengthM along the path, halfWidthM either side.
+   */
+  guide: { cameraHeightM: 1.6, walkSpeedMps: 0.75, startM: 0.8, lengthM: 3.2, sampleM: 0.12, halfWidthM: 0.32, lineWidthM: 0.06 },
 } as const;
 
 export type WalkDir = "fwd" | "rev";
@@ -165,4 +172,45 @@ export function vfovFor(width: number, height: number, targetHfov = 100, minV = 
   const aspect = width > 0 && height > 0 ? width / height : 1.5;
   const v = (2 * Math.atan(Math.tan(((targetHfov / 2) * Math.PI) / 180) / aspect) * 180) / Math.PI;
   return Math.min(maxV, Math.max(minV, v));
+}
+
+export interface GuidePoint {
+  /** Floor position relative to the camera (m): x right of world yaw 0, z = −forward at world yaw 0 (three.js axes). */
+  x: number;
+  z: number;
+  /** World heading of the path there (°). */
+  hDeg: number;
+}
+
+/**
+ * The path ahead in the direction of travel, as floor points from startM to
+ * startM + lengthM (every sampleM), integrated from the heading track at
+ * walkSpeedMps. Walking backward the path is the track run backward, so the
+ * lines point behind the visitor.
+ */
+export function guidePath(
+  t: number,
+  dir: WalkDir,
+  cfg: { walkSpeedMps: number; startM: number; lengthM: number; sampleM: number } = WALK_FEEL.guide,
+  track: WalkTrack = WALK_TRACK,
+): GuidePoint[] {
+  const pts: GuidePoint[] = [];
+  const ds = 0.04;
+  const dtPer = ds / cfg.walkSpeedMps;
+  let x = 0;
+  let z = 0;
+  let tt = t;
+  let next = cfg.startM;
+  for (let d = 0; d <= cfg.startM + cfg.lengthM + 1e-9; d += ds) {
+    const h = dir === "fwd" ? headingAt(tt, track) : normDeg(headingAt(tt, track) + 180);
+    if (d >= next - 1e-9) {
+      pts.push({ x, z, hDeg: h });
+      next += cfg.sampleM;
+    }
+    const r = (h * Math.PI) / 180;
+    x += Math.sin(r) * ds;
+    z -= Math.cos(r) * ds;
+    tt = dir === "fwd" ? Math.min(track.duration, tt + dtPer) : Math.max(0, tt - dtPer);
+  }
+  return pts;
 }
