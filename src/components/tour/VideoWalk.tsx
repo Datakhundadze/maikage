@@ -133,11 +133,24 @@ export default function VideoWalk() {
   const footstepsRef = useRef<Footsteps | null>(null);
   const soundOnRef = useRef(false);
   const unlockRef = useRef<() => void>(() => {});
+  const startRef = useRef<() => void>(() => {});
   const [status, setStatus] = useState<Status>(() => (hasWebGL() ? "loading" : "nowebgl"));
   const [progress, setProgress] = useState(0);
   const [soundOn, setSoundOn] = useState(false);
   const [hintVisible, setHintVisible] = useState(true);
   const [touch] = useState(() => media("(pointer: coarse)"));
+  // iPhone Safari does not load a video before a tap: after a moment without
+  // data the loader shows a start button (the tap starts the download)
+  const [needsTap, setNeedsTap] = useState(false);
+  const [errDetail, setErrDetail] = useState("");
+  const [debug] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("debug") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [debugText, setDebugText] = useState("");
 
   const ensureFootsteps = useCallback(() => {
     if (!footstepsRef.current) footstepsRef.current = createFootsteps({ volume: 0.22, pitchHz: 62, pitchSpread: 0.08 });
@@ -443,8 +456,42 @@ export default function VideoWalk() {
       });
     };
     const onError = () => {
-      if (!ready) setStatus("error");
+      if (ready) return;
+      const e = fv.error;
+      setErrDetail(e ? `კოდი ${e.code}${e.message ? ` — ${e.message}` : ""}` : "");
+      setStatus("error");
     };
+    // no data after a moment (iPhone): offer the start button
+    const tapTimer = window.setTimeout(() => {
+      if (!ready && !disposed) setNeedsTap(true);
+    }, 1500);
+    startRef.current = () => {
+      setNeedsTap(false);
+      unlockRef.current();
+      // a play() refused for a reason other than "needs a gesture" is an error
+      const p = fv.play();
+      if (p && typeof p.then === "function")
+        p.then(() => {
+          if (!playing) fv.pause();
+          onReady();
+        }).catch((e: unknown) => {
+          const name = e instanceof Error ? e.name : String(e);
+          if (name !== "AbortError" && !ready) {
+            setErrDetail(name);
+            setStatus("error");
+          }
+        });
+    };
+    let debugTimer = 0;
+    if (debug) {
+      debugTimer = window.setInterval(() => {
+        const v = active();
+        const b = v.buffered.length ? v.buffered.end(v.buffered.length - 1).toFixed(1) : "0";
+        setDebugText(
+          `${dir} rs=${v.readyState} ns=${v.networkState} err=${v.error?.code ?? "-"} t=${v.currentTime.toFixed(2)} buf=${b} paused=${v.paused} ${v.currentSrc.split("/").pop()}`,
+        );
+      }, 500);
+    }
     fv.addEventListener("progress", onProgress);
     fv.addEventListener("loadeddata", onReady);
     fv.addEventListener("canplay", onReady);
@@ -569,6 +616,9 @@ export default function VideoWalk() {
     return () => {
       disposed = true;
       cancelAnimationFrame(raf);
+      window.clearTimeout(tapTimer);
+      window.clearInterval(debugTimer);
+      startRef.current = () => {};
       ro.disconnect();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
@@ -636,13 +686,31 @@ export default function VideoWalk() {
           <div className="h-1.5 w-48 overflow-hidden rounded-full bg-white/15">
             <div className="h-full rounded-full bg-amber-400 transition-[width] duration-200" style={{ width: `${Math.max(5, progress)}%` }} />
           </div>
+          {needsTap && (
+            <button
+              type="button"
+              onClick={() => startRef.current()}
+              className="pointer-events-auto mt-2 rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-black shadow-lg transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              შესვლა შოურუმში
+            </button>
+          )}
         </div>
       )}
 
       {status === "error" && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#101010]/90 p-6 text-center text-sm text-white">
-          <p>შოურუმის ვიდეო ვერ ჩაიტვირთა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.</p>
+          <p>
+            შოურუმის ვიდეო ვერ ჩაიტვირთა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.
+            {errDetail && <span className="mt-2 block text-xs text-white/60">({errDetail})</span>}
+          </p>
         </div>
+      )}
+
+      {debug && (
+        <p className="pointer-events-none absolute bottom-36 left-3 right-3 z-30 rounded bg-black/70 px-2 py-1 font-mono text-[10px] text-lime-300">
+          {status} {debugText}
+        </p>
       )}
 
       {status === "ready" && hintVisible && (
