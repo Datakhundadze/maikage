@@ -4,7 +4,9 @@
 // the viewer is components/tour/VideoWalk.tsx.
 //
 // FILES (public/tour/walk/)
-//   walk-fwd.mp4  the walk, 2560×1280 equirectangular, H.264, 30 fps
+//   walk-fwd.mp4  the walk, 2560×1280 equirectangular, H.264, 30 fps,
+//                 2.7 Mbit/s two-pass: each file must stay under the
+//                 host's per-file limit (36 MB files were not served; ~24 MB)
 //   walk-rev.mp4  the same frames in reverse order: its time r shows forward
 //                 time `revEnd − r` (measured frame by frame, PSNR ≈ 38 dB at
 //                 the match vs ≈ 28 one frame off), so walking backward is
