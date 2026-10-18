@@ -1,0 +1,15 @@
+{
+  "name": "Maika.ge შოურუმი",
+  "short_name": "Maika შოურუმი",
+  "description": "გაიარეთ Maika.ge-ს შოურუმში 360° ვიდეოში.",
+  "start_url": "/showroom",
+  "scope": "/showroom",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#101010",
+  "theme_color": "#101010",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/maika-logo.png", "sizes": "720x720", "type": "image/png", "purpose": "any" }
+  ]
+}
