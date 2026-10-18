@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import {
-  BufferAttribute,
-  BufferGeometry,
+  CanvasTexture,
   CircleGeometry,
   DoubleSide,
   LinearFilter,
   Mesh,
   MeshBasicMaterial,
   PerspectiveCamera,
+  PlaneGeometry,
   Scene,
   SphereGeometry,
   SRGBColorSpace,
@@ -19,9 +19,11 @@ import {
 import Joystick from "./Joystick";
 import { easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
 import {
+  facingFromView,
   followStep,
   followTarget,
-  guidePath,
+  footprints,
+  planWalk,
   forwardTime,
   loopJump,
   vfovFor,
@@ -30,9 +32,12 @@ import {
   WALK_FEEL,
   WALK_TRACK,
   WALK_VIDEO,
+  type Facing,
   type WalkDir,
+  type WalkIntent,
 } from "@/lib/tour/walkTrack";
 import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
+import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 
 // /showroom walk-through: a 360° video of a loop around the shop, played
 // forward or backward while the joystick is held (walkTrack.ts has the files
@@ -95,9 +100,10 @@ function media(query: string): boolean {
 
 function readSoundPref(): boolean {
   try {
-    return window.localStorage.getItem(SOUND_KEY) === "on";
+    // on unless the visitor turned it off before
+    return window.localStorage.getItem(SOUND_KEY) !== "off";
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -130,16 +136,42 @@ function makeVideo(dir: WalkDir, preload: "auto" | "metadata"): HTMLVideoElement
   return v;
 }
 
+/** A right shoe print, white on transparent (tinted by the material), toe up. */
+function drawShoePrint(): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 64;
+  c.height = 160;
+  const g = c.getContext("2d");
+  if (!g) return c;
+  g.fillStyle = "#fff";
+  g.shadowColor = "rgba(255,255,255,0.9)";
+  g.shadowBlur = 6;
+  // sole: wide at the ball, narrowing to the arch (right shoe: arch on the left)
+  g.beginPath();
+  g.moveTo(34, 8);
+  g.bezierCurveTo(52, 8, 58, 30, 56, 52);
+  g.bezierCurveTo(55, 70, 50, 84, 44, 94);
+  g.lineTo(22, 94);
+  g.bezierCurveTo(18, 80, 8, 62, 10, 40);
+  g.bezierCurveTo(12, 20, 20, 8, 34, 8);
+  g.fill();
+  // heel
+  g.beginPath();
+  g.ellipse(33, 128, 16, 22, 0, 0, Math.PI * 2);
+  g.fill();
+  return c;
+}
+
 export default function VideoWalk() {
   const hostRef = useRef<HTMLDivElement>(null);
   const frozenRef = useRef<HTMLCanvasElement>(null);
   const stickRef = useRef<StickAxes>({ x: 0, y: 0 });
   const footstepsRef = useRef<Footsteps | null>(null);
+  const musicRef = useRef<AmbientMusic | null>(null);
   const soundOnRef = useRef(false);
   const unlockRef = useRef<() => void>(() => {});
   const startRef = useRef<() => void>(() => {});
   const [status, setStatus] = useState<Status>(() => (hasWebGL() ? "loading" : "nowebgl"));
-  const [progress, setProgress] = useState(0);
   const [soundOn, setSoundOn] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   // full screen: the Fullscreen API where it exists (Android, desktop, iPad);
@@ -210,18 +242,25 @@ export default function VideoWalk() {
   });
   const [debugText, setDebugText] = useState("");
 
-  const ensureFootsteps = useCallback(() => {
-    if (!footstepsRef.current) footstepsRef.current = createFootsteps({ volume: 0.22, pitchHz: 62, pitchSpread: 0.08 });
+  // sound (footsteps + quiet music): on by default, but audio may only start
+  // from the visitor's own tap / key press
+  const ensureAudio = useCallback(() => {
+    if (!footstepsRef.current) footstepsRef.current = createFootsteps({ volume: 0.3, pitchHz: 70, pitchSpread: 0.08 });
     void footstepsRef.current?.resume();
+    if (!musicRef.current) musicRef.current = createAmbientMusic(0.05);
+    void musicRef.current?.start();
   }, []);
   const toggleSound = useCallback(() => {
     const next = !soundOnRef.current;
     soundOnRef.current = next;
     setSoundOn(next);
     writeSoundPref(next);
-    if (next) ensureFootsteps();
-    else void footstepsRef.current?.suspend();
-  }, [ensureFootsteps]);
+    if (next) ensureAudio();
+    else {
+      void footstepsRef.current?.suspend();
+      void musicRef.current?.stop();
+    }
+  }, [ensureAudio]);
 
   useEffect(() => {
     if (status === "nowebgl") return;
@@ -300,67 +339,44 @@ export default function VideoWalk() {
       logo.visible = true;
     });
 
-    // ── guide lines on the floor (where the walk goes next) ────────────────
-    const G = F.guide;
-    const gN = Math.floor(G.lengthM / G.sampleM + 1e-6) + 1; // points per line
-    const gVerts = 2 * 2 * gN; // 2 lines × 2 edges
-    const gPos = new Float32Array(gVerts * 3);
-    const gCol = new Float32Array(gVerts * 4);
-    const gIdx: number[] = [];
-    for (let line = 0; line < 2; line++) {
-      for (let i = 0; i < gN - 1; i++) {
-        const a = (line * gN + i) * 2;
-        gIdx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-      }
+    // ── footprints on the floor (where the walk goes next) ─────────────────
+    const ST = F.steps;
+    const printTex = new CanvasTexture(drawShoePrint());
+    printTex.colorSpace = SRGBColorSpace;
+    const printGeo = new PlaneGeometry(ST.footWidthM, ST.footLenM);
+    const printCount = Math.ceil(ST.lengthM / ST.strideM) + 2;
+    const prints: Mesh<PlaneGeometry, MeshBasicMaterial>[] = [];
+    for (let i = 0; i < printCount; i++) {
+      const m = new MeshBasicMaterial({ map: printTex, color: 0xffd36b, transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
+      const mesh = new Mesh(printGeo, m);
+      mesh.rotation.order = "YXZ";
+      mesh.renderOrder = 2;
+      mesh.frustumCulled = false;
+      mesh.visible = false;
+      scene.add(mesh);
+      prints.push(mesh);
     }
-    const guideGeo = new BufferGeometry();
-    guideGeo.setAttribute("position", new BufferAttribute(gPos, 3));
-    guideGeo.setAttribute("color", new BufferAttribute(gCol, 4));
-    guideGeo.setIndex(gIdx);
-    const guideMat = new MeshBasicMaterial({ vertexColors: true, transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
-    const guide = new Mesh(guideGeo, guideMat);
-    guide.renderOrder = 2;
-    guide.frustumCulled = false;
-    guide.visible = false;
-    scene.add(guide);
-    // amber (#fbbf24), fading in near the visitor and out at the far end
-    const amber = [0.984, 0.749, 0.141];
-    const updateGuide = (t: number, d: WalkDir, alpha: number) => {
-      const pts = guidePath(t, d);
-      const y = -G.cameraHeightM;
-      for (let line = 0; line < 2; line++) {
-        const side = line === 0 ? -1 : 1;
-        for (let i = 0; i < gN; i++) {
-          const p = pts[Math.min(i, pts.length - 1)];
-          const r = p.hDeg * DEG;
-          // floor normal to the path (right of travel) = (cos h, 0, sin h)
-          const nx = Math.cos(r);
-          const nz = Math.sin(r);
-          const off = side * G.halfWidthM;
-          const w = G.lineWidthM / 2;
-          const v = ((line * gN + i) * 2) * 3;
-          gPos[v] = p.x + nx * (off - w);
-          gPos[v + 1] = y;
-          gPos[v + 2] = p.z + nz * (off - w);
-          gPos[v + 3] = p.x + nx * (off + w);
-          gPos[v + 4] = y;
-          gPos[v + 5] = p.z + nz * (off + w);
-          const f = i / (gN - 1);
-          const a = alpha * Math.min(1, f * 5) * (1 - f * f);
-          const c = ((line * gN + i) * 2) * 4;
-          for (const k of [c, c + 4]) {
-            gCol[k] = amber[0];
-            gCol[k + 1] = amber[1];
-            gCol[k + 2] = amber[2];
-            gCol[k + 3] = a;
-          }
+    const updatePrints = (t: number, d: WalkDir, alpha: number) => {
+      const fp = footprints(t, d);
+      for (let i = 0; i < prints.length; i++) {
+        const mesh = prints[i];
+        const p = fp[i];
+        if (!p || alpha < 0.02) {
+          mesh.visible = false;
+          continue;
         }
+        const near = Math.min(1, (p.r - ST.startM) / 0.35);
+        const far = 1 - Math.pow((p.r - ST.startM) / ST.lengthM, 2);
+        mesh.material.opacity = alpha * Math.max(0, near) * Math.max(0, far);
+        mesh.visible = mesh.material.opacity > 0.01;
+        mesh.position.set(p.x, -ST.cameraHeightM, p.z);
+        mesh.rotation.y = -p.hDeg * DEG;
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.scale.x = p.side; // the print is a right shoe; mirrored = left
       }
-      guideGeo.attributes.position.needsUpdate = true;
-      guideGeo.attributes.color.needsUpdate = true;
     };
-    let guideAlpha = 0;
-    let guideDir: WalkDir = "fwd";
+    let printAlpha = 0;
+    let printDir: WalkDir = "fwd";
 
     // ── view state ─────────────────────────────────────────────────────────
     let yawDeg = 0;
@@ -387,7 +403,11 @@ export default function VideoWalk() {
     let switching = false; // waiting for the other video to seek
     let jumping = false; // loop jump in progress
     let jumps = 0;
-    let stepClock = 0;
+    let stepPhase = 0; // footfalls at whole numbers
+    let bobAmp = 0;
+    let facing: Facing = "along";
+    let activeIntent: WalkIntent | null = null;
+    const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
     const active = () => videos[dir];
     const fwdTime = () => forwardTime(active().currentTime, dir, track);
@@ -609,24 +629,12 @@ export default function VideoWalk() {
 
     // ── loading ────────────────────────────────────────────────────────────
     const fv = videos.fwd;
-    const onProgress = () => {
-      if (ready) return;
-      try {
-        const d = fv.duration || track.duration;
-        const end = fv.buffered.length ? fv.buffered.end(fv.buffered.length - 1) : 0;
-        // the start needs only a few seconds
-        setProgress(Math.min(99, Math.round((end / Math.min(d, track.start + 6)) * 100)));
-      } catch {
-        // buffered not readable yet
-      }
-    };
     const onReady = () => {
       if (ready || disposed) return;
       void seekTo(fv, track.start).then(() => {
         if (disposed || ready) return;
         textures.fwd.needsUpdate = true;
         ready = true;
-        setProgress(100);
         setStatus("ready");
         publish();
       });
@@ -668,7 +676,6 @@ export default function VideoWalk() {
         );
       }, 500);
     }
-    fv.addEventListener("progress", onProgress);
     fv.addEventListener("loadeddata", onReady);
     fv.addEventListener("canplay", onReady);
     fv.addEventListener("error", onError);
@@ -717,19 +724,25 @@ export default function VideoWalk() {
           setHintVisible(false);
         } else turnRate = 0;
 
-        // walking
+        // walking: the way the visitor faces when the push starts decides the
+        // direction (turned round + push up = back the way the walk came)
         const want = walkFromStick(stick.y);
-        if (want && want.dir !== dir) {
-          void switchDir(want.dir);
+        if (!want) activeIntent = null;
+        else if (want.intent !== activeIntent) {
+          activeIntent = want.intent;
+          facing = facingFromView(yawDeg, fwdTime());
         }
-        const target = want && want.dir === dir && !switching ? want.rate : 0;
+        const wantDir = want ? planWalk(want.intent, facing) : null;
+        if (wantDir) printDir = wantDir;
+        if (wantDir && wantDir !== dir) void switchDir(wantDir);
+        const target = want && wantDir === dir && !switching ? want.rate : 0;
         rate = easeToward(rate, target, dt, F.rateEaseMs);
         const v = active();
         if (target > 0 && !switching) {
           if (!playing) {
             safePlay(v);
             playing = true;
-            stepClock = F.footstepSec * 0.5;
+            stepPhase = Math.floor(stepPhase) + 0.5; // first footfall half a step in
             setHintVisible(false);
           }
         } else if (playing && rate < F.stopRate) {
@@ -741,18 +754,16 @@ export default function VideoWalk() {
         if (playing) {
           const r = Math.max(0.25, Math.round(rate * 20) / 20);
           if (Math.abs(v.playbackRate - r) > 0.01) v.playbackRate = r;
-          // footsteps
-          stepClock -= (dt / 1000) * r;
-          if (stepClock <= 0) {
-            stepClock += F.footstepSec;
-            footfall();
-          }
+          // steps: sound on each footfall, the head bob follows the same phase
+          const before = Math.floor(stepPhase);
+          stepPhase += ((dt / 1000) * r) / F.footstepSec;
+          if (Math.floor(stepPhase) !== before) footfall();
           // view follows the path (not while the visitor turns or drags)
           const t = fwdTime();
           const busyLooking = pointers.size > 0 || now - Math.max(lastDragAt, lastTurnAt) < F.followDelayMs;
           if (!busyLooking) {
             const scaled = { followMaxDegPerSec: F.followMaxDegPerSec * Math.min(1.2, r), followEaseMs: F.followEaseMs };
-            yawDeg = followStep(yawDeg, followTarget(t, dir), dt, scaled);
+            yawDeg = followStep(yawDeg, followTarget(t, dir, facing), dt, scaled);
             pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
           }
           // keep the other direction ready
@@ -766,21 +777,25 @@ export default function VideoWalk() {
         }
       }
 
-      // guide lines: shown while the stick is held or the walk runs
+      // footprints: shown while the stick is held or the walk runs
       if (ready) {
         const st = mergeSticks(stickRef.current, keysToStick(keys));
-        const intent = walkFromStick(st.y);
-        if (intent) guideDir = intent.dir;
-        const show = !!intent || playing || Math.abs(st.y) > 0.08;
-        guideAlpha = easeToward(guideAlpha, show ? 0.85 : 0, dt, show ? 120 : 400);
-        guide.visible = guideAlpha > 0.02;
-        if (guide.visible) updateGuide(fwdTime(), guideDir, guideAlpha);
+        const show = playing || Math.abs(st.y) > 0.08;
+        printAlpha = easeToward(printAlpha, show ? 0.8 : 0, dt, show ? 120 : 450);
+        updatePrints(fwdTime(), printDir, printAlpha);
       }
+
+      // head bob: a small dip on every footfall and a sway from foot to foot
+      bobAmp = easeToward(bobAmp, playing && !reduceMotion ? Math.min(1.2, rate) : 0, dt, 200);
+      const ph = stepPhase * Math.PI;
+      const bobPitch = -F.bobPitchDeg * bobAmp * Math.pow(Math.sin(ph), 2);
+      const bobRoll = F.bobRollDeg * bobAmp * Math.sin(ph);
 
       camera.fov = vfov * userZoom;
       camera.updateProjectionMatrix();
       camera.rotation.y = -yawDeg * DEG;
-      camera.rotation.x = pitchDeg * DEG;
+      camera.rotation.x = (pitchDeg + bobPitch) * DEG;
+      camera.rotation.z = bobRoll * DEG;
       renderer.render(scene, camera);
       if (wantFreeze) {
         wantFreeze = false;
@@ -793,15 +808,16 @@ export default function VideoWalk() {
     };
     raf = requestAnimationFrame(loop);
 
-    // a remembered "sound on" needs a gesture before audio may start
+    // sound is on by default but needs the visitor's first tap / key press
+    // (iPhone unlocks audio on the end of a touch, so listen to both ends)
+    const gestureEvents = ["pointerdown", "pointerup", "touchend", "click", "keydown"] as const;
     const onFirstGesture = () => {
-      if (soundOnRef.current) ensureFootsteps();
+      if (soundOnRef.current) ensureAudio();
     };
     if (readSoundPref()) {
       soundOnRef.current = true;
       setSoundOn(true);
-      window.addEventListener("pointerdown", onFirstGesture, { once: true });
-      window.addEventListener("keydown", onFirstGesture, { once: true });
+      gestureEvents.forEach((ev) => window.addEventListener(ev, onFirstGesture));
     }
 
     return () => {
@@ -814,8 +830,7 @@ export default function VideoWalk() {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
-      window.removeEventListener("pointerdown", onFirstGesture);
-      window.removeEventListener("keydown", onFirstGesture);
+      gestureEvents.forEach((ev) => window.removeEventListener(ev, onFirstGesture));
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("touchstart", noTouchDefault);
       canvas.removeEventListener("pointerdown", onPointerDown);
@@ -823,7 +838,6 @@ export default function VideoWalk() {
       canvas.removeEventListener("pointerup", onPointerUp);
       canvas.removeEventListener("pointercancel", onPointerUp);
       canvas.removeEventListener("wheel", onWheel);
-      fv.removeEventListener("progress", onProgress);
       fv.removeEventListener("loadeddata", onReady);
       fv.removeEventListener("canplay", onReady);
       fv.removeEventListener("error", onError);
@@ -837,8 +851,9 @@ export default function VideoWalk() {
       logoMat.map?.dispose();
       logoMat.dispose();
       logoGeo.dispose();
-      guideGeo.dispose();
-      guideMat.dispose();
+      printGeo.dispose();
+      printTex.dispose();
+      prints.forEach((m) => m.material.dispose());
       material.dispose();
       geometry.dispose();
       renderer.dispose();
@@ -847,6 +862,8 @@ export default function VideoWalk() {
       unlockRef.current = () => {};
       void footstepsRef.current?.close();
       footstepsRef.current = null;
+      void musicRef.current?.close();
+      musicRef.current = null;
     };
     // set up once; `status` is read only to skip setup without WebGL
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -880,10 +897,15 @@ export default function VideoWalk() {
       {status === "loading" && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#101010] text-white">
           <p className="text-sm font-medium" aria-live="polite">
-            შოურუმი იტვირთება… {progress}%
+            შოურუმი იტვირთება…
           </p>
+          {/* no percentage: phones don't report video download progress reliably */}
+          <style>{"@keyframes maika-walk-load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}"}</style>
           <div className="h-1.5 w-48 overflow-hidden rounded-full bg-white/15">
-            <div className="h-full rounded-full bg-amber-400 transition-[width] duration-200" style={{ width: `${Math.max(5, progress)}%` }} />
+            <div
+              className="h-full w-2/5 rounded-full bg-amber-400"
+              style={{ animation: "maika-walk-load 1.1s ease-in-out infinite" }}
+            />
           </div>
           {needsTap && (
             <button

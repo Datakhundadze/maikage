@@ -3,7 +3,9 @@ import {
   followStep,
   followTarget,
   forwardTime,
-  guidePath,
+  facingFromView,
+  footprints,
+  planWalk,
   headingAt,
   loopJump,
   vfovFor,
@@ -58,13 +60,13 @@ describe("walkFromStick", () => {
   it("walks faster the further the stick goes", () => {
     const slow = walkFromStick(0.4)!;
     const fast = walkFromStick(1)!;
-    expect(slow.dir).toBe("fwd");
+    expect(slow.intent).toBe("ahead");
     expect(fast.rate).toBeCloseTo(WALK_FEEL.maxRate);
     expect(slow.rate).toBeLessThan(fast.rate);
     expect(walkFromStick(WALK_FEEL.walkAt)!.rate).toBeCloseTo(WALK_FEEL.minRate);
   });
-  it("pulls back = backward", () => {
-    expect(walkFromStick(-1)!.dir).toBe("rev");
+  it("pulls back = step back", () => {
+    expect(walkFromStick(-1)!.intent).toBe("back");
   });
 });
 
@@ -106,9 +108,15 @@ describe("loopJump", () => {
 });
 
 describe("following the path", () => {
-  it("looks ahead walking forward, at the spot walking backward", () => {
-    expect(followTarget(1, "fwd", { lookAheadSec: 1 }, T)).toBeCloseTo(90);
-    expect(followTarget(1, "rev", { lookAheadSec: 1 }, T)).toBeCloseTo(0);
+  it("looks ahead walking face-first, at the spot stepping back", () => {
+    expect(followTarget(1, "fwd", "along", { lookAheadSec: 1 }, T)).toBeCloseTo(90);
+    expect(followTarget(1, "rev", "along", { lookAheadSec: 1 }, T)).toBeCloseTo(0);
+  });
+  it("facing against the walk looks back along it", () => {
+    // walking back the way the walk came (reversed video), face-first: heading at t−1 + 180
+    expect(followTarget(3, "rev", "against", { lookAheadSec: 1 }, T)).toBeCloseTo(-90);
+    // stepping back while facing against: heading at t + 180
+    expect(followTarget(0.5, "fwd", "against", { lookAheadSec: 1 }, T)).toBeCloseTo(180);
   });
   it("turns toward the target, never faster than the cap", () => {
     const cfg = { followMaxDegPerSec: 100, followEaseMs: 500 };
@@ -136,27 +144,57 @@ describe("vfovFor", () => {
   });
 });
 
-describe("guidePath", () => {
-  const cfg = { walkSpeedMps: 1, startM: 1, lengthM: 2, sampleM: 0.5 };
-  it("goes straight ahead along a straight heading", () => {
-    const pts = guidePath(0, "fwd", cfg, T); // heading 0 for the first second
-    expect(pts[0].z).toBeCloseTo(-1, 1);
-    expect(Math.abs(pts[0].x)).toBeLessThan(0.05);
-    expect(pts.length).toBe(5); // 1.0, 1.5, … 3.0 m
+describe("turning round", () => {
+  it("knows which way the visitor faces", () => {
+    expect(facingFromView(10, 0.5, T)).toBe("along"); // walk heads 0° there
+    expect(facingFromView(170, 0.5, T)).toBe("against");
   });
-  it("bends the way the path turns", () => {
-    const pts = guidePath(1, "fwd", cfg, T); // heading turns right (0 → 90 → 180)
-    expect(pts.at(-1)!.x).toBeGreaterThan(0.5);
+  it("ahead plays the video the way you face; back the other way", () => {
+    expect(planWalk("ahead", "along")).toBe("fwd");
+    expect(planWalk("ahead", "against")).toBe("rev");
+    expect(planWalk("back", "along")).toBe("rev");
+    expect(planWalk("back", "against")).toBe("fwd");
   });
-  it("walking backward points the other way", () => {
-    const pts = guidePath(0.5, "rev", cfg, T);
-    expect(pts[0].z).toBeGreaterThan(0.5); // behind (world yaw 180)
+  it("turned round at the start, pushing up goes round the loop the other way", () => {
+    const t = WALK_TRACK.start + 0.5;
+    const facing = facingFromView(headingAt(t) + 180, t);
+    const dir = planWalk("ahead", facing);
+    expect(dir).toBe("rev");
+    expect(loopJump(WALK_TRACK.loop.to - 0.1, dir)).not.toBeNull();
   });
-  it("covers the configured length on the real track", () => {
-    const g = WALK_FEEL.guide;
-    const pts = guidePath(WALK_TRACK.start, "fwd");
-    expect(pts.length).toBe(Math.floor(g.lengthM / g.sampleM + 1e-6) + 1);
-    const d0 = Math.hypot(pts[0].x, pts[0].z);
-    expect(d0).toBeGreaterThan(g.startM * 0.9);
+});
+
+describe("footprints", () => {
+  const cfg = { walkSpeedMps: 1, startM: 0.5, lengthM: 2, strideM: 0.5, footOffsetM: 0.1 };
+  it("lie ahead along a straight walk, alternating feet", () => {
+    const fp = footprints(0, "fwd", cfg, T); // heading 0 for the first second
+    expect(fp.length).toBe(5); // 0.5, 1.0 … 2.5 m
+    expect(fp[0].z).toBeCloseTo(-0.5, 1);
+    expect(fp[0].side).not.toBe(fp[1].side);
+    expect(Math.abs(fp[0].x)).toBeCloseTo(0.1, 2);
+  });
+  it("stay put on the floor while walking (come closer by the distance walked)", () => {
+    const a = footprints(0.1, "fwd", cfg, T);
+    const b = footprints(0.3, "fwd", cfg, T); // 0.2 m further
+    const pa = a.find((p) => p.r > 1)!;
+    const pb = b.find((p) => Math.abs(p.r - (pa.r - 0.2)) < 1e-6)!;
+    expect(pb).toBeDefined();
+    expect(pb.side).toBe(pa.side);
+  });
+  it("walking the reversed video, prints point behind (the way you move)", () => {
+    const fp = footprints(0.5, "rev", cfg, T);
+    expect(fp[0].z).toBeGreaterThan(0.3);
+  });
+  it("cover the configured stretch on the real track", () => {
+    const g = WALK_FEEL.steps;
+    const fp = footprints(WALK_TRACK.start, "fwd");
+    expect(fp.length).toBeGreaterThanOrEqual(Math.floor(g.lengthM / g.strideM));
+    for (const p of fp) {
+      expect(p.r).toBeGreaterThanOrEqual(g.startM - 1e-9);
+      expect(p.r).toBeLessThanOrEqual(g.startM + g.lengthM + 1e-9);
+    }
+  });
+  it("one footstep sound per print passed", () => {
+    expect(WALK_FEEL.footstepSec).toBeCloseTo(WALK_FEEL.steps.strideM / WALK_FEEL.steps.walkSpeedMps, 2);
   });
 });
