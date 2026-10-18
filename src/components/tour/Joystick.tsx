@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { StickAxes } from "@/lib/tour/tourMath";
 
 // On-screen thumb pad for turning and stepping through the tour. Bottom-LEFT,
@@ -22,6 +22,16 @@ export default function Joystick({ onChange }: JoystickProps) {
   const baseRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
   const pointerId = useRef<number | null>(null);
+
+  // iPhone: holding the pad must not start a text selection / callout, which
+  // takes the touch away mid-walk. Pointer events still fire.
+  useEffect(() => {
+    const base = baseRef.current;
+    if (!base) return;
+    const stop = (e: TouchEvent) => e.preventDefault();
+    base.addEventListener("touchstart", stop, { passive: false });
+    return () => base.removeEventListener("touchstart", stop);
+  }, []);
 
   const update = (clientX: number, clientY: number) => {
     const base = baseRef.current;
@@ -50,7 +60,7 @@ export default function Joystick({ onChange }: JoystickProps) {
       role="application"
       aria-label="ჯოისტიკი: მარცხნივ-მარჯვნივ — მობრუნება, წინ-უკან — გადასვლა"
       className="absolute bottom-4 left-4 z-20 flex touch-none select-none items-center justify-center rounded-full border border-white/40 bg-black/25 backdrop-blur-[2px]"
-      style={{ width: BASE_PX, height: BASE_PX }}
+      style={{ width: BASE_PX, height: BASE_PX, WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
       onPointerDown={(e) => {
         if (pointerId.current !== null) return;
         pointerId.current = e.pointerId;

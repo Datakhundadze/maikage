@@ -54,19 +54,26 @@ export const WALK_VIDEO = {
 
 export const WALK_FEEL = {
   /** Stick |y| below this does not walk. */
-  walkAt: 0.25,
-  /** Playback rate at walkAt and at full deflection (keys = full). */
-  minRate: 0.55,
-  maxRate: 1.25,
+  walkAt: 0.2,
+  /** Playback rate at walkAt and at full deflection (keys = full). 1 = the
+   *  pace it was filmed at (a slow walk). */
+  minRate: 0.7,
+  maxRate: 1.8,
   /** Time constant of the rate easing (ms): start / stop softly. */
   rateEaseMs: 160,
   /** Below this rate while stopping, pause. */
   stopRate: 0.3,
+  /** Stick turning: dead zone and top speed (°/s). */
+  turnDeadZone: 0.12,
+  turnMaxDegPerSec: 130,
   /** Walking forward the view turns toward the path, looking this far ahead (s). */
   lookAheadSec: 0.6,
   /** …at most this fast (°/s), easing out the last bit with this time constant (ms). */
-  followMaxDegPerSec: 110,
-  followEaseMs: 700,
+  followMaxDegPerSec: 80,
+  followEaseMs: 1000,
+  /** …and only once the visitor hasn't turned or dragged for this long (ms),
+   *  so a look to the side isn't pulled straight back. */
+  followDelayMs: 1200,
   /** While walking the view's pitch eases toward this. */
   walkPitchDeg: -2,
   pitchEaseMs: 1200,
@@ -74,6 +81,10 @@ export const WALK_FEEL = {
   footstepSec: 0.56,
   /** Cross-fade over the loop jump (ms). */
   loopFadeMs: 450,
+  /** Colour lift in the shader (on the sRGB picture): saturation and contrast
+   *  around mid-grey, 1 = as filmed. */
+  saturation: 1.22,
+  contrast: 1.07,
 } as const;
 
 export type WalkDir = "fwd" | "rev";

@@ -119,9 +119,9 @@ describe("following the path", () => {
     expect(near).toBeGreaterThan(0);
     expect(near).toBeLessThan(2);
   });
-  it("a U-turn completes within a few seconds", () => {
+  it("a U-turn completes within five seconds", () => {
     let yaw = 90;
-    for (let i = 0; i < 60; i++) yaw = followStep(yaw, -90, 50);
+    for (let i = 0; i < 100; i++) yaw = followStep(yaw, -90, 50);
     expect(Math.abs(angleDiff(yaw, -90))).toBeLessThan(5);
   });
 });

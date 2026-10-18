@@ -206,6 +206,19 @@ export default function VideoWalk() {
     const geometry = new SphereGeometry(SPHERE_R, 96, 64);
     geometry.scale(-1, 1, 1); // seen from inside, not mirrored
     const material = new MeshBasicMaterial({ map: textures.fwd });
+    // colour lift: saturation + contrast on the final sRGB colour
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <colorspace_fragment>",
+        [
+          "#include <colorspace_fragment>",
+          `{ vec3 c = gl_FragColor.rgb; float l = dot(c, vec3(0.2126, 0.7152, 0.0722));`,
+          `  c = mix(vec3(l), c, ${F.saturation.toFixed(3)});`,
+          `  c = (c - 0.5) * ${F.contrast.toFixed(3)} + 0.5;`,
+          `  gl_FragColor.rgb = clamp(c, 0.0, 1.0); }`,
+        ].join("\n"),
+      );
+    };
     const sphere = new Mesh(geometry, material);
     // three.js puts the frame's centre at −x; turn it to −z (the camera's yaw 0)
     sphere.rotation.y = -Math.PI / 2;
@@ -391,6 +404,7 @@ export default function VideoWalk() {
     const pointers = new Map<number, { x: number; y: number }>();
     let pinchDist = 0;
     let lastDragAt = 0;
+    let lastTurnAt = 0;
     const onPointerDown = (e: PointerEvent) => {
       canvas.setPointerCapture(e.pointerId);
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -425,6 +439,9 @@ export default function VideoWalk() {
       e.preventDefault();
       userZoom = Math.max(MIN_VFOV / vfov, Math.min(1, userZoom * Math.exp(e.deltaY * 0.001)));
     };
+    // iPhone: no long-press selection / magnifier on the picture (pointer events still fire)
+    const noTouchDefault = (e: TouchEvent) => e.preventDefault();
+    canvas.addEventListener("touchstart", noTouchDefault, { passive: false });
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
@@ -534,7 +551,8 @@ export default function VideoWalk() {
       if (ready && !jumping) {
         const stick = mergeSticks(stickRef.current, keysToStick(keys));
         // turning
-        turnRate = easeToward(turnRate, turnRateFromStick(stick.x), dt);
+        turnRate = easeToward(turnRate, turnRateFromStick(stick.x, { deadZone: F.turnDeadZone, maxTurnDegPerSec: F.turnMaxDegPerSec }), dt);
+        if (Math.abs(stick.x) > F.turnDeadZone) lastTurnAt = now;
         if (Math.abs(turnRate) > 0.05) {
           yawDeg = normDeg(yawDeg + turnRate * (dt / 1000));
           setHintVisible(false);
@@ -571,7 +589,7 @@ export default function VideoWalk() {
           }
           // view follows the path (not while the visitor turns or drags)
           const t = fwdTime();
-          const busyLooking = Math.abs(stick.x) > 0.15 || pointers.size > 0 || now - lastDragAt < 400;
+          const busyLooking = pointers.size > 0 || now - Math.max(lastDragAt, lastTurnAt) < F.followDelayMs;
           if (!busyLooking) {
             const scaled = { followMaxDegPerSec: F.followMaxDegPerSec * Math.min(1.2, r), followEaseMs: F.followEaseMs };
             yawDeg = followStep(yawDeg, followTarget(t, dir), dt, scaled);
@@ -626,6 +644,7 @@ export default function VideoWalk() {
       window.removeEventListener("pointerdown", onFirstGesture);
       window.removeEventListener("keydown", onFirstGesture);
       document.removeEventListener("visibilitychange", onVisibility);
+      canvas.removeEventListener("touchstart", noTouchDefault);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerup", onPointerUp);
@@ -669,7 +688,11 @@ export default function VideoWalk() {
   }
 
   return (
-    <div className="relative isolate h-full w-full overflow-hidden overscroll-none bg-[#101010]">
+    <div
+      className="relative isolate h-full w-full select-none overflow-hidden overscroll-none bg-[#101010]"
+      // iPhone: a long press (holding the joystick) must not start a text selection / callout
+      style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent" }}
+    >
       <div ref={hostRef} className="absolute inset-0 touch-none" />
       <canvas
         ref={frozenRef}
