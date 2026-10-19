@@ -18,6 +18,7 @@ import {
 import Joystick from "./Joystick";
 import { easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
 import {
+  distanceAt,
   facingFromView,
   headingAt,
   followStep,
@@ -334,7 +335,7 @@ export default function VideoWalk() {
       g.clearRect(0, 0, 512, 512);
       const grad = g.createRadialGradient(256, 256, 0, 256, 256, 256);
       grad.addColorStop(0, "rgba(16,16,16,0.96)");
-      grad.addColorStop(0.8, "rgba(16,16,16,0.96)");
+      grad.addColorStop(0.9, "rgba(16,16,16,0.96)");
       grad.addColorStop(1, "rgba(16,16,16,0)");
       g.fillStyle = grad;
       g.fillRect(0, 0, 512, 512);
@@ -351,7 +352,7 @@ export default function VideoWalk() {
     const logo = new Mesh(logoGeo, logoMat);
     logo.position.set(0, -logoDist, 0);
     logo.rotation.x = -Math.PI / 2;
-    logo.renderOrder = 3; // above the footprints, which pass under it
+    logo.renderOrder = 3;
     scene.add(logo);
     const logoImg = new Image();
     logoImg.onload = () => {
@@ -372,7 +373,7 @@ export default function VideoWalk() {
       const m = new MeshBasicMaterial({ map: printTex, color: 0xffd36b, transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
       const mesh = new Mesh(printGeo, m);
       mesh.rotation.order = "YXZ";
-      mesh.renderOrder = 2;
+      mesh.renderOrder = 4; // above the nadir cover: the prints lead out of it onto the floor
       mesh.frustumCulled = false;
       mesh.visible = false;
       scene.add(mesh);
@@ -425,7 +426,8 @@ export default function VideoWalk() {
     let switching = false; // waiting for the other video to seek
     let jumping = false; // loop jump in progress
     let jumps = 0;
-    let stepPhase = 0; // footfalls at whole numbers
+    let stepPhase = 0; // footfalls at whole numbers (distance / stride)
+    let lastStepNo: number | null = null;
     let bobAmp = 0;
     let facing: Facing = "along";
     let activeIntent: WalkIntent | null = null;
@@ -559,6 +561,7 @@ export default function VideoWalk() {
       if (disposed) return;
       textures[dir].needsUpdate = true;
       jumps++;
+      lastStepNo = null;
       if (wasPlaying && rate > 0) safePlay(v);
       releaseFrame();
       jumping = false;
@@ -767,24 +770,29 @@ export default function VideoWalk() {
           if (!playing) {
             safePlay(v);
             playing = true;
-            stepPhase = Math.floor(stepPhase) + 0.5; // first footfall half a step in
             setHintVisible(false);
           }
         } else if (playing && rate < F.stopRate) {
           v.pause();
           playing = false;
           rate = 0;
+          lastStepNo = null;
           parkIdle();
         }
         if (playing) {
           const r = Math.max(0.25, Math.round(rate * 20) / 20);
           if (Math.abs(v.playbackRate - r) > 0.01) v.playbackRate = r;
-          // steps: sound on each footfall, the head bob follows the same phase
-          const before = Math.floor(stepPhase);
-          stepPhase += ((dt / 1000) * r) / F.footstepSec;
-          if (Math.floor(stepPhase) !== before) footfall();
           // view follows the path (not while the visitor turns or drags)
           const t = fwdTime();
+          // steps: one footfall per stride of distance actually walked in the
+          // video (none while it stands still); the head bob follows the same phase
+          const walked = distanceAt(t, track);
+          const stepNo = Math.floor(walked / F.steps.strideM);
+          if (stepNo !== lastStepNo) {
+            if (lastStepNo !== null) footfall();
+            lastStepNo = stepNo;
+          }
+          stepPhase = walked / F.steps.strideM;
           const busyLooking = pointers.size > 0 || now - Math.max(lastDragAt, lastTurnAt) < F.followDelayMs;
           if (!busyLooking) {
             const scaled = { followMaxDegPerSec: F.followMaxDegPerSec * Math.min(1.2, r), followEaseMs: F.followEaseMs };
@@ -989,6 +997,12 @@ export default function VideoWalk() {
         >
           {fullscreen || covering ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}
         </button>
+      )}
+
+      {status === "ready" && !touch && (
+        <p className="pointer-events-none absolute bottom-[150px] left-4 z-20 rounded-md bg-black/45 px-2 py-1 text-[11px] leading-tight text-white/90">
+          ↑ სიარული · ↓ უკან · ← → მობრუნება
+        </p>
       )}
 
       {status === "ready" && (

@@ -5,6 +5,8 @@ import {
   forwardTime,
   facingFromView,
   footprints,
+  distanceAt,
+  timeAtDistance,
   planWalk,
   headingAt,
   loopJump,
@@ -165,7 +167,7 @@ describe("turning round", () => {
 });
 
 describe("footprints", () => {
-  const cfg = { walkSpeedMps: 1, startM: 0.5, lengthM: 2, strideM: 0.5, footOffsetM: 0.1 };
+  const cfg = { startM: 0.5, lengthM: 2, strideM: 0.5, footOffsetM: 0.1 };
   it("lie ahead along a straight walk, alternating feet", () => {
     const fp = footprints(0, "fwd", cfg, T); // heading 0 for the first second
     expect(fp.length).toBe(5); // 0.5, 1.0 … 2.5 m
@@ -194,7 +196,13 @@ describe("footprints", () => {
       expect(p.r).toBeLessThanOrEqual(g.startM + g.lengthM + 1e-9);
     }
   });
-  it("one footstep sound per print passed", () => {
-    expect(WALK_FEEL.footstepSec).toBeCloseTo(WALK_FEEL.steps.strideM / WALK_FEEL.steps.walkSpeedMps, 2);
+  it("distance and time map onto each other on the real track", () => {
+    for (const t of [2, 10.5, 40, 70]) expect(timeAtDistance(distanceAt(t))).toBeCloseTo(t, 1);
+    const d = WALK_TRACK.distM!;
+    for (let i = 1; i < d.length; i++) expect(d[i]).toBeGreaterThanOrEqual(d[i - 1]);
+    // a plausible walking pace overall (m/s)
+    const pace = d[d.length - 1] / WALK_TRACK.duration;
+    expect(pace).toBeGreaterThan(0.4);
+    expect(pace).toBeLessThan(1.2);
   });
 });

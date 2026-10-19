@@ -44,6 +44,12 @@ export interface WalkTrack {
   start: number;
   loop: { from: number; to: number };
   headingDeg: number[];
+  /**
+   * Distance walked from the start of the video (m), one value per stepSec,
+   * measured from how fast the floor moves past the camera (so standing
+   * still in the video is 0 m/s). Missing in test tracks: then 1 m/s.
+   */
+  distM?: number[];
 }
 
 export const WALK_TRACK: WalkTrack = WALK_TRACK_DATA;
@@ -56,7 +62,7 @@ export const WALK_VIDEO = {
    * across with soft edges hides that, with the maika.ge logo
    * (logoWidthDeg) in the middle.
    */
-  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 100, logoWidthDeg: 30 },
+  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 116, logoWidthDeg: 30 },
 } as const;
 
 export const WALK_FEEL = {
@@ -86,11 +92,11 @@ export const WALK_FEEL = {
   /** While walking the view's pitch eases toward this. */
   walkPitchDeg: -2,
   pitchEaseMs: 1200,
-  /** Seconds between footsteps at playback rate 1 (= steps.strideM / steps.walkSpeedMps). */
-  footstepSec: 0.56,
-  /** Head bob per step while walking (on top of the camera's own sway), at rate 1. */
-  bobPitchDeg: 0.35,
-  bobRollDeg: 0.25,
+  /** Head bob per step while walking, on top of the camera's own sway —
+   *  kept very small (big screens magnify it). Steps (sound + bob) follow
+   *  the distance actually walked in the video, one per steps.strideM. */
+  bobPitchDeg: 0.12,
+  bobRollDeg: 0.08,
   /** While walking, re-park the idle video at the same moment this often (ms). */
   parkEveryMs: 4000,
   /** Cross-fade over the loop jump (ms). */
@@ -101,13 +107,13 @@ export const WALK_FEEL = {
   contrast: 1.07,
   /**
    * Footprints on the floor showing where the walk goes next. Metres: the
-   * camera was ~2.1 m up (on a stick above the head); the walk covers ~0.75 m per second
-   * of video. Prints sit at fixed places along the path (every strideM,
+   * camera was ~2.1 m up (on a stick above the head); distances along the
+   * walk come from the track's distM (floor flow × camera height). Prints sit at fixed places along the path (every strideM,
    * alternating left / right footOffsetM from the middle), so they come
    * toward the visitor and pass underfoot as the walk goes on; shown from
    * startM (clear of the nadir logo) to startM + lengthM ahead.
    */
-  steps: { cameraHeightM: 2.1, walkSpeedMps: 0.75, startM: 0.9, lengthM: 4.0, strideM: 0.42, footOffsetM: 0.11, footLenM: 0.3, footWidthM: 0.12 },
+  steps: { cameraHeightM: 2.1, startM: 1.2, lengthM: 4.2, strideM: 0.7, footOffsetM: 0.12, footLenM: 0.3, footWidthM: 0.12 },
 } as const;
 
 export type WalkDir = "fwd" | "rev";
@@ -214,6 +220,33 @@ export function vfovFor(width: number, height: number, targetHfov = 100, minV = 
   return Math.min(maxV, Math.max(minV, v));
 }
 
+/** Distance walked (m) at forward time t. */
+export function distanceAt(t: number, track: WalkTrack = WALK_TRACK): number {
+  const d = track.distM;
+  if (!d) return Math.max(0, t);
+  const x = Math.min(d.length - 1, Math.max(0, t / track.stepSec));
+  const i = Math.floor(x);
+  const j = Math.min(d.length - 1, i + 1);
+  return d[i] + (d[j] - d[i]) * (x - i);
+}
+
+/** Forward time at which the walk has covered `dist` metres (first time, if it stood still there). */
+export function timeAtDistance(dist: number, track: WalkTrack = WALK_TRACK): number {
+  const d = track.distM;
+  if (!d) return Math.min(track.duration, Math.max(0, dist));
+  if (dist <= d[0]) return 0;
+  if (dist >= d[d.length - 1]) return track.duration;
+  let lo = 0;
+  let hi = d.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (d[mid] < dist) lo = mid;
+    else hi = mid;
+  }
+  const span = d[hi] - d[lo];
+  return (lo + (span > 0 ? (dist - d[lo]) / span : 0)) * track.stepSec;
+}
+
 export interface Footprint {
   /** Floor position relative to the camera (m), three.js axes: x right of world yaw 0, z = −forward at world yaw 0. */
   x: number;
@@ -234,20 +267,22 @@ export interface Footprint {
 export function footprints(
   t: number,
   dir: WalkDir,
-  cfg: { walkSpeedMps: number; startM: number; lengthM: number; strideM: number; footOffsetM: number } = WALK_FEEL.steps,
+  cfg: { startM: number; lengthM: number; strideM: number; footOffsetM: number } = WALK_FEEL.steps,
   track: WalkTrack = WALK_TRACK,
 ): Footprint[] {
-  // path polyline from the visitor, every ds metres
+  // path polyline from the visitor, every ds metres, following the distance
+  // the video actually covers (heading looked up at the time that distance
+  // is reached), forward or backward
   const ds = 0.04;
   const maxR = cfg.startM + cfg.lengthM;
-  const dtPer = ds / cfg.walkSpeedMps;
+  const d0 = distanceAt(t, track);
   const xs: number[] = [];
   const zs: number[] = [];
   const hs: number[] = [];
   let x = 0;
   let z = 0;
-  let tt = t;
   for (let d = 0; d <= maxR + ds; d += ds) {
+    const tt = timeAtDistance(dir === "fwd" ? d0 + d : d0 - d, track);
     const h = dir === "fwd" ? headingAt(tt, track) : normDeg(headingAt(tt, track) + 180);
     xs.push(x);
     zs.push(z);
@@ -255,10 +290,9 @@ export function footprints(
     const rad = (h * Math.PI) / 180;
     x += Math.sin(rad) * ds;
     z -= Math.cos(rad) * ds;
-    tt = dir === "fwd" ? Math.min(track.duration, tt + dtPer) : Math.max(0, tt - dtPer);
   }
   // prints at path coordinate u ≡ 0 (mod stride); u grows in the direction of motion
-  const u = (dir === "fwd" ? 1 : -1) * cfg.walkSpeedMps * t;
+  const u = dir === "fwd" ? d0 : -d0;
   const mod = (a: number, m: number) => ((a % m) + m) % m;
   const out: Footprint[] = [];
   for (let r = cfg.startM + mod(-(u + cfg.startM), cfg.strideM); r <= maxR + 1e-9; r += cfg.strideM) {
