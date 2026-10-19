@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare, MessageCircle, Newspaper, Inbox, PhoneCall, FlaskConical } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare, MessageCircle, Newspaper, Inbox, PhoneCall, FlaskConical, Wallet } from "lucide-react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 // Each admin tab is large (full-page CRUD UIs with their own forms,
 // tables, and supabase fetchers). Lazy-load them so visiting /admin
@@ -29,13 +29,14 @@ const AdminSocialInbox = lazyWithRetry(() => import("@/components/admin/AdminSoc
 const AdminCallbacks = lazyWithRetry(() => import("@/components/admin/AdminCallbacks"));
 const AiAgent = lazyWithRetry(() => import("@/components/admin/AiAgent"));
 const AdminModelLab = lazyWithRetry(() => import("@/components/admin/AdminModelLab"));
+const AdminSpend = lazyWithRetry(() => import("@/components/admin/AdminSpend"));
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
 
-type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "blog" | "feedback" | "chat-history" | "social-inbox" | "callbacks" | "model-lab";
+type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "blog" | "feedback" | "chat-history" | "social-inbox" | "callbacks" | "model-lab" | "spend";
 type Mode = "login" | "signup" | "forgot";
 
 // Cost control — flip to true to re-enable the AI Trend Agent tab. The tab
@@ -66,6 +67,7 @@ const ALL_TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "seo", label: "SEO", icon: Search },
   { id: "ai-agent", label: "AI აგენტი", icon: Sparkles },
   { id: "analytics", label: "ანალიტიკა", icon: BarChart3 },
+  { id: "spend", label: "ხარჯები", icon: Wallet },
 ];
 
 const TABS = ALL_TABS.filter((t) => t.id !== "ai-agent" || AI_AGENT_ENABLED);
@@ -77,13 +79,13 @@ const TABS = ALL_TABS.filter((t) => t.id !== "ai-agent" || AI_AGENT_ENABLED);
 // TABS (ai-agent while disabled) is simply not rendered.
 const TAB_ROWS: Tab[][] = [
   ["dashboard", "orders", "callbacks", "social-inbox", "corporate", "users", "designs", "catalog"],
-  ["chat-history", "feedback", "generations", "model-lab", "portfolio", "showroom", "blog", "partners", "seo", "ai-agent", "analytics"],
+  ["chat-history", "feedback", "generations", "model-lab", "portfolio", "showroom", "blog", "partners", "seo", "ai-agent", "analytics", "spend"],
 ];
 
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);
   const v = params.get("tab");
-  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "blog" || v === "feedback" || v === "chat-history" || v === "social-inbox" || v === "callbacks" || v === "model-lab") return v;
+  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "blog" || v === "feedback" || v === "chat-history" || v === "social-inbox" || v === "callbacks" || v === "model-lab" || v === "spend") return v;
   return "dashboard";
 }
 
@@ -466,6 +468,7 @@ export default function AdminPage() {
           {activeTab === "chat-history" && <AdminChatHistory />}
           {activeTab === "social-inbox" && <AdminSocialInbox />}
           {activeTab === "callbacks" && <AdminCallbacks />}
+          {activeTab === "spend" && <AdminSpend />}
         </Suspense>
       </div>
     </div>
