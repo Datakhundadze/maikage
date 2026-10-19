@@ -12,7 +12,6 @@ import {
   Scene,
   SphereGeometry,
   SRGBColorSpace,
-  TextureLoader,
   VideoTexture,
   WebGLRenderer,
 } from "three";
@@ -20,6 +19,7 @@ import Joystick from "./Joystick";
 import { easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
 import {
   facingFromView,
+  headingAt,
   followStep,
   followTarget,
   footprints,
@@ -322,22 +322,44 @@ export default function VideoWalk() {
     scene.add(sphere);
 
     const logoDist = 10;
-    const logoGeo = new CircleGeometry(logoDist * Math.tan((WALK_VIDEO.nadirLogo.widthDeg / 2) * DEG), 64);
-    const logoMat = new MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false });
+    const NL = WALK_VIDEO.nadirLogo;
+    const coverR = logoDist * Math.tan((NL.widthDeg / 2) * DEG);
+    const logoGeo = new CircleGeometry(coverR, 96);
+    // the cover: dark disc with a soft edge, the logo drawn in once it loads
+    const coverCanvas = document.createElement("canvas");
+    coverCanvas.width = coverCanvas.height = 512;
+    const drawCover = (img: HTMLImageElement | null) => {
+      const g = coverCanvas.getContext("2d");
+      if (!g) return;
+      g.clearRect(0, 0, 512, 512);
+      const grad = g.createRadialGradient(256, 256, 0, 256, 256, 256);
+      grad.addColorStop(0, "rgba(16,16,16,0.96)");
+      grad.addColorStop(0.8, "rgba(16,16,16,0.96)");
+      grad.addColorStop(1, "rgba(16,16,16,0)");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 512, 512);
+      if (img) {
+        const frac = Math.tan((NL.logoWidthDeg / 2) * DEG) / Math.tan((NL.widthDeg / 2) * DEG);
+        const d = 512 * frac;
+        g.drawImage(img, 256 - d / 2, 256 - d / 2, d, d);
+      }
+    };
+    drawCover(null);
+    const coverTex = new CanvasTexture(coverCanvas);
+    coverTex.colorSpace = SRGBColorSpace;
+    const logoMat = new MeshBasicMaterial({ map: coverTex, transparent: true, depthTest: false, depthWrite: false });
     const logo = new Mesh(logoGeo, logoMat);
     logo.position.set(0, -logoDist, 0);
     logo.rotation.x = -Math.PI / 2;
-    logo.renderOrder = 1;
-    logo.visible = false;
+    logo.renderOrder = 3; // above the footprints, which pass under it
     scene.add(logo);
-    const logoLoader = new TextureLoader();
-    logoLoader.load(WALK_VIDEO.nadirLogo.url, (tex) => {
-      if (disposed) return tex.dispose();
-      tex.colorSpace = SRGBColorSpace;
-      logoMat.map = tex;
-      logoMat.needsUpdate = true;
-      logo.visible = true;
-    });
+    const logoImg = new Image();
+    logoImg.onload = () => {
+      if (disposed) return;
+      drawCover(logoImg);
+      coverTex.needsUpdate = true;
+    };
+    logoImg.src = NL.url;
 
     // ── footprints on the floor (where the walk goes next) ─────────────────
     const ST = F.steps;
@@ -379,7 +401,7 @@ export default function VideoWalk() {
     let printDir: WalkDir = "fwd";
 
     // ── view state ─────────────────────────────────────────────────────────
-    let yawDeg = 0;
+    let yawDeg = headingAt(track.start); // facing the way the walk starts
     let pitchDeg = 0;
     let vfov = vfovFor(host.clientWidth, host.clientHeight, 100, MIN_VFOV, MAX_VFOV);
     let userZoom = 1; // multiplies vfov (pinch / wheel)
@@ -446,13 +468,16 @@ export default function VideoWalk() {
           v.removeEventListener("canplay", onEvent);
           resolve(ok);
         };
+        // there = not seeking, the frame decoded, and really at that time (a
+        // host without byte ranges can't seek: the video stays where it was)
+        const there = () => !v.seeking && v.readyState >= 2 && Math.abs(v.currentTime - clamped) < 0.5;
         const onEvent = () => {
-          if (!v.seeking && v.readyState >= 2) finish(true);
+          if (there()) finish(true);
         };
         v.addEventListener("seeked", onEvent);
         v.addEventListener("loadeddata", onEvent);
         v.addEventListener("canplay", onEvent);
-        timer = window.setTimeout(() => finish(!v.seeking && v.readyState >= 2), timeoutMs);
+        timer = window.setTimeout(() => finish(there()), timeoutMs);
         v.currentTime = clamped;
       });
 
@@ -848,7 +873,7 @@ export default function VideoWalk() {
         v.load();
       }
       Object.values(textures).forEach((t) => t.dispose());
-      logoMat.map?.dispose();
+      coverTex.dispose();
       logoMat.dispose();
       logoGeo.dispose();
       printGeo.dispose();

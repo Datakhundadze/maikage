@@ -3,15 +3,14 @@
 // joystick. Pure logic here (no DOM, no three.js) so it can be unit-tested;
 // the viewer is components/tour/VideoWalk.tsx.
 //
-// FILES (public/tour/walk/)
-//   walk-fwd.mp4  the walk, 2560×1280 equirectangular, H.264, 30 fps,
-//                 2.7 Mbit/s two-pass: each file must stay under the
-//                 host's per-file limit (36 MB files were not served; ~24 MB)
+// FILES (Supabase Storage, public bucket "showroom", walk/; the site host
+// serves files only up to ~25 MB, these are ~45 MB)
+//   walk-fwd.mp4  the walk, 3840×1920 equirectangular, H.264 High, 30 fps,
+//                 4.3 Mbit/s two-pass, faststart
 //   walk-rev.mp4  the same frames in reverse order: its time r shows forward
-//                 time `revEnd − r` (measured frame by frame, PSNR ≈ 38 dB at
-//                 the match vs ≈ 28 one frame off), so walking backward is
-//                 plain playback too (seeking backward frame by frame
-//                 stutters on phones)
+//                 time `revEnd − r` (measured frame by frame by PSNR), so
+//                 walking backward is plain playback too (seeking backward
+//                 frame by frame stutters on phones)
 //   (the track itself is bundled: walkTrackData.ts)
 //
 // TIMES are seconds on the forward video ("forward time").
@@ -19,16 +18,19 @@
 //   loop.from/to  the walk returns near its start: passing `from` going
 //                 forward continues at `to` (and the other way round going
 //                 backward), with a short cross-fade over the jump
-//   headingDeg    world yaw of the direction of travel, one sample per
-//                 stepSec, smoothed. World yaw 0 = centre of the video
-//                 frame, + = right. The camera's heading is locked, so this is
-//                 the same direction all the way through.
-// HOW THE TRACK WAS MADE (2026-10-18): frames every 0.2 s, SIFT matches
-// between frames 0.4 s apart (above −14° pitch, below that is the person
-// holding the camera), essential matrix on the sphere → rotation (the
-// camera's heading drifts < 2° over the loop) and direction of travel;
+//   headingDeg    yaw of the direction of travel IN THE VIDEO FRAME, one
+//                 sample per stepSec, smoothed. Yaw 0 = centre of the video
+//                 frame, + = right. (Measured in the frame, not in the world,
+//                 so a slow drift of the camera's heading — ~4° over this
+//                 loop — doesn't put the view off the path.)
+// HOW THE TRACK WAS MADE (2026-10-19 shoot, camera on a stick above the
+// head): frames every 0.2 s, SIFT matches between frames 0.4 s apart (above
+// −35° pitch; below is the person holding the camera, covered on screen by
+// the nadir disc), essential matrix on the sphere → direction of travel;
 // circular median of 5 + Gaussian σ 0.5 s. Loop points: the frame pair with
 // the most matches and least parallax between the end and the start.
+// Source: export_video.MP4, 3840×1920, 161.8 s, two loops; the first one,
+// 5.0–86.0 s, is used.
 
 import { WALK_TRACK_DATA } from "./walkTrackData";
 import { angleDiff, normDeg } from "./tourMath";
@@ -47,9 +49,14 @@ export interface WalkTrack {
 export const WALK_TRACK: WalkTrack = WALK_TRACK_DATA;
 
 export const WALK_VIDEO = {
-  base: "/tour/walk/walk",
-  /** Nadir cover (the camera was hand-held): maika.ge logo disc, degrees across. */
-  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 34 },
+  base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk/walk",
+  /**
+   * Nadir cover: the camera was held up on a stick, so the person holding it
+   * fills the bottom of the picture (below ~−42°). A dark disc widthDeg
+   * across with soft edges hides that, with the maika.ge logo
+   * (logoWidthDeg) in the middle.
+   */
+  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 100, logoWidthDeg: 30 },
 } as const;
 
 export const WALK_FEEL = {
@@ -94,13 +101,13 @@ export const WALK_FEEL = {
   contrast: 1.07,
   /**
    * Footprints on the floor showing where the walk goes next. Metres: the
-   * camera was ~1.6 m up (face height); the walk covers ~0.75 m per second
+   * camera was ~2.1 m up (on a stick above the head); the walk covers ~0.75 m per second
    * of video. Prints sit at fixed places along the path (every strideM,
    * alternating left / right footOffsetM from the middle), so they come
    * toward the visitor and pass underfoot as the walk goes on; shown from
    * startM (clear of the nadir logo) to startM + lengthM ahead.
    */
-  steps: { cameraHeightM: 1.6, walkSpeedMps: 0.75, startM: 0.55, lengthM: 3.4, strideM: 0.42, footOffsetM: 0.11, footLenM: 0.3, footWidthM: 0.12 },
+  steps: { cameraHeightM: 2.1, walkSpeedMps: 0.75, startM: 0.9, lengthM: 4.0, strideM: 0.42, footOffsetM: 0.11, footLenM: 0.3, footWidthM: 0.12 },
 } as const;
 
 export type WalkDir = "fwd" | "rev";
