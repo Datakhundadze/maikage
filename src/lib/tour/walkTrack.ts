@@ -135,10 +135,16 @@ export const WALK_FEEL = {
   parkEveryMs: 4000,
   /** Cross-fade over the loop jump (ms). */
   loopFadeMs: 450,
-  /** Colour lift in the shader (on the sRGB picture): saturation and contrast
-   *  around mid-grey, 1 = as filmed. */
-  saturation: 1.22,
-  contrast: 1.07,
+  /** Colour lift in the shader (on the sRGB picture), 1 = as filmed:
+   *  saturation, plus vibrance (dull colours get up to this much more, bright
+   *  ones stay), contrast around mid-grey, a slight warm shift (the shop's
+   *  LEDs film cold), and an unsharp mask over sharpenTexels video pixels. */
+  saturation: 1.28,
+  vibrance: 0.6,
+  contrast: 1.14,
+  warmth: 0.015,
+  sharpen: 0.6,
+  sharpenTexels: 1.5,
   /**
    * Footprints on the floor showing where the walk goes next. Metres: the
    * camera was ~2.1 m up (on a stick above the head); distances along the

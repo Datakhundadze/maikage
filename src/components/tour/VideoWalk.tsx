@@ -12,6 +12,7 @@ import {
   Scene,
   SphereGeometry,
   SRGBColorSpace,
+  Vector2,
   VideoTexture,
   WebGLRenderer,
 } from "three";
@@ -351,18 +352,50 @@ export default function VideoWalk() {
     const geometry = new SphereGeometry(SPHERE_R, 96, 64);
     geometry.scale(-1, 1, 1); // seen from inside, not mirrored
     const material = new MeshBasicMaterial({ map: clip(0, "fwd").texture });
-    // colour lift: saturation + contrast on the final sRGB colour
+    // colour lift: unsharp mask on the video sample, then saturation +
+    // vibrance + contrast + warmth on the final sRGB colour
+    const texel = { value: new Vector2(1 / 3840, 1 / 1920) };
+    const setTexel = (v: HTMLVideoElement) => {
+      if (v.videoWidth > 0) texel.value.set(1 / v.videoWidth, 1 / v.videoHeight);
+    };
+    allClips.forEach(({ video }) => {
+      if (video.readyState >= 1) setTexel(video);
+      else video.addEventListener("loadedmetadata", () => setTexel(video), { once: true });
+    });
     material.onBeforeCompile = (shader) => {
-      shader.fragmentShader = shader.fragmentShader.replace(
-        "#include <colorspace_fragment>",
-        [
+      shader.uniforms.walkTexel = texel;
+      const f = (n: number) => n.toFixed(3);
+      shader.fragmentShader = shader.fragmentShader
+        .replace("void main() {", "uniform vec2 walkTexel;\nvoid main() {")
+        .replace(
+          "#include <map_fragment>",
+          [
+            "#ifdef USE_MAP",
+            `  vec2 o = walkTexel * ${f(F.sharpenTexels)};`,
+            "  vec4 s0 = texture2D( map, vMapUv );",
+            "  vec4 sb = 0.25 * ( texture2D( map, vMapUv + vec2(o.x, 0.0) ) + texture2D( map, vMapUv - vec2(o.x, 0.0) )",
+            "                   + texture2D( map, vMapUv + vec2(0.0, o.y) ) + texture2D( map, vMapUv - vec2(0.0, o.y) ) );",
+            `  vec4 sampledDiffuseColor = clamp( s0 + (s0 - sb) * ${f(F.sharpen)}, 0.0, 1.0 );`,
+            "  #ifdef DECODE_VIDEO_TEXTURE",
+            "  sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );",
+            "  #endif",
+            "  diffuseColor *= sampledDiffuseColor;",
+            "#endif",
+          ].join("\n"),
+        )
+        .replace(
           "#include <colorspace_fragment>",
-          `{ vec3 c = gl_FragColor.rgb; float l = dot(c, vec3(0.2126, 0.7152, 0.0722));`,
-          `  c = mix(vec3(l), c, ${F.saturation.toFixed(3)});`,
-          `  c = (c - 0.5) * ${F.contrast.toFixed(3)} + 0.5;`,
-          `  gl_FragColor.rgb = clamp(c, 0.0, 1.0); }`,
-        ].join("\n"),
-      );
+          [
+            "#include <colorspace_fragment>",
+            `{ vec3 c = gl_FragColor.rgb; float l = dot(c, vec3(0.2126, 0.7152, 0.0722));`,
+            `  float chroma = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));`,
+            `  float k = ${f(F.saturation)} * (1.0 + ${f(F.vibrance)} * (1.0 - clamp(chroma * 2.5, 0.0, 1.0)));`,
+            `  c = mix(vec3(l), c, k);`,
+            `  c = (c - 0.5) * ${f(F.contrast)} + 0.5;`,
+            `  c += vec3(${f(F.warmth)}, 0.0, ${f(-F.warmth)});`,
+            `  gl_FragColor.rgb = clamp(c, 0.0, 1.0); }`,
+          ].join("\n"),
+        );
     };
     const sphere = new Mesh(geometry, material);
     // three.js puts the frame's centre at −x; turn it to −z (the camera's yaw 0)
