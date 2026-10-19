@@ -4,14 +4,23 @@
 // the viewer is components/tour/VideoWalk.tsx.
 //
 // FILES (Supabase Storage, public bucket "showroom", walk/; the site host
-// serves files only up to ~25 MB, these are ~45 MB)
-//   walk-fwd.mp4  the walk, 3840×1920 equirectangular, H.264 High, 30 fps,
-//                 4.3 Mbit/s two-pass, faststart
-//   walk-rev.mp4  the same frames in reverse order: its time r shows forward
-//                 time `revEnd − r` (measured frame by frame by PSNR), so
-//                 walking backward is plain playback too (seeking backward
-//                 frame by frame stutters on phones)
+// serves files only up to ~25 MB): the walk is cut in parts (WalkPart), each
+// a pair `${base}-fwd.mp4` / `${base}-rev.mp4`, 3840×1920 equirectangular,
+// H.264 High, 30 fps, 4.3 Mbit/s two-pass, faststart; the -rev file holds
+// the same frames reversed (its time r shows forward time from + revEnd − r,
+// measured frame by frame by PSNR), so walking backward is plain playback
+// too (seeking backward frame by frame stutters on phones).
+//   walk-*.mp4    0 – 81 s   (source 5 – 86 s: the first loop)
+//   walk-b-*.mp4  81 – 156.4 s (source 86 – 161.4 s: the second loop)
 //   (the track itself is bundled: walkTrackData.ts)
+//
+// JUNCTIONS (links): spots the walk passes twice. Walking face-first
+// through one, if the visitor looks clearly more toward one of the other
+// pass's two directions than down the way ahead, the walk continues on the
+// other pass (junctionChoice); prints show the other ways a few metres
+// before (junctionsAhead). Found by comparing frames far apart in time but
+// close on the walked map: rotation-only fit of SIFT matches, the residual
+// is the parallax (< 0.9° = the camera stood within a few cm).
 //
 // TIMES are seconds on the forward video ("forward time").
 //   start         where a visit begins (standing at the entrance, facing in)
@@ -29,16 +38,42 @@
 // the nadir disc), essential matrix on the sphere → direction of travel;
 // circular median of 5 + Gaussian σ 0.5 s. Loop points: the frame pair with
 // the most matches and least parallax between the end and the start.
-// Source: export_video.MP4, 3840×1920, 161.8 s, two loops; the first one,
-// 5.0–86.0 s, is used.
+// Source: export_video.MP4, 3840×1920, 161.8 s, two loops, 5.0–161.4 s used.
 
 import { WALK_TRACK_DATA } from "./walkTrackData";
 import { angleDiff, normDeg } from "./tourMath";
 
+/**
+ * One file pair of the walk (the host takes files up to ~50 MB, the walk is
+ * cut in parts). Times are forward times on the whole walk; the part's
+ * videos play from `from` to `to`: `${base}-fwd.mp4` at local time
+ * t − from, `${base}-rev.mp4` (the same frames reversed) at local time
+ * revEnd − (t − from).
+ */
+export interface WalkPart {
+  from: number;
+  to: number;
+  base: string;
+  revEnd: number;
+}
+
+/**
+ * A spot the walk passes twice (two different times, the camera within a
+ * few centimetres): walking through one of them the visitor can carry on
+ * along the other pass. yawDeg: how much the video frame is turned at `b`
+ * relative to `a` (a direction at yaw θ in the frame at a is at θ + yawDeg
+ * in the frame at b).
+ */
+export interface WalkLink {
+  a: number;
+  b: number;
+  yawDeg: number;
+}
+
 export interface WalkTrack {
   duration: number;
-  /** Forward time shown at the start of walk-rev.mp4 (see above). */
-  revEnd: number;
+  parts: WalkPart[];
+  links?: WalkLink[];
   fps: number;
   stepSec: number;
   start: number;
@@ -55,7 +90,6 @@ export interface WalkTrack {
 export const WALK_TRACK: WalkTrack = WALK_TRACK_DATA;
 
 export const WALK_VIDEO = {
-  base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk/walk",
   /**
    * Nadir cover: the camera was held up on a stick, so the person holding it
    * fills the bottom of the picture (below ~−42°). A dark disc widthDeg
@@ -88,7 +122,7 @@ export const WALK_FEEL = {
   followEaseMs: 1000,
   /** …and only once the visitor hasn't turned or dragged for this long (ms),
    *  so a look to the side isn't pulled straight back. */
-  followDelayMs: 1200,
+  followDelayMs: 1800,
   /** While walking the view's pitch eases toward this. */
   walkPitchDeg: 3,
   pitchEaseMs: 1200,
@@ -113,7 +147,7 @@ export const WALK_FEEL = {
    * toward the visitor and pass underfoot as the walk goes on; shown from
    * startM (clear of the nadir logo) to startM + lengthM ahead.
    */
-  steps: { cameraHeightM: 2.1, startM: 1.2, lengthM: 4.2, strideM: 0.7, footOffsetM: 0.12, footLenM: 0.3, footWidthM: 0.12 },
+  steps: { cameraHeightM: 2.1, startM: 2.0, lengthM: 4.6, strideM: 0.7, footOffsetM: 0.12, footLenM: 0.3, footWidthM: 0.12 },
 } as const;
 
 export type WalkDir = "fwd" | "rev";
@@ -159,14 +193,27 @@ export function planWalk(intent: WalkIntent, facing: Facing): WalkDir {
   return (intent === "ahead") === (facing === "along") ? "fwd" : "rev";
 }
 
-/** Time on the video that plays in `dir` showing forward time t. */
-export function videoTime(t: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number {
-  return dir === "fwd" ? t : track.revEnd - t;
+/** The part that plays forward time t when moving in `dir` (at a boundary: the one the walk goes on into). */
+export function partIndexAt(t: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number {
+  const ps = track.parts;
+  if (dir === "fwd") {
+    for (let i = ps.length - 1; i >= 0; i--) if (t >= ps[i].from) return i;
+    return 0;
+  }
+  for (let i = 0; i < ps.length; i++) if (t <= ps[i].to) return i;
+  return ps.length - 1;
 }
 
-/** Forward time shown at time v of the video that plays in `dir`. */
-export function forwardTime(v: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number {
-  return dir === "fwd" ? v : track.revEnd - v;
+/** Time on part p's video that plays in `dir`, showing forward time t. */
+export function localTime(t: number, p: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number {
+  const part = track.parts[p];
+  return dir === "fwd" ? t - part.from : part.revEnd - (t - part.from);
+}
+
+/** Forward time shown at time v of part p's video that plays in `dir`. */
+export function globalTime(v: number, p: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number {
+  const part = track.parts[p];
+  return dir === "fwd" ? part.from + v : part.from + part.revEnd - v;
 }
 
 /**
@@ -308,4 +355,91 @@ export function footprints(
     out.push({ x: px + Math.cos(rad) * side * cfg.footOffsetM, z: pz + Math.sin(rad) * side * cfg.footOffsetM, hDeg: normDeg(h), side, r });
   }
   return out;
+}
+
+/** Each link seen from one end: at `at`, the other pass is at `other`, its frame turned by `shift`. */
+function linkEnds(track: WalkTrack): { at: number; other: number; shift: number }[] {
+  const out: { at: number; other: number; shift: number }[] = [];
+  for (const l of track.links ?? []) {
+    out.push({ at: l.a, other: l.b, shift: l.yawDeg });
+    out.push({ at: l.b, other: l.a, shift: -l.yawDeg });
+  }
+  return out;
+}
+
+export interface JunctionChoice {
+  /** Forward time to continue at, the direction to play there, and how much the view's yaw changes (new frame). */
+  t: number;
+  dir: WalkDir;
+  yawShift: number;
+}
+
+/**
+ * Walking face-first from tPrev to t in `dir`: if that passed a junction and
+ * one of the other pass's two directions points clearly closer to where the
+ * visitor looks (viewYaw) than the way ahead, the walk continues there.
+ */
+export function junctionChoice(
+  tPrev: number,
+  t: number,
+  dir: WalkDir,
+  viewYaw: number,
+  cfg: { minGainDeg: number; maxOffDeg: number } = { minGainDeg: 35, maxOffDeg: 75 },
+  track: WalkTrack = WALK_TRACK,
+): JunctionChoice | null {
+  let best: JunctionChoice | null = null;
+  let bestOff = Infinity;
+  for (const e of linkEnds(track)) {
+    const crossed = dir === "fwd" ? tPrev < e.at && e.at <= t : t <= e.at && e.at < tPrev;
+    if (!crossed) continue;
+    const ahead = normDeg(headingAt(e.at, track) + (dir === "fwd" ? 0 : 180));
+    const offAhead = Math.abs(angleDiff(viewYaw, ahead));
+    for (const d of ["fwd", "rev"] as WalkDir[]) {
+      // the branch's heading, brought into the current frame
+      const h = normDeg(headingAt(e.other, track) + (d === "fwd" ? 0 : 180) - e.shift);
+      const off = Math.abs(angleDiff(viewYaw, h));
+      if (off <= cfg.maxOffDeg && offAhead - off >= cfg.minGainDeg && off < bestOff) {
+        bestOff = off;
+        best = { t: e.other, dir: d, yawShift: e.shift };
+      }
+    }
+  }
+  return best;
+}
+
+export interface JunctionAhead {
+  /** Where the junction is on the current pass, how far ahead (m), and the other pass. */
+  at: number;
+  distM: number;
+  other: number;
+  shift: number;
+}
+
+/** Junctions within maxDistM ahead in the direction of motion. */
+export function junctionsAhead(t: number, dir: WalkDir, maxDistM: number, track: WalkTrack = WALK_TRACK): JunctionAhead[] {
+  const d0 = distanceAt(t, track);
+  const out: JunctionAhead[] = [];
+  for (const e of linkEnds(track)) {
+    if (dir === "fwd" ? e.at <= t : e.at >= t) continue;
+    const dist = Math.abs(distanceAt(e.at, track) - d0);
+    if (dist <= maxDistM) out.push({ at: e.at, distM: dist, other: e.other, shift: e.shift });
+  }
+  return out.sort((x, y) => x.distM - y.distM);
+}
+
+/** Floor position (m, three.js axes, camera at the origin) and heading of the path `dist` metres along the motion. */
+export function pathPointAt(t: number, dir: WalkDir, dist: number, track: WalkTrack = WALK_TRACK): { x: number; z: number; hDeg: number } {
+  const ds = 0.04;
+  const d0 = distanceAt(t, track);
+  let x = 0;
+  let z = 0;
+  let h = 0;
+  for (let d = 0; d < dist; d += ds) {
+    const tt = timeAtDistance(dir === "fwd" ? d0 + d : d0 - d, track);
+    h = dir === "fwd" ? headingAt(tt, track) : normDeg(headingAt(tt, track) + 180);
+    const step = Math.min(ds, dist - d);
+    x += Math.sin((h * Math.PI) / 180) * step;
+    z -= Math.cos((h * Math.PI) / 180) * step;
+  }
+  return { x, z, hDeg: h };
 }

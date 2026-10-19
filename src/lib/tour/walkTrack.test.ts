@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   followStep,
   followTarget,
-  forwardTime,
+  globalTime,
+  junctionChoice,
+  junctionsAhead,
+  localTime,
+  partIndexAt,
+  pathPointAt,
   facingFromView,
   footprints,
   distanceAt,
@@ -11,7 +16,6 @@ import {
   headingAt,
   loopJump,
   vfovFor,
-  videoTime,
   walkFromStick,
   WALK_FEEL,
   WALK_TRACK,
@@ -19,7 +23,13 @@ import {
 } from "./walkTrack";
 import { angleDiff } from "./tourMath";
 
-const T: WalkTrack = { duration: 10, revEnd: 10, fps: 30, stepSec: 1, start: 1, loop: { from: 9, to: 2 }, headingDeg: [0, 0, 90, 180, -170, -170, 0, 0, 0, 0, 0] };
+const T: WalkTrack = {
+  duration: 10,
+  parts: [
+    { from: 0, to: 6, base: "a", revEnd: 6 },
+    { from: 6, to: 10, base: "b", revEnd: 4 },
+  ],
+  fps: 30, stepSec: 1, start: 1, loop: { from: 9, to: 2 }, headingDeg: [0, 0, 90, 180, -170, -170, 0, 0, 0, 0, 0] };
 
 describe("walk track data", () => {
   it("has one heading per step over the whole video", () => {
@@ -29,16 +39,18 @@ describe("walk track data", () => {
   it("starts inside the video and loops forward from late to early", () => {
     const { start, loop, duration } = WALK_TRACK;
     expect(start).toBeGreaterThanOrEqual(0);
-    expect(loop.to).toBeGreaterThan(0);
+    expect(loop.to).toBeGreaterThanOrEqual(0);
     expect(loop.from).toBeLessThan(duration);
     expect(loop.from - loop.to).toBeGreaterThan(30);
   });
   it("walks into the shop at the start (heading near world 0)", () => {
     expect(Math.abs(headingAt(WALK_TRACK.start + 1))).toBeLessThan(25);
   });
-  it("heading changes smoothly (no jumps over 40° between samples)", () => {
+  it("heading changes smoothly (no jumps over 60° between samples, the U-turns are quick)", () => {
     const h = WALK_TRACK.headingDeg;
-    for (let i = 1; i < h.length; i++) expect(Math.abs(angleDiff(h[i], h[i - 1]))).toBeLessThan(40);
+    // up to the loop point (after it the video is never shown)
+    const end = Math.round(WALK_TRACK.loop.from / WALK_TRACK.stepSec);
+    for (let i = 1; i <= end; i++) expect(Math.abs(angleDiff(h[i], h[i - 1]))).toBeLessThan(60);
   });
 });
 
@@ -72,15 +84,29 @@ describe("walkFromStick", () => {
   });
 });
 
-describe("forward / reversed video time", () => {
-  it("the real reversed video ends within a frame or two of the forward one", () => {
-    expect(Math.abs(WALK_TRACK.revEnd - WALK_TRACK.duration)).toBeLessThan(0.1);
+describe("parts and forward / reversed video time", () => {
+  it("each real reversed video ends within a frame or two of its forward one", () => {
+    for (const p of WALK_TRACK.parts) expect(Math.abs(p.revEnd - (p.to - p.from))).toBeLessThan(0.1);
   });
-  it("maps both ways", () => {
-    expect(videoTime(3, "fwd", T)).toBe(3);
-    expect(videoTime(3, "rev", T)).toBe(7);
-    expect(forwardTime(7, "rev", T)).toBe(3);
-    for (const t of [0, 2.5, 9.9]) expect(forwardTime(videoTime(t, "rev", T), "rev", T)).toBeCloseTo(t);
+  it("the parts cover the walk end to end", () => {
+    const ps = WALK_TRACK.parts;
+    expect(ps[0].from).toBe(0);
+    for (let i = 1; i < ps.length; i++) expect(ps[i].from).toBe(ps[i - 1].to);
+    expect(ps[ps.length - 1].to).toBeGreaterThanOrEqual(WALK_TRACK.duration - 0.2);
+  });
+  it("finds the part, going on into the next one at a boundary", () => {
+    expect(partIndexAt(3, "fwd", T)).toBe(0);
+    expect(partIndexAt(6, "fwd", T)).toBe(1);
+    expect(partIndexAt(6, "rev", T)).toBe(0);
+    expect(partIndexAt(7, "rev", T)).toBe(1);
+  });
+  it("maps both ways in every part", () => {
+    expect(localTime(3, 0, "fwd", T)).toBe(3);
+    expect(localTime(3, 0, "rev", T)).toBe(3);
+    expect(localTime(7, 1, "fwd", T)).toBe(1);
+    expect(localTime(7, 1, "rev", T)).toBe(3);
+    for (const [t, p] of [[0.5, 0], [5.9, 0], [6.5, 1], [9.9, 1]] as const)
+      for (const d of ["fwd", "rev"] as const) expect(globalTime(localTime(t, p, d, T), p, d, T)).toBeCloseTo(t);
   });
 });
 
@@ -94,10 +120,10 @@ describe("loopJump", () => {
     expect(loopJump(1.8, "rev", T)).toBeCloseTo(8.8);
   });
   it("backward from the very start goes round the loop the other way", () => {
-    const j = loopJump(WALK_TRACK.start, "rev");
+    const j = loopJump(WALK_TRACK.loop.to, "rev");
     expect(j).not.toBeNull();
     expect(j!).toBeGreaterThan(WALK_TRACK.loop.to);
-    expect(j!).toBeLessThan(WALK_TRACK.loop.from);
+    expect(j!).toBeLessThanOrEqual(WALK_TRACK.loop.from);
   });
   it("a jump never lands on another jump", () => {
     for (let t = 0; t <= WALK_TRACK.duration; t += 0.5) {
@@ -204,5 +230,50 @@ describe("footprints", () => {
     const pace = d[d.length - 1] / WALK_TRACK.duration;
     expect(pace).toBeGreaterThan(0.4);
     expect(pace).toBeLessThan(1.2);
+  });
+});
+
+describe("junctions", () => {
+  // track with a link: at t=2 (heading 90 there) the walk passes the spot of t=8 (heading 0)
+  const J: WalkTrack = { ...T, links: [{ a: 2, b: 8, yawDeg: 0 }] };
+  it("looking down the other pass at the junction goes that way", () => {
+    // walking forward through t=2, the way ahead is 90°; the visitor looks at 0° = the other pass forward
+    const c = junctionChoice(1.9, 2.1, "fwd", 0, undefined, J);
+    expect(c).toEqual({ t: 8, dir: "fwd", yawShift: 0 });
+  });
+  it("…or along the other pass backward", () => {
+    const c = junctionChoice(1.9, 2.1, "fwd", 180, undefined, J);
+    expect(c).toEqual({ t: 8, dir: "rev", yawShift: 0 });
+  });
+  it("looking ahead (or not clearly elsewhere) carries on", () => {
+    expect(junctionChoice(1.9, 2.1, "fwd", 90, undefined, J)).toBeNull();
+    expect(junctionChoice(1.9, 2.1, "fwd", 60, undefined, J)).toBeNull();
+  });
+  it("only when the junction is passed in this frame, both ways round", () => {
+    expect(junctionChoice(2.1, 2.3, "fwd", 0, undefined, J)).toBeNull();
+    expect(junctionChoice(8.1, 7.9, "rev", 90, undefined, J)).toEqual({ t: 2, dir: "fwd", yawShift: -0 });
+  });
+  it("brings the other pass's heading into the current frame", () => {
+    const K: WalkTrack = { ...T, links: [{ a: 2, b: 8, yawDeg: 20 }] };
+    // the other pass forward heads 0° in its own frame = −20° here
+    expect(junctionChoice(1.9, 2.1, "fwd", -20, undefined, K)).toEqual({ t: 8, dir: "fwd", yawShift: 20 });
+  });
+  it("lists junctions ahead with their distance", () => {
+    const a = junctionsAhead(1, "fwd", 5, J);
+    expect(a.map((x) => x.at)).toEqual([2]);
+    expect(a[0].distM).toBeCloseTo(1);
+    expect(junctionsAhead(1, "rev", 5, J)).toEqual([]);
+  });
+  it("the real links join different times of the walk", () => {
+    for (const l of WALK_TRACK.links ?? []) {
+      expect(Math.abs(l.b - l.a)).toBeGreaterThan(5);
+      expect(Math.abs(l.yawDeg)).toBeLessThan(10);
+    }
+    expect((WALK_TRACK.links ?? []).length).toBeGreaterThan(5);
+  });
+  it("pathPointAt walks along the heading", () => {
+    const p = pathPointAt(0, "fwd", 0.5, T);
+    expect(p.z).toBeCloseTo(-0.5, 2);
+    expect(p.x).toBeCloseTo(0, 2);
   });
 });

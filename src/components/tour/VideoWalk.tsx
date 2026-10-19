@@ -17,7 +17,7 @@ import {
 } from "three";
 import Joystick from "./Joystick";
 import DPad from "./DPad";
-import { easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
+import { angleDiff, easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
 import {
   distanceAt,
   facingFromView,
@@ -26,10 +26,14 @@ import {
   followTarget,
   footprints,
   planWalk,
-  forwardTime,
+  globalTime,
+  junctionChoice,
+  junctionsAhead,
+  pathPointAt,
+  localTime,
+  partIndexAt,
   loopJump,
   vfovFor,
-  videoTime,
   walkFromStick,
   WALK_FEEL,
   WALK_TRACK,
@@ -93,12 +97,14 @@ declare global {
     __walk?: {
       t: number;
       dir: WalkDir;
+      part: number;
       playing: boolean;
       rate: number;
       yawDeg: number;
       pitchDeg: number;
       jumps: number;
       ready: boolean;
+      branches: number;
     };
   }
 }
@@ -138,13 +144,13 @@ function writeSoundPref(on: boolean): void {
 }
 
 /** H.264 MP4 where it plays (every current browser); WebM only as a fallback for builds without H.264. */
-function videoUrl(dir: WalkDir): string {
+function videoUrl(base: string, dir: WalkDir): string {
   const probe = document.createElement("video");
   const mp4 = probe.canPlayType('video/mp4; codecs="avc1.640033"') !== "";
-  return `${WALK_VIDEO.base}-${dir}.${mp4 ? "mp4" : "webm"}`;
+  return `${base}-${dir}.${mp4 ? "mp4" : "webm"}`;
 }
 
-function makeVideo(dir: WalkDir, preload: "auto" | "metadata"): HTMLVideoElement {
+function makeVideo(base: string, dir: WalkDir, preload: "auto" | "metadata"): HTMLVideoElement {
   const v = document.createElement("video");
   v.muted = true;
   v.defaultMuted = true;
@@ -154,7 +160,7 @@ function makeVideo(dir: WalkDir, preload: "auto" | "metadata"): HTMLVideoElement
   v.crossOrigin = "anonymous";
   v.preload = preload;
   v.loop = false;
-  v.src = videoUrl(dir);
+  v.src = videoUrl(base, dir);
   return v;
 }
 
@@ -327,17 +333,24 @@ export default function VideoWalk() {
     const camera = new PerspectiveCamera(75, 1, 0.1, 200);
     camera.rotation.order = "YXZ";
 
-    const videos: Record<WalkDir, HTMLVideoElement> = { fwd: makeVideo("fwd", "auto"), rev: makeVideo("rev", "metadata") };
-    const textures: Record<WalkDir, VideoTexture> = { fwd: new VideoTexture(videos.fwd), rev: new VideoTexture(videos.rev) };
-    for (const tex of Object.values(textures)) {
-      tex.colorSpace = SRGBColorSpace;
-      tex.minFilter = LinearFilter;
-      tex.magFilter = LinearFilter;
-      tex.generateMipmaps = false;
-    }
+    // one video + texture per part and direction (walkTrack.ts: parts)
+    type Clip = { video: HTMLVideoElement; texture: VideoTexture };
+    const clips: Clip[][] = track.parts.map((part, i) =>
+      (["fwd", "rev"] as WalkDir[]).map((d) => {
+        const video = makeVideo(part.base, d, i === 0 && d === "fwd" ? "auto" : "metadata");
+        const texture = new VideoTexture(video);
+        texture.colorSpace = SRGBColorSpace;
+        texture.minFilter = LinearFilter;
+        texture.magFilter = LinearFilter;
+        texture.generateMipmaps = false;
+        return { video, texture };
+      }),
+    );
+    const clip = (p: number, d: WalkDir) => clips[p][d === "fwd" ? 0 : 1];
+    const allClips = clips.flat();
     const geometry = new SphereGeometry(SPHERE_R, 96, 64);
     geometry.scale(-1, 1, 1); // seen from inside, not mirrored
-    const material = new MeshBasicMaterial({ map: textures.fwd });
+    const material = new MeshBasicMaterial({ map: clip(0, "fwd").texture });
     // colour lift: saturation + contrast on the final sRGB colour
     material.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
@@ -402,8 +415,9 @@ export default function VideoWalk() {
     printTex.colorSpace = SRGBColorSpace;
     const printGeo = new PlaneGeometry(ST.footWidthM, ST.footLenM);
     const printCount = Math.ceil(ST.lengthM / ST.strideM) + 2;
+    const BRANCH_PRINTS = 12; // prints for the other ways at a junction ahead
     const prints: Mesh<PlaneGeometry, MeshBasicMaterial>[] = [];
-    for (let i = 0; i < printCount; i++) {
+    for (let i = 0; i < printCount + BRANCH_PRINTS; i++) {
       const m = new MeshBasicMaterial({ map: printTex, color: 0xffd36b, transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
       const mesh = new Mesh(printGeo, m);
       mesh.rotation.order = "YXZ";
@@ -413,10 +427,57 @@ export default function VideoWalk() {
       scene.add(mesh);
       prints.push(mesh);
     }
+    /**
+     * The other ways at the junctions just ahead: prints along the other
+     * pass from the junction spot, turned into this frame (yaw shift). Only
+     * ways that really branch off (35°–145° from the way ahead).
+     */
+    const branchPrints = (t: number, d: WalkDir) => {
+      const out: { x: number; z: number; hDeg: number; side: -1 | 1; fade: number }[] = [];
+      for (const j of junctionsAhead(t, d, ST.startM + ST.lengthM - 0.5, track).slice(0, 2)) {
+        const at = pathPointAt(t, d, j.distM, track);
+        for (const bd of ["fwd", "rev"] as WalkDir[]) {
+          const bp = footprints(j.other, bd, { startM: 0.3, lengthM: 2.1, strideM: ST.strideM, footOffsetM: ST.footOffsetM }, track);
+          if (!bp.length) continue;
+          const first = normDeg(bp[0].hDeg - j.shift);
+          const off = Math.abs(angleDiff(first, at.hDeg));
+          if (off < 35 || off > 145) continue;
+          const r = -j.shift * DEG;
+          const c = Math.cos(r);
+          const sn = Math.sin(r);
+          for (const p of bp) {
+            out.push({
+              x: at.x + p.x * c - p.z * sn,
+              z: at.z + p.z * c + p.x * sn,
+              hDeg: normDeg(p.hDeg - j.shift),
+              side: p.side,
+              fade: 1 - p.r / 2.6,
+            });
+          }
+        }
+      }
+      return out.slice(0, BRANCH_PRINTS);
+    };
     const updatePrints = (t: number, d: WalkDir, alpha: number) => {
       const fp = footprints(t, d);
+      const bp = alpha > 0.02 ? branchPrints(t, d) : [];
+      branchCount = bp.length;
       for (let i = 0; i < prints.length; i++) {
         const mesh = prints[i];
+        if (i >= printCount) {
+          const b = bp[i - printCount];
+          if (!b) {
+            mesh.visible = false;
+            continue;
+          }
+          mesh.material.opacity = alpha * 0.7 * Math.max(0, b.fade);
+          mesh.visible = mesh.material.opacity > 0.01;
+          mesh.position.set(b.x, -ST.cameraHeightM, b.z);
+          mesh.rotation.y = -b.hDeg * DEG;
+          mesh.rotation.x = -Math.PI / 2;
+          mesh.scale.x = b.side;
+          continue;
+        }
         const p = fp[i];
         if (!p || alpha < 0.02) {
           mesh.visible = false;
@@ -433,6 +494,7 @@ export default function VideoWalk() {
       }
     };
     let printAlpha = 0;
+    let branchCount = 0; // prints of other ways shown (browser checks)
     let printDir: WalkDir = "fwd";
 
     // ── view state ─────────────────────────────────────────────────────────
@@ -455,6 +517,7 @@ export default function VideoWalk() {
     // ── playback state ─────────────────────────────────────────────────────
     let ready = false;
     let dir: WalkDir = "fwd";
+    let part = 0; // index into track.parts of the clip on screen
     let playing = false;
     let rate = 0; // eased playback rate (0 = standing)
     let switching = false; // waiting for the other video to seek
@@ -467,11 +530,12 @@ export default function VideoWalk() {
     let activeIntent: WalkIntent | null = null;
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
-    const active = () => videos[dir];
-    const fwdTime = () => forwardTime(active().currentTime, dir, track);
+    const active = () => clip(part, dir).video;
+    const fwdTime = () => globalTime(active().currentTime, part, dir, track);
+    let lastT: number | null = null; // forward time on the previous frame (junctions)
 
     const publish = () => {
-      window.__walk = { t: fwdTime(), dir, playing, rate, yawDeg, pitchDeg, jumps, ready };
+      window.__walk = { t: fwdTime(), dir, part, playing, rate, yawDeg, pitchDeg, jumps, ready, branches: branchCount };
     };
 
     const safePlay = (v: HTMLVideoElement) => {
@@ -479,8 +543,7 @@ export default function VideoWalk() {
       if (p && typeof p.catch === "function") p.catch(() => {});
     };
     const pauseAll = () => {
-      videos.fwd.pause();
-      videos.rev.pause();
+      allClips.forEach((c) => c.video.pause());
       playing = false;
     };
 
@@ -523,9 +586,9 @@ export default function VideoWalk() {
     const parkIdle = () => {
       if (parking || switching || jumping) return;
       const idle: WalkDir = dir === "fwd" ? "rev" : "fwd";
-      const v = videos[idle];
+      const v = clip(part, idle).video;
       if (v.readyState < 1) return;
-      const want = videoTime(fwdTime(), idle, track);
+      const want = localTime(fwdTime(), part, idle, track);
       if (Math.abs(v.currentTime - want) < 0.3) return;
       parking = true;
       lastPark = performance.now();
@@ -540,14 +603,10 @@ export default function VideoWalk() {
     unlockRef.current = () => {
       if (unlocked) return;
       unlocked = true;
-      for (const d of ["fwd", "rev"] as WalkDir[]) {
-        const v = videos[d];
-        if (d === "rev" && v.preload !== "auto") {
-          v.preload = "auto";
-          v.load();
-        }
+      for (const c of allClips) {
+        const v = c.video;
         // the one shown keeps playing if a walk has started by then
-        const keep = () => d === dir && playing;
+        const keep = () => v === active() && playing;
         const p = v.play();
         if (p && typeof p.then === "function") p.then(() => (keep() ? undefined : v.pause())).catch(() => {});
         else if (!keep()) v.pause();
@@ -583,20 +642,39 @@ export default function VideoWalk() {
     };
     let wantFreeze = false; // freeze right after the next render (the buffer is valid then)
 
-    const jumpTo = async (t: number) => {
+    /**
+     * Continue at forward time t (loop point, the next part, a junction):
+     * the current frame is frozen on top, the clip for (t, newDir) seeks
+     * there, then the frozen frame fades. yawShift turns the view with the
+     * new pass's frame so the visitor keeps looking the same way.
+     */
+    const jumpTo = async (t: number, newDir: WalkDir = dir, yawShift = 0) => {
       jumping = true;
       wantFreeze = true;
+      // stop the old clip right away (the frozen frame shows where it stood)
+      const old = active();
+      const wasPlaying = playing;
+      old.pause();
       // wait for the render that captures the frozen frame
       await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-      const v = active();
-      const wasPlaying = playing;
-      v.pause();
-      await seekTo(v, videoTime(t, dir, track));
+      const p2 = partIndexAt(t, newDir, track);
+      const c2 = clip(p2, newDir);
+      const sameClip = p2 === part && newDir === dir;
+      // another clip may still have to download that spot (phones)
+      const ok = await seekTo(c2.video, localTime(t, p2, newDir, track), sameClip ? 1500 : 8000);
       if (disposed) return;
-      textures[dir].needsUpdate = true;
+      if (ok || sameClip) {
+        part = p2;
+        dir = newDir;
+        material.map = c2.texture;
+        c2.texture.needsUpdate = true;
+        yawDeg = normDeg(yawDeg + yawShift);
+      }
       jumps++;
       lastStepNo = null;
-      if (wasPlaying && rate > 0) safePlay(v);
+      lastT = fwdTime();
+      if (wasPlaying && rate > 0) safePlay(active());
+      else playing = false;
       releaseFrame();
       jumping = false;
     };
@@ -612,13 +690,16 @@ export default function VideoWalk() {
       const from = active();
       from.pause();
       playing = false;
-      const to = videos[next];
-      const ok = await seekTo(to, videoTime(t, next, track), 5000);
+      const p2 = partIndexAt(t, next, track);
+      const to = clip(p2, next);
+      const ok = await seekTo(to.video, localTime(t, p2, next, track), 5000);
       if (disposed) return;
       if (ok) {
         dir = next;
-        material.map = textures[next];
-        textures[next].needsUpdate = true;
+        part = p2;
+        material.map = to.texture;
+        to.texture.needsUpdate = true;
+        lastT = fwdTime();
       } else {
         switchFailedAt = performance.now();
       }
@@ -690,12 +771,12 @@ export default function VideoWalk() {
     canvas.addEventListener("wheel", onWheel, { passive: false });
 
     // ── loading ────────────────────────────────────────────────────────────
-    const fv = videos.fwd;
+    const fv = clip(0, "fwd").video;
     const onReady = () => {
       if (ready || disposed) return;
-      void seekTo(fv, track.start).then(() => {
+      void seekTo(fv, localTime(track.start, 0, "fwd", track)).then(() => {
         if (disposed || ready) return;
-        textures.fwd.needsUpdate = true;
+        clip(0, "fwd").texture.needsUpdate = true;
         ready = true;
         setStatus("ready");
         publish();
@@ -734,7 +815,7 @@ export default function VideoWalk() {
         const v = active();
         const b = v.buffered.length ? v.buffered.end(v.buffered.length - 1).toFixed(1) : "0";
         setDebugText(
-          `${dir} rs=${v.readyState} ns=${v.networkState} err=${v.error?.code ?? "-"} t=${v.currentTime.toFixed(2)} buf=${b} paused=${v.paused} ${v.currentSrc.split("/").pop()}`,
+          `p${part} ${dir} rs=${v.readyState} ns=${v.networkState} err=${v.error?.code ?? "-"} t=${v.currentTime.toFixed(2)} buf=${b} paused=${v.paused} ${v.currentSrc.split("/").pop()}`,
         );
       }, 500);
     }
@@ -742,9 +823,10 @@ export default function VideoWalk() {
     fv.addEventListener("canplay", onReady);
     fv.addEventListener("error", onError);
     if (fv.readyState >= 2) onReady();
-    // preload the backward video once the forward one can play
+    // preload the backward video once the forward one can play (the other
+    // parts load when the walk gets there: they're big)
     const preloadRev = () => {
-      const rv = videos.rev;
+      const rv = clip(0, "rev").video;
       if (rv.preload !== "auto") {
         rv.preload = "auto";
         rv.load();
@@ -835,12 +917,26 @@ export default function VideoWalk() {
           }
           // keep the other direction ready
           if (now - lastPark > F.parkEveryMs) parkIdle();
-          // the loop point
+          const ps = track.parts;
           const next = loopJump(t, dir, track);
-          if (next !== null) void jumpTo(next);
-          // the very ends of the video (before the loop start / after its end)
-          if (dir === "fwd" && t >= track.duration - 0.1) v.pause();
-          if (dir === "rev" && t <= 0.1) v.pause();
+          const junction = activeIntent === "ahead" && lastT !== null ? junctionChoice(lastT, t, dir, yawDeg) : null;
+          lastT = t;
+          if (next !== null) {
+            // the loop point
+            void jumpTo(next);
+          } else if (junction) {
+            // a junction, and the visitor looks down the other pass: go that way
+            facing = junction.dir === "fwd" ? "along" : "against";
+            void jumpTo(junction.t, junction.dir, junction.yawShift);
+          } else if (dir === "fwd" && part < ps.length - 1 && t >= ps[part].to - 0.02) {
+            // into the next part's file
+            void jumpTo(t, "fwd");
+          } else if (dir === "rev" && part > 0 && t <= ps[part].from + 0.02) {
+            void jumpTo(t, "rev");
+          } else if ((dir === "fwd" && t >= track.duration - 0.1) || (dir === "rev" && t <= 0.1)) {
+            // the very ends of the walk
+            v.pause();
+          }
         }
       }
 
@@ -909,12 +1005,12 @@ export default function VideoWalk() {
       fv.removeEventListener("canplay", onReady);
       fv.removeEventListener("error", onError);
       fv.removeEventListener("canplaythrough", preloadRev);
-      for (const v of Object.values(videos)) {
-        v.pause();
-        v.removeAttribute("src");
-        v.load();
+      for (const c of allClips) {
+        c.video.pause();
+        c.video.removeAttribute("src");
+        c.video.load();
+        c.texture.dispose();
       }
-      Object.values(textures).forEach((t) => t.dispose());
       coverTex.dispose();
       logoMat.dispose();
       logoGeo.dispose();
