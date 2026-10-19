@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { Gamepad2, Maximize2, Minimize2, MoveVertical, Volume2, VolumeX } from "lucide-react";
 import {
   CanvasTexture,
   CircleGeometry,
@@ -16,6 +16,7 @@ import {
   WebGLRenderer,
 } from "three";
 import Joystick from "./Joystick";
+import DPad from "./DPad";
 import { easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
 import {
   distanceAt,
@@ -60,8 +61,28 @@ import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 
 const DEG = Math.PI / 180;
 const SOUND_KEY = "maika.showroom.sound";
+const CONTROLS_KEY = "maika.showroom.controls";
+type Controls = "joystick" | "arrows";
+
+function readControls(): Controls {
+  try {
+    return window.localStorage.getItem(CONTROLS_KEY) === "arrows" ? "arrows" : "joystick";
+  } catch {
+    return "joystick";
+  }
+}
+
+/** iPhone / iPad Safari: no video download before a tap, so ask for the tap right away. */
+function needsTapToLoad(): boolean {
+  try {
+    const ua = navigator.userAgent;
+    return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  } catch {
+    return false;
+  }
+}
 const MIN_VFOV = 35;
-const MAX_VFOV = 100;
+const MAX_VFOV = 90;
 const SPHERE_R = 50;
 
 type Status = "loading" | "ready" | "error" | "nowebgl";
@@ -232,7 +253,20 @@ export default function VideoWalk() {
   const [touch] = useState(() => media("(pointer: coarse)"));
   // iPhone Safari does not load a video before a tap: after a moment without
   // data the loader shows a start button (the tap starts the download)
-  const [needsTap, setNeedsTap] = useState(false);
+  const [needsTap, setNeedsTap] = useState(() => needsTapToLoad());
+  const [controls, setControls] = useState<Controls>(() => readControls());
+  const switchControls = useCallback(() => {
+    setControls((c) => {
+      const next: Controls = c === "joystick" ? "arrows" : "joystick";
+      try {
+        window.localStorage.setItem(CONTROLS_KEY, next);
+      } catch {
+        // storage blocked: the choice holds for this visit
+      }
+      return next;
+    });
+    stickRef.current = { x: 0, y: 0 };
+  }, []);
   const [errDetail, setErrDetail] = useState("");
   const [debug] = useState(() => {
     try {
@@ -335,7 +369,7 @@ export default function VideoWalk() {
       g.clearRect(0, 0, 512, 512);
       const grad = g.createRadialGradient(256, 256, 0, 256, 256, 256);
       grad.addColorStop(0, "rgba(16,16,16,0.96)");
-      grad.addColorStop(0.9, "rgba(16,16,16,0.96)");
+      grad.addColorStop(0.85, "rgba(16,16,16,0.96)");
       grad.addColorStop(1, "rgba(16,16,16,0)");
       g.fillStyle = grad;
       g.fillRect(0, 0, 512, 512);
@@ -403,7 +437,7 @@ export default function VideoWalk() {
 
     // ── view state ─────────────────────────────────────────────────────────
     let yawDeg = headingAt(track.start); // facing the way the walk starts
-    let pitchDeg = 0;
+    let pitchDeg: number = F.walkPitchDeg; // a little up: the cover under the visitor stays low on screen
     let vfov = vfovFor(host.clientWidth, host.clientHeight, 100, MIN_VFOV, MAX_VFOV);
     let userZoom = 1; // multiplies vfov (pinch / wheel)
     const resize = () => {
@@ -676,7 +710,7 @@ export default function VideoWalk() {
     // no data after a moment (iPhone): offer the start button
     const tapTimer = window.setTimeout(() => {
       if (!ready && !disposed) setNeedsTap(true);
-    }, 1500);
+    }, 2500);
     startRef.current = () => {
       setNeedsTap(false);
       unlockRef.current();
@@ -929,17 +963,22 @@ export default function VideoWalk() {
 
       {status === "loading" && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#101010] text-white">
-          <p className="text-sm font-medium" aria-live="polite">
-            შოურუმი იტვირთება…
-          </p>
-          {/* no percentage: phones don't report video download progress reliably */}
-          <style>{"@keyframes maika-walk-load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}"}</style>
-          <div className="h-1.5 w-48 overflow-hidden rounded-full bg-white/15">
-            <div
-              className="h-full w-2/5 rounded-full bg-amber-400"
-              style={{ animation: "maika-walk-load 1.1s ease-in-out infinite" }}
-            />
-          </div>
+          {/* iPhone: nothing loads before the tap, so no bar until then */}
+          {!needsTap && (
+            <>
+              <p className="text-sm font-medium" aria-live="polite">
+                შოურუმი იტვირთება…
+              </p>
+              {/* no percentage: phones don't report video download progress reliably */}
+              <style>{"@keyframes maika-walk-load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}"}</style>
+              <div className="h-1.5 w-48 overflow-hidden rounded-full bg-white/15">
+                <div
+                  className="h-full w-2/5 rounded-full bg-amber-400"
+                  style={{ animation: "maika-walk-load 1.1s ease-in-out infinite" }}
+                />
+              </div>
+            </>
+          )}
           {needsTap && (
             <button
               type="button"
@@ -970,7 +1009,7 @@ export default function VideoWalk() {
       {status === "ready" && hintVisible && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
           {touch
-            ? "ჯოისტიკი წინ გეჭიროთ — იარეთ, უკან — უკუსვლა, გვერდზე — მობრუნება. თითით გადაათრიეთ — მიმოხედვა."
+            ? "ჯოისტიკი ან ისარი წინ გეჭიროთ — იარეთ, უკან — უკუსვლა, გვერდზე — მობრუნება. თითით გადაათრიეთ — მიმოხედვა."
             : "↑/W დაჭერილი — სიარული, ↓/S — უკან, ←/→ ან A/D — მობრუნება. მაუსით გადაათრიეთ — მიმოხედვა."}
         </p>
       )}
@@ -1000,18 +1039,42 @@ export default function VideoWalk() {
       )}
 
       {status === "ready" && !touch && (
-        <p className="pointer-events-none absolute bottom-[150px] left-4 z-20 rounded-md bg-black/45 px-2 py-1 text-[11px] leading-tight text-white/90">
+        <p
+          className="pointer-events-none absolute left-4 z-20 rounded-md bg-black/45 px-2 py-1 text-[11px] leading-tight text-white/90"
+          style={{ bottom: controls === "arrows" ? 186 : 150 }}
+        >
           ↑ სიარული · ↓ უკან · ← → მობრუნება
         </p>
       )}
 
+      {status === "ready" &&
+        (controls === "arrows" ? (
+          <DPad
+            onChange={(axes) => {
+              if (axes.x !== 0 || axes.y !== 0) unlockRef.current();
+              stickRef.current = axes;
+            }}
+          />
+        ) : (
+          <Joystick
+            onChange={(axes) => {
+              if (axes.x !== 0 || axes.y !== 0) unlockRef.current();
+              stickRef.current = axes;
+            }}
+          />
+        ))}
+
       {status === "ready" && (
-        <Joystick
-          onChange={(axes) => {
-            if (axes.x !== 0 || axes.y !== 0) unlockRef.current();
-            stickRef.current = axes;
-          }}
-        />
+        <button
+          type="button"
+          onClick={switchControls}
+          aria-label={controls === "arrows" ? "ჯოისტიკზე გადართვა" : "ისრებზე გადართვა"}
+          className="absolute bottom-4 z-20 flex h-11 items-center gap-1.5 rounded-full bg-black/55 px-3 text-xs text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          style={{ left: controls === "arrows" ? 196 : 160 }}
+        >
+          {controls === "arrows" ? <Gamepad2 className="h-4 w-4" aria-hidden /> : <MoveVertical className="h-4 w-4" aria-hidden />}
+          {controls === "arrows" ? "ჯოისტიკი" : "ისრები"}
+        </button>
       )}
     </div>
   );

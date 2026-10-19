@@ -62,7 +62,7 @@ export const WALK_VIDEO = {
    * across with soft edges hides that, with the maika.ge logo
    * (logoWidthDeg) in the middle.
    */
-  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 116, logoWidthDeg: 30 },
+  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 96, logoWidthDeg: 30 },
 } as const;
 
 export const WALK_FEEL = {
@@ -90,7 +90,7 @@ export const WALK_FEEL = {
    *  so a look to the side isn't pulled straight back. */
   followDelayMs: 1200,
   /** While walking the view's pitch eases toward this. */
-  walkPitchDeg: -2,
+  walkPitchDeg: 3,
   pitchEaseMs: 1200,
   /** Head bob per step while walking, on top of the camera's own sway —
    *  kept very small (big screens magnify it). Steps (sound + bob) follow
