@@ -53,6 +53,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_model_prices: {
+        Row: {
+          cost_usd_per_call: number | null
+          model: string
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          cost_usd_per_call?: number | null
+          model: string
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cost_usd_per_call?: number | null
+          model?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string
@@ -566,6 +587,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fixed_costs: {
+        Row: {
+          active: boolean
+          amount: number
+          created_at: string
+          currency: string
+          end_on: string | null
+          id: string
+          name: string
+          note: string | null
+          paid_on: string | null
+          period: string
+          start_on: string | null
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          created_at?: string
+          currency: string
+          end_on?: string | null
+          id?: string
+          name: string
+          note?: string | null
+          paid_on?: string | null
+          period: string
+          start_on?: string | null
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          created_at?: string
+          currency?: string
+          end_on?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          paid_on?: string | null
+          period?: string
+          start_on?: string | null
+        }
+        Relationships: []
+      }
       generations: {
         Row: {
           color: string
@@ -605,6 +668,45 @@ export type Database = {
           style?: string | null
           transparent_image_path?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      marketing_spend: {
+        Row: {
+          adset: string | null
+          amount_usd: number
+          campaign: string | null
+          channel: string
+          created_at: string
+          date: string
+          id: string
+          note: string | null
+          result_type: string | null
+          results: number | null
+        }
+        Insert: {
+          adset?: string | null
+          amount_usd: number
+          campaign?: string | null
+          channel: string
+          created_at?: string
+          date: string
+          id?: string
+          note?: string | null
+          result_type?: string | null
+          results?: number | null
+        }
+        Update: {
+          adset?: string | null
+          amount_usd?: number
+          campaign?: string | null
+          channel?: string
+          created_at?: string
+          date?: string
+          id?: string
+          note?: string | null
+          result_type?: string | null
+          results?: number | null
         }
         Relationships: []
       }
@@ -977,6 +1079,24 @@ export type Database = {
         }
         Relationships: []
       }
+      spend_settings: {
+        Row: {
+          id: boolean
+          updated_at: string
+          usd_gel: number | null
+        }
+        Insert: {
+          id?: boolean
+          updated_at?: string
+          usd_gel?: number | null
+        }
+        Update: {
+          id?: boolean
+          updated_at?: string
+          usd_gel?: number | null
+        }
+        Relationships: []
+      }
       suppressed_emails: {
         Row: {
           created_at: string
@@ -1027,6 +1147,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_ai_spend: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          action: string
+          calls_failed: number
+          calls_failed_maybe_billed: number
+          calls_ok: number
+          cost: number
+          cost_max: number
+          day: string
+          model: string
+          unit_cost: number
+        }[]
+      }
       admin_list_chat_messages: {
         Args: { p_session_id: string }
         Returns: {
