@@ -32,6 +32,8 @@ import {
 } from "@/lib/generateSuggestion";
 import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
+import ChatRatingCard from "@/components/ChatRatingCard";
+import { useChatRatingPrompt } from "@/hooks/useChatRatingPrompt";
 // Only mounted once the order-status card's sign-in button is pressed, so the
 // chat bundle does not carry the auth UI for every visitor. Same lazy treatment
 // AppHeader gives it.
@@ -180,13 +182,15 @@ export default function ChatWidget() {
   // Reuse the RESTORED session id so a reloaded conversation keeps grouping
   // under one id in the admin chat log instead of splitting in two.
   const sessionIdRef = useRef<string>(restored?.sessionId ?? crypto.randomUUID());
+  // 1–5 rating card, once per conversation after it goes quiet (lib/chatRating).
+  const rating = useChatRatingPrompt(sessionIdRef.current, messages, loading);
 
   // Keep the list pinned to the newest message / typing indicator. `minimized`
   // is a dependency because collapsing unmounts the list — on expand the fresh
   // node starts at scrollTop 0 and has to be re-pinned to the bottom.
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-  }, [messages, loading, open, minimized]);
+  }, [messages, loading, open, minimized, rating.show]);
   // Persist on every change. Deliberately mirrors state rather than hooking
   // each mutation site, so no future path can forget to save. The image data
   // URL is dropped here — see chatPersistence for why.
@@ -565,6 +569,14 @@ export default function ChatWidget() {
               <span className="sr-only">{t(lang, "chat.typing")}</span>
             </div>
           </div>
+        )}
+        {rating.show && (
+          <ChatRatingCard
+            sessionId={sessionIdRef.current}
+            lang={lang}
+            onFinish={rating.finish}
+            onClose={rating.close}
+          />
         )}
       </div>
 

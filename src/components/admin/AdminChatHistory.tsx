@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Star } from "lucide-react";
 import { CHAT_SESSION_PARAM } from "@/lib/callbacks";
+import { averageRating } from "@/lib/chatRating";
 
 // FAQ chatbot history. Sessions (newest activity first, paginated) via the
 // admin_list_chat_sessions RPC; expanding a session loads its messages via
@@ -32,6 +33,30 @@ interface MessageRow {
 }
 
 const PAGE_SIZE = 50;
+
+// Customer 1–5 ratings (public.chat_ratings, admin-only SELECT policy; written
+// by the submit_chat_rating RPC). Schema-ahead-of-types → (supabase as any).
+// A missing table (migration not applied yet) just means no badges.
+interface RatingRow {
+  session_id: string;
+  rating: number;
+  comment: string | null;
+}
+
+function RatingBadge({ value }: { value: number }) {
+  const low = value <= 3;
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+        low ? "bg-destructive/15 text-destructive" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+      }`}
+      title={`შეფასება: ${value} / 5`}
+    >
+      <Star className="h-3 w-3 fill-current" />
+      {value}
+    </span>
+  );
+}
 
 // Customer photos live in the PRIVATE "chat-uploads" bucket, so unlike
 // AdminGenerations — which reads the public "designs" bucket and can call
@@ -71,6 +96,32 @@ export default function AdminChatHistory() {
   const [msgLoading, setMsgLoading] = useState(false);
   // path → signed URL, resolved once per expand and cached for the session.
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [ratings, setRatings] = useState<Record<string, RatingRow>>({});
+  const [summary, setSummary] = useState<{ avg: number | null; count: number; low: number } | null>(null);
+
+  // All ratings, once per refresh: the average in the header plus the badge on
+  // every loaded session. Ratings are few (one per rated conversation), so one
+  // bounded read covers both.
+  const fetchRatings = useCallback(async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error: err } = await (supabase as any)
+      .from("chat_ratings")
+      .select("session_id, rating, comment")
+      .order("created_at", { ascending: false })
+      .limit(5000);
+    if (err) return;
+    const list = (data as RatingRow[]) || [];
+    const map: Record<string, RatingRow> = {};
+    for (const r of list) map[r.session_id] = r;
+    setRatings(map);
+    setSummary({
+      avg: averageRating(list.map((r) => r.rating)),
+      count: list.length,
+      low: list.filter((r) => r.rating <= 3).length,
+    });
+  }, []);
+
+  useEffect(() => { void fetchRatings(); }, [fetchRatings]);
 
   const fetchPage = useCallback(async (offset: number) => {
     if (offset === 0) setLoading(true);
@@ -157,8 +208,19 @@ export default function AdminChatHistory() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold">ჩატის ისტორია ({rows.length}{hasMore ? "+" : ""})</h2>
-        <Button variant="outline" size="sm" onClick={() => fetchPage(0)}>განახლება</Button>
+        <Button variant="outline" size="sm" onClick={() => { fetchPage(0); void fetchRatings(); }}>განახლება</Button>
       </div>
+
+      {summary && summary.count > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-border bg-card px-3 py-2 text-sm">
+          <span className="inline-flex items-center gap-1 font-semibold">
+            <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+            {summary.avg?.toFixed(1)} / 5
+          </span>
+          <span className="text-muted-foreground">{summary.count} შეფასება</span>
+          <span className="text-muted-foreground">მათ შორის 1–3 ვარსკვლავი: {summary.low}</span>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive flex items-center justify-between">
@@ -185,12 +247,28 @@ export default function AdminChatHistory() {
                     {!isStub(s) && <span className="text-xs text-muted-foreground shrink-0">{format(new Date(s.last_at), "dd.MM.yy HH:mm")}</span>}
                   </div>
                   {s.last_user_snippet && <p className="text-xs text-muted-foreground line-clamp-2">{s.last_user_snippet}</p>}
-                  {!isStub(s) && <Badge variant="outline" className="text-[10px]">{s.message_count} შეტყობინება</Badge>}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {!isStub(s) && <Badge variant="outline" className="text-[10px]">{s.message_count} შეტყობინება</Badge>}
+                    {ratings[s.session_id] && <RatingBadge value={ratings[s.session_id].rating} />}
+                  </div>
                 </div>
               </button>
 
               {isOpen && (
                 <div className="border-t border-border p-3 space-y-2 bg-background">
+                  {ratings[s.session_id] && (
+                    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs">
+                      <span className="inline-flex items-center gap-1 font-medium">
+                        მომხმარებლის შეფასება: <RatingBadge value={ratings[s.session_id].rating} />
+                      </span>
+                      {/* Plain text — React escapes it. */}
+                      {ratings[s.session_id].comment && (
+                        <p className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">
+                          „{ratings[s.session_id].comment}"
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {msgLoading && !msgs ? (
                     <div className="flex justify-center py-4">
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
