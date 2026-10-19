@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Copy, Inbox, Paperclip, Sparkles } from "lucide-react";
+import { ArrowLeft, Copy, ImageOff, Inbox, Paperclip, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import {
+  SOCIAL_UPLOAD_BUCKET,
   attachmentTypes,
   groupConversations,
   messagePreview,
+  parseAttachments,
+  storedPhotoPaths,
   shortCustomerId,
   sortThread,
   type Conversation,
@@ -97,6 +100,8 @@ export default function AdminSocialInbox() {
   const [thread, setThread] = useState<SocialMessageRow[]>([]);
   const [threadLoading, setThreadLoading] = useState(false);
   const [threadError, setThreadError] = useState<string | null>(null);
+  // Stored DM photos: path → signed URL (private bucket, 1 hour), cached per tab.
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [draft, setDraft] = useState("");
   const [draftHint, setDraftHint] = useState("");
   const [draftLoading, setDraftLoading] = useState(false);
@@ -167,13 +172,35 @@ export default function AdminSocialInbox() {
         .limit(THREAD_LIMIT);
       if (error) throw new Error(error.message);
       if (gen !== threadGenRef.current) return;
-      setThread(sortThread((data as SocialMessageRow[]) ?? []));
+      const rowsIn = sortThread((data as SocialMessageRow[]) ?? []);
+      setThread(rowsIn);
+      void signPhotos(storedPhotoPaths(rowsIn));
     } catch (e) {
       if (gen !== threadGenRef.current) return;
       console.error("[AdminSocialInbox] thread fetch error:", e);
       setThreadError(e instanceof Error ? e.message : "ქსელის შეცდომა");
     } finally {
       if (gen === threadGenRef.current) setThreadLoading(false);
+    }
+  }
+
+  // Sign the thread's stored photos in one call. Paths already signed are
+  // skipped; a failure just leaves the paperclip chip in place of the picture.
+  async function signPhotos(paths: string[]) {
+    const todo = paths.filter((p) => !photoUrls[p]);
+    if (todo.length === 0) return;
+    try {
+      const { data, error } = await supabase.storage
+        .from(SOCIAL_UPLOAD_BUCKET)
+        .createSignedUrls(todo, 60 * 60);
+      if (error || !data) return;
+      setPhotoUrls((prev) => {
+        const next = { ...prev };
+        for (const d of data) if (d.path && d.signedUrl) next[d.path] = d.signedUrl;
+        return next;
+      });
+    } catch (e) {
+      console.warn("[AdminSocialInbox] photo signing failed:", e);
     }
   }
 
@@ -380,6 +407,7 @@ export default function AdminSocialInbox() {
               thread.map((m) => {
                 const out = m.direction === "out";
                 const types = attachmentTypes(m.attachments);
+                const atts = parseAttachments(m.attachments);
                 const text = m.text ?? "";
                 return (
                   <div key={m.id} className={`flex ${out ? "justify-end" : "justify-start"}`}>
@@ -393,19 +421,38 @@ export default function AdminSocialInbox() {
                       ) : types.length === 0 ? (
                         <p className="italic opacity-70">{messagePreview(m)}</p>
                       ) : null}
-                      {types.length > 0 && (
+                      {atts.length > 0 && (
                         <div className={`flex flex-wrap gap-1 ${text ? "mt-1.5" : ""}`}>
-                          {types.map((t, i) => (
-                            <span
-                              key={`${t}-${i}`}
-                              className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] ${
-                                out ? "bg-black/10" : "bg-background/60"
-                              }`}
-                            >
-                              <Paperclip className="h-3 w-3" />
-                              {t}
-                            </span>
-                          ))}
+                          {atts.map((a, i) =>
+                            a.path && photoUrls[a.path] ? (
+                              // Stored copy, signed for an hour. Click → full size.
+                              <a
+                                key={`${a.path}-${i}`}
+                                href={photoUrls[a.path]}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block"
+                              >
+                                <img
+                                  src={photoUrls[a.path]}
+                                  alt="ფოტო"
+                                  loading="lazy"
+                                  className="max-h-56 w-auto rounded-lg border border-black/10"
+                                />
+                              </a>
+                            ) : (
+                              <span
+                                key={`${a.type}-${i}`}
+                                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] ${
+                                  out ? "bg-black/10" : "bg-background/60"
+                                }`}
+                                title={a.purged ? "ფოტო 90 დღის შემდეგ წაიშალა" : undefined}
+                              >
+                                {a.purged ? <ImageOff className="h-3 w-3" /> : <Paperclip className="h-3 w-3" />}
+                                {a.purged ? "ფოტო წაშლილია" : a.type}
+                              </span>
+                            ),
+                          )}
                         </div>
                       )}
                       <div className={`mt-1 text-[10px] ${out ? "text-black/60 text-right" : "text-muted-foreground"}`}>

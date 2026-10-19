@@ -50,6 +50,41 @@ export function attachmentTypes(attachments: unknown): string[] {
     .filter((t): t is string => typeof t === "string" && t.length > 0);
 }
 
+/** Private bucket meta-webhook copies DM photos into (admins read via signed URLs). */
+export const SOCIAL_UPLOAD_BUCKET = "social-uploads";
+
+export interface InboxAttachment {
+  type: string;
+  /** Object path in SOCIAL_UPLOAD_BUCKET once the photo was copied, else null. */
+  path: string | null;
+  /** The copy was deleted after the retention period. */
+  purged: boolean;
+}
+
+/** Attachments as the thread renders them. Malformed entries are dropped. */
+export function parseAttachments(attachments: unknown): InboxAttachment[] {
+  if (!Array.isArray(attachments)) return [];
+  const out: InboxAttachment[] = [];
+  for (const a of attachments) {
+    if (!a || typeof a !== "object") continue;
+    const o = a as { type?: unknown; path?: unknown; stored?: unknown; purged?: unknown };
+    if (typeof o.type !== "string" || o.type.length === 0) continue;
+    out.push({
+      type: o.type,
+      path: o.stored === true && typeof o.path === "string" && o.path.length > 0 ? o.path : null,
+      purged: o.purged === true,
+    });
+  }
+  return out;
+}
+
+/** Every stored photo path in a thread, for one batch of signed URLs. */
+export function storedPhotoPaths(rows: Pick<SocialMessageRow, "attachments">[]): string[] {
+  const out: string[] = [];
+  for (const r of rows) for (const a of parseAttachments(r.attachments)) if (a.path) out.push(a.path);
+  return out;
+}
+
 /**
  * One-line summary of a message for the conversation list and for a bubble
  * with no text. Plain text only: the caller renders it as a React text node.
