@@ -52,6 +52,20 @@ import { redactPii } from "./redactPii.ts";
 export type Channel = "messenger" | "instagram";
 export type Direction = "in" | "out";
 
+/**
+ * One attachment as stored in social_messages.attachments. `url` is Meta's
+ * TEMPORARY link. `path` / `stored` are added later by media.ts once an image
+ * is copied into the private social-uploads bucket; `purged` marks a photo
+ * deleted after the retention period.
+ */
+export interface SocialAttachment {
+  type: string;
+  url: string | null;
+  path?: string;
+  stored?: boolean;
+  purged?: boolean;
+}
+
 export interface SocialMessageRow {
   channel: Channel;
   page_id: string;
@@ -60,7 +74,7 @@ export interface SocialMessageRow {
   sender_id: string;
   direction: Direction;
   text: string | null;
-  attachments: { type: string; url: string | null }[];
+  attachments: SocialAttachment[];
   unsupported: boolean;
   /** ISO 8601, from messaging[].timestamp (epoch ms). */
   sent_at: string;
