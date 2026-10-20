@@ -347,3 +347,27 @@ describe("meta-webhook handler — referrals wiring", () => {
     expect(logs[0]).toContain("boom");
   });
 });
+
+describe("extractReferrals — timestamp units", () => {
+  it("standalone referral with a SECONDS timestamp (as Meta sends it live) → correct date, not 1970", () => {
+    const secs = 1792491291; // 2026-10-20T10:14:51Z, observed in production
+    const body = {
+      object: "page",
+      entry: [{ id: "159657880717306", time: secs * 1000, messaging: [{
+        sender: { id: "999" }, recipient: { id: "159657880717306" }, timestamp: secs,
+        referral: { source: "ADS", type: "OPEN_THREAD", ad_id: "52663755851724" },
+      }] }],
+    };
+    const rows = extractReferrals(body);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].occurred_at).toBe("2026-10-20T10:14:51.000Z");
+  });
+  it("millisecond timestamps are left unchanged", () => {
+    const ms = 1792491291228;
+    const rows = extractReferrals({ object: "page", entry: [{ id: "p", time: ms, messaging: [{
+      sender: { id: "1" }, recipient: { id: "p" }, timestamp: ms,
+      referral: { source: "ADS", type: "OPEN_THREAD", ad_id: "1" },
+    }] }] });
+    expect(rows[0].occurred_at).toBe(new Date(ms).toISOString());
+  });
+});

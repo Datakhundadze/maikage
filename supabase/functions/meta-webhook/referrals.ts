@@ -154,7 +154,10 @@ export function extractReferrals(body: unknown): SocialAdReferralRow[] {
       if (!senderId || ts === null) continue;
       const pageId = entryId ?? recipientId;
       if (!pageId) continue;
-      const occurredAt = new Date(ts).toISOString();
+      // Meta sends messaging[].timestamp in ms for messages, but standalone
+      // messaging_referrals events carry it in SECONDS (seen live 2026-10-20:
+      // 1792491291 → stored as 1970-01-21). Anything below 1e12 is seconds.
+      const occurredAt = new Date(ts < 1e12 ? ts * 1000 : ts).toISOString();
 
       for (const ref of candidates) rows.push(toRow(channel, pageId, senderId, occurredAt, ref));
     }
