@@ -4,6 +4,7 @@ import {
   followTarget,
   globalTime,
   junctionChoice,
+  branchToPrime,
   junctionsAhead,
   localTime,
   partIndexAt,
@@ -257,6 +258,14 @@ describe("junctions", () => {
     const K: WalkTrack = { ...T, links: [{ a: 2, b: 8, yawDeg: 20 }] };
     // the other pass forward heads 0° in its own frame = −20° here
     expect(junctionChoice(1.9, 2.1, "fwd", -20, undefined, K)).toEqual({ t: 8, dir: "fwd", yawShift: 20 });
+  });
+  it("gets ready the branch the view leans toward before the junction", () => {
+    // 1 m before the junction, the view turned 60° left of the way ahead (90°), toward the other pass forward (0°)
+    expect(branchToPrime(1, "fwd", 30, 3, J)).toEqual({ t: 8, dir: "fwd", yawShift: 0 });
+    expect(branchToPrime(1, "fwd", 150, 3, J)).toEqual({ t: 8, dir: "rev", yawShift: 0 });
+    // straight ahead: nothing to get ready; junction too far: nothing either
+    expect(branchToPrime(1, "fwd", 90, 3, J)).toBeNull();
+    expect(branchToPrime(1, "fwd", 30, 0.5, J)).toBeNull();
   });
   it("lists junctions ahead with their distance", () => {
     const a = junctionsAhead(1, "fwd", 5, J);

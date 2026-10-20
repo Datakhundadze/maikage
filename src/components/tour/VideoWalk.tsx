@@ -28,6 +28,7 @@ import {
   footprints,
   planWalk,
   globalTime,
+  branchToPrime,
   junctionChoice,
   junctionsAhead,
   pathPointAt,
@@ -352,6 +353,7 @@ export default function VideoWalk() {
     const geometry = new SphereGeometry(SPHERE_R, 96, 64);
     geometry.scale(-1, 1, 1); // seen from inside, not mirrored
     const material = new MeshBasicMaterial({ map: clip(0, "fwd").texture });
+    const NF = WALK_VIDEO.nadirFillDeg;
     // colour lift: unsharp mask on the video sample, then saturation +
     // vibrance + contrast + warmth on the final sRGB colour
     const texel = { value: new Vector2(1 / 3840, 1 / 1920) };
@@ -376,6 +378,21 @@ export default function VideoWalk() {
             "  vec4 sb = 0.25 * ( texture2D( map, vMapUv + vec2(o.x, 0.0) ) + texture2D( map, vMapUv - vec2(o.x, 0.0) )",
             "                   + texture2D( map, vMapUv + vec2(0.0, o.y) ) + texture2D( map, vMapUv - vec2(0.0, o.y) ) );",
             `  vec4 sampledDiffuseColor = clamp( s0 + (s0 - sb) * ${f(F.sharpen)}, 0.0, 1.0 );`,
+            // nadir fill: below the cap use the floor just outside it, spread wider (blurrier) toward the pole
+            `  float capV = ${f(NF / 180)};`,
+            "  if ( vMapUv.y < capV + 0.02 ) {",
+            "    float depth = clamp( (capV - vMapUv.y) / capV, 0.0, 1.0 );",
+            // wide, soft average of the floor ring just outside the cap: near the
+            // edge it follows the floor, toward the pole it melts into one tone
+            "    float spread = 0.02 + 0.3 * depth * depth;",
+            "    vec4 fill = vec4( 0.0 );",
+            "    for ( int i = -4; i <= 4; i++ ) {",
+            "      float fi = float( i ) / 4.0;",
+            "      fill += texture2D( map, vec2( vMapUv.x + fi * spread, capV + 0.01 + 0.02 * abs( fi ) ) );",
+            "    }",
+            "    fill /= 9.0;",
+            "    sampledDiffuseColor = mix( sampledDiffuseColor, fill, smoothstep( capV + 0.02, capV - 0.01, vMapUv.y ) );",
+            "  }",
             "  #ifdef DECODE_VIDEO_TEXTURE",
             "  sampledDiffuseColor = sRGBTransferEOTF( sampledDiffuseColor );",
             "  #endif",
@@ -413,15 +430,15 @@ export default function VideoWalk() {
       const g = coverCanvas.getContext("2d");
       if (!g) return;
       g.clearRect(0, 0, 512, 512);
-      const grad = g.createRadialGradient(256, 256, 0, 256, 256, 256);
-      grad.addColorStop(0, "rgba(16,16,16,0.96)");
-      grad.addColorStop(0.85, "rgba(16,16,16,0.96)");
-      grad.addColorStop(1, "rgba(16,16,16,0)");
-      g.fillStyle = grad;
-      g.fillRect(0, 0, 512, 512);
       if (img) {
         const frac = Math.tan((NL.logoWidthDeg / 2) * DEG) / Math.tan((NL.widthDeg / 2) * DEG);
         const d = 512 * frac;
+        // a soft shadow under the logo so it reads on a light floor (no dark disc any more)
+        const grad = g.createRadialGradient(256, 256, 0, 256, 256, d * 0.75);
+        grad.addColorStop(0, "rgba(0,0,0,0.35)");
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 512, 512);
         g.drawImage(img, 256 - d / 2, 256 - d / 2, d, d);
       }
     };
@@ -613,6 +630,35 @@ export default function VideoWalk() {
         v.currentTime = clamped;
       });
 
+    /**
+     * Before a junction: the branch the view leans toward gets its video
+     * seeked there and paused (only when that is another video than the one
+     * playing), so the jump can swap at once instead of waiting for a seek.
+     */
+    let primedVideo: HTMLVideoElement | null = null;
+    let primedWant = -1;
+    let priming = false;
+    let lastPrime = 0;
+    const primeBranch = (t: number) => {
+      if (priming || jumping || switching) return;
+      const b = branchToPrime(t, dir, yawDeg, F.primeAheadM, track);
+      if (!b) {
+        primedVideo = null;
+        return;
+      }
+      const p2 = partIndexAt(b.t, b.dir, track);
+      const v = clip(p2, b.dir).video;
+      if (v === active() || v.readyState < 1) return;
+      const want = localTime(b.t, p2, b.dir, track);
+      primedVideo = v;
+      if (primedWant === want && Math.abs(v.currentTime - want) < 0.15) return;
+      primedWant = want;
+      priming = true;
+      void seekTo(v, want, 6000).then(() => {
+        priming = false;
+      });
+    };
+
     /** Keep the idle video parked at the same moment, so a change of direction is instant. */
     let parking = false;
     let lastPark = 0;
@@ -620,6 +666,7 @@ export default function VideoWalk() {
       if (parking || switching || jumping) return;
       const idle: WalkDir = dir === "fwd" ? "rev" : "fwd";
       const v = clip(part, idle).video;
+      if (primedVideo === v) return; // kept for the junction ahead
       if (v.readyState < 1) return;
       const want = localTime(fwdTime(), part, idle, track);
       if (Math.abs(v.currentTime - want) < 0.3) return;
@@ -658,6 +705,7 @@ export default function VideoWalk() {
         return false;
       }
       out.style.transition = "none";
+      out.style.transform = "scale(1)";
       out.style.opacity = "1";
       out.style.visibility = "visible";
       return true;
@@ -666,7 +714,8 @@ export default function VideoWalk() {
       const out = frozenRef.current;
       if (!out) return;
       requestAnimationFrame(() => {
-        out.style.transition = `opacity ${F.loopFadeMs}ms ease-out`;
+        out.style.transition = `opacity ${F.loopFadeMs}ms ease-out, transform ${F.loopFadeMs}ms ease-out`;
+        out.style.transform = `scale(${F.jumpZoom})`;
         out.style.opacity = "0";
       });
       window.setTimeout(() => {
@@ -693,8 +742,13 @@ export default function VideoWalk() {
       const p2 = partIndexAt(t, newDir, track);
       const c2 = clip(p2, newDir);
       const sameClip = p2 === part && newDir === dir;
-      // another clip may still have to download that spot (phones)
-      const ok = await seekTo(c2.video, localTime(t, p2, newDir, track), sameClip ? 1500 : 8000);
+      // primed before the junction: already there, swap at once; otherwise
+      // seek (another clip may still have to download that spot on phones)
+      const want = localTime(t, p2, newDir, track);
+      const v2 = c2.video;
+      const primed = !sameClip && !v2.seeking && v2.readyState >= 2 && Math.abs(v2.currentTime - want) < 0.2;
+      const ok = primed || (await seekTo(v2, want, sameClip ? 1500 : 8000));
+      primedVideo = null;
       if (disposed) return;
       if (ok || sameClip) {
         part = p2;
@@ -948,7 +1002,11 @@ export default function VideoWalk() {
             yawDeg = followStep(yawDeg, followTarget(t, dir, facing), dt, scaled);
             pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
           }
-          // keep the other direction ready
+          // keep the branch ahead and the other direction ready
+          if (activeIntent === "ahead" && now - lastPrime > 250) {
+            lastPrime = now;
+            primeBranch(t);
+          }
           if (now - lastPark > F.parkEveryMs) parkIdle();
           const ps = track.parts;
           const next = loopJump(t, dir, track);

@@ -96,7 +96,11 @@ export const WALK_VIDEO = {
    * across with soft edges hides that, with the maika.ge logo
    * (logoWidthDeg) in the middle.
    */
-  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 96, logoWidthDeg: 30 },
+  nadirLogo: { url: "/tour/nadir-logo.webp", widthDeg: 96, logoWidthDeg: 18 },
+  /** Below the cap (this many degrees around straight down) the picture is
+   *  filled with the floor just outside it, stretched inward and blurred —
+   *  hides the person holding the camera without a black hole. */
+  nadirFillDeg: 46,
 } as const;
 
 export const WALK_FEEL = {
@@ -133,8 +137,14 @@ export const WALK_FEEL = {
   bobRollDeg: 0.08,
   /** While walking, re-park the idle video at the same moment this often (ms). */
   parkEveryMs: 4000,
+  /** Get the video of the branch the view leans toward ready (seeked, paused)
+   *  this far before a junction, so turning there doesn't stop the picture. */
+  primeAheadM: 3.5,
   /** Cross-fade over the loop jump (ms). */
   loopFadeMs: 450,
+  /** While the old picture fades out over a jump it grows by this much —
+   *  reads as a step forward instead of a stop. */
+  jumpZoom: 1.06,
   /** Colour lift in the shader (on the sRGB picture), 1 = as filmed:
    *  saturation, plus vibrance (dull colours get up to this much more, bright
    *  ones stay), contrast around mid-grey, a slight warm shift (the shop's
@@ -398,19 +408,58 @@ export function junctionChoice(
   for (const e of linkEnds(track)) {
     const crossed = dir === "fwd" ? tPrev < e.at && e.at <= t : t <= e.at && e.at < tPrev;
     if (!crossed) continue;
-    const ahead = normDeg(headingAt(e.at, track) + (dir === "fwd" ? 0 : 180));
-    const offAhead = Math.abs(angleDiff(viewYaw, ahead));
-    for (const d of ["fwd", "rev"] as WalkDir[]) {
-      // the branch's heading, brought into the current frame
-      const h = normDeg(headingAt(e.other, track) + (d === "fwd" ? 0 : 180) - e.shift);
-      const off = Math.abs(angleDiff(viewYaw, h));
-      if (off <= cfg.maxOffDeg && offAhead - off >= cfg.minGainDeg && off < bestOff) {
-        bestOff = off;
-        best = { t: e.other, dir: d, yawShift: e.shift };
-      }
+    const b = branchForView(e, dir, viewYaw, cfg, track);
+    if (b && b.off < bestOff) {
+      bestOff = b.off;
+      best = { t: b.t, dir: b.dir, yawShift: b.yawShift };
     }
   }
   return best;
+}
+
+/**
+ * At one junction end (walking in `dir`): the other pass's direction that the
+ * view points to — closer than maxOffDeg and at least minGainDeg closer than
+ * the way ahead — with how far off the view it is; null = keep going ahead.
+ */
+export function branchForView(
+  e: { at: number; other: number; shift: number },
+  dir: WalkDir,
+  viewYaw: number,
+  cfg: { minGainDeg: number; maxOffDeg: number },
+  track: WalkTrack = WALK_TRACK,
+): (JunctionChoice & { off: number }) | null {
+  const ahead = normDeg(headingAt(e.at, track) + (dir === "fwd" ? 0 : 180));
+  const offAhead = Math.abs(angleDiff(viewYaw, ahead));
+  let best: (JunctionChoice & { off: number }) | null = null;
+  for (const d of ["fwd", "rev"] as WalkDir[]) {
+    // the branch's heading, brought into the current frame
+    const h = normDeg(headingAt(e.other, track) + (d === "fwd" ? 0 : 180) - e.shift);
+    const off = Math.abs(angleDiff(viewYaw, h));
+    if (off <= cfg.maxOffDeg && offAhead - off >= cfg.minGainDeg && (!best || off < best.off)) {
+      best = { t: e.other, dir: d, yawShift: e.shift, off };
+    }
+  }
+  return best;
+}
+
+/**
+ * The branch worth getting ready (its video seeked there, paused) before the
+ * visitor reaches the nearest junction ahead: the one the view leans toward,
+ * with looser limits than the real choice so turning toward it in the last
+ * metres still finds it ready. null = nothing ahead or the view is straight on.
+ */
+export function branchToPrime(
+  t: number,
+  dir: WalkDir,
+  viewYaw: number,
+  maxDistM: number,
+  track: WalkTrack = WALK_TRACK,
+): JunctionChoice | null {
+  const j = junctionsAhead(t, dir, maxDistM, track)[0];
+  if (!j) return null;
+  const b = branchForView(j, dir, viewYaw, { minGainDeg: 10, maxOffDeg: 110 }, track);
+  return b ? { t: b.t, dir: b.dir, yawShift: b.yawShift } : null;
 }
 
 export interface JunctionAhead {
