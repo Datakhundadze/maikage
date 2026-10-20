@@ -29,7 +29,9 @@ import {
   planWalk,
   globalTime,
   branchToPrime,
+  branchForView,
   junctionChoice,
+  LEAN_CFG,
   junctionsAhead,
   pathPointAt,
   localTime,
@@ -166,29 +168,24 @@ function makeVideo(base: string, dir: WalkDir, preload: "auto" | "metadata"): HT
   return v;
 }
 
-/** A right shoe print, white on transparent (tinted by the material), toe up. */
-function drawShoePrint(): HTMLCanvasElement {
+/** A direction arrow (chevron), white on transparent (tinted by the material), pointing up. */
+function drawArrow(): HTMLCanvasElement {
   const c = document.createElement("canvas");
-  c.width = 64;
-  c.height = 160;
+  c.width = 128;
+  c.height = 96;
   const g = c.getContext("2d");
   if (!g) return c;
-  g.fillStyle = "#fff";
+  g.strokeStyle = "#fff";
+  g.lineWidth = 18;
+  g.lineCap = "round";
+  g.lineJoin = "round";
   g.shadowColor = "rgba(255,255,255,0.9)";
   g.shadowBlur = 6;
-  // sole: wide at the ball, narrowing to the arch (right shoe: arch on the left)
   g.beginPath();
-  g.moveTo(34, 8);
-  g.bezierCurveTo(52, 8, 58, 30, 56, 52);
-  g.bezierCurveTo(55, 70, 50, 84, 44, 94);
-  g.lineTo(22, 94);
-  g.bezierCurveTo(18, 80, 8, 62, 10, 40);
-  g.bezierCurveTo(12, 20, 20, 8, 34, 8);
-  g.fill();
-  // heel
-  g.beginPath();
-  g.ellipse(33, 128, 16, 22, 0, 0, Math.PI * 2);
-  g.fill();
+  g.moveTo(18, 78);
+  g.lineTo(64, 22);
+  g.lineTo(110, 78);
+  g.stroke();
   return c;
 }
 
@@ -461,11 +458,12 @@ export default function VideoWalk() {
 
     // ── footprints on the floor (where the walk goes next) ─────────────────
     const ST = F.steps;
-    const printTex = new CanvasTexture(drawShoePrint());
+    const printTex = new CanvasTexture(drawArrow());
     printTex.colorSpace = SRGBColorSpace;
-    const printGeo = new PlaneGeometry(ST.footWidthM, ST.footLenM);
-    const printCount = Math.ceil(ST.lengthM / ST.strideM) + 2;
-    const BRANCH_PRINTS = 12; // prints for the other ways at a junction ahead
+    const AR = F.arrows;
+    const printGeo = new PlaneGeometry(AR.sizeM, AR.lenM);
+    const printCount = Math.ceil(AR.lengthM / AR.spacingM) + 2;
+    const BRANCH_PRINTS = 4; // arrows along the branch the view leans toward
     const prints: Mesh<PlaneGeometry, MeshBasicMaterial>[] = [];
     for (let i = 0; i < printCount + BRANCH_PRINTS; i++) {
       const m = new MeshBasicMaterial({ map: printTex, color: 0xffd36b, transparent: true, depthTest: false, depthWrite: false, side: DoubleSide });
@@ -478,38 +476,33 @@ export default function VideoWalk() {
       prints.push(mesh);
     }
     /**
-     * The other ways at the junctions just ahead: prints along the other
-     * pass from the junction spot, turned into this frame (yaw shift). Only
-     * ways that really branch off (35°–145° from the way ahead).
+     * Arrows for the other way at the junction just ahead — only the branch
+     * the view leans toward (the one walking on would take): along the other
+     * pass from the junction spot, turned into this frame (yaw shift).
      */
     const branchPrints = (t: number, d: WalkDir) => {
-      const out: { x: number; z: number; hDeg: number; side: -1 | 1; fade: number }[] = [];
-      for (const j of junctionsAhead(t, d, ST.startM + ST.lengthM - 0.5, track).slice(0, 2)) {
-        const at = pathPointAt(t, d, j.distM, track);
-        for (const bd of ["fwd", "rev"] as WalkDir[]) {
-          const bp = footprints(j.other, bd, { startM: 0.3, lengthM: 2.1, strideM: ST.strideM, footOffsetM: ST.footOffsetM }, track);
-          if (!bp.length) continue;
-          const first = normDeg(bp[0].hDeg - j.shift);
-          const off = Math.abs(angleDiff(first, at.hDeg));
-          if (off < 35 || off > 145) continue;
-          const r = -j.shift * DEG;
-          const c = Math.cos(r);
-          const sn = Math.sin(r);
-          for (const p of bp) {
-            out.push({
-              x: at.x + p.x * c - p.z * sn,
-              z: at.z + p.z * c + p.x * sn,
-              hDeg: normDeg(p.hDeg - j.shift),
-              side: p.side,
-              fade: 1 - p.r / 2.6,
-            });
-          }
-        }
+      const out: { x: number; z: number; hDeg: number; fade: number }[] = [];
+      const j = junctionsAhead(t, d, AR.startM + AR.lengthM - 0.3, track)[0];
+      if (!j) return out;
+      const b = branchForView(j, d, yawDeg, LEAN_CFG, track);
+      if (!b) return out;
+      const at = pathPointAt(t, d, j.distM, track);
+      const bp = footprints(j.other, b.dir, { startM: 0.5, lengthM: 2.4, strideM: AR.spacingM, footOffsetM: 0 }, track);
+      const r = -j.shift * DEG;
+      const c = Math.cos(r);
+      const sn = Math.sin(r);
+      for (const p of bp) {
+        out.push({
+          x: at.x + p.x * c - p.z * sn,
+          z: at.z + p.z * c + p.x * sn,
+          hDeg: normDeg(p.hDeg - j.shift),
+          fade: 1 - p.r / 3.2,
+        });
       }
       return out.slice(0, BRANCH_PRINTS);
     };
     const updatePrints = (t: number, d: WalkDir, alpha: number) => {
-      const fp = footprints(t, d);
+      const fp = footprints(t, d, { startM: AR.startM, lengthM: AR.lengthM, strideM: AR.spacingM, footOffsetM: 0 }, track);
       const bp = alpha > 0.02 ? branchPrints(t, d) : [];
       branchCount = bp.length;
       for (let i = 0; i < prints.length; i++) {
@@ -520,12 +513,11 @@ export default function VideoWalk() {
             mesh.visible = false;
             continue;
           }
-          mesh.material.opacity = alpha * 0.7 * Math.max(0, b.fade);
+          mesh.material.opacity = alpha * 0.85 * Math.max(0, b.fade);
           mesh.visible = mesh.material.opacity > 0.01;
           mesh.position.set(b.x, -ST.cameraHeightM, b.z);
           mesh.rotation.y = -b.hDeg * DEG;
           mesh.rotation.x = -Math.PI / 2;
-          mesh.scale.x = b.side;
           continue;
         }
         const p = fp[i];
@@ -533,14 +525,13 @@ export default function VideoWalk() {
           mesh.visible = false;
           continue;
         }
-        const near = Math.min(1, (p.r - ST.startM) / 0.35);
-        const far = 1 - Math.pow((p.r - ST.startM) / ST.lengthM, 2);
+        const near = Math.min(1, (p.r - AR.startM) / 0.35);
+        const far = 1 - Math.pow((p.r - AR.startM) / AR.lengthM, 2);
         mesh.material.opacity = alpha * Math.max(0, near) * Math.max(0, far);
         mesh.visible = mesh.material.opacity > 0.01;
         mesh.position.set(p.x, -ST.cameraHeightM, p.z);
         mesh.rotation.y = -p.hDeg * DEG;
         mesh.rotation.x = -Math.PI / 2;
-        mesh.scale.x = p.side; // the print is a right shoe; mirrored = left
       }
     };
     let printAlpha = 0;
@@ -577,6 +568,7 @@ export default function VideoWalk() {
     let lastStepNo: number | null = null;
     let bobAmp = 0;
     let facing: Facing = "along";
+    let lastWalkAt = -1e9;
     let activeIntent: WalkIntent | null = null;
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
@@ -961,7 +953,9 @@ export default function VideoWalk() {
         if (!want) activeIntent = null;
         else if (want.intent !== activeIntent) {
           activeIntent = want.intent;
-          facing = facingFromView(yawDeg, fwdTime());
+          // just walked: keep that way unless the view is clearly turned round
+          const keep = now - lastWalkAt < F.keepFacingMs ? facing : undefined;
+          facing = facingFromView(yawDeg, fwdTime(), track, keep);
         }
         const wantDir = want ? planWalk(want.intent, facing) : null;
         if (wantDir) printDir = wantDir;
@@ -983,6 +977,7 @@ export default function VideoWalk() {
           parkIdle();
         }
         if (playing) {
+          lastWalkAt = now;
           const r = Math.max(0.25, Math.round(rate * 20) / 20);
           if (Math.abs(v.playbackRate - r) > 0.01) v.playbackRate = r;
           // view follows the path (not while the visitor turns or drags)

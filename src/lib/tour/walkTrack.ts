@@ -126,7 +126,7 @@ export const WALK_FEEL = {
   followEaseMs: 1000,
   /** …and only once the visitor hasn't turned or dragged for this long (ms),
    *  so a look to the side isn't pulled straight back. */
-  followDelayMs: 1800,
+  followDelayMs: 1000,
   /** While walking the view's pitch eases toward this. */
   walkPitchDeg: 3,
   pitchEaseMs: 1200,
@@ -164,6 +164,12 @@ export const WALK_FEEL = {
    * startM (clear of the nadir logo) to startM + lengthM ahead.
    */
   steps: { cameraHeightM: 2.1, startM: 2.0, lengthM: 4.6, strideM: 0.7, footOffsetM: 0.12, footLenM: 0.3, footWidthM: 0.12 },
+  /** Direction arrows on the floor (instead of shoe prints): one every
+   *  spacingM along the path, from startM to startM + lengthM ahead, in the
+   *  middle of the way; sizeM wide, lenM long. */
+  arrows: { startM: 3.2, lengthM: 4.0, spacingM: 1.1, sizeM: 0.55, lenM: 0.4 },
+  /** How long after walking the last direction still counts as "the way I was going". */
+  keepFacingMs: 2500,
 } as const;
 
 export type WalkDir = "fwd" | "rev";
@@ -195,8 +201,12 @@ export function walkFromStick(
 }
 
 /** Facing along the walk when the view is within 90° of its heading at t. */
-export function facingFromView(yawDeg: number, t: number, track: WalkTrack = WALK_TRACK): Facing {
-  return Math.abs(angleDiff(yawDeg, headingAt(t, track))) <= 90 ? "along" : "against";
+export function facingFromView(yawDeg: number, t: number, track: WalkTrack = WALK_TRACK, keep?: Facing, keepMarginDeg = 35): Facing {
+  // `keep`: the way the visitor was just walking wins until the view is
+  // clearly turned (90° ± keepMarginDeg) — looking at a rack from the middle
+  // of an aisle and pushing on must not suddenly walk back
+  const limit = keep === "along" ? 90 + keepMarginDeg : keep === "against" ? 90 - keepMarginDeg : 90;
+  return Math.abs(angleDiff(yawDeg, headingAt(t, track))) <= limit ? "along" : "against";
 }
 
 /**
@@ -449,6 +459,9 @@ export function branchForView(
  * with looser limits than the real choice so turning toward it in the last
  * metres still finds it ready. null = nothing ahead or the view is straight on.
  */
+/** Looser limits than the real choice: for getting a branch ready and showing its arrows. */
+export const LEAN_CFG = { minGainDeg: 10, maxOffDeg: 110 } as const;
+
 export function branchToPrime(
   t: number,
   dir: WalkDir,
@@ -458,7 +471,7 @@ export function branchToPrime(
 ): JunctionChoice | null {
   const j = junctionsAhead(t, dir, maxDistM, track)[0];
   if (!j) return null;
-  const b = branchForView(j, dir, viewYaw, { minGainDeg: 10, maxOffDeg: 110 }, track);
+  const b = branchForView(j, dir, viewYaw, LEAN_CFG, track);
   return b ? { t: b.t, dir: b.dir, yawShift: b.yawShift } : null;
 }
 
