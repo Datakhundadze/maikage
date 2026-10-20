@@ -25,6 +25,11 @@ export interface SplatWalkFeel {
   /** One footstep every strideM walked; the head bobs this much (units). */
   strideM: number;
   bobM: number;
+  /** Adaptive quality: below lowFps the resolution drops (down to
+   *  minPixelRatio), above highFps it rises again. */
+  lowFps: number;
+  highFps: number;
+  minPixelRatio: number;
   /** Where the visitor starts (the most open spot of the floor) and looks (toward the middle racks). */
   start: { x: number; z: number; yawDeg: number };
 }
@@ -42,6 +47,9 @@ export const SPLAT_FEEL: SplatWalkFeel = {
   eyeHeight: 1.75,
   strideM: 0.7,
   bobM: 0.012,
+  lowFps: 28,
+  highFps: 50,
+  minPixelRatio: 0.45,
   start: { x: 1.4, z: 4.4, yawDeg: -21 },
 };
 

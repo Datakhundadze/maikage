@@ -24,7 +24,16 @@ type Status = "loading" | "ready" | "error" | "nowebgl";
 declare global {
   interface Window {
     /** Read-only state for browser checks. */
-    __splat?: { ready: boolean; x: number; z: number; yawDeg: number; pitchDeg: number; walked: number };
+    __splat?: {
+      ready: boolean;
+      x: number;
+      z: number;
+      yawDeg: number;
+      pitchDeg: number;
+      walked: number;
+      fps: number;
+      pixelRatio: number;
+    };
   }
 }
 
@@ -186,8 +195,13 @@ export default function SplatWalk() {
       setStatus("nowebgl");
       return;
     }
-    // splats are fill-heavy: cap the pixel ratio on phones
-    renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+    // splats are fill-heavy: start at most 1.5× and let the frame rate pick
+    // the resolution (adaptive quality in the loop below)
+    const q = new URLSearchParams(window.location.search);
+    const maxPr = Math.min(1.5, window.devicePixelRatio || 1);
+    const minPr = Math.min(maxPr, SPLAT_FEEL.minPixelRatio);
+    let pr = maxPr;
+    renderer.setPixelRatio(pr);
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.setClearColor(0x101010, 1);
     const canvas = renderer.domElement;
@@ -200,7 +214,9 @@ export default function SplatWalk() {
     const scene = new Scene();
     const camera = new PerspectiveCamera(70, 1, 0.05, 100);
     camera.rotation.order = "YXZ";
-    const spark = new SparkRenderer({ renderer });
+    // test switches: ?sd=2 narrower splats (less to draw), ?lod=1 Spark's level of detail
+    const sd = Number(q.get("sd"));
+    const spark = new SparkRenderer({ renderer, ...(sd > 0 ? { maxStdDev: sd } : {}) });
     scene.add(spark);
     let splat: SplatMesh | null = null;
 
@@ -226,7 +242,7 @@ export default function SplatWalk() {
       .then(async (bytes) => {
         if (disposed) return;
         setPct(100);
-        splat = new SplatMesh({ fileBytes: bytes, fileName: "shop.spz" });
+        splat = new SplatMesh({ fileBytes: bytes, fileName: "shop.spz", ...(q.get("lod") === "1" ? { lod: true } : {}) });
         scene.add(splat);
         await splat.initialized;
         if (disposed) return;
@@ -290,9 +306,27 @@ export default function SplatWalk() {
     let raf = 0;
     let last = performance.now();
     let foot: "left" | "right" = "left";
+    let frames = 0;
+    let winStart = performance.now();
+    let fps = 0;
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
-      const dt = Math.min(0.1, (now - last) / 1000);
+      const dt = Math.min(0.25, (now - last) / 1000);
+      // adaptive quality: below the target frame rate lower the resolution,
+      // with headroom raise it again (checked every 1.5 s once loaded)
+      frames++;
+      if (now - winStart >= 1500) {
+        fps = (frames * 1000) / (now - winStart);
+        frames = 0;
+        winStart = now;
+        const lower = fps < SPLAT_FEEL.lowFps && pr > minPr;
+        const raise = fps > SPLAT_FEEL.highFps && pr < maxPr;
+        if (ready && (lower || raise)) {
+          pr = lower ? Math.max(minPr, pr * 0.75) : Math.min(maxPr, pr * 1.15);
+          renderer.setPixelRatio(pr);
+          resize();
+        }
+      }
       last = now;
       if (ready) {
         const stick = mergeSticks(stickRef.current, keysToStick(keys));
@@ -316,7 +350,7 @@ export default function SplatWalk() {
       camera.position.set(pos.x, F.eyeHeight + Math.abs(bob), pos.z);
       camera.rotation.set((pitchDeg * Math.PI) / 180, (-yawDeg * Math.PI) / 180, 0);
       renderer.render(scene, camera);
-      window.__splat = { ready, x: pos.x, z: pos.z, yawDeg, pitchDeg, walked };
+      window.__splat = { ready, x: pos.x, z: pos.z, yawDeg, pitchDeg, walked, fps, pixelRatio: pr };
     };
     raf = requestAnimationFrame(loop);
 
