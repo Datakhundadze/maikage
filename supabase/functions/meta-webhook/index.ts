@@ -42,6 +42,7 @@ import {
   purgeExpired,
   type FetchedImage,
 } from "./media.ts";
+import type { SocialAdReferralRow } from "./referrals.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -201,10 +202,32 @@ function afterStore(admin: Admin, rows: SocialMessageRow[], newIds: string[]): v
   }
 }
 
+// ── ad referrals ───────────────────────────────────────────────────────────
+//
+// Which ad / m.me / ig.me link opened a conversation → social_ad_referrals.
+// ON CONFLICT (conversation_key, ad_id_key, occurred_at) DO NOTHING, so a Meta
+// retry is a no-op (conversation_key and ad_id_key are generated columns).
+// Best-effort: an error is logged and the delivery still gets its normal answer.
+// Standalone referral events only arrive if the Page is also subscribed to
+// `messaging_referrals` (Messenger; CTM ad + first message needs it too) and,
+// for Instagram ig.me links, `messaging_referral`. Postback referrals need
+// `messaging_postbacks`.
+async function storeReferrals(rows: SocialAdReferralRow[]): Promise<void> {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    log("warn", "referrals not stored: service role not configured");
+    return;
+  }
+  const { error } = await makeAdmin()
+    .from("social_ad_referrals")
+    .upsert(rows, { onConflict: "conversation_key,ad_id_key,occurred_at", ignoreDuplicates: true });
+  if (error) log("warn", `referral insert failed (ignored, ${error.code ?? "?"}): ${error.message}`);
+}
+
 serve((req) =>
   handleMetaWebhook(req, {
     appSecret: META_APP_SECRET,
     verifyToken: META_VERIFY_TOKEN,
     store,
+    storeReferrals,
   })
 );

@@ -48,6 +48,7 @@
 // trade-off with Meta's disable-after-repeated-failures rule).
 
 import { redactPii } from "./redactPii.ts";
+import { recordReferrals, type SocialAdReferralRow } from "./referrals.ts";
 
 export type Channel = "messenger" | "instagram";
 export type Direction = "in" | "out";
@@ -92,6 +93,8 @@ export interface HandlerDeps {
   verifyToken: string;
   /** Insert with ON CONFLICT (meta_message_id) DO NOTHING semantics. */
   store: (rows: SocialMessageRow[]) => Promise<StoreResult>;
+  /** Optional, best-effort writer for social_ad_referrals (see referrals.ts). */
+  storeReferrals?: (rows: SocialAdReferralRow[]) => Promise<void>;
   log?: (level: "info" | "warn" | "error", msg: string) => void;
 }
 
@@ -282,6 +285,8 @@ export async function handleMetaWebhook(req: Request, deps: HandlerDeps): Promis
   if (parsed.malformed > 0 || ignoredSummary) {
     log("info", `parsed rows=${parsed.rows.length} malformed=${parsed.malformed} ignored=[${ignoredSummary}]`);
   }
+  // Ad / link referrals → social_ad_referrals. Best-effort: never throws, never changes the response.
+  if (deps.storeReferrals) await recordReferrals(body, deps.storeReferrals, log);
   if (parsed.rows.length === 0) return text(200, "ok");
 
   const stored = await deps.store(parsed.rows);
