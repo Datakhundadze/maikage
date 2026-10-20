@@ -40,6 +40,7 @@ const BlogPostPage = lazyWithRetry(() => import("./pages/BlogPostPage"));
 const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
 const ProductLandingPage = lazyWithRetry(() => import("./pages/ProductLandingPage"));
 const ShowroomPage = lazyWithRetry(() => import("./pages/ShowroomPage"));
+const Showroom3DPage = lazyWithRetry(() => import("./pages/Showroom3DPage"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 // Sitewide FAQ chat bubble — lazy so it never lands in the initial bundle.
 // Mounted once below (inside BrowserRouter) so it shows on every route; the
@@ -143,6 +144,7 @@ function AppRoutes() {
         <Route key={`${slug}/:brandSlug`} path={`/${slug}/:brandSlug`} element={<ProductLandingPage productSlug={slug} />} />
       ))}
       <Route path="/showroom" element={<ShowroomPage />} />
+      <Route path="/showroom/3d" element={<Showroom3DPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
