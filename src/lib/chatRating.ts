@@ -62,38 +62,31 @@ export interface ChatRatingSubmission {
 }
 
 /**
- * Insert one rating. A second rating for the same session is silently ignored
- * (ON CONFLICT DO NOTHING; 23505 is treated the same as a fallback). Never
- * throws — a failed rating must never affect the chat.
+ * Submit one rating through the submit_chat_rating RPC — the ONLY write path
+ * (the table has no direct INSERT for anon/authenticated). The RPC:
+ *   - refuses a session without ≥2 assistant rows in chat_logs ('invalid
+ *     session') — the spam guard;
+ *   - keeps one rating per session (ON CONFLICT DO NOTHING, so a repeat is
+ *     silently ignored);
+ *   - sets user_id = auth.uid() and created_at = now() itself.
+ * Never throws — a failed rating must never affect the chat. Callers ignore
+ * the returned error: the session is marked done either way.
  */
 export async function submitChatRating(input: ChatRatingSubmission): Promise<{ error: Error | null }> {
   const rating = Math.round(input.rating);
   if (!input.sessionId || !(rating >= 1 && rating <= 5)) return { error: new Error("invalid") };
   const comment = (input.comment ?? "").trim().slice(0, MAX_RATING_COMMENT) || null;
   try {
-    let userId: string | null = null;
-    try {
-      const { data } = await supabase.auth.getSession();
-      userId = data?.session?.user?.id ?? null;
-    } catch {
-      userId = null;
-    }
-    // chat_ratings is schema-ahead-of-types → (supabase as any), as elsewhere.
+    // The RPC is schema-ahead-of-types → (supabase as any), as elsewhere.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase as any)
-      .from("chat_ratings")
-      .upsert(
-        {
-          session_id: input.sessionId,
-          rating,
-          comment,
-          lang: input.lang ?? null,
-          page: (input.page ?? null)?.slice(0, 300) ?? null,
-          user_id: userId,
-        },
-        { onConflict: "session_id", ignoreDuplicates: true },
-      );
-    if (error && (error as { code?: string }).code !== "23505") throw error;
+    const { error } = await (supabase as any).rpc("submit_chat_rating", {
+      p_session_id: input.sessionId,
+      p_rating: rating,
+      p_comment: comment,
+      p_lang: input.lang ? input.lang.slice(0, 10) : null,
+      p_page: input.page ? input.page.slice(0, 300) : null,
+    });
+    if (error) throw error;
     return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err : new Error(String((err as { message?: string })?.message ?? err)) };
