@@ -86,8 +86,8 @@ describe("walkFromStick", () => {
 });
 
 describe("parts and forward / reversed video time", () => {
-  it("each real reversed video ends within a frame or two of its forward one", () => {
-    for (const p of WALK_TRACK.parts) expect(Math.abs(p.revEnd - (p.to - p.from))).toBeLessThan(0.1);
+  it("each real reversed video ends within a few frames of its forward one (a file may run a frame past `to`)", () => {
+    for (const p of WALK_TRACK.parts) expect(Math.abs(p.revEnd - (p.to - p.from))).toBeLessThan(0.15);
   });
   it("the parts cover the walk end to end", () => {
     const ps = WALK_TRACK.parts;
