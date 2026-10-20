@@ -33,6 +33,9 @@ import {
   type Currency,
   type FixedPeriod,
 } from "@/lib/spend";
+import { Target } from "lucide-react";
+import { formatGel, type MonthBounds } from "@/lib/spend";
+import { costPerPaid, normalizeFunnelRows, summarizeFunnel, type AdFunnelRow } from "@/lib/adFunnel";
 
 // Admin "ხარჯები" tab — what maika.ge spends in a month (Asia/Tbilisi):
 //   - AI: admin_ai_spend(p_from, p_to) RPC over ai_calls × ai_model_prices
@@ -470,6 +473,155 @@ function FixedCostDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Ads → orders funnel (admin_ad_funnel RPC; rules in adFunnel.ts / the SQL)
+// ---------------------------------------------------------------------------
+
+const ORGANIC_LABEL = "ორგანული / უცნობი";
+
+function GelCell({ usd, rate }: { usd: number | null; rate: number | null }) {
+  if (usd == null) return <span className="text-muted-foreground">—</span>;
+  return (
+    <>
+      <div>{formatUsd(usd)}</div>
+      <div className="text-[11px] text-muted-foreground">{isValidRate(rate) ? formatGel(usd * rate) : ""}</div>
+    </>
+  );
+}
+
+function RevenueCell({ revenue, missing }: { revenue: number | null; missing: number }) {
+  return (
+    <>
+      <div>{revenue == null ? <span className="text-muted-foreground">—</span> : formatGel(revenue)}</div>
+      {missing > 0 && <div className="text-[10px] text-amber-600">+{missing} ფასი უცნობია</div>}
+    </>
+  );
+}
+
+/**
+ * Mounted inside the tab's loaded block, so it refetches whenever the tab
+ * reloads (month change or „განახლება") — it needs no hook into loadAll.
+ * Range = the tab's month (Asia/Tbilisi days, inclusive).
+ */
+function AdFunnelCard({
+  bounds, rate, marketingTotalUsd,
+}: {
+  bounds: MonthBounds;
+  rate: number | null;
+  /** Month's marketing_spend total, for the „not linked to an ad" note (null = unknown). */
+  marketingTotalUsd: number | null;
+}) {
+  const [rows, setRows] = useState<AdFunnelRow[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(true);
+
+  const load = useCallback(async () => {
+    setBusy(true);
+    try {
+      const { data, error } = await db().rpc("admin_ad_funnel", { p_from: bounds.firstDay, p_to: bounds.lastDay });
+      if (error) { setError(error.message); setRows([]); }
+      else { setError(null); setRows(normalizeFunnelRows(data)); }
+    } catch (e) { setError(errMsg(e)); setRows([]); }
+    setBusy(false);
+  }, [bounds]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const totals = useMemo(() => summarizeFunnel(rows), [rows]);
+  const unlinkedUsd = marketingTotalUsd == null ? null : marketingTotalUsd - totals.spendUsd;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base flex items-center gap-2"><Target className="h-4 w-4" /> რეკლამები → შეკვეთები</CardTitle>
+        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="რეკლამები → შეკვეთები: განახლება" onClick={load} disabled={busy}>
+          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error ? (
+          <ErrorBox message={`რეკლამები → შეკვეთები ვერ ჩაიტვირთა: ${error}`} onRetry={load} />
+        ) : busy && rows.length === 0 ? (
+          <Spinner />
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">ამ თვეში ახალი მიმოწერა არ დაწყებულა</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>რეკლამა</TableHead>
+                  <TableHead className="text-right">ხარჯი</TableHead>
+                  <TableHead className="text-right">მიმოწერა</TableHead>
+                  <TableHead className="text-right">რეკვიზიტი გაეგზავნა</TableHead>
+                  <TableHead className="text-right">გადაიხადა</TableHead>
+                  <TableHead className="text-right">შემოსავალი</TableHead>
+                  <TableHead className="text-right">1 გადახდილ შეკვეთაზე</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((r) => (
+                  <TableRow key={r.ad_id ?? "organic"} className={r.ad_id == null ? "text-muted-foreground" : ""}>
+                    <TableCell className="py-2 min-w-[10rem]">
+                      <div className="text-sm font-medium">{r.ad_id == null ? ORGANIC_LABEL : r.ad_name || r.ad_id}</div>
+                      {r.ad_id != null && <div className="text-[11px] text-muted-foreground font-mono">{r.ad_id}</div>}
+                    </TableCell>
+                    <TableCell className="py-2 text-right tabular-nums whitespace-nowrap">
+                      <GelCell usd={r.spend_usd} rate={rate} />
+                    </TableCell>
+                    <TableCell className="py-2 text-right tabular-nums">{r.conversations}</TableCell>
+                    <TableCell className="py-2 text-right tabular-nums">{r.requisites}</TableCell>
+                    <TableCell className="py-2 text-right tabular-nums">{r.paid}</TableCell>
+                    <TableCell className="py-2 text-right tabular-nums whitespace-nowrap">
+                      <RevenueCell revenue={r.revenue_gel} missing={r.paid_without_price} />
+                    </TableCell>
+                    <TableCell className="py-2 text-right tabular-nums whitespace-nowrap">
+                      <GelCell usd={r.ad_id == null ? null : costPerPaid(r.spend_usd, r.paid)} rate={rate} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="font-semibold">
+                  <TableCell className="py-2">სულ</TableCell>
+                  <TableCell className="py-2 text-right tabular-nums whitespace-nowrap">
+                    <GelCell usd={totals.spendUsd} rate={rate} />
+                  </TableCell>
+                  <TableCell className="py-2 text-right tabular-nums">{totals.conversations}</TableCell>
+                  <TableCell className="py-2 text-right tabular-nums">{totals.requisites}</TableCell>
+                  <TableCell className="py-2 text-right tabular-nums">{totals.paid}</TableCell>
+                  <TableCell className="py-2 text-right tabular-nums whitespace-nowrap">
+                    <RevenueCell revenue={totals.revenueGel} missing={totals.paidWithoutPrice} />
+                  </TableCell>
+                  <TableCell className="py-2 text-right tabular-nums whitespace-nowrap" title="რეკლამის ხარჯი ÷ რეკლამიდან გადახდილი (ორგანული არ ითვლება)">
+                    <GelCell usd={totals.costPerPaidUsd} rate={rate} />
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {!error && totals.paidWithoutPrice > 0 && (
+          <p className="flex items-center gap-1 text-[11px] text-amber-600">
+            <AlertTriangle className="h-3 w-3 shrink-0" />
+            ფასი უცნობია: {totals.paidWithoutPrice} გადახდილ შეკვეთაზე „ღირებულება … ლარი" ვერ მოიძებნა — შემოსავალში არ ითვლება
+          </p>
+        )}
+        {!error && unlinkedUsd != null && unlinkedUsd > 0.005 && (
+          <p className="flex items-center gap-1 text-[11px] text-amber-600">
+            <AlertTriangle className="h-3 w-3 shrink-0" />
+            რეკლამის ხარჯიდან {formatUsdGel(unlinkedUsd, rate)} არცერთ რეკლამაზე არ არის მიბმული (ad_id ან ad set) — აქ არ ჩანს
+          </p>
+        )}
+        <p className="text-[11px] text-muted-foreground">
+          მიმოწერა ითვლება პირველი შემოსული მესიჯის თარიღით და მიეწერება ბოლო რეკლამას, რომლითაც კლიენტი შემოვიდა.
+          რეკვიზიტი და გადახდა — თანამშრომლის მესიჯებიდან; შემოსავალი — „ღირებულება N ლარი" (საკურიერო არ ითვლება).
+          რეკლამის მიბმა 2026-10-20-დან იწყება — მანამდე ყველა მიმოწერა ორგანულია.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -920,6 +1072,9 @@ export default function AdminSpend() {
               )}
             </CardContent>
           </Card>
+
+          {/* Ads → orders funnel */}
+          <AdFunnelCard bounds={bounds} rate={rate} marketingTotalUsd={marketingError ? null : marketingTotal} />
 
           {/* Fixed costs */}
           <Card>
