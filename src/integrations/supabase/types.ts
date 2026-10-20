@@ -1031,6 +1031,57 @@ export type Database = {
         }
         Relationships: []
       }
+      social_ad_referrals: {
+        Row: {
+          ad_id: string | null
+          ad_id_key: string | null
+          ad_title: string | null
+          channel: string
+          conversation_key: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          occurred_at: string
+          page_id: string
+          raw: Json
+          ref: string | null
+          source: string | null
+          type: string | null
+        }
+        Insert: {
+          ad_id?: string | null
+          ad_id_key?: string | null
+          ad_title?: string | null
+          channel: string
+          conversation_key?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          occurred_at: string
+          page_id: string
+          raw?: Json
+          ref?: string | null
+          source?: string | null
+          type?: string | null
+        }
+        Update: {
+          ad_id?: string | null
+          ad_id_key?: string | null
+          ad_title?: string | null
+          channel?: string
+          conversation_key?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          occurred_at?: string
+          page_id?: string
+          raw?: Json
+          ref?: string | null
+          source?: string | null
+          type?: string | null
+        }
+        Relationships: []
+      }
       social_messages: {
         Row: {
           attachments: Json
