@@ -32,6 +32,9 @@ import {
 } from "@/lib/generateSuggestion";
 import ChatSuggestionActions from "@/components/ChatSuggestionActions";
 import ChatMarkdown from "@/components/ChatMarkdown";
+// End-of-conversation 1–5 rating row (add-only; shared with /chat).
+import ChatRating from "@/components/ChatRating";
+import { countAssistantReplies } from "@/lib/chatRating";
 // Only mounted once the order-status card's sign-in button is pressed, so the
 // chat bundle does not carry the auth UI for every visitor. Same lazy treatment
 // AppHeader gives it.
@@ -566,6 +569,17 @@ export default function ChatWidget() {
             </div>
           </div>
         )}
+        {/* Rating row under the latest reply, after ≥2 real replies. Hidden
+            (not unmounted) while a reply is in flight. Closing/minimising the
+            panel unmounts it, which flushes a tapped-but-unsent rating; an
+            unrated session shows it again on the next open. */}
+        <ChatRating
+          sessionId={sessionIdRef.current}
+          lang={lang}
+          assistantReplies={countAssistantReplies(messages)}
+          visible={!loading}
+          page={location.pathname}
+        />
       </div>
 
       {/* Composer */}

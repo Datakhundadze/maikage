@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { CHAT_SESSION_PARAM } from "@/lib/callbacks";
+// End-of-chat ratings (public.chat_ratings): summary on top + per-session badge.
+import AdminChatRatings from "@/components/admin/AdminChatRatings";
 
 // FAQ chatbot history. Sessions (newest activity first, paginated) via the
 // admin_list_chat_sessions RPC; expanding a session loads its messages via
@@ -71,6 +73,28 @@ export default function AdminChatHistory() {
   const [msgLoading, setMsgLoading] = useState(false);
   // path → signed URL, resolved once per expand and cached for the session.
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  // session_id → rating, for the badge. Looked up per loaded page of sessions;
+  // a failed lookup (e.g. table not created yet) just shows no badges.
+  const [sessionRatings, setSessionRatings] = useState<Record<string, number>>({});
+  const ratingLookedUp = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const ids = rows.map((r) => r.session_id).filter((id) => id && !ratingLookedUp.current.has(id));
+    if (ids.length === 0) return;
+    ids.forEach((id) => ratingLookedUp.current.add(id));
+    void (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error: err } = await (supabase as any)
+        .from("chat_ratings")
+        .select("session_id, rating")
+        .in("session_id", ids);
+      if (err || !Array.isArray(data) || data.length === 0) return;
+      setSessionRatings((prev) => {
+        const next = { ...prev };
+        for (const r of data as { session_id: string; rating: number }[]) next[r.session_id] = Number(r.rating);
+        return next;
+      });
+    })();
+  }, [rows]);
 
   const fetchPage = useCallback(async (offset: number) => {
     if (offset === 0) setLoading(true);
@@ -160,6 +184,8 @@ export default function AdminChatHistory() {
         <Button variant="outline" size="sm" onClick={() => fetchPage(0)}>განახლება</Button>
       </div>
 
+      <AdminChatRatings />
+
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive flex items-center justify-between">
           <span>{error}</span>
@@ -186,6 +212,15 @@ export default function AdminChatHistory() {
                   </div>
                   {s.last_user_snippet && <p className="text-xs text-muted-foreground line-clamp-2">{s.last_user_snippet}</p>}
                   {!isStub(s) && <Badge variant="outline" className="text-[10px]">{s.message_count} შეტყობინება</Badge>}
+                  {sessionRatings[s.session_id] && (
+                    <Badge
+                      variant="outline"
+                      className="ml-1 !mt-0 text-[10px] border-amber-400/60 text-amber-600 dark:text-amber-400"
+                      data-testid={`session-rating-${s.session_id}`}
+                    >
+                      {sessionRatings[s.session_id]}★ შეფასება
+                    </Badge>
+                  )}
                 </div>
               </button>
 
