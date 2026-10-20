@@ -301,6 +301,39 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          lang: string | null
+          page: string | null
+          rating: number
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          lang?: string | null
+          page?: string | null
+          rating: number
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          lang?: string | null
+          page?: string | null
+          rating?: number
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       composite_events: {
         Row: {
           created_at: string
@@ -673,6 +706,7 @@ export type Database = {
       }
       marketing_spend: {
         Row: {
+          ad_id: string | null
           adset: string | null
           amount_usd: number
           campaign: string | null
@@ -685,6 +719,7 @@ export type Database = {
           results: number | null
         }
         Insert: {
+          ad_id?: string | null
           adset?: string | null
           amount_usd: number
           campaign?: string | null
@@ -697,6 +732,7 @@ export type Database = {
           results?: number | null
         }
         Update: {
+          ad_id?: string | null
           adset?: string | null
           amount_usd?: number
           campaign?: string | null
@@ -707,6 +743,33 @@ export type Database = {
           note?: string | null
           result_type?: string | null
           results?: number | null
+        }
+        Relationships: []
+      }
+      meta_ads: {
+        Row: {
+          ad_id: string
+          ad_name: string
+          adset_name: string | null
+          campaign_name: string | null
+          created_at: string | null
+          platform: string | null
+        }
+        Insert: {
+          ad_id: string
+          ad_name: string
+          adset_name?: string | null
+          campaign_name?: string | null
+          created_at?: string | null
+          platform?: string | null
+        }
+        Update: {
+          ad_id?: string
+          ad_name?: string
+          adset_name?: string | null
+          campaign_name?: string | null
+          created_at?: string | null
+          platform?: string | null
         }
         Relationships: []
       }
@@ -1198,6 +1261,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_ad_funnel: {
+        Args: { p_from: string; p_to: string }
+        Returns: {
+          ad_id: string
+          ad_name: string
+          conversations: number
+          paid: number
+          paid_without_price: number
+          requisites: number
+          revenue_gel: number
+          spend_usd: number
+        }[]
+      }
       admin_ai_spend: {
         Args: { p_from: string; p_to: string }
         Returns: {
@@ -1334,6 +1410,16 @@ export type Database = {
           total_orders: number
           unknown_providers: string
         }[]
+      }
+      submit_chat_rating: {
+        Args: {
+          p_comment: string
+          p_lang: string
+          p_page: string
+          p_rating: number
+          p_session_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
