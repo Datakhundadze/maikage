@@ -19,6 +19,16 @@ import { uploadBlobWithRetry } from "@/lib/uploadWithRetry";
 // DOWNLOADS and sends to production must stay byte-identical, so
 // downloadImage() calls are deliberately left on the untransformed URLs.
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+// Order attribution (first/last touch + manual channel) — separate query,
+// fetchOrders is untouched. See src/hooks/useOrderAttribution.ts.
+import {
+  useOrderAttribution,
+  attributionSummary,
+  MANUAL_CHANNELS,
+  MANUAL_CHANNEL_LABELS,
+  type ManualChannel,
+  type OrderAttributionRow,
+} from "@/hooks/useOrderAttribution";
 
 // Display widths. Generous on purpose — a soft thumbnail is a worse bug than
 // one that loads in 40ms instead of 20: the 40px summary chip gets 128
@@ -262,6 +272,31 @@ export default function AdminOrders() {
       };
     });
   }, [orders]);
+
+  // Attribution rows for every listed order. A cart's attribution row is keyed
+  // by whichever row id checkout stored as pending, so a group looks at all
+  // of its rows.
+  const orderIds = useMemo(() => orders.map((o) => o.id), [orders]);
+  const { byOrderId: attributionById, setManualChannel } = useOrderAttribution(orderIds);
+  const groupAttribution = (rows: Order[]): OrderAttributionRow[] =>
+    rows.map((r) => attributionById[r.id]).filter((a): a is OrderAttributionRow => !!a);
+  const [savingChannel, setSavingChannel] = useState<string | null>(null);
+
+  async function updateManualChannel(groupKey: string, rows: Order[], value: string) {
+    const existing = groupAttribution(rows);
+    const target = existing.find((a) => a.manual_channel) ?? existing[0];
+    const orderId = target?.order_id ?? rows[0].id;
+    const channel = value === "none" ? null : (value as ManualChannel);
+    setSavingChannel(groupKey);
+    try {
+      await setManualChannel(orderId, rows[0].cart_id, channel, user?.id ?? null);
+      toast({ title: "არხი შენახულია" });
+    } catch (e) {
+      toast({ title: "შეცდომა", description: e instanceof Error ? e.message : String(e), variant: "destructive" });
+    } finally {
+      setSavingChannel(null);
+    }
+  }
 
   // Load full-resolution originals for EVERY row in the expanded group
   // (each unit's originals live under order-originals/{rowId}/).
@@ -578,6 +613,9 @@ export default function AdminOrders() {
         {groups.map((group, i) => {
           const order = group.head;
           const isExpanded = expandedKey === group.key;
+          const attrRows = groupAttribution(group.rows);
+          const attr = attributionSummary(attrRows);
+          const manualChannel = attrRows.find((a) => a.manual_channel)?.manual_channel ?? null;
           return (
             <div key={group.key} className="rounded-lg border border-border bg-card overflow-hidden">
               {/* Summary row */}
@@ -608,6 +646,15 @@ export default function AdminOrders() {
                   </div>
                 </div>
                 <div className="text-sm font-semibold">{group.groupTotal} ₾</div>
+                {attr && (
+                  <Badge
+                    variant={attr.manual ? "secondary" : "outline"}
+                    className="text-[10px] max-w-[6rem] sm:max-w-[9rem] overflow-hidden"
+                    title={attr.title}
+                  >
+                    <span className="truncate">{attr.label}</span>
+                  </Badge>
+                )}
                 <Badge variant={paymentBadgeVariant(order.payment_status) as any} className="text-[10px]">
                   {PAYMENT_LABELS[order.payment_status] || order.payment_status}
                 </Badge>
@@ -953,6 +1000,20 @@ export default function AdminOrders() {
                         <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {STATUS_OPTIONS.map(o => <SelectItem key={o} value={o}>{STATUS_LABELS[o] || o}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground">არხი (ხელით)</span>
+                      <Select
+                        value={manualChannel ?? "none"}
+                        onValueChange={(v) => updateManualChannel(group.key, group.rows, v)}
+                        disabled={savingChannel === group.key}
+                      >
+                        <SelectTrigger className="h-8 w-36"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">—</SelectItem>
+                          {MANUAL_CHANNELS.map((c) => <SelectItem key={c} value={c}>{MANUAL_CHANNEL_LABELS[c]}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

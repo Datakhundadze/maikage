@@ -10,6 +10,7 @@ import { useAutoLogout } from "@/hooks/useAutoLogout";
 import { AppStateProvider, useAppState } from "@/hooks/useAppState";
 import { CartProvider } from "@/hooks/useCart";
 import { RouteChangeTracker } from "@/components/RouteChangeTracker";
+import { AttributionTracker } from "@/components/AttributionTracker";
 import { LANDING_PRODUCT_SLUGS } from "@/lib/productRouteSlugs";
 import { ChunkErrorBoundary, lazyWithRetry } from "@/lib/lazyWithRetry";
 
@@ -175,6 +176,7 @@ const App = () => (
               <ChunkErrorBoundary>
                 <BrowserRouter>
                   <RouteChangeTracker />
+                  <AttributionTracker />
                   <Suspense fallback={<RouteLoadingFallback />}>
                     <AppRoutes />
                   </Suspense>

@@ -20,7 +20,7 @@ import SeoHead from "@/components/SeoHead";
 // notice while any placeholder remains.
 
 const CONTACT_EMAIL = "maika@maika.ge";
-const LAST_UPDATED = "2026-10-10";
+const LAST_UPDATED = "2026-10-21";
 
 // ── Placeholders the owner must fill in ──────────────────────────────────
 // Kept in one place so the draft banner can detect them. Replace the values
@@ -295,6 +295,13 @@ export default function PrivacyPage() {
                 L,
                 "Facebook-ისა და Instagram-ის რეკლამების შედეგის გასაზომად საიტი იყენებს Meta-ს პიქსელს (Meta Platforms). პიქსელი Meta-ს ქუქიებს აყენებს და Meta-ს უგზავნის: რომელ გვერდებს ნახულობთ, კალათაში დამატებას, შეკვეთის დაწყებას და დასრულებულ შეკვეთას (შეკვეთის ნომრითა და თანხით), რომელ ღილაკებს აჭერთ, ასევე ბრაუზერისა და მოწყობილობის ტექნიკურ მონაცემებს, მაგალითად IP მისამართს. თქვენს სახელს, ელფოსტას, ტელეფონს ან მისამართს Meta-ს არ ვუგზავნით. თუ Facebook-ში ან Instagram-ში შესული ხართ, Meta-ს შეუძლია ეს მოვლენები თქვენს ანგარიშს დაუკავშიროს და მათ საკუთარი კონფიდენციალურობის პოლიტიკით ამუშავებს. პიქსელის დაბლოკვა შეგიძლიათ რეკლამის ბლოკერით, რეკლამის პარამეტრების მართვა კი — Facebook-ის ან Instagram-ის რეკლამის პარამეტრებში.",
                 "To measure how our Facebook and Instagram ads perform, the site uses the Meta pixel (Meta Platforms). The pixel sets Meta cookies and sends Meta the pages you view, adding to cart, starting checkout and completed orders (with the order number and amount), the buttons you click, and technical browser and device data such as your IP address. We do not send Meta your name, email, phone number or address. If you are logged in to Facebook or Instagram, Meta can link these events to your account and processes them under its own privacy policy. You can block the pixel with an ad blocker and manage your ad preferences in your Facebook or Instagram ad settings.",
+              )}
+            </p>
+            <p>
+              {t(
+                L,
+                "რეკლამის ეფექტიანობის გასაზომად, ინფორმაცია იმის შესახებ, საიდან მოხვედით საიტზე — სარეკლამო და მიმართვის პარამეტრები (utm, fbclid, gclid) და მიმართვის წყარო (referrer) — ინახება თქვენს ბრაუზერში და შეკვეთის გაფორმებისას შეკვეთასთან ერთად ჩვენს ბაზაში იწერება.",
+                "To measure our advertising, where you came to the site from — ad and referral parameters (utm, fbclid, gclid) and the referrer — is kept in your browser and, when you place an order, stored with that order in our database.",
               )}
             </p>
             <p>
