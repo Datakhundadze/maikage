@@ -4,6 +4,7 @@ import {
   followTarget,
   globalTime,
   junctionChoice,
+  playbackStep,
   branchToPrime,
   junctionsAhead,
   localTime,
@@ -112,6 +113,11 @@ describe("parts and forward / reversed video time", () => {
 });
 
 describe("loopJump", () => {
+  it("walking back to a loop point at 0 jumps even though the reversed video stops just short of it", () => {
+    const Z: WalkTrack = { ...T, loop: { from: 9, to: 0 } };
+    expect(loopJump(0.08, "rev", Z)).toBeCloseTo(9);
+    expect(loopJump(0.5, "rev", Z)).toBeNull();
+  });
   it("going forward past the loop end continues after its start", () => {
     expect(loopJump(8.9, "fwd", T)).toBeNull();
     expect(loopJump(9.2, "fwd", T)).toBeCloseTo(2.2);
@@ -288,5 +294,20 @@ describe("junctions", () => {
     const p = pathPointAt(0, "fwd", 0.5, T);
     expect(p.z).toBeCloseTo(-0.5, 2);
     expect(p.x).toBeCloseTo(0, 2);
+  });
+});
+
+describe("playback speed steps", () => {
+  it("picks the nearest step from a start or a non-step rate", () => {
+    expect(playbackStep(0.8, 0.25)).toBe(1.0);
+    expect(playbackStep(1.8, 1)).toBe(1.8);
+    expect(playbackStep(1.45, 0.5)).toBe(1.4);
+  });
+  it("holds the current step against a small wobble", () => {
+    expect(playbackStep(1.25, 1.4)).toBe(1.4); // nearer to 1.4 anyway
+    expect(playbackStep(1.15, 1.4)).toBe(1.4); // nearest is 1.0 but not clearly
+    expect(playbackStep(1.0, 1.4)).toBe(1.0);
+    expect(playbackStep(1.65, 1.4)).toBe(1.4);
+    expect(playbackStep(1.8, 1.4)).toBe(1.8);
   });
 });

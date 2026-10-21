@@ -109,7 +109,7 @@ export const WALK_FEEL = {
   /** Playback rate at walkAt and at full deflection (keys = full). 1 = the
    *  pace it was filmed at (a slow walk). */
   minRate: 0.8,
-  maxRate: 2.2,
+  maxRate: 1.8,
   /** Stick |y| that already gives maxRate (a thumb rarely reaches the rim). */
   fullAt: 0.85,
   /** Time constant of the rate easing (ms): start / stop softly. */
@@ -140,6 +140,8 @@ export const WALK_FEEL = {
   /** Get the video of the branch the view leans toward ready (seeked, paused)
    *  this far before a junction, so turning there doesn't stop the picture. */
   primeAheadM: 3.5,
+  /** After taking a junction, none for this long (no bouncing between passes that cross several times). */
+  junctionCooldownMs: 1800,
   /** Cross-fade over the loop jump (ms). */
   loopFadeMs: 450,
   /** While the old picture fades out over a jump it grows by this much —
@@ -200,6 +202,21 @@ export function walkFromStick(
   return { intent: y > 0 ? "ahead" : "back", rate: cfg.minRate + (cfg.maxRate - cfg.minRate) * f };
 }
 
+/** The playback speeds the video uses (Safari hitches on every change of playbackRate). */
+export const PLAYBACK_STEPS = [1.0, 1.4, 1.8] as const;
+
+/**
+ * The step for a wanted rate: the nearest one, but the current step holds
+ * until the wanted rate is clearly past the middle toward another (0.12 of
+ * slack), so a wobbling thumb doesn't flip between two speeds.
+ */
+export function playbackStep(want: number, current: number, steps: readonly number[] = PLAYBACK_STEPS): number {
+  let best = steps[0];
+  for (const s of steps) if (Math.abs(s - want) < Math.abs(best - want)) best = s;
+  if (best === current || !steps.includes(current)) return best;
+  return Math.abs(want - current) > Math.abs(best - current) / 2 + 0.12 ? best : current;
+}
+
 /** Facing along the walk when the view is within 90° of its heading at t. */
 export function facingFromView(yawDeg: number, t: number, track: WalkTrack = WALK_TRACK, keep?: Facing, keepMarginDeg = 35): Facing {
   // `keep`: the way the visitor was just walking wins until the view is
@@ -248,10 +265,17 @@ export function globalTime(v: number, p: number, dir: WalkDir, track: WalkTrack 
  */
 export function loopJump(t: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number | null {
   const { from, to } = track.loop;
-  if (dir === "fwd" && t >= from) return to + (t - from);
-  if (dir === "rev" && t <= to) return from - (to - t);
+  // a loop point at the very end of the video can't be reached exactly (the
+  // reversed copy stops a frame or two short of 0): count it LOOP_SLACK early
+  const fromAt = Math.min(from, track.duration - LOOP_SLACK);
+  const toAt = Math.max(to, LOOP_SLACK);
+  if (dir === "fwd" && t >= fromAt) return to + Math.max(0, t - from);
+  if (dir === "rev" && t <= toAt) return from - Math.max(0, to - t);
   return null;
 }
+
+/** Seconds of slack for a loop point at an end of the video (see loopJump). */
+export const LOOP_SLACK = 0.25;
 
 /**
  * Where the view should look while walking: along the walk (or against it,

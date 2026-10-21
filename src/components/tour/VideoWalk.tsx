@@ -3,12 +3,15 @@ import { Gamepad2, Maximize2, Minimize2, MoveVertical, Volume2, VolumeX } from "
 import {
   CanvasTexture,
   CircleGeometry,
+  FramebufferTexture,
   DoubleSide,
   LinearFilter,
   Mesh,
   MeshBasicMaterial,
+  OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
+  ShaderMaterial,
   Scene,
   SphereGeometry,
   SRGBColorSpace,
@@ -39,6 +42,7 @@ import {
   loopJump,
   vfovFor,
   walkFromStick,
+  playbackStep,
   WALK_FEEL,
   WALK_TRACK,
   WALK_VIDEO,
@@ -191,7 +195,6 @@ function drawArrow(): HTMLCanvasElement {
 
 export default function VideoWalk() {
   const hostRef = useRef<HTMLDivElement>(null);
-  const frozenRef = useRef<HTMLCanvasElement>(null);
   const stickRef = useRef<StickAxes>({ x: 0, y: 0 });
   const footstepsRef = useRef<Footsteps | null>(null);
   const musicRef = useRef<AmbientMusic | null>(null);
@@ -569,6 +572,7 @@ export default function VideoWalk() {
     let bobAmp = 0;
     let facing: Facing = "along";
     let lastWalkAt = -1e9;
+    let lastJunctionAt = -1e9;
     let activeIntent: WalkIntent | null = null;
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
@@ -685,34 +689,63 @@ export default function VideoWalk() {
       }
     };
 
-    // ── the frozen frame for the loop cross-fade ───────────────────────────
+    // ── the frozen frame for jumps ──────────────────────────────────────────
+    // The picture on screen is copied into a texture on the GPU (no read back
+    // to the CPU — drawing the WebGL canvas into a 2D canvas stalled iPhones
+    // for 100–170 ms per jump) and drawn on top while the new video gets
+    // there; then it fades out and grows a little (reads as a step forward).
+    const overlayScene = new Scene();
+    const overlayCam = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const overlayMat = new ShaderMaterial({
+      uniforms: { map: { value: null }, opacity: { value: 0 }, zoom: { value: 1 } },
+      vertexShader: "varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+      // the copy already holds output (sRGB) colours: shown as they are
+      fragmentShader:
+        "uniform sampler2D map; uniform float opacity; uniform float zoom; varying vec2 vUv;" +
+        "void main() { vec2 uv = (vUv - 0.5) / zoom + 0.5; gl_FragColor = vec4(texture2D(map, uv).rgb, opacity); }",
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+    const overlayGeo = new PlaneGeometry(2, 2);
+    overlayScene.add(new Mesh(overlayGeo, overlayMat));
+    const bufSize = new Vector2();
+    let frozenTex: FramebufferTexture | null = null;
+    let frozenShown = false;
+    let fadeStart = -1; // performance.now() when the fade began; −1 = holding
     const freezeFrame = (): boolean => {
-      const out = frozenRef.current;
-      if (!out || !canvas.width) return false;
-      try {
-        out.width = canvas.width;
-        out.height = canvas.height;
-        out.getContext("2d")?.drawImage(canvas, 0, 0);
-      } catch {
-        return false;
+      renderer.getDrawingBufferSize(bufSize);
+      if (!bufSize.x || !bufSize.y) return false;
+      if (!frozenTex || frozenTex.image.width !== bufSize.x || frozenTex.image.height !== bufSize.y) {
+        frozenTex?.dispose();
+        frozenTex = new FramebufferTexture(bufSize.x, bufSize.y);
       }
-      out.style.transition = "none";
-      out.style.transform = "scale(1)";
-      out.style.opacity = "1";
-      out.style.visibility = "visible";
+      renderer.copyFramebufferToTexture(frozenTex);
+      overlayMat.uniforms.map.value = frozenTex;
+      overlayMat.uniforms.opacity.value = 1;
+      overlayMat.uniforms.zoom.value = 1;
+      frozenShown = true;
+      fadeStart = -1;
       return true;
     };
     const releaseFrame = () => {
-      const out = frozenRef.current;
-      if (!out) return;
-      requestAnimationFrame(() => {
-        out.style.transition = `opacity ${F.loopFadeMs}ms ease-out, transform ${F.loopFadeMs}ms ease-out`;
-        out.style.transform = `scale(${F.jumpZoom})`;
-        out.style.opacity = "0";
-      });
-      window.setTimeout(() => {
-        if (out) out.style.visibility = "hidden";
-      }, F.loopFadeMs + 50);
+      if (frozenShown) fadeStart = performance.now();
+    };
+    const drawFrozen = (now: number) => {
+      if (!frozenShown) return;
+      if (fadeStart >= 0) {
+        const k = Math.min(1, (now - fadeStart) / F.loopFadeMs);
+        const e = 1 - Math.pow(1 - k, 2); // ease-out
+        overlayMat.uniforms.opacity.value = 1 - e;
+        overlayMat.uniforms.zoom.value = 1 + (F.jumpZoom - 1) * e;
+        if (k >= 1) {
+          frozenShown = false;
+          return;
+        }
+      }
+      renderer.autoClear = false;
+      renderer.render(overlayScene, overlayCam);
+      renderer.autoClear = true;
     };
     let wantFreeze = false; // freeze right after the next render (the buffer is valid then)
 
@@ -978,7 +1011,10 @@ export default function VideoWalk() {
         }
         if (playing) {
           lastWalkAt = now;
-          const r = Math.max(0.25, Math.round(rate * 20) / 20);
+          // a few fixed speeds, changed only on a clear step: every change of
+          // playbackRate makes Safari re-time the video (a visible hitch), and a
+          // thumb on the stick moves all the time
+          const r = target > 0 ? playbackStep(target, v.playbackRate) : v.playbackRate;
           if (Math.abs(v.playbackRate - r) > 0.01) v.playbackRate = r;
           // view follows the path (not while the visitor turns or drags)
           const t = fwdTime();
@@ -1005,7 +1041,10 @@ export default function VideoWalk() {
           if (now - lastPark > F.parkEveryMs) parkIdle();
           const ps = track.parts;
           const next = loopJump(t, dir, track);
-          const junction = activeIntent === "ahead" && lastT !== null ? junctionChoice(lastT, t, dir, yawDeg) : null;
+          // no second junction right after one (the passes cross several times
+          // near the entrance: turning there must not bounce between them)
+          const junctionOk = activeIntent === "ahead" && lastT !== null && now - lastJunctionAt > F.junctionCooldownMs;
+          const junction = junctionOk && lastT !== null ? junctionChoice(lastT, t, dir, yawDeg) : null;
           lastT = t;
           if (next !== null) {
             // the loop point
@@ -1013,6 +1052,7 @@ export default function VideoWalk() {
           } else if (junction) {
             // a junction, and the visitor looks down the other pass: go that way
             facing = junction.dir === "fwd" ? "along" : "against";
+            lastJunctionAt = now;
             void jumpTo(junction.t, junction.dir, junction.yawShift);
           } else if (dir === "fwd" && part < ps.length - 1 && t >= ps[part].to - 0.02) {
             // into the next part's file
@@ -1050,6 +1090,7 @@ export default function VideoWalk() {
         wantFreeze = false;
         freezeFrame();
       }
+      drawFrozen(now);
       if (now - lastPublish > 100) {
         lastPublish = now;
         publish();
@@ -1098,6 +1139,9 @@ export default function VideoWalk() {
         c.texture.dispose();
       }
       coverTex.dispose();
+      frozenTex?.dispose();
+      overlayMat.dispose();
+      overlayGeo.dispose();
       logoMat.dispose();
       logoGeo.dispose();
       printGeo.dispose();
@@ -1136,12 +1180,6 @@ export default function VideoWalk() {
       style={{ WebkitTouchCallout: "none", WebkitUserSelect: "none", WebkitTapHighlightColor: "transparent" }}
     >
       <div ref={hostRef} className="absolute inset-0 touch-none" />
-      <canvas
-        ref={frozenRef}
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full"
-        style={{ visibility: "hidden" }}
-      />
 
       {status === "loading" && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#101010] text-white">
