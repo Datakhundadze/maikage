@@ -136,7 +136,7 @@ export const WALK_FEEL = {
   bobPitchDeg: 0.12,
   bobRollDeg: 0.08,
   /** While walking, re-park the idle video at the same moment this often (ms). */
-  parkEveryMs: 4000,
+  parkEveryMs: 1500,
   /** Get the video of the branch the view leans toward ready (seeked, paused)
    *  this far before a junction, so turning there doesn't stop the picture. */
   primeAheadM: 3.5,
@@ -218,7 +218,7 @@ export function playbackStep(want: number, current: number, steps: readonly numb
 }
 
 /** Facing along the walk when the view is within 90° of its heading at t. */
-export function facingFromView(yawDeg: number, t: number, track: WalkTrack = WALK_TRACK, keep?: Facing, keepMarginDeg = 35): Facing {
+export function facingFromView(yawDeg: number, t: number, track: WalkTrack = WALK_TRACK, keep?: Facing, keepMarginDeg = 20): Facing {
   // `keep`: the way the visitor was just walking wins until the view is
   // clearly turned (90° ± keepMarginDeg) — looking at a rack from the middle
   // of an aisle and pushing on must not suddenly walk back

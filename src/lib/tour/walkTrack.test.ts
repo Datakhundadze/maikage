@@ -183,9 +183,10 @@ describe("turning round", () => {
   it("knows which way the visitor faces", () => {
     expect(facingFromView(10, 0.5, T)).toBe("along"); // walk heads 0° there
     expect(facingFromView(170, 0.5, T)).toBe("against");
-    // just walked along: a sideways view (110°) still counts as along; just walked against: 70° still against
-    expect(facingFromView(110, 0.5, T, "along")).toBe("along");
-    expect(facingFromView(70, 0.5, T, "against")).toBe("against");
+    // just walked along: a sideways view (105°) still counts as along; just walked against: 75° still against
+    expect(facingFromView(105, 0.5, T, "along")).toBe("along");
+    expect(facingFromView(75, 0.5, T, "against")).toBe("against");
+    expect(facingFromView(115, 0.5, T, "along")).toBe("against");
     expect(facingFromView(150, 0.5, T, "along")).toBe("against");
   });
   it("ahead plays the video the way you face; back the other way", () => {

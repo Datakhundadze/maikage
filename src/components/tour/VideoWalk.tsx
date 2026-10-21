@@ -644,7 +644,9 @@ export default function VideoWalk() {
       }
       const p2 = partIndexAt(b.t, b.dir, track);
       const v = clip(p2, b.dir).video;
-      if (v === active() || v.readyState < 1) return;
+      // never the playing video, nor the other direction's (kept parked for turning round)
+      const idleV = clip(part, dir === "fwd" ? "rev" : "fwd").video;
+      if (v === active() || v === idleV || v.readyState < 1) return;
       const want = localTime(b.t, p2, b.dir, track);
       primedVideo = v;
       if (primedWant === want && Math.abs(v.currentTime - want) < 0.15) return;
@@ -989,6 +991,11 @@ export default function VideoWalk() {
           // just walked: keep that way unless the view is clearly turned round
           const keep = now - lastWalkAt < F.keepFacingMs ? facing : undefined;
           facing = facingFromView(yawDeg, fwdTime(), track, keep);
+        } else if (!switching && !jumping) {
+          // still holding: when the view has clearly turned round (turning
+          // while walking), the walk turns round with it — pushing up always
+          // moves toward where the visitor looks, never away from it
+          facing = facingFromView(yawDeg, fwdTime(), track, facing);
         }
         const wantDir = want ? planWalk(want.intent, facing) : null;
         if (wantDir) printDir = wantDir;
