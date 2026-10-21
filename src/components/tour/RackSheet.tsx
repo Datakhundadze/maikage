@@ -59,9 +59,18 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // the constructor and the catalog open in a new tab, so the showroom stays
+  // where it is (the seed is in localStorage, made for exactly this handoff);
+  // where a new tab is blocked, the same tab (the walk resumes on return)
+  const openPage = (path: string) => {
+    // (no "noopener" feature: with it window.open returns null even on success)
+    const w = window.open(path, "_blank");
+    if (w) w.opener = null;
+    else navigate(path);
+  };
   const choose = (it: RackItem) => {
     writeConstructorSeed({ product: it.product, subProduct: it.brand });
-    navigate("/");
+    openPage("/");
   };
 
   return (
@@ -93,7 +102,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
             <p className="text-sm text-white/80">აქ მთელი კატალოგი კიდია — ყველა დიზაინი, რაც კი გვაქვს. აირჩიე და შეუკვეთე.</p>
             <button
               type="button"
-              onClick={() => navigate("/designs")}
+              onClick={() => openPage("/designs")}
               className="mt-4 w-full rounded-full bg-amber-400 px-5 py-3 text-sm font-semibold text-black hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               კატალოგის ნახვა

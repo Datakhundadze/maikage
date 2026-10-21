@@ -25,16 +25,13 @@ import DPad from "./DPad";
 import { angleDiff, easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
 import {
   distanceAt,
-  facingFromView,
   headingAt,
   followStep,
   followTarget,
   footprints,
-  planWalk,
   globalTime,
   branchToPrime,
   branchForView,
-  junctionChoice,
   LEAN_CFG,
   junctionsAhead,
   pathPointAt,
@@ -43,7 +40,10 @@ import {
   loopJump,
   vfovFor,
   walkFromStick,
+  hopChoice,
   playbackStep,
+  slideAlong,
+  slideSpeed,
   WALK_FEEL,
   WALK_TRACK,
   WALK_VIDEO,
@@ -134,6 +134,32 @@ function media(query: string): boolean {
     return window.matchMedia(query).matches;
   } catch {
     return false;
+  }
+}
+
+const RESUME_KEY = "maika.showroom.resume";
+const RESUME_MAX_AGE_MS = 30 * 60 * 1000;
+
+/** Where the visitor stood in this tab's last visit (sessionStorage, 30 min), if any. */
+function readResume(): { t: number; dir: WalkDir; yawDeg: number } | null {
+  try {
+    const raw = window.sessionStorage.getItem(RESUME_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { t?: unknown; dir?: unknown; yawDeg?: unknown; at?: unknown };
+    if (typeof v.t !== "number" || typeof v.yawDeg !== "number" || typeof v.at !== "number") return null;
+    if (v.dir !== "fwd" && v.dir !== "rev") return null;
+    if (Date.now() - v.at > RESUME_MAX_AGE_MS) return null;
+    return { t: v.t, dir: v.dir, yawDeg: v.yawDeg };
+  } catch {
+    return null;
+  }
+}
+
+function writeResume(v: { t: number; dir: WalkDir; yawDeg: number }): void {
+  try {
+    window.sessionStorage.setItem(RESUME_KEY, JSON.stringify({ ...v, at: Date.now() }));
+  } catch {
+    // storage blocked: no resume, nothing else changes
   }
 }
 
@@ -584,7 +610,6 @@ export default function VideoWalk() {
     let lastStepNo: number | null = null;
     let bobAmp = 0;
     let facing: Facing = "along";
-    let lastWalkAt = -1e9;
     let lastJunctionAt = -1e9;
     let activeIntent: WalkIntent | null = null;
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
@@ -907,6 +932,13 @@ export default function VideoWalk() {
         ready = true;
         setStatus("ready");
         publish();
+        // back from the catalog or the constructor (or a reload): carry on
+        // where the visitor was
+        const saved = readResume();
+        if (saved && Math.abs(saved.t - track.start) > 1) {
+          yawDeg = saved.yawDeg;
+          void jumpTo(saved.t, saved.dir);
+        }
       });
     };
     const onError = () => {
@@ -974,6 +1006,7 @@ export default function VideoWalk() {
     let last = performance.now();
     let raf = 0;
     let lastPublish = 0;
+    let lastSave = 0;
     const footfall = () => {
       const f = footstepsRef.current;
       if (soundOnRef.current && f) f.play(footIndex % 2 === 0 ? "left" : "right", footIndex % 2 === 0 ? 0.8 : 0.72);
@@ -1013,8 +1046,17 @@ export default function VideoWalk() {
         el.style.opacity = String(Math.max(0.35, Math.min(1, 1.4 - n.dist / 6)));
         el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;
       });
+      // the chip changes rack only on a clear difference (between two racks it
+      // used to flip every second): the shown one holds until it is 2.3 m away
+      // or another is 0.5 m closer
       const nr = nearestRack(pos, 1.8);
-      const id = nr ? nr.id : null;
+      let id = nr ? nr.id : null;
+      const cur = shownNear ? SHOWROOM_RACKS.find((r) => r.id === shownNear) : undefined;
+      if (cur && id !== shownNear) {
+        const curD = nearestOnRack(pos, cur).dist;
+        const newD = nr ? nearestOnRack(pos, nr).dist : Infinity;
+        if (curD <= 2.3 && newD > curD - 0.5) id = shownNear;
+      }
       if (id !== shownNear) {
         shownNear = id;
         setNearRackId(id);
@@ -1036,25 +1078,39 @@ export default function VideoWalk() {
           setHintVisible(false);
         } else turnRate = 0;
 
-        // walking: the way the visitor faces when the push starts decides the
-        // direction (turned round + push up = back the way the walk came)
+        // walking, like sliding along walls in a game: the stick says where to
+        // go (ahead = where the view looks, back = behind it); the walk takes the
+        // way along the filmed pass closest to that, at a speed that drops as
+        // the match gets worse (straight across the pass = stand still), and
+        // steps across to another pass running within ~0.5 m whenever that one
+        // heads clearly closer to where the visitor wants to go
         const want = walkFromStick(stick.y);
-        if (!want) activeIntent = null;
-        else if (want.intent !== activeIntent) {
-          activeIntent = want.intent;
-          // just walked: keep that way unless the view is clearly turned round
-          const keep = now - lastWalkAt < F.keepFacingMs ? facing : undefined;
-          facing = facingFromView(yawDeg, fwdTime(), track, keep);
-        } else if (!switching && !jumping) {
-          // still holding: when the view has clearly turned round (turning
-          // while walking), the walk turns round with it — pushing up always
-          // moves toward where the visitor looks, never away from it
-          facing = facingFromView(yawDeg, fwdTime(), track, facing);
+        activeIntent = want ? want.intent : null;
+        let target = 0;
+        if (want && !switching) {
+          const t = fwdTime();
+          const desired = normDeg(yawDeg + (want.intent === "back" ? 180 : 0));
+          const slide = slideAlong(t, dir, desired, track);
+          const hop = now - lastJunctionAt > F.junctionCooldownMs ? hopChoice(t, desired, slide.match, track) : null;
+          if (hop) {
+            lastJunctionAt = now;
+            printDir = hop.dir;
+            facing = (want.intent === "ahead") === (hop.dir === "fwd") ? "along" : "against";
+            void jumpTo(hop.t, hop.dir, hop.yawShift);
+          } else {
+            printDir = slide.dir;
+            facing = (want.intent === "ahead") === (slide.dir === "fwd") ? "along" : "against";
+            if (slide.dir !== dir) void switchDir(slide.dir);
+            else target = want.rate * slideSpeed(slide.match);
+            // pushing while looking off the filmed way: the view is drawn round
+            // to the way (as games steer you along a wall) — also while standing,
+            // so pushing never just stays put
+            const busy = pointers.size > 0 || Math.abs(stick.x) > F.turnDeadZone || now - lastDragAt < 400;
+            if (!busy && slide.match < 0.97) {
+              yawDeg = followStep(yawDeg, followTarget(t, slide.dir, facing), dt, { followMaxDegPerSec: 90, followEaseMs: 500 });
+            }
+          }
         }
-        const wantDir = want ? planWalk(want.intent, facing) : null;
-        if (wantDir) printDir = wantDir;
-        if (wantDir && wantDir !== dir) void switchDir(wantDir);
-        const target = want && wantDir === dir && !switching ? want.rate : 0;
         rate = easeToward(rate, target, dt, F.rateEaseMs);
         const v = active();
         if (target > 0 && !switching) {
@@ -1071,7 +1127,6 @@ export default function VideoWalk() {
           parkIdle();
         }
         if (playing) {
-          lastWalkAt = now;
           // a few fixed speeds, changed only on a clear step: every change of
           // playbackRate makes Safari re-time the video (a visible hitch), and a
           // thumb on the stick moves all the time
@@ -1102,19 +1157,10 @@ export default function VideoWalk() {
           if (now - lastPark > F.parkEveryMs) parkIdle();
           const ps = track.parts;
           const next = loopJump(t, dir, track);
-          // no second junction right after one (the passes cross several times
-          // near the entrance: turning there must not bounce between them)
-          const junctionOk = activeIntent === "ahead" && lastT !== null && now - lastJunctionAt > F.junctionCooldownMs;
-          const junction = junctionOk && lastT !== null ? junctionChoice(lastT, t, dir, yawDeg) : null;
           lastT = t;
           if (next !== null) {
             // the loop point
             void jumpTo(next);
-          } else if (junction) {
-            // a junction, and the visitor looks down the other pass: go that way
-            facing = junction.dir === "fwd" ? "along" : "against";
-            lastJunctionAt = now;
-            void jumpTo(junction.t, junction.dir, junction.yawShift);
           } else if (dir === "fwd" && part < ps.length - 1 && t >= ps[part].to - 0.02) {
             // into the next part's file
             void jumpTo(t, "fwd");
@@ -1156,6 +1202,10 @@ export default function VideoWalk() {
       if (now - lastPublish > 100) {
         lastPublish = now;
         publish();
+      }
+      if (ready && !jumping && now - lastSave > 1000) {
+        lastSave = now;
+        writeResume({ t: fwdTime(), dir, yawDeg });
       }
     };
     raf = requestAnimationFrame(loop);

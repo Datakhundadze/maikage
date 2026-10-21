@@ -4,6 +4,9 @@ import {
   followTarget,
   globalTime,
   junctionChoice,
+  hopChoice,
+  slideAlong,
+  slideSpeed,
   playbackStep,
   branchToPrime,
   junctionsAhead,
@@ -310,5 +313,32 @@ describe("playback speed steps", () => {
     expect(playbackStep(1.0, 1.4)).toBe(1.0);
     expect(playbackStep(1.65, 1.4)).toBe(1.4);
     expect(playbackStep(1.8, 1.4)).toBe(1.8);
+  });
+});
+
+describe("sliding along a pass and stepping across", () => {
+  // T: heading 0 at t=0..1, 90 at t=2
+  const J: WalkTrack = { ...T, links: [{ a: 2, b: 8, yawDeg: 0 }] };
+  it("goes the way along the pass closer to where the visitor wants", () => {
+    expect(slideAlong(2, "fwd", 80, J)).toEqual({ dir: "fwd", match: expect.closeTo(Math.cos((10 * Math.PI) / 180), 5) });
+    expect(slideAlong(2, "fwd", 260, J).dir).toBe("rev");
+  });
+  it("looking straight across the pass neither flips nor walks", () => {
+    const s = slideAlong(2, "fwd", 0, J);
+    expect(s.dir).toBe("fwd");
+    expect(slideSpeed(s.match)).toBe(0);
+    expect(slideAlong(2, "fwd", 175, J).dir).toBe("fwd"); // 85° off backward: within the margin
+  });
+  it("speed grows with the match", () => {
+    expect(slideSpeed(0.02)).toBe(0);
+    expect(slideSpeed(1)).toBe(1);
+    expect(slideSpeed(0.5)).toBeGreaterThan(0);
+  });
+  it("steps across to the other pass when it heads where the visitor wants", () => {
+    // at t=2 this pass heads 90°, the other pass (t=8) heads 0°
+    expect(hopChoice(2.1, 0, 0, J)).toEqual({ t: 8.1, dir: "fwd", yawShift: 0 });
+    expect(hopChoice(2.1, 180, 0, J)?.dir).toBe("rev");
+    expect(hopChoice(2.1, 90, 1, J)).toBeNull(); // this pass already matches
+    expect(hopChoice(3, 0, 0, J)).toBeNull(); // too far from the link
   });
 });

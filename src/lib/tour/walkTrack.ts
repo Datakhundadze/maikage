@@ -485,6 +485,60 @@ export function branchForView(
  * with looser limits than the real choice so turning toward it in the last
  * metres still finds it ready. null = nothing ahead or the view is straight on.
  */
+/**
+ * Walking toward desiredDeg (video-frame yaw) on the pass at forward time t:
+ * which way along the pass goes most that way, and how well (cosine, −1…1).
+ * Like sliding along a wall in a game: the way along the pass closer to the
+ * wanted direction wins; the other way only takes over once it is clearly
+ * better (switchMargin), so looking across the pass doesn't flip-flop.
+ */
+export function slideAlong(
+  t: number,
+  dir: WalkDir,
+  desiredDeg: number,
+  track: WalkTrack = WALK_TRACK,
+  switchMargin = 0.15,
+): { dir: WalkDir; match: number } {
+  const cf = Math.cos(((desiredDeg - headingAt(t, track)) * Math.PI) / 180);
+  const cur = dir === "fwd" ? cf : -cf;
+  if (-cur > cur + switchMargin) return { dir: dir === "fwd" ? "rev" : "fwd", match: -cur };
+  return { dir, match: cur };
+}
+
+/** Walking speed factor from how well the way along the pass matches (0 = stand, like facing a wall). */
+export function slideSpeed(match: number, standBelow = 0.05, fullAt = 0.7): number {
+  return Math.max(0, Math.min(1, (match - standBelow) / (fullAt - standBelow)));
+}
+
+/**
+ * Step across to another pass: among the links whose end is within windowSec
+ * of t (the other pass runs within ~0.5 m here), the direction along the other
+ * pass that matches desiredDeg best — taken only when it matches well
+ * (minMatch) and clearly better than the current pass (minGain).
+ */
+export function hopChoice(
+  t: number,
+  desiredDeg: number,
+  currentMatch: number,
+  track: WalkTrack = WALK_TRACK,
+  cfg: { windowSec: number; minMatch: number; minGain: number } = { windowSec: 0.25, minMatch: 0.6, minGain: 0.3 },
+): JunctionChoice | null {
+  let best: JunctionChoice | null = null;
+  let bestC = -Infinity;
+  for (const e of linkEnds(track)) {
+    if (Math.abs(e.at - t) > cfg.windowSec) continue;
+    for (const d of ["fwd", "rev"] as WalkDir[]) {
+      const h = headingAt(e.other, track) + (d === "fwd" ? 0 : 180) - e.shift;
+      const c = Math.cos(((desiredDeg - h) * Math.PI) / 180);
+      if (c >= cfg.minMatch && c - currentMatch >= cfg.minGain && c > bestC) {
+        bestC = c;
+        best = { t: Math.min(track.duration, Math.max(0, e.other + (t - e.at))), dir: d, yawShift: e.shift };
+      }
+    }
+  }
+  return best;
+}
+
 /** Looser limits than the real choice: for getting a branch ready and showing its arrows. */
 export const LEAN_CFG = { minGainDeg: 10, maxOffDeg: 110 } as const;
 
