@@ -17,6 +17,7 @@ import {
   SRGBColorSpace,
   Vector2,
   VideoTexture,
+  Vector3,
   WebGLRenderer,
 } from "three";
 import Joystick from "./Joystick";
@@ -52,6 +53,8 @@ import {
 } from "@/lib/tour/walkTrack";
 import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
+import { bearingDeg, nearestOnRack, nearestRack, positionAt, SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
+import RackSheet from "./RackSheet";
 
 // /showroom walk-through: a 360° video of a loop around the shop, played
 // forward or backward while the joystick is held (walkTrack.ts has the files
@@ -263,6 +266,16 @@ export default function VideoWalk() {
   // data the loader shows a start button (the tap starts the download)
   const [needsTap, setNeedsTap] = useState(() => needsTapToLoad());
   const [controls, setControls] = useState<Controls>(() => readControls());
+  // rack markers: positioned every frame by the loop (refs, no re-render);
+  // the "nearby" chip and the open sheet are state (they change rarely)
+  const pinRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [nearRackId, setNearRackId] = useState<string | null>(null);
+  const [openRack, setOpenRack] = useState<ShowroomRack | null>(null);
+  const sheetOpenRef = useRef(false);
+  useEffect(() => {
+    sheetOpenRef.current = !!openRack;
+    if (openRack) stickRef.current = { x: 0, y: 0 };
+  }, [openRack]);
   const switchControls = useCallback(() => {
     setControls((c) => {
       const next: Controls = c === "joystick" ? "arrows" : "joystick";
@@ -967,13 +980,54 @@ export default function VideoWalk() {
       footIndex++;
     };
 
+    // ── rack markers ───────────────────────────────────────────────────────
+    // Each rack's marker sits over its nearest point (a label at ~1.75 m on
+    // the rack), projected with the camera; the 3 nearest within 6 m show,
+    // fading with distance. Within 1.8 m the rack also gets the "nearby" chip.
+    const pinDir = new Vector3();
+    let shownNear: string | null = null;
+    const placeRackPins = () => {
+      const pos = positionAt(fwdTime(), track);
+      const w = host.clientWidth;
+      const h = host.clientHeight;
+      if (!pos || !w || !h) return;
+      camera.updateMatrixWorld();
+      const near = SHOWROOM_RACKS.map((r, i) => ({ r, i, n: nearestOnRack(pos, r) })).sort((a, b) => a.n.dist - b.n.dist);
+      near.forEach(({ i, n }, rank) => {
+        const el = pinRefs.current[i];
+        if (!el) return;
+        if (rank > 2 || n.dist > 6) {
+          el.style.visibility = "hidden";
+          return;
+        }
+        const yaw = bearingDeg(pos, n) * DEG;
+        const pitch = Math.atan2(1.75 - F.steps.cameraHeightM, Math.max(0.5, n.dist));
+        pinDir.set(Math.cos(pitch) * Math.sin(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.cos(yaw)).multiplyScalar(10).project(camera);
+        if (pinDir.z > 1 || Math.abs(pinDir.x) > 1.2 || Math.abs(pinDir.y) > 1.2) {
+          el.style.visibility = "hidden";
+          return;
+        }
+        const x = (pinDir.x + 1) * 0.5 * w;
+        const y = (1 - pinDir.y) * 0.5 * h;
+        el.style.visibility = "visible";
+        el.style.opacity = String(Math.max(0.35, Math.min(1, 1.4 - n.dist / 6)));
+        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;
+      });
+      const nr = nearestRack(pos, 1.8);
+      const id = nr ? nr.id : null;
+      if (id !== shownNear) {
+        shownNear = id;
+        setNearRackId(id);
+      }
+    };
+
     const loop = (now: number) => {
       raf = requestAnimationFrame(loop);
       const dt = Math.min(100, now - last);
       last = now;
 
       if (ready && !jumping) {
-        const stick = mergeSticks(stickRef.current, keysToStick(keys));
+        const stick = sheetOpenRef.current ? { x: 0, y: 0 } : mergeSticks(stickRef.current, keysToStick(keys));
         // turning
         turnRate = easeToward(turnRate, turnRateFromStick(stick.x, { deadZone: F.turnDeadZone, maxTurnDegPerSec: F.turnMaxDegPerSec }), dt);
         if (Math.abs(stick.x) > F.turnDeadZone) lastTurnAt = now;
@@ -1092,6 +1146,7 @@ export default function VideoWalk() {
       camera.rotation.y = -yawDeg * DEG;
       camera.rotation.x = (pitchDeg + bobPitch) * DEG;
       camera.rotation.z = bobRoll * DEG;
+      if (ready) placeRackPins();
       renderer.render(scene, camera);
       if (wantFreeze) {
         wantFreeze = false;
@@ -1232,6 +1287,38 @@ export default function VideoWalk() {
           {status} {debugText}
         </p>
       )}
+
+      {status === "ready" &&
+        SHOWROOM_RACKS.map((r, i) => (
+          <button
+            key={r.id}
+            type="button"
+            ref={(el) => {
+              pinRefs.current[i] = el;
+            }}
+            onClick={() => setOpenRack(r)}
+            className="absolute left-0 top-0 z-20 flex flex-col items-center"
+            style={{ visibility: "hidden", transform: "translate(-9999px, 0)" }}
+            aria-label={`${r.title} — ნახვა`}
+          >
+            <span className="max-w-[11rem] truncate rounded-full bg-black/65 px-3 py-1 text-xs font-medium text-white shadow-lg ring-1 ring-amber-400/70 backdrop-blur-sm">
+              {r.title}
+            </span>
+            <span className="mt-1 h-3 w-3 rounded-full bg-amber-400 shadow ring-2 ring-white/80" />
+          </button>
+        ))}
+
+      {status === "ready" && nearRackId && !openRack && (
+        <button
+          type="button"
+          onClick={() => setOpenRack(SHOWROOM_RACKS.find((r) => r.id === nearRackId) ?? null)}
+          className="absolute left-1/2 top-16 z-30 -translate-x-1/2 rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow-lg hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          {SHOWROOM_RACKS.find((r) => r.id === nearRackId)?.title} — ნახვა
+        </button>
+      )}
+
+      {openRack && <RackSheet rack={openRack} onClose={() => setOpenRack(null)} />}
 
       {status === "ready" && hintVisible && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
