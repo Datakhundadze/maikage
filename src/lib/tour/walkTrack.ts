@@ -54,6 +54,8 @@ export interface WalkPart {
   from: number;
   to: number;
   base: string;
+  /** Same frames at 2560×1280 (about half the bytes) for phones and tablets. */
+  mobileBase?: string;
   revEnd: number;
 }
 

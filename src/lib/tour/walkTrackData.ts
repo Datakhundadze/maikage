@@ -6,8 +6,8 @@
 export const WALK_TRACK_DATA = {
   duration: 156.4,
   parts: [
-    { from: 0, to: 81.0, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk2/walk", revEnd: 80.95 },
-    { from: 81.0, to: 156.4, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk2/walk-b", revEnd: 75.505 },
+    { from: 0, to: 81.0, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk2/walk", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk2m/walk", revEnd: 80.95 },
+    { from: 81.0, to: 156.4, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk2/walk-b", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk2m/walk-b", revEnd: 75.505 },
   ],
   fps: 29.97,
   stepSec: 0.2,

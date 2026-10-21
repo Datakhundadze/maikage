@@ -201,6 +201,18 @@ function makeVideo(base: string, dir: WalkDir, preload: "auto" | "metadata"): HT
   return v;
 }
 
+/**
+ * Phones and tablets get the 2560×1280 videos (half the bytes, loads twice as
+ * fast; on a phone screen 4K shows hardly any more), computers the 4K ones.
+ */
+function wantsPhoneVideo(): boolean {
+  try {
+    return window.matchMedia("(pointer: coarse)").matches && Math.max(window.screen.width, window.screen.height) <= 1400;
+  } catch {
+    return false;
+  }
+}
+
 /** A direction arrow (chevron), white on transparent (tinted by the material), pointing up. */
 function drawArrow(): HTMLCanvasElement {
   const c = document.createElement("canvas");
@@ -376,9 +388,10 @@ export default function VideoWalk() {
 
     // one video + texture per part and direction (walkTrack.ts: parts)
     type Clip = { video: HTMLVideoElement; texture: VideoTexture };
+    const phoneVideo = wantsPhoneVideo();
     const clips: Clip[][] = track.parts.map((part, i) =>
       (["fwd", "rev"] as WalkDir[]).map((d) => {
-        const video = makeVideo(part.base, d, i === 0 && d === "fwd" ? "auto" : "metadata");
+        const video = makeVideo(phoneVideo && part.mobileBase ? part.mobileBase : part.base, d, i === 0 && d === "fwd" ? "auto" : "metadata");
         const texture = new VideoTexture(video);
         texture.colorSpace = SRGBColorSpace;
         texture.minFilter = LinearFilter;
