@@ -20,6 +20,7 @@ import {
   buildSwitchOptions,
   catalogDesignPrice,
   isSwitchableSubProduct,
+  pickColourForProduct,
   SWITCHABLE_SUB_PRODUCTS,
 } from "@/lib/catalogProductSwitch";
 import { CATEGORIES } from "@/lib/categories";
@@ -179,6 +180,10 @@ export default function DesignDetailPage() {
   // (null = default). See lib/catalogProductSwitch.ts.
   const [variants, setVariants] = useState<ProductRow[]>([]);
   const [selectedSub, setSelectedSub] = useState<string | null>(null);
+  // Colour the customer clicked on a swatch (null = never picked one on this
+  // design). A product switch keeps it when the new product has it; otherwise
+  // the colour is re-derived from design.default_color (pickColourForProduct).
+  const [manualColor, setManualColor] = useState<string | null>(null);
 
   // Order mockup pre-built in the background from the 800px display print,
   // so "შეუკვეთე" doesn't composite the raw (up to ~30 MB) print on click.
@@ -201,6 +206,7 @@ export default function DesignDetailPage() {
     setNotFound(false);
     setLoadError(false);
     setSelectedSub(null);
+    setManualColor(null);
 
     const fetchDesign = async (attempt: number) => {
       const { data: rows, error } = await (supabase as any)
@@ -415,14 +421,15 @@ export default function DesignDetailPage() {
     return buildMockup();
   };
 
-  // Chip click: switch product, keep colour/size when the new product has
-  // them, else first colour / no size. The pre-built mockup is keyed by the
-  // sub-product, so it is dropped and rebuilt for the new product.
+  // Chip click: switch product. Colour: the customer's manual pick if the new
+  // product has it, else derived from the design's DEFAULT colour (exact, or
+  // closest luminance) — never "first in palette" (black-on-black) and never
+  // carried over from a previous fallback. Size kept when the new product has
+  // it. The pre-built mockup is keyed by sub|colour, so it is rebuilt.
   const handleSelectProduct = (sub: string) => {
     const option = switchOptions.find((o) => o.subProduct === sub);
     if (!option || sub === activeSub) return;
-    const nextColors = colorOptionsFor(option.row).map((c) => c.name);
-    if (!nextColors.includes(selectedColor)) setSelectedColor(nextColors[0] ?? "White");
+    setSelectedColor(pickColourForProduct(design?.default_color, colorOptionsFor(option.row), manualColor));
     if (selectedSize && !sizeOptionsFor(option.row).includes(selectedSize)) setSelectedSize("");
     setSizeError(false);
     prebuiltMockupRef.current = null;
@@ -755,7 +762,7 @@ export default function DesignDetailPage() {
                       return (
                         <button
                           key={c.name}
-                          onClick={() => setSelectedColor(c.name)}
+                          onClick={() => { setSelectedColor(c.name); setManualColor(c.name); }}
                           title={c.name}
                           className={`h-9 w-9 rounded-full border-2 transition-all ${
                             active ? "border-primary scale-110 shadow-sm" : "border-border hover:border-muted-foreground"
