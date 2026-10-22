@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CATEGORIES } from "@/lib/categories";
 import { Upload, X, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { slugifyTitle, makeThumbnail, SLUG_RE, runWithConcurrency } from "./designUploadHelpers";
+import { pickDefaultCatalogProductId, DEFAULT_CATALOG_PRODUCT_SLUG, DEFAULT_CATALOG_COLOR } from "./defaultCatalogProduct";
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ interface Props {
 interface ProductOption {
   id: string;
   type: string;
+  slug: string | null;
   display_name_ka: string;
   display_order: number;
   base_price: number | null;
@@ -47,6 +49,9 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
   const { toast } = useToast();
   const [rows, setRows] = useState<BulkRow[]>([]);
   const [products, setProducts] = useState<ProductOption[]>([]);
+  // Batch-level product: new rows start on it, and changing it re-targets
+  // every row that isn't uploaded yet. Defaults to Sol's (tshirt-sols).
+  const [batchProductId, setBatchProductId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(0);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -59,12 +64,17 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
     let cancelled = false;
     (supabase as any)
       .from("products")
-      .select("id, type, display_name_ka, display_order, base_price")
+      .select("id, slug, type, display_name_ka, display_order, base_price")
       .eq("is_active", true)
       .order("type", { ascending: true })
       .order("display_order", { ascending: true })
       .then(({ data }: { data: ProductOption[] | null }) => {
-        if (!cancelled && data) setProducts(data);
+        if (cancelled || !data) return;
+        setProducts(data);
+        const def = pickDefaultCatalogProductId(data);
+        setBatchProductId((prev) => prev || def);
+        // Rows dropped before products finished loading get the default too.
+        setRows((prev) => prev.map((r) => (r.defaultProductId ? r : { ...r, defaultProductId: def })));
       });
     return () => { cancelled = true; };
   }, [open]);
@@ -87,6 +97,18 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
     }
     return groups;
   }, [products]);
+
+  const solsProductId = useMemo(
+    () => products.find((p) => p.slug === DEFAULT_CATALOG_PRODUCT_SLUG)?.id ?? "",
+    [products],
+  );
+  const batchProduct = products.find((p) => p.id === batchProductId);
+  const batchIsNotSols = !!solsProductId && !!batchProductId && batchProductId !== solsProductId;
+
+  const changeBatchProduct = (id: string) => {
+    setBatchProductId(id);
+    setRows((prev) => prev.map((r) => (r.status === "done" ? r : { ...r, defaultProductId: id })));
+  };
 
   const addFiles = useCallback((files: FileList | File[]) => {
     const incoming = Array.from(files);
@@ -119,7 +141,7 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
           titleKa: initialTitle,
           titleEn: "",
           category: CATEGORIES[0].slug,
-          defaultProductId: "",
+          defaultProductId: batchProductId,
           tags: "",
           slug: slugifyTitle(initialTitle),
           slugDirty: false,
@@ -128,7 +150,7 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
       });
       return [...prev, ...newRows];
     });
-  }, [toast]);
+  }, [toast, batchProductId]);
 
   const updateRow = useCallback((id: string, patch: Partial<BulkRow>) => {
     setRows((prev) => prev.map((r) => {
@@ -159,6 +181,8 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
     rows.forEach((r) => URL.revokeObjectURL(r.previewUrl));
     setRows([]);
     setCompleted(0);
+    // Next open starts on Sol's again, not on whatever this batch used.
+    setBatchProductId(pickDefaultCatalogProductId(products));
     onClose();
   };
 
@@ -217,6 +241,7 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
         print_file_url: printUrl,
         thumbnail_url: thumbUrl,
         default_product_id: row.defaultProductId,
+        default_color: DEFAULT_CATALOG_COLOR,
         is_published: false,
       });
     if (insErr) throw insErr;
@@ -338,6 +363,40 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
             />
           </div>
 
+          <div
+            className={`flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 ${
+              batchIsNotSols ? "border-amber-500 bg-amber-500/10" : "border-border bg-muted/30"
+            }`}
+          >
+            <Label htmlFor="bulk-batch-product" className="text-sm font-semibold">
+              პროდუქტი: {batchProduct?.display_name_ka ?? "იტვირთება..."}
+            </Label>
+            <select
+              id="bulk-batch-product"
+              value={batchProductId}
+              onChange={(e) => changeBatchProduct(e.target.value)}
+              disabled={submitting || products.length === 0}
+              className="h-8 min-w-[12rem] rounded-md border border-input bg-background px-2 text-sm"
+            >
+              {products.length === 0 && <option value="">იტვირთება...</option>}
+              {Object.entries(productsByType).map(([type, items]) => (
+                <optgroup key={type} label={type}>
+                  {items.map((p) => (
+                    <option key={p.id} value={p.id}>{p.display_name_ka}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <span className="text-xs text-muted-foreground">
+              ყველა ატვირთულ დიზაინზე (ცალკე რიგში შეცვლაც შეიძლება) · ფერი: {DEFAULT_CATALOG_COLOR}
+            </span>
+            {batchIsNotSols && (
+              <span className="w-full text-xs text-amber-600">
+                ⚠ ეს არ არის Sol's მაისური — კატალოგის მაისურები Sol's-ზე იყიდება. დარწმუნდი, რომ ეს გინდა.
+              </span>
+            )}
+          </div>
+
           {rows.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -409,7 +468,11 @@ export default function BulkDesignUploadDialog({ open, onClose, onUploaded }: Pr
                           value={r.defaultProductId}
                           onChange={(e) => updateRow(r.id, { defaultProductId: e.target.value })}
                           disabled={submitting && r.status !== "error"}
-                          className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm"
+                          className={`w-full h-8 rounded-md border bg-background px-2 text-sm ${
+                            solsProductId && r.defaultProductId && r.defaultProductId !== solsProductId
+                              ? "border-amber-500"
+                              : "border-input"
+                          }`}
                         >
                           <option value="">-- აირჩიე --</option>
                           {Object.entries(productsByType).map(([type, items]) => (

@@ -10,6 +10,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { Upload } from "lucide-react";
 import { slugifyTitle, makeThumbnail, SLUG_RE } from "./designUploadHelpers";
 import MockupColorPicker from "./MockupColorPicker";
+import { pickDefaultCatalogProductId, DEFAULT_CATALOG_COLOR } from "./defaultCatalogProduct";
 
 interface Props {
   open: boolean;
@@ -20,6 +21,7 @@ interface Props {
 interface ProductOption {
   id: string;
   type: string;
+  slug: string | null;
   display_name_ka: string;
   display_order: number;
   base_price: number | null;
@@ -40,7 +42,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const [submitting, setSubmitting] = useState(false);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [defaultProductId, setDefaultProductId] = useState<string>("");
-  const [mockupColor, setMockupColor] = useState<string>("White");
+  const [mockupColor, setMockupColor] = useState<string>(DEFAULT_CATALOG_COLOR);
 
   // Object URL for the preview frame; revoked when the file changes or unmount.
   useEffect(() => {
@@ -58,13 +60,13 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   }, [title, slugDirty]);
 
   // Load active products for the default-product dropdown. Default to the
-  // first T-Shirt so the most common case is one click away.
+  // Sol's t-shirt (slug tshirt-sols); falls back to the first T-Shirt.
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (supabase as any)
       .from("products")
-      .select("id, type, display_name_ka, display_order, base_price")
+      .select("id, slug, type, display_name_ka, display_order, base_price")
       .eq("is_active", true)
       .order("type", { ascending: true })
       .order("display_order", { ascending: true })
@@ -73,8 +75,7 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
         setProducts(data);
         setDefaultProductId((prev) => {
           if (prev) return prev;
-          const firstTshirt = data.find((p) => p.type === "T-Shirt");
-          return firstTshirt?.id ?? data[0]?.id ?? "";
+          return pickDefaultCatalogProductId(data);
         });
       });
     return () => { cancelled = true; };
@@ -109,7 +110,9 @@ export default function DesignUploadDialog({ open, onClose, onUploaded }: Props)
   const reset = () => {
     setTitle(""); setTitleEn(""); setSlug(""); setSlugDirty(false); setSlugTaken(false);
     setCategory("georgian"); setTags(""); setDescription(""); setFile(null);
-    setMockupColor("White");
+    setMockupColor(DEFAULT_CATALOG_COLOR);
+    // Back to Sol's after each upload so a one-off hoodie pick doesn't stick.
+    setDefaultProductId(pickDefaultCatalogProductId(products));
   };
 
   const handleSubmit = async () => {

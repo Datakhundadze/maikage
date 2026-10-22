@@ -11,6 +11,7 @@ import {
 import { runTransparencyPipeline } from "@/lib/generation";
 import { CATEGORIES, type CategorySlug } from "@/lib/categories";
 import { Sparkles, Check, X, AlertCircle, Loader2, Save, AlertTriangle } from "lucide-react";
+import { pickDefaultCatalogProductId, DEFAULT_CATALOG_COLOR } from "@/components/admin/catalog/defaultCatalogProduct";
 
 // ---- THEMES → CATALOG CATEGORIES (1:1) --------------------------------
 //
@@ -396,6 +397,7 @@ function buildSlug(themeLabel: string, index: number, retryNonce?: string): stri
 interface ProductOption {
   id: string;
   type: string;
+  slug: string | null;
 }
 
 export default function AiAgent() {
@@ -411,7 +413,7 @@ export default function AiAgent() {
   const abortFlag = useRef(false);
 
   // Pre-fetched products so the save flow can set default_product_id
-  // (mirrors DesignUploadDialog.tsx — first T-Shirt is the default).
+  // (mirrors DesignUploadDialog.tsx — Sol's t-shirt is the default).
   const [defaultProductId, setDefaultProductId] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -420,12 +422,11 @@ export default function AiAgent() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors existing admin pattern (DesignUploadDialog) where the generated Database type lags the schema
     (supabase as any)
       .from("products")
-      .select("id, type")
+      .select("id, type, slug")
       .eq("is_active", true)
       .then(({ data }: { data: ProductOption[] | null }) => {
         if (cancelled || !data) return;
-        const firstTshirt = data.find((p) => p.type === "T-Shirt");
-        setDefaultProductId(firstTshirt?.id ?? data[0]?.id ?? "");
+        setDefaultProductId(pickDefaultCatalogProductId(data));
       });
     return () => { cancelled = true; };
   }, []);
@@ -660,6 +661,7 @@ export default function AiAgent() {
               print_file_url: printUrl,
               thumbnail_url: thumbUrl,
               default_product_id: defaultProductId,
+              default_color: DEFAULT_CATALOG_COLOR,
               is_published: false,
               ai_generated: true,
               ai_prompt: aiPrompt,
