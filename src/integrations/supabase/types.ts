@@ -773,6 +773,107 @@ export type Database = {
         }
         Relationships: []
       }
+      order_attribution: {
+        Row: {
+          cart_id: string | null
+          created_at: string
+          ft_campaign: string | null
+          ft_content: string | null
+          ft_fbclid: string | null
+          ft_gclid: string | null
+          ft_landing_page: string | null
+          ft_medium: string | null
+          ft_referrer: string | null
+          ft_seen_at: string | null
+          ft_source: string | null
+          ft_term: string | null
+          in_app: string | null
+          lt_campaign: string | null
+          lt_content: string | null
+          lt_fbclid: string | null
+          lt_gclid: string | null
+          lt_landing_page: string | null
+          lt_medium: string | null
+          lt_referrer: string | null
+          lt_seen_at: string | null
+          lt_source: string | null
+          lt_term: string | null
+          manual_channel: string | null
+          manual_note: string | null
+          manual_set_at: string | null
+          manual_set_by: string | null
+          order_id: string
+        }
+        Insert: {
+          cart_id?: string | null
+          created_at?: string
+          ft_campaign?: string | null
+          ft_content?: string | null
+          ft_fbclid?: string | null
+          ft_gclid?: string | null
+          ft_landing_page?: string | null
+          ft_medium?: string | null
+          ft_referrer?: string | null
+          ft_seen_at?: string | null
+          ft_source?: string | null
+          ft_term?: string | null
+          in_app?: string | null
+          lt_campaign?: string | null
+          lt_content?: string | null
+          lt_fbclid?: string | null
+          lt_gclid?: string | null
+          lt_landing_page?: string | null
+          lt_medium?: string | null
+          lt_referrer?: string | null
+          lt_seen_at?: string | null
+          lt_source?: string | null
+          lt_term?: string | null
+          manual_channel?: string | null
+          manual_note?: string | null
+          manual_set_at?: string | null
+          manual_set_by?: string | null
+          order_id: string
+        }
+        Update: {
+          cart_id?: string | null
+          created_at?: string
+          ft_campaign?: string | null
+          ft_content?: string | null
+          ft_fbclid?: string | null
+          ft_gclid?: string | null
+          ft_landing_page?: string | null
+          ft_medium?: string | null
+          ft_referrer?: string | null
+          ft_seen_at?: string | null
+          ft_source?: string | null
+          ft_term?: string | null
+          in_app?: string | null
+          lt_campaign?: string | null
+          lt_content?: string | null
+          lt_fbclid?: string | null
+          lt_gclid?: string | null
+          lt_landing_page?: string | null
+          lt_medium?: string | null
+          lt_referrer?: string | null
+          lt_seen_at?: string | null
+          lt_source?: string | null
+          lt_term?: string | null
+          manual_channel?: string | null
+          manual_note?: string | null
+          manual_set_at?: string | null
+          manual_set_by?: string | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_attribution_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           back_mockup_url: string | null
@@ -1387,6 +1488,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      record_order_attribution: {
+        Args: { p: Json; p_order_id: string }
+        Returns: undefined
       }
       report_brands: {
         Args: { p_from: string; p_to: string }
