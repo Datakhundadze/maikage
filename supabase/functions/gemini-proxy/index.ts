@@ -1668,18 +1668,23 @@ CRITICAL:
       };
       const peShape = (d: unknown) => {
         try {
-          return JSON.stringify(d, (_k, v) => (typeof v === "string" && v.length > 160 ? `<${v.length} chars>` : v)).slice(0, 1500);
+          return JSON.stringify(d, (_k, v) => (typeof v === "string" && v.length > 800 ? `<${v.length} chars>` : v)).slice(0, 2500);
         } catch {
           return "<unserialisable>";
         }
       };
-      const peTry = async (label: string, endpoint: string, body: Record<string, unknown>): Promise<boolean> => {
+      const peTry = async (label: string, endpoint: string, body: Record<string, unknown> | FormData): Promise<boolean> => {
         const t0 = Date.now();
         try {
+          // FormData → multipart (the gateway's images/edits requires it; fetch
+          // sets the boundary header itself). Everything else → JSON.
+          const isForm = body instanceof FormData;
           const res = await fetch(endpoint, {
             method: "POST",
-            headers: { Authorization: `Bearer ${peKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            headers: isForm
+              ? { Authorization: `Bearer ${peKey}` }
+              : { Authorization: `Bearer ${peKey}`, "Content-Type": "application/json" },
+            body: isForm ? body : JSON.stringify(body),
           });
           const text = await res.text();
           let data: unknown = null;
@@ -1707,16 +1712,22 @@ CRITICAL:
       }];
       if (peIsOpenAI) {
         const EDITS_URL = GATEWAY_URL.replace("/chat/completions", "/images/edits");
-        const editsBody = {
-          model: peModel,
-          prompt: peText,
-          images: [{ image_url: peImage }],
-          n: 1,
-          size: "auto",
-          quality: peQuality,
-          output_format: "png",
-          background: peBackground,
-        };
+        // images/edits: the gateway answered a JSON body with "request must be
+        // multipart/form-data with a model field", so send the photo as a file.
+        const peMatch = /^data:(image\/(?:png|jpeg|webp));base64,(.*)$/s.exec(peImage);
+        const editsBody = new FormData();
+        if (peMatch) {
+          const bin = Uint8Array.from(atob(peMatch[2]), (c) => c.charCodeAt(0));
+          const ext = peMatch[1] === "image/png" ? "png" : peMatch[1] === "image/webp" ? "webp" : "jpg";
+          editsBody.append("model", peModel);
+          editsBody.append("prompt", peText);
+          editsBody.append("image", new Blob([bin], { type: peMatch[1] }), `input.${ext}`);
+          editsBody.append("n", "1");
+          editsBody.append("size", "auto");
+          editsBody.append("quality", peQuality);
+          editsBody.append("output_format", "png");
+          editsBody.append("background", peBackground);
+        }
         const chatFieldsBody = {
           model: peModel,
           messages: peChatMessages,
