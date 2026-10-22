@@ -239,6 +239,7 @@ KA — მაისურები (ცალმხრივი ბეჭდვ�
 - სტანდარტული მაისური (TH clothes) — 45₾ · ორმხრივი 60₾
 - პოლო (Polo) მაისური — 45₾ · ორმხრივი 60₾
 - პრემიუმ მაისური (SOL'S) — 50₾ · ორმხრივი 65₾
+  ↳ 🏷️ SALE: კატალოგიდან (maika.ge/designs) მზა დიზაინის შეკვეთისას SOL'S მაისური — 45₾ (მხოლოდ წინა მხარეს ბეჭდვა, ვადა არ აქვს). საკუთარი/AI დიზაინი SOL'S-ზე — ჩვეულებრივ 50₾; ორმხრივი — 65₾.
 - Khundadze მაისური — 55₾ · ორმხრივი 70₾
 - პრემიუმ მაისური (GILDAN Hammer) — 60₾ · ორმხრივი 75₾
 - ჯორდანოს (GIORDANO) მაისური — 70₾ · ორმხრივი 85₾
@@ -252,6 +253,8 @@ EN — T-shirts (single-side print — front only or back only — included):
 - TH: 45₾ · two-sided 60₾
 - Polo: 45₾ · two-sided 60₾
 - SOL'S: 50₾ · two-sided 65₾
+  ↳ 🏷️ SALE: ready-made catalogue designs (maika.ge/designs) on SOL'S — 45₾ (front print only, no end date). Own/AI designs on SOL'S stay 50₾; two-sided stays 65₾.
+  ⚠️ Mention the 45₾ catalogue SALE only when relevant (price questions, the catalogue, SOL'S). Never apply it to other brands or to own/uploaded/AI designs.
 - Khundadze: 55₾ · two-sided 70₾
 - GILDAN HUMMER (premium heavy fabric): 60₾ · two-sided 75₾
 - GIORDANO: 70₾ · two-sided 85₾
@@ -540,6 +543,7 @@ KA:
   ქართული · პატრიოტული · სასაცილო · მუსიკა · კინო · ქართული სუფრა · წყვილები · ხელოვნება ·
   ცხოველები · აუტო-მოტო · სპორტი · პროფესიები · სეზონური · მოგზაურობა · სხვადასხვა.
   ნებისმიერი მზა დიზაინი დაიბეჭდება ნებისმიერ პროდუქტზე და პირდაპირ შეუკვეთავთ.
+  🏷️ SALE: კატალოგის დიზაინი SOL'S მაისურზე — 45₾ (ნაცვლად 50₾, წინა მხარეს ბეჭდვა).
 - ვირტუალური გასახდელი (Virtual Try-On): უფასო — ატვირთეთ თქვენი ფოტო და შეკვეთამდე ნახეთ
   დიზაინი საკუთარ თავზე. ღილაკი პროდუქტის სურათის ქვეშაა.
 
@@ -552,6 +556,7 @@ EN:
   Categories: Georgian · Patriotic · Humor · Music · Movies · Georgian Table · Couples ·
   Art · Animals · Auto-Moto · Sports · Professions · Seasonal · Travel · Various.
   Any ready-made design can be put on any product and ordered directly.
+  🏷️ SALE: catalogue designs on a SOL'S t-shirt — 45₾ (instead of 50₾, front print).
   ⚠️ NEVER say we do not have ready-made designs — we do, and this is exactly the kind of
   denial §0 exists to prevent.
 - Virtual Try-On (ვირტუალური გასახდელი): free — upload your photo and see the design on
