@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { calculatePrice, PRICES } from "@/lib/pricing";
 import {
@@ -97,5 +99,23 @@ describe("FAQ sentence", () => {
     const a = FAQ_GROUPS[0].items.find((i) => i.q === "რა ღირს მაისურზე ბეჭდვა?")!.a;
     expect(a.endsWith(FAQ_CATALOG_PROMO_SENTENCE)).toBe(true);
     expect(a).toContain(`Sol's ${PRICES["Sol's"].frontOnly}₾`);
+  });
+});
+
+describe("chatbot KB (gemini-proxy FAQ_KB)", () => {
+  // gemini-proxy is a Deno module — read its SOURCE (what gets deployed).
+  const SRC = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/index.ts"), "utf8");
+  const start = SRC.indexOf("const FAQ_KB = `");
+  const kb = SRC.slice(start, SRC.indexOf("\n`;", start));
+
+  it("keeps the regular SOL'S price and states the catalogue SALE price (KA + EN)", () => {
+    expect(start).toBeGreaterThan(-1);
+    const regular = PRICES["Sol's"].frontOnly;
+    expect(kb).toContain(`- პრემიუმ მაისური (SOL'S) — ${regular}₾`);
+    expect(kb).toContain(`- SOL'S: ${regular}₾`);
+    expect(kb).toContain(`კატალოგიდან (maika.ge/designs) მზა დიზაინის შეკვეთისას SOL'S მაისური — ${CATALOG_PROMO.price}₾`);
+    expect(kb).toContain(`ready-made catalogue designs (maika.ge/designs) on SOL'S — ${CATALOG_PROMO.price}₾`);
+    expect(kb).toContain(`SOL'S მაისურზე — ${CATALOG_PROMO.price}₾ (ნაცვლად ${regular}₾`);
+    expect(kb).toContain(`SOL'S t-shirt — ${CATALOG_PROMO.price}₾ (instead of ${regular}₾`);
   });
 });
