@@ -14,6 +14,7 @@ import {
   FAQ_HOODIE_BRANDS,
   FAQ_PRODUCT_KEYS,
   FAQ_TSHIRT_BRANDS,
+  FAQ_CATALOG_PROMO_SENTENCE,
   type FaqBrand,
 } from "@/lib/faqContent";
 
@@ -33,7 +34,7 @@ const answer = (q: string) => {
 
 const TSHIRT_Q = "რა ღირს მაისურზე ბეჭდვა?";
 const HOODIE_Q = "რა ღირს ჰუდი?";
-const TSHIRT_TAIL = ". ფასში შედის ცალმხრივი A4 ბეჭდვა. ორმხრივი ბეჭდვა: +10₾ პატარა წარწერა ან ლოგო, +15₾ დიდი პრინტი.";
+const TSHIRT_TAIL = ". ფასში შედის ცალმხრივი A4 ბეჭდვა. ორმხრივი ბეჭდვა: +10₾ პატარა წარწერა ან ლოგო, +15₾ დიდი პრინტი." + FAQ_CATALOG_PROMO_SENTENCE;
 const HOODIE_TAIL = ". დაუთბილავი ჰუდი — 85₾, შეზღუდული ფერები და ზომები, მხოლოდ შოურუმში. ფასში შედის ბეჭდვა.";
 
 /** "GILDAN 35₾, TH 45₾" → [["GILDAN", 35], ["TH", 45]] */

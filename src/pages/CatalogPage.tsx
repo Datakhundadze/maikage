@@ -3,6 +3,7 @@ import AppHeader from "@/components/AppHeader";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import CatalogGrid from "@/components/catalog/CatalogGrid";
 import CatalogRail from "@/components/catalog/CatalogRail";
+import CatalogSaleBanner from "@/components/catalog/CatalogSaleBanner";
 
 // /designs — the design catalog. Default view: the showroom rail (garments
 // hanging on rails, one rail per category). ?view=grid shows the card grid.
@@ -19,6 +20,7 @@ export default function CatalogPage() {
         url={`${SITE_URL}/designs`}
       />
       <AppHeader />
+      <CatalogSaleBanner />
       {view === "grid" ? <CatalogGrid /> : <CatalogRail />}
     </div>
   );

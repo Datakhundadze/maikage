@@ -17,6 +17,7 @@ import {
   type ProductColor,
 } from "@/lib/catalog";
 import { calculatePrice } from "@/lib/pricing";
+import { CATALOG_PROMO, applyCatalogPromo } from "@/lib/catalogPromo";
 import { CATEGORIES } from "@/lib/categories";
 import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
@@ -261,7 +262,8 @@ export default function DesignDetailPage() {
     return sizeOptions.length > 0 || product.type === "Phone Case";
   }, [product, sizeOptions]);
 
-  const priceBreakdown = useMemo(() => {
+  // Regular price (pricing.ts) — kept for the SALE strikethrough.
+  const regularBreakdown = useMemo(() => {
     if (!product) return null;
     return calculatePrice(
       product.type as ProductType,
@@ -271,6 +273,18 @@ export default function DesignDetailPage() {
       false,
     );
   }, [product]);
+
+  // The price this page charges: the regular breakdown with the catalog SALE
+  // (lib/catalogPromo.ts) applied. Everything downstream — price box, meta
+  // description, JSON-LD, add-to-cart productPrice and OrderDialog — reads
+  // THIS one, so display and payment cannot drift. This page is always
+  // front-only, no studio, and the brand is fixed by default_product_id, so
+  // only the brand + active checks inside applyCatalogPromo can vary.
+  const priceBreakdown = useMemo(() => {
+    if (!product || !regularBreakdown) return null;
+    return applyCatalogPromo(regularBreakdown, product.sub_product || product.type);
+  }, [product, regularBreakdown]);
+  const onSale = !!regularBreakdown && !!priceBreakdown && priceBreakdown.total < regularBreakdown.total;
 
   const buildMockup = async () => {
     if (!design || !product) return null;
@@ -606,7 +620,19 @@ export default function DesignDetailPage() {
               {/* Price */}
               <div className="rounded-xl border border-border bg-card p-4 flex items-baseline justify-between">
                 <span className="text-sm text-muted-foreground">ფასი</span>
-                <span className="text-xl font-bold">₾{priceBreakdown.total}</span>
+                {onSale && regularBreakdown ? (
+                  <span className="flex items-center gap-2">
+                    <span className="rounded-full bg-destructive px-2 py-0.5 text-[11px] font-bold tracking-wide text-destructive-foreground">
+                      {CATALOG_PROMO.label}
+                    </span>
+                    <s className="text-sm text-muted-foreground" aria-label={`ძველი ფასი ₾${regularBreakdown.total}`}>
+                      ₾{regularBreakdown.total}
+                    </s>
+                    <span className="text-xl font-bold text-destructive">₾{priceBreakdown.total}</span>
+                  </span>
+                ) : (
+                  <span className="text-xl font-bold">₾{priceBreakdown.total}</span>
+                )}
               </div>
 
               {/* Actions */}

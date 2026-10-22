@@ -11,6 +11,7 @@
 
 import { PRICES } from "@/lib/pricing";
 import { BAG_FEE } from "@/lib/fees";
+import { CATALOG_PROMO, isCatalogPromoActive } from "@/lib/catalogPromo";
 
 /** The page's head and intro — FaqPage's SeoHead, <h1> and lead paragraph. */
 export const FAQ_PAGE = {
@@ -85,6 +86,15 @@ export const gel = (amount: number): string => `${amount}₾`;
 /** Front-only (one-side) price from pricing.ts, as the checkout charges it. */
 const frontPrice = (key: string): string => gel(PRICES[key]?.frontOnly);
 
+/**
+ * Catalog SALE sentence (lib/catalogPromo.ts), appended to the T-shirt answer
+ * while the promo runs — the regular Sol's price in the brand list stays as is.
+ * Evaluated when this module loads (build time for the prerendered /faq).
+ */
+export const FAQ_CATALOG_PROMO_SENTENCE = isCatalogPromoActive()
+  ? ` კატალოგიდან შეკვეთისას ${CATALOG_PROMO.subProduct} მაისური ფასდაკლებით ${gel(CATALOG_PROMO.price)} ღირს.`
+  : "";
+
 /** "GILDAN 35₾, TH 45₾, …" — a brand missing from PRICES is left out, never priced by hand. */
 const brandPrices = (brands: readonly FaqBrand[]): string =>
   brands
@@ -105,7 +115,7 @@ export const FAQ_GROUPS: FaqGroup[] = [
     items: [
       {
         q: "რა ღირს მაისურზე ბეჭდვა?",
-        a: `${brandPrices(FAQ_TSHIRT_BRANDS)}. ფასში შედის ცალმხრივი A4 ბეჭდვა. ორმხრივი ბეჭდვა: +10₾ პატარა წარწერა ან ლოგო, +15₾ დიდი პრინტი.`,
+        a: `${brandPrices(FAQ_TSHIRT_BRANDS)}. ფასში შედის ცალმხრივი A4 ბეჭდვა. ორმხრივი ბეჭდვა: +10₾ პატარა წარწერა ან ლოგო, +15₾ დიდი პრინტი.${FAQ_CATALOG_PROMO_SENTENCE}`,
       },
       {
         q: "რა ღირს ჰუდი?",
