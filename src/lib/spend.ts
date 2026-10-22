@@ -218,6 +218,7 @@ export const AI_ACTION_LABELS: Record<string, string> = {
   "randomize-prompt": "იდეის გენერაცია",
   "social-reply-draft": "სოც. პასუხის დრაფტი",
   "probe-image-model": "მოდელების ტესტი",
+  "probe-image-edit": "მოდელების ტესტი (ფოტო)",
 };
 
 export function actionLabel(action: string | null | undefined): string {

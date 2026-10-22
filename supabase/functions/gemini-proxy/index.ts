@@ -1567,6 +1567,195 @@ serve(async (req) => {
       });
     }
 
+    // ── ADD-ONLY (2026-10-22): probe-image-edit ────────────────────────────
+    // Admin-only "AI მოდელების ტესტი" companion to probe-image-model above,
+    // for the PHOTO actions that carry most of the AI spend: isolate-subject,
+    // restyle, edit-image. One uploaded photo goes through one model with the
+    // SAME instruction the production handler sends, so GPT Image and Gemini
+    // can be compared side by side before any production action is switched.
+    //
+    // Production is untouched: the isolate-subject / restyle / edit-image
+    // handlers below are byte-identical; their prompt texts are COPIED here,
+    // not shared, so this probe can never change what customers get. For an
+    // openai/* model the isolate task asks for a real transparent background
+    // (GPT Image supports it natively) instead of the #00FF00 chroma screen
+    // the Gemini path needs. Tries the images/edits endpoint first, then chat,
+    // and STOPS AT THE FIRST IMAGE, so one click costs at most one paid image.
+    // Not in BILLABLE_ACTIONS (admins only); one ai_calls row per click.
+    if (action === "probe-image-edit") {
+      const peJson = (status: number, body: unknown) =>
+        new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      let peIsAdmin = false;
+      if (user) {
+        const { data: adminFlag } = await client.rpc("has_role", { _user_id: user.id, _role: "admin" });
+        peIsAdmin = adminFlag === true;
+      }
+      if (!peIsAdmin) return peJson(403, { error: "Admins only", code: "FORBIDDEN" });
+
+      const peModel = typeof params.model === "string" ? params.model.trim() : "";
+      if (!/^(openai|google)\/[a-z0-9.-]{3,80}$/.test(peModel)) {
+        return peJson(400, { error: "Unknown model id", code: "BAD_MODEL" });
+      }
+      const peTask = params.task;
+      if (peTask !== "isolate-subject" && peTask !== "restyle" && peTask !== "edit-image") {
+        return peJson(400, { error: "Unknown task", code: "BAD_TASK" });
+      }
+      const peImage = typeof params.image === "string" ? params.image : "";
+      if (!/^data:image\/(png|jpeg|webp);base64,/.test(peImage) || peImage.length > 12_000_000) {
+        return peJson(400, { error: "Image must be a PNG/JPEG/WEBP data URL under ~9 MB", code: "BAD_IMAGE" });
+      }
+      const peInstruction = typeof params.instruction === "string" ? params.instruction.trim().slice(0, 1000) : "";
+      if (peTask !== "isolate-subject" && !peInstruction) {
+        return peJson(400, { error: "Empty instruction", code: "BAD_REQUEST" });
+      }
+      const peQuality = ["low", "medium", "high"].includes(params.quality) ? params.quality : "medium";
+      const peIsOpenAI = peModel.startsWith("openai/");
+      const peKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!peKey) return peJson(500, { error: "LOVABLE_API_KEY is not configured", code: "CONFIG" });
+
+      // Copies of the production texts (see the handlers below).
+      const PE_ISOLATE_GREEN = `Isolate the MAIN SUBJECT (the primary foreground person, animal, or object) from this photo and place it on a SOLID BRIGHT GREEN CHROMA-KEY background (pure green screen, #00FF00). Completely remove the original background and everything that is not the main subject — no scenery, no environment, no other objects.
+
+CRITICAL:
+- Keep the main subject EXACTLY as it is: same shape, colors, textures, photographic detail, proportions and pose. Do NOT redraw, restyle, re-light, silhouette, or regenerate the subject — this is a background-replacement/segmentation operation, NOT a re-shoot and NOT a mask. Preserve every photographic detail and the original colors of the real subject. Do NOT output a flat solid silhouette or a black/white mask.
+- The new background must be uniformly PURE BRIGHT GREEN #00FF00, edge to edge, with NO shadow, gradient, texture, reflection, or any other color anywhere. The subject must cast NO shadow onto the green backdrop. (A downstream chroma-key removes exactly this green, so any non-green background pixel stays visible.)
+- Do NOT let the green spill onto or tint the subject — keep the subject's original colors with clean edges.
+- Keep the subject fully inside the frame, roughly centered, at a similar scale to the input.
+
+Output: a single photographic image of the isolated main subject (full detail, original colors) on a pure solid bright green (#00FF00) chroma-key background.`;
+      const PE_ISOLATE_TRANSPARENT = `Isolate the MAIN SUBJECT (the primary foreground person, animal, or object) from this photo and remove EVERYTHING else. The output background must be fully TRANSPARENT (PNG alpha) — no backdrop, no color, no shadow.
+
+CRITICAL:
+- Keep the main subject EXACTLY as it is: same shape, colors, textures, photographic detail, proportions and pose. Do NOT redraw, restyle, re-light, silhouette, or regenerate the subject — this is a background-removal/segmentation operation, NOT a re-shoot and NOT a mask.
+- Clean edges, no halo, no leftover background pixels.
+- Keep the subject fully inside the frame, roughly centered, at a similar scale to the input.`;
+      const PE_RESTYLE_GUARD =
+        "This is an artistic style transfer, not a re-shoot. Preserve the " +
+        "subject's identity, pose, count, framing and composition exactly; " +
+        "change ONLY the artistic medium/style; do not add text, watermarks " +
+        "or new objects.";
+      const PE_EDIT_GUARD =
+        "Edit this image following the user's instruction. This is an EDIT, " +
+        "not a re-generation: apply ONLY the requested change and keep " +
+        "everything the instruction does not ask to change — subject " +
+        "identity, pose, colors, composition, background, lighting — exactly " +
+        "as in the input. Never add text, watermarks, signatures or logos " +
+        "unless the instruction explicitly asks for them. Never produce " +
+        "sexual, violent or otherwise unsafe content, and never turn the " +
+        "subject into a recognizable copyrighted or trademarked character. " +
+        "If the instruction is unclear, apply the most reasonable " +
+        "interpretation. Instruction:";
+      const peText =
+        peTask === "isolate-subject"
+          ? (peIsOpenAI ? PE_ISOLATE_TRANSPARENT : PE_ISOLATE_GREEN)
+          : peTask === "restyle"
+            ? `${PE_RESTYLE_GUARD} ${peInstruction}`
+            : `${PE_EDIT_GUARD} ${peInstruction}`;
+      const peBackground = peIsOpenAI && peTask === "isolate-subject" ? "transparent" : "auto";
+
+      const peStarted = Date.now();
+      const pe = {
+        image: null as string | null,
+        endpoint: null as string | null,
+        usage: null as unknown,
+        attempts: [] as Array<{ label: string; endpoint: string; status: number; ms: number; ok: boolean; shape: string }>,
+      };
+      const peShape = (d: unknown) => {
+        try {
+          return JSON.stringify(d, (_k, v) => (typeof v === "string" && v.length > 160 ? `<${v.length} chars>` : v)).slice(0, 1500);
+        } catch {
+          return "<unserialisable>";
+        }
+      };
+      const peTry = async (label: string, endpoint: string, body: Record<string, unknown>): Promise<boolean> => {
+        const t0 = Date.now();
+        try {
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${peKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const text = await res.text();
+          let data: unknown = null;
+          try { data = JSON.parse(text); } catch { /* not JSON */ }
+          const found = data ? extractImage(data) : null;
+          pe.attempts.push({ label, endpoint, status: res.status, ms: Date.now() - t0, ok: res.ok && !!found, shape: data ? peShape(data) : text.slice(0, 600) });
+          if (res.ok && found) {
+            pe.image = found;
+            pe.endpoint = endpoint;
+            pe.usage = (data as { usage?: unknown } | null)?.usage ?? null;
+            return true;
+          }
+        } catch (e) {
+          pe.attempts.push({ label, endpoint, status: 0, ms: Date.now() - t0, ok: false, shape: String(e).slice(0, 600) });
+        }
+        return false;
+      };
+
+      const peChatMessages = [{
+        role: "user",
+        content: [
+          { type: "text", text: peText },
+          { type: "image_url", image_url: { url: peImage } },
+        ],
+      }];
+      if (peIsOpenAI) {
+        const EDITS_URL = GATEWAY_URL.replace("/chat/completions", "/images/edits");
+        const editsBody = {
+          model: peModel,
+          prompt: peText,
+          images: [{ image_url: peImage }],
+          n: 1,
+          size: "auto",
+          quality: peQuality,
+          output_format: "png",
+          background: peBackground,
+        };
+        const chatFieldsBody = {
+          model: peModel,
+          messages: peChatMessages,
+          modalities: ["image", "text"],
+          background: peBackground,
+          output_format: "png",
+          quality: peQuality,
+        };
+        if (!(await peTry("edits", EDITS_URL, editsBody))) {
+          if (!(await peTry("chat+fields", GATEWAY_URL, chatFieldsBody))) {
+            await peTry("chat", GATEWAY_URL, { model: peModel, messages: peChatMessages, modalities: ["image", "text"] });
+          }
+        }
+      } else {
+        await peTry("chat", GATEWAY_URL, {
+          model: peModel,
+          messages: peChatMessages,
+          modalities: ["image", "text"],
+        });
+      }
+
+      const peMs = Date.now() - peStarted;
+      logAiCall({
+        action,
+        model: peModel,
+        userId: callerUserId,
+        sessionId: null,
+        isGuest: false,
+        success: !!pe.image,
+        durationMs: peMs,
+        errorCode: pe.image ? null : "probe_failed",
+      });
+      return peJson(200, {
+        ok: !!pe.image,
+        model: peModel,
+        task: peTask,
+        image: pe.image,
+        endpoint: pe.endpoint,
+        usage: pe.usage,
+        totalMs: peMs,
+        attempts: pe.attempts,
+      });
+    }
+
     // --- Rate limiting (billable actions only) ---
     // Keyed on user_id for authed callers, IP for anon. Admins (trusted batch
     // generation) are exempt. Enforced BEFORE any gateway call so blocked
