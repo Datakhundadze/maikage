@@ -13,11 +13,15 @@ import {
   BRAND_COLORS,
   BRAND_SIZES,
   COLORS,
-  type ProductType,
   type ProductColor,
 } from "@/lib/catalog";
-import { calculatePrice } from "@/lib/pricing";
-import { CATALOG_PROMO, applyCatalogPromo } from "@/lib/catalogPromo";
+import { CATALOG_PROMO } from "@/lib/catalogPromo";
+import {
+  buildSwitchOptions,
+  catalogDesignPrice,
+  isSwitchableSubProduct,
+  SWITCHABLE_SUB_PRODUCTS,
+} from "@/lib/catalogProductSwitch";
 import { CATEGORIES } from "@/lib/categories";
 import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
@@ -92,6 +96,42 @@ const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((c) => [c.slug, c.label_ka]),
 );
 
+/** Colour swatches for a products row — catalog BRAND_COLORS (SSOT) first,
+ *  then the admin-curated products.colors. */
+function colorOptionsFor(row: ProductRow): ProductColorOption[] {
+  const sub = row.sub_product || row.type;
+  const brandColorNames = BRAND_COLORS[sub] ?? [];
+  if (brandColorNames.length > 0) {
+    return brandColorNames.map((name) => {
+      const entry = COLORS.find((c) => c.name === name);
+      return { name: name as string, hex: entry?.hex ?? "#FFFFFF" };
+    });
+  }
+  return row.colors ?? [];
+}
+
+/** Sizes for a products row — products.sizes first, then BRAND_SIZES. */
+function sizeOptionsFor(row: ProductRow): string[] {
+  if (row.sizes && row.sizes.length > 0) return row.sizes;
+  return BRAND_SIZES[row.sub_product || row.type] ?? [];
+}
+
+// Idle scheduling for the background order-mockup build (falls back to a
+// short timeout where requestIdleCallback is missing, e.g. Safari).
+type IdleWindow = Window & {
+  requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+  cancelIdleCallback?: (id: number) => void;
+};
+function scheduleIdle(cb: () => void): () => void {
+  const w = window as IdleWindow;
+  if (w.requestIdleCallback && w.cancelIdleCallback) {
+    const id = w.requestIdleCallback(cb, { timeout: 2000 });
+    return () => w.cancelIdleCallback?.(id);
+  }
+  const t = setTimeout(cb, 300);
+  return () => clearTimeout(t);
+}
+
 /** Stored colour (any case) → canonical COLORS.name, defaulting to White. */
 function normalizeColor(raw: string | null | undefined): string {
   if (!raw) return "White";
@@ -133,6 +173,18 @@ export default function DesignDetailPage() {
   const [hiResLoading, setHiResLoading] = useState(false);
   const hiResCacheRef = useRef<Record<string, string>>({});
 
+  // Product switcher (Sol's t-shirt ⇄ hoodies). `product` stays the design's
+  // DEFAULT product (SEO price, JSON-LD); `variants` are the other active
+  // products rows a chip can switch to; `selectedSub` is the chosen chip
+  // (null = default). See lib/catalogProductSwitch.ts.
+  const [variants, setVariants] = useState<ProductRow[]>([]);
+  const [selectedSub, setSelectedSub] = useState<string | null>(null);
+
+  // Order mockup pre-built in the background from the 800px display print,
+  // so "შეუკვეთე" doesn't composite the raw (up to ~30 MB) print on click.
+  // Keyed by sub|color|print URL; replaced whenever any of them changes.
+  const prebuiltMockupRef = useRef<{ key: string; promise: Promise<string | null> } | null>(null);
+
   // Up to 8 other published designs in this design's category, for the
   // "მსგავსი დიზაინები" block. Their only job beyond being useful to a
   // customer is to give the catalog a crawlable graph: without them every
@@ -148,6 +200,7 @@ export default function DesignDetailPage() {
     setLoading(true);
     setNotFound(false);
     setLoadError(false);
+    setSelectedSub(null);
 
     const fetchDesign = async (attempt: number) => {
       const { data: rows, error } = await (supabase as any)
@@ -237,82 +290,165 @@ export default function DesignDetailPage() {
     return () => { cancelled = true; };
   }, [design]);
 
-  const colorOptions = useMemo(() => {
-    if (!product) return [] as { name: string; hex: string }[];
-    const sub = product.sub_product || product.type;
-    const brandColorNames = BRAND_COLORS[sub] ?? [];
-    if (brandColorNames.length > 0) {
-      return brandColorNames.map((name) => {
-        const entry = COLORS.find((c) => c.name === name);
-        return { name: name as string, hex: entry?.hex ?? "#FFFFFF" };
-      });
-    }
-    return product.colors ?? [];
+  // Other garments this design can be switched to. Only for designs whose
+  // default product is itself switchable (Sol's / hoodies). Explicit
+  // is_active filter so an admin (whose RLS also returns inactive rows) sees
+  // the same chips as a customer. A failure just leaves the default only.
+  useEffect(() => {
+    setVariants([]);
+    if (!product || !isSwitchableSubProduct(product.sub_product)) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("id, type, sub_product, display_name_ka, base_price, colors, sizes")
+        .in("sub_product", [...SWITCHABLE_SUB_PRODUCTS])
+        .eq("is_active", true);
+      if (cancelled) return;
+      setVariants((data ?? []) as unknown as ProductRow[]);
+    })();
+    return () => { cancelled = true; };
   }, [product]);
 
-  const sizeOptions: string[] = useMemo(() => {
-    if (!product) return [];
-    if (product.sizes && product.sizes.length > 0) return product.sizes;
-    const sub = product.sub_product || product.type;
-    return BRAND_SIZES[sub] ?? [];
-  }, [product]);
+  const switchOptions = useMemo(() => buildSwitchOptions(product, variants), [product, variants]);
+
+  // The product the customer is configuring: the picked chip, else the
+  // design's default. Everything customer-facing below (preview, colours,
+  // sizes, price box, cart, OrderDialog) reads THIS one.
+  const activeProduct: ProductRow | null = useMemo(() => {
+    if (!product) return null;
+    if (!selectedSub) return product;
+    return switchOptions.find((o) => o.subProduct === selectedSub)?.row ?? product;
+  }, [product, selectedSub, switchOptions]);
+  const activeSub = activeProduct ? activeProduct.sub_product || activeProduct.type : "";
+
+  const colorOptions = useMemo(
+    () => (activeProduct ? colorOptionsFor(activeProduct) : ([] as ProductColorOption[])),
+    [activeProduct],
+  );
+
+  const sizeOptions: string[] = useMemo(
+    () => (activeProduct ? sizeOptionsFor(activeProduct) : []),
+    [activeProduct],
+  );
 
   const needsSize = useMemo(() => {
-    if (!product) return false;
-    return sizeOptions.length > 0 || product.type === "Phone Case";
-  }, [product, sizeOptions]);
+    if (!activeProduct) return false;
+    return sizeOptions.length > 0 || activeProduct.type === "Phone Case";
+  }, [activeProduct, sizeOptions]);
 
-  // Regular price (pricing.ts) — kept for the SALE strikethrough.
-  const regularBreakdown = useMemo(() => {
-    if (!product) return null;
-    return calculatePrice(
-      product.type as ProductType,
-      product.sub_product || product.type,
-      true,
-      false,
-      false,
-    );
-  }, [product]);
+  // Price of the ACTIVE product: calculatePrice (front-only, no back, no
+  // studio) with the catalog SALE (lib/catalogPromo.ts) applied — the same
+  // function the chips use. `regularBreakdown` is kept for the strikethrough;
+  // `priceBreakdown` is what the price box, add-to-cart productPrice and
+  // OrderDialog read, so display and payment cannot drift.
+  const activePrice = useMemo(
+    () => (activeProduct ? catalogDesignPrice(activeProduct.type, activeProduct.sub_product || activeProduct.type) : null),
+    [activeProduct],
+  );
+  const regularBreakdown = activePrice?.regular ?? null;
+  const priceBreakdown = activePrice?.final ?? null;
+  const onSale = !!activePrice?.onSale;
 
-  // The price this page charges: the regular breakdown with the catalog SALE
-  // (lib/catalogPromo.ts) applied. Everything downstream — price box, meta
-  // description, JSON-LD, add-to-cart productPrice and OrderDialog — reads
-  // THIS one, so display and payment cannot drift. This page is always
-  // front-only, no studio, and the brand is fixed by default_product_id, so
-  // only the brand + active checks inside applyCatalogPromo can vary.
-  const priceBreakdown = useMemo(() => {
-    if (!product || !regularBreakdown) return null;
-    return applyCatalogPromo(regularBreakdown, product.sub_product || product.type);
-  }, [product, regularBreakdown]);
-  const onSale = !!regularBreakdown && !!priceBreakdown && priceBreakdown.total < regularBreakdown.total;
+  // SEO price (meta description + JSON-LD) stays on the DEFAULT product so it
+  // doesn't change with a customer's chip click.
+  const seoPriceBreakdown = useMemo(
+    () => (product ? catalogDesignPrice(product.type, product.sub_product || product.type).final : null),
+    [product],
+  );
 
+  // The same 800px render the preview card shows (display-only).
+  const displayPrintUrl = design ? transformedDisplayUrl(design.print_file_url, { width: 800 }) : "";
+  const prebuildKey = activeProduct ? `${activeSub}|${selectedColor}|${displayPrintUrl}` : "";
+
+  // Original on-click build from the RAW print — now only the last fallback.
   const buildMockup = async () => {
-    if (!design || !product) return null;
+    if (!design || !activeProduct) return null;
     return compositeDesignOnProduct({
       printFileUrl: design.print_file_url,
-      productName: product.type,
-      subProduct: product.sub_product || product.type,
+      productName: activeProduct.type,
+      subProduct: activeSub,
       color: selectedColor,
       view: "front",
     });
   };
 
-  // Build (or restore from cache) the hi-res lens source for the current color,
-  // only while the magnifier is on. Uses the RAW print_file_url so the zoom
-  // stays crisp; the on-page image keeps using the transformed 800px URL.
+  // Pre-build the order mockup in the background (idle, after load; again on
+  // every colour / product change) from the 800px display print. The print
+  // file sent to production is unaffected — it stays design.print_file_url.
   useEffect(() => {
-    if (!loupeOn || !design || !product) { setHiResMockup(null); return; }
-    const key = selectedColor;
+    if (!design || !activeProduct || !prebuildKey) { prebuiltMockupRef.current = null; return; }
+    if (prebuiltMockupRef.current?.key === prebuildKey) return;
+    prebuiltMockupRef.current = null;
+    const key = prebuildKey;
+    const productName = activeProduct.type;
+    const subProduct = activeSub;
+    const color = selectedColor;
+    const printFileUrl = displayPrintUrl;
+    return scheduleIdle(() => {
+      prebuiltMockupRef.current = {
+        key,
+        promise: compositeDesignOnProduct({ printFileUrl, productName, subProduct, color, view: "front" }),
+      };
+    });
+  }, [design, activeProduct, activeSub, selectedColor, displayPrintUrl, prebuildKey]);
+
+  // Order mockup for the current selection: the pre-built one (awaiting it if
+  // still in flight), else a fresh build from the 800px print, else the
+  // original raw-print build.
+  const getOrderMockup = async (): Promise<string | null> => {
+    const pre = prebuiltMockupRef.current;
+    if (pre && pre.key === prebuildKey) {
+      const url = await pre.promise;
+      if (url) return url;
+    }
+    if (design && activeProduct && displayPrintUrl) {
+      const url = await compositeDesignOnProduct({
+        printFileUrl: displayPrintUrl,
+        productName: activeProduct.type,
+        subProduct: activeSub,
+        color: selectedColor,
+        view: "front",
+      });
+      if (url) return url;
+    }
+    return buildMockup();
+  };
+
+  // Chip click: switch product, keep colour/size when the new product has
+  // them, else first colour / no size. The pre-built mockup is keyed by the
+  // sub-product, so it is dropped and rebuilt for the new product.
+  const handleSelectProduct = (sub: string) => {
+    const option = switchOptions.find((o) => o.subProduct === sub);
+    if (!option || sub === activeSub) return;
+    const nextColors = colorOptionsFor(option.row).map((c) => c.name);
+    if (!nextColors.includes(selectedColor)) setSelectedColor(nextColors[0] ?? "White");
+    if (selectedSize && !sizeOptionsFor(option.row).includes(selectedSize)) setSelectedSize("");
+    setSizeError(false);
+    prebuiltMockupRef.current = null;
+    setSelectedSub(sub);
+  };
+
+  // Build (or restore from cache) the hi-res lens source for the current
+  // product + colour, only while the magnifier is on. Uses the RAW
+  // print_file_url so the zoom stays crisp; the on-page image keeps using the
+  // transformed 800px URL.
+  useEffect(() => {
+    if (!loupeOn || !design || !activeProduct) { setHiResMockup(null); return; }
+    // Keyed by design + product + colour: the page instance is reused when
+    // navigating between designs, and a hoodie and a t-shirt in the same
+    // colour are different composites.
+    const key = `${design.id}|${activeSub}|${selectedColor}`;
     const cached = hiResCacheRef.current[key];
-    if (cached) { setHiResMockup(cached); return; }
+    if (cached) { setHiResMockup(cached); setHiResLoading(false); return; }
     let cancelled = false;
     setHiResMockup(null);
     setHiResLoading(true);
     (async () => {
       const url = await compositeDesignOnProduct({
         printFileUrl: design.print_file_url,
-        productName: product.type,
-        subProduct: product.sub_product || product.type,
+        productName: activeProduct.type,
+        subProduct: activeSub,
         color: selectedColor,
         view: "front",
       });
@@ -321,7 +457,7 @@ export default function DesignDetailPage() {
       setHiResLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [loupeOn, selectedColor, design, product]);
+  }, [loupeOn, selectedColor, design, activeProduct, activeSub]);
 
   const validateSize = () => {
     if (needsSize && !selectedSize) {
@@ -334,9 +470,9 @@ export default function DesignDetailPage() {
   };
 
   const handleOrderClick = async () => {
-    if (!validateSize() || !design || !product || !priceBreakdown) return;
+    if (!validateSize() || !design || !activeProduct || !priceBreakdown) return;
     setComposing(true);
-    const mockup = await buildMockup();
+    const mockup = await getOrderMockup();
     setComposing(false);
     if (!mockup) {
       toast({ title: "preview ვერ აიგო", description: "სცადე სხვა ფერი/პროდუქტი", variant: "destructive" });
@@ -347,9 +483,9 @@ export default function DesignDetailPage() {
   };
 
   const handleAddToCartClick = async () => {
-    if (!validateSize() || !design || !product || !priceBreakdown) return;
+    if (!validateSize() || !design || !activeProduct || !priceBreakdown) return;
     setComposing(true);
-    const mockup = await buildMockup();
+    const mockup = await getOrderMockup();
     setComposing(false);
     if (!mockup) {
       toast({ title: "preview ვერ აიგო", description: "სცადე სხვა ფერი/პროდუქტი", variant: "destructive" });
@@ -357,8 +493,8 @@ export default function DesignDetailPage() {
     }
     try {
       await addToCart({
-        product: product.type,
-        subProduct: product.sub_product || product.type,
+        product: activeProduct.type,
+        subProduct: activeSub,
         color: selectedColor,
         size: selectedSize || null,
         isStudio: false,
@@ -441,7 +577,7 @@ export default function DesignDetailPage() {
     );
   }
 
-  if (!product || !priceBreakdown) {
+  if (!product || !activeProduct || !priceBreakdown || !seoPriceBreakdown) {
     return (
       <div className="flex flex-col h-screen">
         {/* Indexable: the design exists, only its product wiring is missing,
@@ -463,7 +599,8 @@ export default function DesignDetailPage() {
   // Description chosen via buildDesignMetaDescription so each design gets a
   // unique meta tag even when the admin hasn't filled meta_description_ka yet.
   // See the function comment at the top of this file for the priority order.
-  const description = buildDesignMetaDescription(design, priceBreakdown.total, categoryLabel);
+  // SEO price = the DEFAULT product's price (stable regardless of the chip).
+  const description = buildDesignMetaDescription(design, seoPriceBreakdown.total, categoryLabel);
   const ogImage = design.thumbnail_url || design.print_file_url;
 
   const jsonLd = buildProductSchema({
@@ -473,7 +610,7 @@ export default function DesignDetailPage() {
     slug: design.slug,
     image: ogImage,
     category: categoryLabel,
-    priceGEL: priceBreakdown.total,
+    priceGEL: seoPriceBreakdown.total,
     tags: design.tags,
   });
 
@@ -522,13 +659,14 @@ export default function DesignDetailPage() {
             <div className="relative rounded-2xl border border-border bg-card overflow-hidden aspect-square">
               <MagnifierLens active={loupeOn} zoomSrc={hiResMockup}>
                 <CatalogDesignCard
-                  // Display-only downscale — buildMockup() and the cart/order
-                  // payloads keep the full-res design.print_file_url.
-                  printFileUrl={transformedDisplayUrl(design.print_file_url, { width: 800 })}
+                  // Display-only downscale (also the source of the pre-built
+                  // order MOCKUP). The print file sent with the cart/order
+                  // (transparentImageDataUrl) stays the full-res print_file_url.
+                  printFileUrl={displayPrintUrl}
                   fallbackUrl={design.thumbnail_url}
-                  alt={`${design.title_ka} — ${productTypeKa(product.type)} ${colorKa(selectedColor)} | Maika.ge`}
-                  productType={product.type}
-                  subProduct={product.sub_product || product.type}
+                  alt={`${design.title_ka} — ${productTypeKa(activeProduct.type)} ${colorKa(selectedColor)} | Maika.ge`}
+                  productType={activeProduct.type}
+                  subProduct={activeSub}
                   color={selectedColor}
                   priority
                 />
@@ -555,7 +693,7 @@ export default function DesignDetailPage() {
               <div>
                 <h1 className="text-2xl font-bold text-foreground">{design.title_ka}</h1>
                 <div className="mt-1.5 flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>{product.display_name_ka}</span>
+                  <span>{activeProduct.display_name_ka}</span>
                   {categoryLabel && (
                     <>
                       <span>·</span>
@@ -564,6 +702,48 @@ export default function DesignDetailPage() {
                   )}
                 </div>
               </div>
+
+              {/* Product switcher — Sol's t-shirt ⇄ hoodies. Shown only when
+                  there is a real choice; chips for products whose row is
+                  missing / inactive simply don't render. */}
+              {switchOptions.length > 1 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-2">პროდუქტი</h3>
+                  <div role="radiogroup" aria-label="პროდუქტი" className="flex flex-wrap gap-2">
+                    {switchOptions.map((o) => {
+                      const active = o.subProduct === activeSub;
+                      return (
+                        <button
+                          key={o.subProduct}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          onClick={() => handleSelectProduct(o.subProduct)}
+                          className={`flex flex-col items-start rounded-lg border px-3 py-1.5 text-left transition-colors ${
+                            active
+                              ? "border-primary bg-primary/10 ring-1 ring-primary"
+                              : "border-border hover:border-muted-foreground"
+                          }`}
+                        >
+                          <span className="text-xs font-semibold text-foreground">
+                            {o.kindKa} · {o.brand}
+                          </span>
+                          <span className="flex items-baseline gap-1 text-xs">
+                            {o.price.onSale && (
+                              <s className="text-muted-foreground" aria-label={`ძველი ფასი ₾${o.price.regular.total}`}>
+                                ₾{o.price.regular.total}
+                              </s>
+                            )}
+                            <span className={o.price.onSale ? "font-bold text-destructive" : "font-semibold text-foreground"}>
+                              ₾{o.price.final.total}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Color */}
               {colorOptions.length > 0 && (
@@ -699,8 +879,8 @@ export default function DesignDetailPage() {
       <Suspense fallback={null}>
         <OrderDialog
           breakdown={priceBreakdown}
-          product={product.type}
-          subProduct={product.sub_product || product.type}
+          product={activeProduct.type}
+          subProduct={activeSub}
           color={selectedColor}
           isStudio={false}
           externalOpen={orderDialogOpen}

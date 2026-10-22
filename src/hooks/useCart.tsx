@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignState } from "@/lib/designState";
 import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
+import { isOwnStorageUrl } from "@/lib/ownStorageUrl";
 import { trackEvent } from "@/lib/gtag";
 
 export interface CartItem {
@@ -119,7 +120,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           ? uploadDataUrl(data.backMockupDataUrl, `${prefix}/back-mockup.png`)
           : Promise.resolve(null),
         data.transparentImageDataUrl
-          ? uploadDataUrl(data.transparentImageDataUrl, `${prefix}/front-transparent.png`)
+          // Already a public file on our own storage (catalog print) → keep the original URL, no re-upload.
+          ? (isOwnStorageUrl(data.transparentImageDataUrl) ? Promise.resolve(data.transparentImageDataUrl) : uploadDataUrl(data.transparentImageDataUrl, `${prefix}/front-transparent.png`))
           : Promise.resolve(null),
         data.backTransparentImageDataUrl
           ? uploadDataUrl(data.backTransparentImageDataUrl, `${prefix}/back-transparent.png`)

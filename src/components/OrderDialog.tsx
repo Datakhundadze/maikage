@@ -13,6 +13,7 @@ import { trackEvent } from "@/lib/gtag";
 import type { PriceBreakdown } from "@/lib/pricing";
 import type { DesignState } from "@/lib/designState";
 import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
+import { isOwnStorageUrl } from "@/lib/ownStorageUrl";
 import { mergeDesignStateUrls, submitOrder } from "@/lib/orderSubmission";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 import { BAG_FEE, BAG_FEE_LABEL_KA } from "@/lib/fees";
@@ -210,7 +211,8 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       const [frontUrl, backUrl, transparentUrl, backTransparentUrl, frontOriginalUrls, backOriginalUrls] = await Promise.all([
         frontMockupDataUrl ? uploadMockupImage(frontMockupDataUrl, orderId, "front") : Promise.resolve(null),
         backMockupDataUrl ? uploadMockupImage(backMockupDataUrl, orderId, "back") : Promise.resolve(null),
-        transparentImageDataUrl ? uploadMockupImage(transparentImageDataUrl, orderId, "transparent") : Promise.resolve(null),
+        // Already a public file on our own storage (catalog print) → keep the original URL, no re-upload.
+        transparentImageDataUrl ? (isOwnStorageUrl(transparentImageDataUrl) ? Promise.resolve(transparentImageDataUrl) : uploadMockupImage(transparentImageDataUrl, orderId, "transparent")) : Promise.resolve(null),
         backTransparentImageDataUrl ? uploadMockupImage(backTransparentImageDataUrl, orderId, "transparent-back") : Promise.resolve(null),
         frontOriginalPhotos?.length ? uploadOriginalPhotos(frontOriginalPhotos, orderId, "front") : Promise.resolve([] as (string | null)[]),
         backOriginalPhotos?.length ? uploadOriginalPhotos(backOriginalPhotos, orderId, "back") : Promise.resolve([] as (string | null)[]),
