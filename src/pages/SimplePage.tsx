@@ -44,6 +44,7 @@ import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
 import { chromaKeyGreen, chromaKeyGreenDesign } from "@/lib/chromaKey";
+import { USE_GPT_PHOTO_BG, transparentShare } from "@/lib/aiModelSwitch";
 import { cutoutIntent } from "@/lib/cutoutIntent";
 import { keyDesignCutout, flattenOnWhite, MIN_KEYED_FRACTION } from "@/lib/designCutout";
 import { t, colorKa } from "@/lib/i18n";
@@ -1761,8 +1762,20 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     setEditingPhotoId(photo.id);
     try {
       recordAiGeneration();
-      const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
-      const { image: transparentImage, keyedFraction } = await chromaKeyGreen(greenBg);
+      // GPT path (default since 2026-10-22, src/lib/aiModelSwitch.ts): the model
+      // returns a real transparent PNG, so there is no green screen to key and
+      // the success check below reads the alpha share instead of keyedFraction.
+      // Gemini path: unchanged.
+      let transparentImage: string;
+      let keyedFraction: number;
+      if (USE_GPT_PHOTO_BG) {
+        const { image: cutout } = await callGemini("isolate-subject-gpt", { image: photo.image });
+        transparentImage = cutout;
+        keyedFraction = await transparentShare(cutout);
+      } else {
+        const { image: greenBg } = await callGemini("isolate-subject", { image: photo.image });
+        ({ image: transparentImage, keyedFraction } = await chromaKeyGreen(greenBg));
+      }
       // ⚠️ VERIFY BEFORE DECLARING SUCCESS. The model can return the subject on
       // a backdrop that is NOT green — it happened in production, on a beige
       // one — and the key then removes nothing and hands back the image

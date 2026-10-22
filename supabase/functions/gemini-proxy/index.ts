@@ -22,7 +22,7 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // Actions that each cost a paid image call at the gateway → rate-limited per
 // caller. convert-bg-black (internal second half of a generate-design) and
 // randomize-prompt (cheap text) are intentionally exempt.
-const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout"]);
+const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt"]);
 
 // GUEST allowance, in UNITS, per IP (real signed-in users keep 30/hour and
 // 100/day, one unit per call, untouched).
@@ -52,7 +52,7 @@ const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale",
 // check_and_increment_rate_limit RPC — no schema or signature change.
 const GUEST_HOUR_LIMIT = 4;
 const GUEST_DAY_LIMIT = 4;
-const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout"]);
+const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt"]);
 const PRO_TIER_GUEST_UNITS = 2;
 
 // Text-only actions: they skip the image modality, run a single attempt, and
@@ -1957,6 +1957,121 @@ CRITICAL:
           );
         }
       }
+    }
+
+    // ── ADD-ONLY (2026-10-22): GPT Image photo actions ─────────────────────
+    // "isolate-subject-gpt" (GPT Image 2.5 Sunburst) and "restyle-gpt" (GPT
+    // Image 2.5 Flare) are the GPT versions of isolate-subject and restyle,
+    // chosen after the admin Model Lab comparison of 2026-10-22: same or better
+    // result at roughly a quarter of the Gemini 3 Pro Image cost. The Gemini
+    // handlers below are untouched; the client picks which action to call
+    // (src/lib/aiModelSwitch.ts), so reverting is a one-line client change.
+    //
+    // Both are in BILLABLE_ACTIONS and PRO_TIER_GUEST_ACTIONS, so they pass the
+    // same block check and rate limit above as the Gemini versions, and
+    // check_generation_block counts them. GPT Image only accepts photos on the
+    // gateway's images/edits endpoint as multipart/form-data, so these two do
+    // their own request here instead of going through callGateway's chat call.
+    // isolate-subject-gpt asks for a real transparent PNG — no #00FF00 screen,
+    // no client chroma key. Response shape { image, text } matches the rest.
+    if (action === "isolate-subject-gpt" || action === "restyle-gpt") {
+      const gJson = (status: number, body: unknown) =>
+        new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const gImage = typeof params.image === "string" ? params.image : "";
+      const gMatch = /^data:(image\/(?:png|jpeg|webp));base64,(.*)$/s.exec(gImage);
+      if (!gMatch || gImage.length > 12_000_000) {
+        return gJson(400, { error: "Image must be a PNG/JPEG/WEBP data URL under ~9 MB" });
+      }
+      const gInstruction = typeof params.instruction === "string" ? params.instruction.trim().slice(0, 1000) : "";
+      if (action === "restyle-gpt" && !gInstruction) return gJson(400, { error: "Empty instruction" });
+      const gKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!gKey) return gJson(500, { error: "LOVABLE_API_KEY is not configured" });
+
+      const gIsolate = action === "isolate-subject-gpt";
+      const gModel = gIsolate ? "openai/gpt-image-2.5-sunburst" : "openai/gpt-image-2.5-flare";
+      // isolate: transparent-background variant of the isolate-subject text.
+      // restyle: the restyle handler's GUARD, word for word.
+      const gPrompt = gIsolate
+        ? `Isolate the MAIN SUBJECT (the primary foreground person, animal, or object) from this photo and remove EVERYTHING else. The output background must be fully TRANSPARENT (PNG alpha) — no backdrop, no color, no shadow.
+
+CRITICAL:
+- Keep the main subject EXACTLY as it is: same shape, colors, textures, photographic detail, proportions and pose. Do NOT redraw, restyle, re-light, silhouette, or regenerate the subject — this is a background-removal/segmentation operation, NOT a re-shoot and NOT a mask.
+- If several items together form the subject (for example two garments hanging side by side), keep ALL of them.
+- Keep any printed text or logo on the subject letter-for-letter as in the photo.
+- Clean edges, no halo, no leftover background pixels.
+- Keep the subject fully inside the frame, roughly centered, at a similar scale to the input.`
+        : "This is an artistic style transfer, not a re-shoot. Preserve the " +
+          "subject's identity, pose, count, framing and composition exactly; " +
+          "change ONLY the artistic medium/style; do not add text, watermarks " +
+          "or new objects. " + gInstruction;
+
+      const gBin = Uint8Array.from(atob(gMatch[2]), (c) => c.charCodeAt(0));
+      const gExt = gMatch[1] === "image/png" ? "png" : gMatch[1] === "image/webp" ? "webp" : "jpg";
+      const EDITS_URL = GATEWAY_URL.replace("/chat/completions", "/images/edits");
+      const gMaxAttempts = 2;
+      let gLastError = "";
+
+      for (let attempt = 0; attempt < gMaxAttempts; attempt++) {
+        const startedAt = Date.now();
+        const gLog = (success: boolean, errorCode: string | null) =>
+          logAiCall({
+            action, model: gModel,
+            userId: callerUserId,
+            sessionId: callerSessionId,
+            isGuest: callerIsGuest,
+            success,
+            durationMs: Date.now() - startedAt,
+            errorCode,
+          });
+        try {
+          const form = new FormData();
+          form.append("model", gModel);
+          form.append("prompt", gPrompt);
+          form.append("image", new Blob([gBin], { type: gMatch[1] }), `input.${gExt}`);
+          form.append("n", "1");
+          form.append("size", "auto");
+          form.append("quality", "medium");
+          form.append("output_format", "png");
+          form.append("background", gIsolate ? "transparent" : "auto");
+          const res = await fetch(EDITS_URL, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${gKey}` },
+            body: form,
+          });
+          if (!res.ok) {
+            const status = res.status;
+            const text = await res.text();
+            gLog(false, `http_${status}`);
+            console.error(`[gemini-proxy] ${action} HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 300));
+            if (status === 429) return gJson(429, { error: "Rate limit exceeded. Please wait a moment and try again." });
+            if (status === 402) {
+              // Same customer-facing wording as the main loop's 402.
+              return gJson(402, {
+                error: "სერვისი დროებით მიუწვდომელია — სცადეთ ცოტა ხანში ან დაგვიკავშირდით. (The service is temporarily unavailable — please try again shortly or contact us.)",
+                code: "SERVICE_UNAVAILABLE",
+              });
+            }
+            if (status >= 400 && status < 500) return gJson(500, { error: "AI generation failed. Please try again." });
+            gLastError = `Gateway returned ${status}`;
+          } else {
+            const data: unknown = await res.json();
+            const img = extractImage(data);
+            if (img) {
+              gLog(true, null);
+              console.log(`[gemini-proxy] Success: action=${action}, attempt=${attempt + 1}`);
+              return gJson(200, { image: img, text: "" });
+            }
+            gLog(false, "no_image");
+            gLastError = "No image in response";
+          }
+        } catch (gErr) {
+          gLog(false, "exception");
+          gLastError = gErr instanceof Error ? gErr.message : String(gErr);
+          console.error(`[gemini-proxy] ${action} attempt ${attempt + 1} exception:`, gLastError);
+        }
+        if (attempt < gMaxAttempts - 1) await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+      }
+      return gJson(500, { error: `AI generation failed: ${gLastError}` });
     }
 
     let model: string;

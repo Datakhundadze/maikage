@@ -59,10 +59,11 @@ describe("gemini-proxy cutout actions (add-only)", () => {
   it("both new actions are billable and pro-tier for guests; existing members unchanged", () => {
     expect(setMembers("BILLABLE_ACTIONS")).toEqual([
       "generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image",
-      "isolate-design", "edit-image-cutout",
+      "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt",
     ]);
     expect(setMembers("PRO_TIER_GUEST_ACTIONS")).toEqual([
       "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout",
+      "isolate-subject-gpt", "restyle-gpt",
     ]);
   });
 

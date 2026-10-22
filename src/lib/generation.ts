@@ -1,3 +1,4 @@
+import { USE_GPT_RESTYLE } from "@/lib/aiModelSwitch";
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignParams } from "@/hooks/useDesign";
 import { COLORS } from "@/lib/catalog";
@@ -639,7 +640,8 @@ export async function upscaleImage(imageBase64: string): Promise<string> {
 // "restyle" action wraps it in a fixed subject-preserving GUARD. Mirrors
 // upscaleImage — billable, so 429 / generation-block surface via callGemini.
 export async function restyleImage(imageBase64: string, instruction: string): Promise<string> {
-  const result = await callGemini("restyle", { image: imageBase64, instruction });
+  // GPT Image by default since 2026-10-22 (src/lib/aiModelSwitch.ts).
+  const result = await callGemini(USE_GPT_RESTYLE ? "restyle-gpt" : "restyle", { image: imageBase64, instruction });
   return result.image;
 }
 
