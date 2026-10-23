@@ -1399,6 +1399,15 @@ serve(async (req) => {
     // Captured in the faq-chat gate below; used at the success path.
     let faqChatUserId: string | null = null;
 
+    // EVAL MODE (2026-10-23, add-only). An ADMIN call to faq-chat with
+    // params.eval === true is a test replay by the bot-evaluation harness:
+    // the reply is computed exactly as for a customer, but nothing is written
+    // to chat_logs and no callback request is recorded or e-mailed, so test
+    // traffic never mixes with real conversations. The response additionally
+    // carries `raw` (the unstripped model text) so the harness can see which
+    // blocks the bot emitted. Non-admin callers can never enable it.
+    let faqEvalMode = false;
+
     // Caller identity, resolved ONCE, for EVERY action, from the request's
     // own Authorization header — before either gate below. The two gates and
     // the ai_calls cost log all read it from here.
@@ -1901,6 +1910,7 @@ CRITICAL:
         });
         isAdmin = adminFlag === true;
       }
+      faqEvalMode = isAdmin && params?.eval === true;
 
       if (!isAdmin) {
         // Manual admin block only: p_action != 'generate-design', so
@@ -2705,7 +2715,7 @@ Output: one photorealistic composite photo.`;
             // below behaves differently.
             const callbackRequested = hasCallbackBlock(textContent);
             let replyText = callbackRequested ? stripCallbackBlock(textContent) : textContent;
-            if (callbackRequested) {
+            if (callbackRequested && !faqEvalMode) {
               if (!replyText) {
                 // The model sent the block alone — never answer with an empty bubble.
                 replyText = params.lang === "en"
@@ -2744,7 +2754,7 @@ Output: one photorealistic composite photo.`;
               const lastUser = [...msgs].reverse().find(
                 (m) => m && m.role === "user" && typeof m.content === "string",
               );
-              if (sessionId && srUrl && srKey) {
+              if (sessionId && srUrl && srKey && !faqEvalMode) {
                 const rows: Record<string, unknown>[] = [];
                 if (lastUser) {
                   // The photo rides on params.image, NOT inside messages, so
@@ -2803,6 +2813,11 @@ Output: one photorealistic composite photo.`;
             // shared text return below, which randomize-prompt still uses
             // unchanged.
             logAttempt(true, null);
+            if (faqEvalMode) {
+              return new Response(JSON.stringify({ image: null, text: replyText, raw: textContent }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
             return new Response(JSON.stringify({ image: null, text: replyText }), {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
