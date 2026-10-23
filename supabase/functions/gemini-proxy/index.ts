@@ -2449,7 +2449,14 @@ Output: one photorealistic composite photo.`;
       // be mistaken for conversation and cannot be overridden by history (the
       // sanitiser above already drops any client-supplied system role).
       const caller = faqChatUserId ? "registered" : "guest";
-      messages = [{ role: "system", content: `${FAQ_KB}\n\nCALLER: ${caller}` }, ...history];
+      // EVAL-ONLY KB OVERRIDE (2026-10-23, add-only): in admin eval mode the
+      // harness may send a candidate knowledge base as params.kb_override, so a
+      // KB change is scored on the real question bank BEFORE it is deployed.
+      // Never reachable by customers (faqEvalMode requires the admin role).
+      const faqKb = faqEvalMode && typeof params.kb_override === "string" && params.kb_override.length > 1000
+        ? params.kb_override.slice(0, 200_000)
+        : FAQ_KB;
+      messages = [{ role: "system", content: `${faqKb}\n\nCALLER: ${caller}` }, ...history];
 
       // ── OPTIONAL PHOTO (add-only) ──────────────────────────────────────
       // When params.image is absent, everything above is untouched and this
