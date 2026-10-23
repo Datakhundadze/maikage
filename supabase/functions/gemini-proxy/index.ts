@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactPii } from "./redactPii.ts";
+import { fixBankAccounts } from "./bankAccounts.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import {
   CALLBACK_DAY_LIMIT,
@@ -383,6 +384,21 @@ KA: საბანკო გადარიცხვით, ონლაინ 
 ძირითადად 100% წინასწარ.
 
 EN: Bank transfer, online card payment (BOG / TBC on the site), or cash. Usually 100% upfront.
+
+### საბანკო რეკვიზიტები / BANK DETAILS — copy CHARACTER FOR CHARACTER
+When the customer asks for the account / რეკვიზიტები / IBAN / „ანგარიში ჩამიგდეთ", give
+exactly these lines (if they named one bank, give only that bank's line — on its own line,
+with nothing else on it, so it can be copied):
+შპს „მაიკა ჯი" · ს/ნ 404430175
+- თიბისი ბანკი (TBC): GE13TB7099236020100012
+- საქართველოს ბანკი (BOG): GE89BG0000000536148375
+After the transfer the customer sends the payment receipt to us (Facebook / Instagram /
+WhatsApp, §9b) together with the order details.
+⛔ THESE ARE THE ONLY TWO ACCOUNTS AND THE ONLY ID. Never write any other account number,
+IBAN, tax ID or company name, never "complete" or vary a digit. If unsure — copy the lines
+above, nothing else.
+EN: Company LLC "Maika G" (შპს „მაიკა ჯი"), ID 404430175 · TBC: GE13TB7099236020100012 ·
+Bank of Georgia: GE89BG0000000536148375. Same rules.
 
 ═══════════════════════════════════════════════════════════════
 ## 9b. HOW TO ORDER / შეკვეთის არხები
@@ -2705,6 +2721,11 @@ Output: one photorealistic composite photo.`;
           // wrapped so a log failure NEVER breaks or changes the chat response.
           // Only faq-chat logs — randomize-prompt is untouched.
           if (action === "faq-chat") {
+            // BANK ACCOUNTS (2026-10-23): any IBAN that is not one of ours is
+            // swapped for the real account BEFORE anything else reads the
+            // reply — the customer, chat_logs and the callback path all see
+            // the corrected text (bankAccounts.ts). No IBAN → unchanged.
+            const bankSafeText = fixBankAccounts(textContent);
             // ── CALLBACK REQUEST (§9d, callbackRequest.ts) ─────────────────
             // The maika-callback block is a signal for the server, never text
             // for the customer: it is ALWAYS stripped here, before chat_logs
@@ -2713,8 +2734,8 @@ Output: one photorealistic composite photo.`;
             // swallows its own failures, so it can neither delay nor break the
             // reply. Without a block, replyText === textContent and nothing
             // below behaves differently.
-            const callbackRequested = hasCallbackBlock(textContent);
-            let replyText = callbackRequested ? stripCallbackBlock(textContent) : textContent;
+            const callbackRequested = hasCallbackBlock(bankSafeText);
+            let replyText = callbackRequested ? stripCallbackBlock(bankSafeText) : bankSafeText;
             if (callbackRequested && !faqEvalMode) {
               if (!replyText) {
                 // The model sent the block alone — never answer with an empty bubble.
