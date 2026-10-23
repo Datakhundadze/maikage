@@ -170,7 +170,7 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "NIKE": ["S", "M", "L", "XL", "XXL"],
   "Polo": ["S", "M", "L", "XL", "XXL", "XXXL"],
   // Oversize: one-size — no size selector shown (entry intentionally omitted)
-  "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი"],
+  "GILDAN KIDS": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი", "12/14 წელი"],
   // Sport
   "Sport Set": ["S", "M", "L", "XL", "XXL"],
   // Hoodies
