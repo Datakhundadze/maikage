@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactPii } from "./redactPii.ts";
 import { fixBankAccounts } from "./bankAccounts.ts";
 import { sanitizeReply } from "./replySanitize.ts";
+import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import {
   CALLBACK_DAY_LIMIT,
@@ -2653,7 +2654,17 @@ Output: one photorealistic composite photo.`;
       const faqKb = faqEvalMode && typeof params.kb_override === "string" && params.kb_override.length > 1000
         ? params.kb_override.slice(0, 200_000)
         : FAQ_KB;
-      messages = [{ role: "system", content: `${faqKb}\n\nCALLER: ${caller}` }, ...history];
+      // LIVE STOCK (2026-10-24, add-only, stockSnapshot.ts): when the customer
+      // asks about colours / sizes / availability, a short "STOCK NOW" section
+      // from the maikasales warehouse is appended to the system turn (before
+      // CALLER, which must stay last). Off for customers until STOCK_LIVE; an
+      // admin eval call can opt in with params.stock === true. Any failure →
+      // "" → the prompt is exactly what it was before.
+      let stockBlock = "";
+      if ((STOCK_LIVE || (faqEvalMode && params?.stock === true)) && wantsStock(history)) {
+        try { stockBlock = await getStockBlock(); } catch { stockBlock = ""; }
+      }
+      messages = [{ role: "system", content: `${faqKb}${stockBlock}\n\nCALLER: ${caller}` }, ...history];
 
       // ── OPTIONAL PHOTO (add-only) ──────────────────────────────────────
       // When params.image is absent, everything above is untouched and this
