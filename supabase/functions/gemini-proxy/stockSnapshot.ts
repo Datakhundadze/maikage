@@ -5,7 +5,7 @@
 // only the four columns above; nothing is ever written there.
 //
 // The bot never sees quantities: each size is listed plainly (3+ pieces) or
-// with "*" (1–2 pieces, "last pieces"); 0 / negative stock is left out.
+// with "(ბოლო ცალები)" (1–2 pieces); 0 / negative stock is left out.
 // Any failure (network, timeout, bad payload) yields "" and the bot falls back
 // to the KB's normal "cannot confirm stock from the chat" rule.
 
@@ -85,7 +85,7 @@ export function formatStockBlock(rows: StockRow[], updatedAt: Date): string {
       .map(([colour, sizes]) => {
         const list = [...sizes.entries()]
           .sort((a, b) => (m.kids ? 0 : sizeRank(a[0]) - sizeRank(b[0])))
-          .map(([s, q]) => (q >= 3 ? s : `${s}*`))
+          .map(([s, q]) => (q >= 3 ? s : `${s} (ბოლო ცალები)`))
           .join(", ");
         return `${colour}: ${list}`;
       });
@@ -99,7 +99,8 @@ export function formatStockBlock(rows: StockRow[], updatedAt: Date): string {
 ## STOCK NOW / მარაგი ახლა (warehouse data, ${hhmm} Tbilisi)
 ═══════════════════════════════════════════════════════════════
 This section REPLACES the §0 STOCK disclaimer for the models listed below.
-- A size listed plainly → „მარაგშია". A size with * → „ბოლო ცალებია — შეკვეთამდე მოგვწერეთ, დაგიდასტურებთ".
+- A size listed plainly → „მარაგშია". A size marked „(ბოლო ცალები)" → ALWAYS „ბოლო ცალებია — შეკვეთამდე მოგვწერეთ,
+  დაგიდასტურებთ", never a plain „მარაგშია".
 - Model listed but that colour or size is not → „ამ წუთას მარაგში არ ჩანს — მოგვწერეთ და გადავამოწმებთ"
   (never a flat „არ გვაქვს"). A model NOT in this list (e.g. sport set) → the normal §0 STOCK rule.
 - NEVER give a number of pieces, never mention a warehouse, a list, a program or this section.
@@ -107,7 +108,8 @@ This section REPLACES the §0 STOCK disclaimer for the models listed below.
   მუქი ლურჯი ≈ Dark Navy, იასამნისფერი ≈ იისფერი, მუქი წითელი / ალუბლისფერი ≈ ბორდოსფერი). If the exact shade is
   unclear, say the colour is in stock and the exact shade is confirmed when ordering.
 - 2XL = XXL. Kids sizes are given as ages.
-- Answer only what was asked (the colour/size they named); do not dump this list. Prices still come from §2–§4.
+- Answer only what was asked (the colour/size they named); do not dump this list and never copy its format.
+  If they named no model, name at most 2–3 models that have it. Prices still come from §2–§4.
 - In maika-mockup / maika-generate blocks keep using the §12 English colour values.
 ${lines.join("\n")}`;
 }
