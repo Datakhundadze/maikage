@@ -9,9 +9,9 @@
 // Any failure (network, timeout, bad payload) yields "" and the bot falls back
 // to the KB's normal "cannot confirm stock from the chat" rule.
 
-// Master switch for customers. While false, the block is only built for an
-// admin eval call that passes params.stock === true.
-export const STOCK_LIVE = false;
+// Master switch for customers (on since 2026-10-24). When false, the block is
+// only built for an admin eval call that passes params.stock === true.
+export const STOCK_LIVE = true;
 
 const MAIKASALES_URL = "https://coqorrfbmnsknmlwnico.supabase.co";
 const MAIKASALES_ANON_KEY =

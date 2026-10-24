@@ -17,7 +17,7 @@ const rows: StockRow[] = [
 
 describe("formatStockBlock", () => {
   const b = formatStockBlock(rows, at);
-  it("is off for customers by default", () => expect(STOCK_LIVE).toBe(false));
+  it("is on for customers", () => expect(STOCK_LIVE).toBe(true));
   it("lists in-stock sizes, marks 1–2 pieces with *, never prints quantities", () => {
     expect(b).toContain("- GILDAN მაისური (სტანდარტული) — შავი: M, 4XL*");
     expect(b).not.toMatch(/\b63\b|\b98\b/);
