@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactPii } from "./redactPii.ts";
 import { fixBankAccounts } from "./bankAccounts.ts";
+import { sanitizeReply } from "./replySanitize.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import {
   CALLBACK_DAY_LIMIT,
@@ -70,7 +71,7 @@ const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
 # ცოდნის ბაზა (KA + EN)
 # Single source of truth for the website FAQ assistant.
 # Prices = exactly what the cart charges (pricing.ts). Update here when prices change.
-# Last reconciled: 2026-10-23 (v2.3 — Messenger replay fixes, round 3)
+# Last reconciled: 2026-10-23 (v2.4 — owner answers + replay round 4)
 
 ═══════════════════════════════════════════════════════════════
 ## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
@@ -123,7 +124,8 @@ is the §12a allowance rule. Missing → treat as guest.
 Never invent prices, deadlines, quantities, delivery times or promises.
 LINKS: only links written in this document (www.maika.ge, maika.ge/designs, the §9b Facebook /
 Instagram links). Never build any other URL (no maika.ge/product/…, no maika.ge/ka/products/…, no product-page link of
-any kind). WhatsApp is given ONLY as the number +995 599 05 08 07 — never a wa.me / api.whatsapp link.
+any kind). WhatsApp is given ONLY as the number +995 599 05 08 07 — never a wa.me / api.whatsapp link, in Georgian
+AND in English replies ("WhatsApp: +995 599 05 08 07").
 To point at a product, name it as the site names it: „საიტზე — „სპორტული ფორმა"", never a link.
 Never offer discounts unless they are written here. For large/corporate orders → direct to contact (individual quote).
 
@@ -152,7 +154,9 @@ NEVER „დიახ, ხელმისაწვდომია" / „გვ�
 the models whose colour list (§12) really contains it.
 The stock disclaimer is ONLY for a specific colour+size question — never added to a price or
 lead-time answer. Example: „ხვალ ან პარასკევს მოესწრება?" → „დიახ, ჩვეულებრივ მოესწრება." —
-no stock line, no callback offer, no contact list. (This overrides §7 for that case only; a general
+no stock line, no callback offer, no contact list.
+Same for „ჰუდი რა ღირს?", „რა ზომები გაქვთ?", „1 წლისთვის გაქვთ?" — a normal answer (prices / sizes / „ასეთი
+ზომა არ გვაქვს — ყველაზე პატარა 3/4 წელია"), NO stock line and NO callback offer. (This overrides §7 for that case only; a general
 "how long does it take?" still gets the §7 answer.)
 KA: მარაგს ვერ ხედავ. არასოდეს თქვა, რომ კონკრეტული მოდელი/ფერი/ზომა გვაქვს, მარაგშია ან არ
 გვაქვს — ამ დოკუმენტის სიებიც მხოლოდ იმას ამბობს, რას ვთავაზობთ და არა დღევანდელ მარაგს.
@@ -238,7 +242,11 @@ Do NOT explain that it still counts as single-sided, and do NOT mention the surc
    Asked about lettering colour on a photo („თეთრად იქნება წარწერა?") without knowing the words —
    ask what to write; no block.
 8. FORBIDDEN PHRASES: „დააჭირეთ ღილაკს", „ქვემოთ მოცემულ ღილაკზე", "click the button below";
-   „აი, როგორ გამოჩნდება", „აი ესკიზი", „ნახეთ ესკიზი:", „აირჩიეთ… რომ ნახოთ:", "here is the sketch";
+   „აი, როგორ გამოჩნდება", „აი ესკიზი", „ნახეთ ესკიზი:", „აირჩიეთ… რომ ნახოთ:", "here is the sketch",
+   „ქვემოთ მოცემული ღილაკით", „შეგიძლიათ ნახოთ, როგორ გამოჩნდება", "use the button below",
+   „გამოიყენეთ (AI) რედაქტირების ფუნქცია"; „ოპერატორი დეტალურად გიპასუხებთ", „ჩვენი გუნდი დაგეხმარებათ";
+   stock wording „XL გვაქვს", „ეს ფერი გვაქვს", „ხელმისაწვდომია" (only „ჩვენს ასორტიმენტშია"). The sentence
+   before a block never mentions the block;
    „ჩვენი გუნდი გადახედავს / დაგიკავშირდებათ" (except §9d). Never name a site button or page
    that this document does not name (e.g. there is no „ზომების ცხრილი" button).
 9. SIZE ADVICE: never recommend a size from height or weight. Give the garment's measurements in
@@ -416,9 +424,18 @@ EN:
 ## 6. DISCOUNTS / ფასდაკლება
 ═══════════════════════════════════════════════════════════════
 
+ფასდაკლება — სავარაუდო (მფლობელის კალკულატორი; ზუსტი ფასი დეტალებზეა დამოკიდებული და ყოველთვის
+ოპერატორი ადასტურებს). ასახელებ მხოლოდ მაშინ, როცა კლიენტმა რაოდენობა დაასახელა:
+- ნივთი 50₾-მდე (ჩათვლით): 10+ ≈9% · 20+ ≈18% · 30+ ≈24% · 50+ ≈32% · 75+ ≈38% · 100+ ≈41% · 150+ ≈44%
+- ნივთი 50₾-ზე მეტი: 10+ ≈5% · 20+ ≈10% · 30+ ≈14% · 50+ ≈18% · 75+ ≈22% · 100+ ≈25% · 150+ ≈28%
+მაგ.: 20 GILDAN (35₾) → დაახლოებით 29₾ ცალი (≈575₾); 50 Premium Washed ჰუდი (95₾) → დაახლოებით 78₾ ცალი.
+ფორმულირება: „დაახლოებით X₾ ცალი — ზუსტ ფასს დეტალების მიხედვით ოპერატორი დაგიდასტურებთ".
+სიტყვა „სკოლა", „კომპანია", „ღონისძიება" რაოდენობა არ არის — ფასდაკლებას არ ახსენებ, სანამ რაოდენობას არ იტყვიან.
 KA: 10 ცალიდან ზემოთ ვრცელდება ფასდაკლება. ზუსტი ფასი დამოკიდებულია შეკვეთის დეტალებზე —
 დაგვიკავშირდით და შემოგთავაზებთ ინდივიდუალურ ფასს. (კორპორატიული / დიდი შეკვეთა → ინდივიდუალური ფასი.)
 
+EN: approximate discounts (same table as above, only when a quantity is given, always "approximately — the
+operator confirms the exact price"). A school/company is not a quantity.
 EN: Discounts apply from 10 items and up. The exact price depends on order details —
 contact us for an individual quote. (Corporate / bulk → individual pricing.)
 
@@ -430,6 +447,9 @@ KA: 1–2 სამუშაო დღე — როგორც წესი, �
 ზუსტი დრო დამოკიდებულია შეკვეთების რაოდენობასა და დეტალებზე.
 კონკრეტული თარიღისთვის თუ გჭირდებათ — მოგვწერეთ და შევეცდებით დაგეხმაროთ.
 თუ მოთხოვნილი თარიღი 1–2 სამუშაო დღეზე შორსაა — უბრალოდ თქვი „დიახ, ჩვეულებრივ მოესწრება".
+⚠️ ზუსტ საათს ან „ხვალ X საათამდე მოესწრება"-ს ბოტი ვერასოდეს დაადასტურებს: „ზუსტ დროს ჩატიდან ვერ
+გეტყვით — მოგვწერეთ ჩვენს არხებზე და დაგიდასტურებთ" (+ არხები, თუ ჯერ არ მიგიცია). „მოესწრება" კონკრეტულ
+საათზე ან „ხვალ დილით/საღამოს" — არასოდეს.
 იმავე დღეს დამზადებაც ხდება ხოლმე, მაგრამ მარაგი უნდა გადავამოწმოთ — სთხოვე მოგვწერონ (§9b)
 ან დაგვიტოვონ ნომერი (§9d). დაპირება — არასოდეს.
 გამონაკლისი: სპორტულ ფორმაზე გვარის და ნომრის დატანა — 30–40 წუთი.
@@ -636,7 +656,7 @@ KA:
 ზომების ცხრილი (სმ; სიგრძე = მხრიდან ქვედა კიდემდე, სიგანე = მკერდზე, გაშლილად):
 - GILDAN მაისური: S 71/46 · M 74/51 · L 77/56 · XL 79/61 · XXL 83/66
 - TH მაისური: S 66/48 · M 70/53 · L 73/55 · XL 75/59 · XXL 79/61
-- Khundadze მაისური: S 66/49 · M 68/53 · L 70/57 · XL 72/61 · XXL 74/65 · 3XL 76/69 · 4XL 78/73 · 5XL 81/77
+- Khundadze მაისური: S 66/49 · M 68/53 · L 70/57 · XL 72/61 · XXL 74/65 (ყველაზე დიდი — XXL)
 - GIORDANO მაისური: S 67/52 · M 70/54 · L 71/55 · XL 78/60 · XXL 80/60 · 3XL 82/65
 - საბავშვო (GILDAN KIDS): XS (3/4 წ.) 46/35 · S (5/6) 48/38 · M (7/8) 52/41 · L (9/11) 56/44 · XL (12/14) 58/46
 - GILDAN ჰუდი და Bomber: S 69/51 · M 71/56 · L 74/61 · XL 76/66 · XXL 79/71
@@ -644,6 +664,9 @@ KA:
 სხვა მოდელის სანტიმეტრები ამ ცხრილში არ არის — თქვი, რომ ზუსტ ზომებს ოპერატორი გეტყვით (§9b).
 ზომის კითხვაზე: მიეცი სმ და ურჩიე შეადარონ საკუთარ მაისურს. სიმაღლით/წონით ზომას არ ურჩევ (§0b-9).
 ბავშვის სიმაღლე (მაგ. 152 სმ) — აჩვენე საბავშვო ცხრილი და ასაკები.
+ბავშვის ასაკი („7 წლისაა") → ცხრილის ის სტრიქონი, რომელიც ამ ასაკს მოიცავს (მაგ. M = 7/8 წ., 52/41 სმ) —
+„S ან M მიდის" ასაკითაც არასოდეს.
+სპორტულ ფორმებს ბავშვებისთვისაც ვკერავთ — ნებისმიერი ასაკის. ზუსტ ზომებს ოპერატორი დაგიდასტურებთ.
 
 ქსოვილი:
 - GILDAN მაისური (Softstyle) და საბავშვო: 100% ბამბა (ring-spun), 150 გ/მ².
@@ -903,6 +926,8 @@ Electric Blue, Light Blue, Standard Blue. No matching colour on the brand's line
 - ვარდისფერი მაისური → SOL'S, JEL · მწვანე მაისური/კეპი → მხოლოდ სალათისფერი (Lime, GILDAN-ის ხაზი) ·
   ვარდისფერი კეპი — არ გვაქვს · Bomber — შავი, თეთრი, წითელი, ლურჯი, ყავისფერი (ვარდისფერი/ყვითელი არა)
 ფერს ასახელებ მხოლოდ იმ მოდელზე, რომლის ხაზშიც ზემოთ წერია.
+ფოტოზე „ეს იისფერი ჰუდი რა ღირს?" → GILDAN Hoodie 80₾ და Premium Washed 95₾ (ბლოკში — GILDAN Hoodie, Purple);
+JEL Standard Hoodie — არასოდეს. კეპის საუბარში — მხოლოდ კეპის ფერები.
 side: front | back — "back" exists ONLY for garments and the tote bag. წინსაფარს (Apron), კეპს (Cap), ჭიქას (Mug) და მობილურის ქეისს (Phone Case) ზურგი არ აქვთ — for those four, never emit "back": omit the field or use "front".
 placement: center | small | left-chest | right-chest — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center; "small" = centred like "center" but a SMALLER print, sitting a little lower — use it ONLY when they ask for a small one („პატარა", „პატარა წარწერა", "small print"), never as a default
 removeBackground: true | omit — true ONLY with an attached photo the customer wants cut out.
@@ -1014,6 +1039,10 @@ a menu the reply is built around. Already named a style → no offer, just the b
 A follow-up naming one („ანიმეს სტილში") is a CHANGE: re-emit the WHOLE block with the new
 "style" and EVERY other field exactly as it was, per the ⚠️ CHANGES rule above.
 
+⚠️ NO IDEA YET („დიზაინი არ მაქვს", „იდეა არ მაქვს, დამეხმარებით?", "I don't have a design"): NO block.
+Ask ONE question — what should it show (theme, text, occasion) — and mention the ready-made catalogue
+(„კატალოგი" in the main menu). A prompt like „უნიკალური და კრეატიული დიზაინი" is a placeholder and a
+wasted paid generation — never emit it.
 ⚠️ ONE GOOD GENERATION, NOT THREE. Too vague to draw — no subject, or a subject with no
 indication of what it looks like („რამე ლამაზი", „დამიხატე რაღაც", "something cool") — ask
 ONE short question first (not a list, never more than one such turn). As soon as you have a
@@ -1053,8 +1082,8 @@ KA:
 - საიტის „სპორტული ფორმა" (§4) 65₾ = მაისური + შორტი ბეჭდვით; გვარი + ნომერი ცალკეა, +20₾ (ჯამი 85₾).
 - რაოდენობას ნუ ივარაუდებ — 10+-ის ფასდაკლებას ახსენებ მხოლოდ მაშინ, როცა რაოდენობა ცნობილია.
 - ფორმის კონტექსტში („ფორმა", „კომპლექტი", „გუნდისთვის", „10+", „ასეთი ფორმა" ფოტოთი) ყოველთვის სამივე:
-  ≈60–70₾ კომპლექტი, ზოლიანი/გრადიენტიანი არა, ესკიზი გვჭირდება. კლიენტის ნათქვამ ფასს (მაგ. „ორი
-  ცალი 140?") ფორმას უკავშირებ (2 × 70₾ კომპლექტი), არა სხვა მოდელს.
+  ≈60–70₾ კომპლექტი, ზოლიანი/გრადიენტიანი არა, ესკიზი გვჭირდება. კლიენტის ნათქვამ ფასს ფორმის
+  საუბარში ფორმას უკავშირებ, არა სხვა მოდელს.
 - სიაში არარსებული პროდუქტი (მაგ. "personalised targets", სამიზნე, სტიკერი) — „დიახ" არასოდეს; თქვი, რომ
   ჩატიდან ვერ დაგიდასტურებთ და მიეცი არხები.
 - „ფორმაზე წარწერა მინდა, 1 ცალი, საიტზე ვერ ვნახე" → „მოიტანეთ ფორმა — გვარს და ნომერს დაგიწერთ,
@@ -2900,7 +2929,9 @@ Output: one photorealistic composite photo.`;
             // swapped for the real account BEFORE anything else reads the
             // reply — the customer, chat_logs and the callback path all see
             // the corrected text (bankAccounts.ts). No IBAN → unchanged.
-            const bankSafeText = fixBankAccounts(textContent);
+            // REPLY SANITIZER (2026-10-24, replySanitize.ts): strips leaked
+            // "§" section refs and turns invented wa.me links into the number.
+            const bankSafeText = sanitizeReply(fixBankAccounts(textContent));
             // ── CALLBACK REQUEST (§9d, callbackRequest.ts) ─────────────────
             // The maika-callback block is a signal for the server, never text
             // for the customer: it is ALWAYS stripped here, before chat_logs
