@@ -15,8 +15,8 @@ import { CATALOG_PROMO, isCatalogPromoActive } from "@/lib/catalogPromo";
 
 /** The page's head and intro — FaqPage's SeoHead, <h1> and lead paragraph. */
 export const FAQ_PAGE = {
-  title: "ხშირად დასმული კითხვები (FAQ) | Maika.ge",
-  description: "მაისურზე და ჰუდზე ბეჭდვის ფასები, მიწოდება, ვადები, გადახდა და ხშირი კითხვები — ყველაფერი Maika.ge-ის სერვისების შესახებ ერთ გვერდზე.",
+  title: "მაისურების ბეჭდვა — ხშირი კითხვები და ფასები | maika.ge",
+  description: "მაისურების ბეჭდვა — ხშირი კითხვები: ფასები, ვადები, მიწოდება, გადახდა და ბეჭდვა მოტანილ ნივთზე. ყველა პასუხი ერთ გვერდზე, Maika.ge.",
   h1: "ხშირად დასმული კითხვები",
   intro: "ფასები, მიწოდება, ვადები და გადახდა — ყველაფერი ერთ გვერდზე.",
   backLabel: "მთავარი გვერდი",

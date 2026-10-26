@@ -44,6 +44,7 @@ describe("lib/landingCopy.ts", () => {
     expect(COPY.intro).toBe(APPROVED.intro);
     expect(COPY.sections.map((s) => [s.h3, s.body])).toEqual(APPROVED.sections);
     expect(COPY.sections[0].link).toEqual({ href: "/designs?category=georgian", label: "კატალოგი" });
+    expect(COPY.sections[3].link).toEqual({ href: "/maisurebze-bechdva", label: "ბეჭდვის მეთოდები და ვადები" });
     expect(COPY.sections[5].link).toEqual({ href: "/corporate", label: "კორპორატიული შეკვეთა" });
     expect(COPY.sections[2].priceLead?.("35 ₾")).toBe("მაისური ბეჭდვით 35 ₾-დან.");
   });
@@ -70,13 +71,14 @@ describe("lib/landingCopy.ts", () => {
 });
 
 describe("LandingCopySection", () => {
-  it("renders the h2, intro, every h3 and body, and both links", () => {
+  it("renders the h2, intro, every h3 and body, and every link", () => {
     renderSection(35);
     expect(screen.getByRole("heading", { level: 2, name: APPROVED.h2 })).toBeInTheDocument();
     expect(screen.getByText(APPROVED.intro)).toBeInTheDocument();
     for (const [h3] of APPROVED.sections) expect(screen.getByRole("heading", { level: 3, name: h3 })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "კატალოგი" })).toHaveAttribute("href", "/designs?category=georgian");
     expect(screen.getByRole("link", { name: "კორპორატიული შეკვეთა" })).toHaveAttribute("href", "/corporate");
+    expect(screen.getByRole("link", { name: "ბეჭდვის მეთოდები და ვადები" })).toHaveAttribute("href", "/maisurebze-bechdva");
   });
 
   it("with a price, the ფასი section opens with it", () => {

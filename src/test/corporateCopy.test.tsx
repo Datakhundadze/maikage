@@ -57,7 +57,11 @@ describe("lib/corporateCopy.ts", () => {
     expect(methods.body).toBeUndefined();
     expect(methods.bullets?.map((b) => `${b.term} — ${b.text}`)).toEqual(APPROVED.methods);
     expect(rest.map((s) => [s.h3, s.body])).toEqual(APPROVED.sections);
-    expect(rest.slice(0, 2).every((s) => s.link === undefined && s.bullets === undefined)).toBe(true);
+    expect(rest.slice(0, 2).every((s) => s.bullets === undefined)).toBe(true);
+    // Cross-links to the service pages (lib/serviceCopy.ts).
+    expect(methods.link).toEqual({ href: "/maisurebze-bechdva", label: "მაისურებზე ბეჭდვა" });
+    expect(rest[0].link).toEqual({ href: "/sportuli-formebi", label: "სპორტული ფორმები გვარით და ნომრით" });
+    expect(rest[1].link).toBeUndefined();
     expect(rest[2].link).toEqual({ href: "/portfolio", label: "პორტფოლიო" });
     expect(CORPORATE_COPY.sections.some((s) => s.priceLead)).toBe(false);
   });

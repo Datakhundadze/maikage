@@ -7,6 +7,8 @@ import FeedbackModal from "@/components/FeedbackModal";
 import PartnerLogosMarquee from "@/components/PartnerLogosMarquee";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
+import { HOME_SEO } from "@/lib/pageSeo";
+import { SERVICE_LINKS, SERVICE_PAGE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
 
 const SPORT_PHOTOS = [
   "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
@@ -38,8 +40,8 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
       <SeoHead
-        title="Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი 15 წლის გამოცდილებით"
-        description="Maika.ge — საქართველოს ცნობილი ბრენდი 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში. შეუკვეთე საკუთარი დიზაინი ან აირჩიე კატალოგიდან."
+        title={HOME_SEO.title}
+        description={HOME_SEO.description}
         url={`${SITE_URL}/`}
         schemas={[LOCAL_BUSINESS_SCHEMA]}
       />
@@ -301,9 +303,28 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* Services — plain crawlable links to the service pages
+            (lib/serviceRouteSlugs.ts; same links in the static home shell). */}
+        <nav aria-label={SERVICES_HEADING} className="mb-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
+          <span className="font-semibold text-muted-foreground">{lang === "en" ? "Services" : SERVICES_HEADING}:</span>
+          {SERVICE_LINKS.map((l) => (
+            <Link key={l.href} to={l.href} className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
         {/* Footer */}
         <div className="mt-auto flex flex-col items-center gap-3 text-sm">
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            {SERVICE_PAGE_LINKS.map((l) => (
+              <span key={l.href} className="contents">
+                <Link to={l.href} className="text-muted-foreground hover:text-foreground transition-colors text-xs">
+                  {l.label}
+                </Link>
+                <span className="text-muted-foreground/30">•</span>
+              </span>
+            ))}
             <button onClick={() => setMode("about")} className="text-muted-foreground hover:text-foreground transition-colors text-xs">
               {lang === "en" ? "About Us" : "ჩვენი შესახებ"}
             </button>

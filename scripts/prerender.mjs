@@ -18,6 +18,11 @@
 //                             categories
 //   dist/showroom/index.html  ShowroomPage's heading; noindex while the page
 //                             is (lib/showroomSeo.ts)
+//   dist/<service>/index.html every service page in lib/serviceCopy.ts
+//                             (/maisurebze-bechdva, /sportuli-formebi): the
+//                             whole text, FAQ and Service / FAQPage /
+//                             BreadcrumbList JSON-LD; its prices are read from
+//                             pricing.ts there, as on /faq
 //   dist/<product>[/<brand>]/index.html
 //                             every product landing route App.tsx registers
 //                             (/t-shirt, /hoodie/premium-washed, …): hero
@@ -57,9 +62,10 @@
 //
 // No price is rendered and no Product JSON-LD is emitted: price comes from
 // pricing.ts at runtime only, and the runtime page still emits its JSON-LD.
-// The /faq page is the one exception: lib/faqContent.ts reads its prices from
-// pricing.ts / fees.ts (no hand-typed product numbers), so the static /faq and
-// its JSON-LD carry every Q&A exactly as the live page shows them.
+// The /faq page and the service pages are the exceptions: lib/faqContent.ts
+// and lib/serviceCopy.ts read their prices from pricing.ts / fees.ts (no
+// hand-typed product numbers), so those static pages and their JSON-LD carry
+// every price exactly as the live pages show them.
 //
 // Data: Supabase REST with the public anon key and the same filters the pages
 // use (catalog_designs.is_published = true, blog_posts.published = true).
@@ -82,6 +88,7 @@ import {
   corporatePage,
   faqPageHtml,
   jsonLdText,
+  servicePageHtml,
   landingCopyHtml,
   landingRoutes,
 } from "./lib/seo.mjs";
@@ -124,6 +131,7 @@ function outputPath(kind, slug) {
 // the SPA fallback — is refused.
 const STATIC_ROUTES = new Set(["designs", "blog", "contact", "faq", "corporate", "portfolio", "showroom"]);
 const LANDING_ROUTES = new Set();
+const SERVICE_ROUTES = new Set();
 const ROUTE_SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // Directories the per-row pages and the assets own; a landing slug never may.
 const RESERVED_DIRS = new Set(["design", "assets", ...STATIC_ROUTES]);
@@ -137,8 +145,16 @@ function allowLandingRoute(route) {
   LANDING_ROUTES.add(route);
 }
 
+/** Admit a service page's single-segment slug (lib/serviceCopy.ts). */
+function allowServiceRoute(route) {
+  if (!ROUTE_SEGMENT.test(route) || RESERVED_DIRS.has(route) || LANDING_ROUTES.has(route)) {
+    throw new Error(`refusing service route: ${JSON.stringify(route)}`);
+  }
+  SERVICE_ROUTES.add(route);
+}
+
 async function writeStatic(route, html) {
-  if (!STATIC_ROUTES.has(route) && !LANDING_ROUTES.has(route)) {
+  if (!STATIC_ROUTES.has(route) && !LANDING_ROUTES.has(route) && !SERVICE_ROUTES.has(route)) {
     throw new Error(`refusing to write unknown static route: ${route}`);
   }
   const file = resolve(DIST, route, "index.html");
@@ -180,7 +196,7 @@ const CATEGORY_LABEL = {
  * price is computed by pricing.ts at runtime and must not be baked in here.
  * Where it differs, SeoHead replaces it on mount.
  */
-function designDescription(d) {
+function designDescription(d, app) {
   const explicit = d.meta_description_ka?.trim();
   if (explicit) return explicit;
 
@@ -198,6 +214,8 @@ function designDescription(d) {
   }
 
   const label = d.category ? CATEGORY_LABEL[d.category] ?? d.category : null;
+  // lib/designSeo.ts — the live fallback minus its price clause.
+  if (app) return app.designFallbackDescription(d.title_ka, label, null);
   return label
     ? `${d.title_ka} — უნიკალური ${label} დიზაინი მაისურზე. DTF ბეჭდვა მაღალი ხარისხით. შეუკვეთე ონლაინ Maika.ge-ზე.`
     : `${d.title_ka} — უნიკალური დიზაინი მაისურზე. DTF ბეჭდვა მაღალი ხარისხით. შეუკვეთე ონლაინ Maika.ge-ზე.`;
@@ -595,7 +613,7 @@ async function writeAppPages(template, app, stats) {
     canonical: `${SITE_URL}/faq`,
     image: DEFAULT_OG_IMAGE,
     jsonLd: [app.faqPageSchema(app.FAQ_GROUPS)],
-    rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }),
+    rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }, { heading: app.SERVICES_HEADING, links: app.SERVICE_LINKS }),
   }))) {
     const count = app.FAQ_GROUPS.reduce((n, g) => n + g.items.length, 0);
     stats.lists.push(`faq (${count} Q&As)`);
@@ -609,6 +627,23 @@ async function writeAppPages(template, app, stats) {
     robots: app.SHOWROOM_INDEXABLE ? undefined : "noindex,nofollow",
     rootHtml: showroomRoot(),
   }))) stats.lists.push(app.SHOWROOM_INDEXABLE ? "showroom" : "showroom (noindex)");
+
+  // Service pages — every string, the prices and the JSON-LD from
+  // lib/serviceCopy.ts (the live ServicePage renders the same data).
+  for (const sp of app.SERVICE_PAGE_LIST ?? []) {
+    const route = String(sp?.path ?? "").replace(/^\//, "");
+    if (await page(`service ${sp?.path}`, route, () => {
+      allowServiceRoute(route);
+      return renderPage(template, {
+        title: sp.seo.title,
+        description: sp.seo.description,
+        canonical: `${SITE_URL}${sp.path}`,
+        image: DEFAULT_OG_IMAGE,
+        jsonLd: app.serviceSchemas(sp),
+        rootHtml: servicePageHtml(sp, { esc, link, style: STYLE }),
+      });
+    })) stats.lists.push(route);
+  }
 
   let routes = [];
   try {
@@ -765,7 +800,7 @@ async function writePages() {
 
   await writePortfolio(template, app, cfg, stats);
 
-  if (cfg) await writeDataPages(template, cfg, stats);
+  if (cfg) await writeDataPages(template, cfg, stats, app);
 
   for (const s of stats.skipped) console.warn(`${LOG} skipped unsafe slug — ${s}`);
   for (const f of stats.failed) console.warn(`${LOG} WARNING: page failed — ${f}`);
@@ -775,10 +810,11 @@ async function writePages() {
       ` + lists [${stats.lists.join(", ")}]` +
       ` (${stats.skipped.length} skipped, ${stats.failed.length} failed) in ${Date.now() - started}ms.`,
   );
+  return app;
 }
 
 /** /design/*, /designs, /blog/*, /blog — Supabase rows. */
-async function writeDataPages(template, cfg, stats) {
+async function writeDataPages(template, cfg, stats, app) {
   // Designs
   try {
     const designs = await fetchAll(
@@ -789,9 +825,11 @@ async function writeDataPages(template, cfg, stats) {
     );
     if (designs.length === 0) console.warn(`${LOG} catalog_designs returned 0 published rows — no design pages written.`);
     await emit("design", designs, (d) => {
-      const description = designDescription(d);
+      const description = designDescription(d, app);
+      const label = d.category ? CATEGORY_LABEL[d.category] ?? d.category : null;
       return renderPage(template, {
-        title: `${d.title_ka} — Maika.ge`,
+        // lib/designSeo.ts — DesignDetailPage's SeoHead title.
+        title: app ? app.designSeoTitle(d.title_ka, label) : `${d.title_ka} — Maika.ge`,
         description,
         canonical: `${SITE_URL}/design/${d.slug}`,
         image: d.thumbnail_url || d.print_file_url,
@@ -804,8 +842,11 @@ async function writeDataPages(template, cfg, stats) {
       try {
         const linked = designs.filter((d) => !unsafeSlugReason(d?.slug));
         await writeStatic("designs", renderPage(template, {
-          title: "კატალოგი — Maika.ge დიზაინები",
-          description: "აარჩიე მზა დიზაინი Maika.ge-ის კატალოგიდან — ქართული მოტივები, ფიროსმანი, მუსიკა, კინო, პატრიოტული. სხვადასხვა სტილისა და ხარისხის მაისურები.",
+          // lib/pageSeo.ts — CatalogPage's SeoHead.
+          title: app ? app.CATALOG_SEO.title : "კატალოგი — Maika.ge დიზაინები",
+          description: app
+            ? app.CATALOG_SEO.description
+            : "აარჩიე მზა დიზაინი Maika.ge-ის კატალოგიდან — ქართული მოტივები, ფიროსმანი, მუსიკა, კინო, პატრიოტული. სხვადასხვა სტილისა და ხარისხის მაისურები.",
           canonical: `${SITE_URL}/designs`,
           image: DEFAULT_OG_IMAGE,
           rootHtml: designsIndexRoot(linked),
@@ -893,8 +934,13 @@ const HOME = {
 const HOME_GUARD =
   '<script>if(location.pathname!=="/"){var r=document.getElementById("root");if(r)r.innerHTML=""}</script>';
 
-function homeRoot() {
+function homeRoot(app) {
   const c = CONTACT;
+  // LandingPage's "სერვისები" links (lib/serviceRouteSlugs.ts), when the app
+  // modules loaded.
+  const services = app?.SERVICE_LINKS?.length
+    ? `<h2 style="${STYLE.h3}">${esc(app.SERVICES_HEADING)}</h2>\n<ul style="${STYLE.ul}">${app.SERVICE_LINKS.map((l) => `<li style="${STYLE.li}">${link(l.href, l.label)}</li>`).join("")}</ul>`
+    : "";
   const ext = (href, text) =>
     `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="${STYLE.a}">${esc(text)}</a>`;
   return [
@@ -903,6 +949,7 @@ function homeRoot() {
     `<p style="${STYLE.p}">${esc(HOME.tagline)}</p>`,
     `<p style="${STYLE.p}">${esc(c.about)}</p>`,
     `<nav><ul style="${STYLE.ul}">${HOME.links.map((l) => `<li style="${STYLE.li}">${link(l.href, l.text)}</li>`).join("")}</ul></nav>`,
+    services,
     `<h2 style="${STYLE.h3}">${esc(c.addressLabel)}</h2>`,
     `<p style="${STYLE.p}">${ext(c.mapUrl, c.address)}</p>`,
     `<h2 style="${STYLE.h3}">${esc(c.hoursLabel)}</h2>`,
@@ -923,7 +970,7 @@ function homeRoot() {
  *    everything up to </head> must be unchanged, else skip;
  *  - written to a temp file in dist/ and renamed over index.html.
  */
-async function writeHomeShell() {
+async function writeHomeShell(app) {
   const tmp = `${TEMPLATE}.home-tmp`;
   try {
     const original = await readFile(TEMPLATE);
@@ -938,7 +985,7 @@ async function writeHomeShell() {
       console.warn(`${LOG} home shell: expected exactly one ${EMPTY_ROOT}, found ${count} — dist/index.html left untouched.`);
       return;
     }
-    const block = homeRoot() + HOME_GUARD;
+    const block = homeRoot(app) + HOME_GUARD;
     const at = html.indexOf(EMPTY_ROOT) + '<div id="root">'.length;
     const enriched = html.slice(0, at) + block + html.slice(at);
 
@@ -965,9 +1012,9 @@ async function writeHomeShell() {
 
 async function main() {
   // Every other page first, all from the ORIGINAL shell held in memory…
-  await writePages();
+  const app = await writePages();
   // …then, last, the home content into the shell itself.
-  await writeHomeShell();
+  await writeHomeShell(app);
 }
 
 main()

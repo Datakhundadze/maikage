@@ -30,6 +30,22 @@ export const LANDING_PLURAL_KA: Readonly<Partial<Record<ProductType, string>>> =
 export const LANDING_TAIL_KA = `შენი ფოტოთი, ტექსტით ან AI დიზაინით. DTF ბეჭდვა, მზადდება ${LEAD_TIME_KA}. შოურუმი თბილისში, მიწოდება მთელ საქართველოში.`;
 
 /**
+ * Bare product routes whose title / description lead with the exact search
+ * term (Search Console: "მაისური", "მაისურების დამზადება", "ჰუდი"). Every
+ * other route keeps the generic "{plural} ბეჭდვით — …" title.
+ */
+export const LANDING_SEO_OVERRIDES_KA: Readonly<Partial<Record<ProductType, { title: string; description: string }>>> = {
+  "T-Shirt": {
+    title: "მაისური — მაისურების დამზადება და ბეჭდვა თბილისში | maika.ge",
+    description: `მაისურების დამზადება და ბეჭდვა ${LANDING_TAIL_KA}`,
+  },
+  "Hoodie": {
+    title: "ჰუდი შენი დიზაინით — ჰუდებზე ბეჭდვა თბილისში | maika.ge",
+    description: `ჰუდებზე ბეჭდვა ${LANDING_TAIL_KA}`,
+  },
+};
+
+/**
  * @param product   catalog product type
  * @param productKa its Georgian label (i18n productTypeKa)
  * @param brand     the brand string from the URL (SUB_PRODUCTS), or null for /<product>
@@ -45,6 +61,8 @@ export function landingSeo(
       description: `${productKa} ${brand} ${LANDING_TAIL_KA}`,
     };
   }
+  const override = LANDING_SEO_OVERRIDES_KA[product];
+  if (override) return { ...override };
   const plural = LANDING_PLURAL_KA[product] ?? productKa;
   return {
     title: `${plural} ბეჭდვით — შენი დიზაინით, თბილისი | maika.ge`,
