@@ -14,6 +14,7 @@ import { AttributionTracker } from "@/components/AttributionTracker";
 import { LANDING_PRODUCT_SLUGS } from "@/lib/productRouteSlugs";
 import { SERVICE_PAGE_SLUGS } from "@/lib/serviceRouteSlugs";
 import { ChunkErrorBoundary, lazyWithRetry } from "@/lib/lazyWithRetry";
+import ReviewRedirectPage from "./pages/ReviewRedirectPage";
 
 // Each route component is a separate JS chunk after Vite build. Customers
 // visiting the landing page no longer download the admin / catalog /
@@ -146,6 +147,7 @@ function AppRoutes() {
         <Route key={`${slug}/:brandSlug`} path={`/${slug}/:brandSlug`} element={<ProductLandingPage productSlug={slug} />} />
       ))}
       <Route path="/showroom" element={<ShowroomPage />} />
+      <Route path="/review" element={<ReviewRedirectPage />} />
       {/* Service landing pages (/maisurebze-bechdva, /sportuli-formebi) —
           text pages for search; copy in lib/serviceCopy.ts, prerendered. */}
       {SERVICE_PAGE_SLUGS.map((slug) => (

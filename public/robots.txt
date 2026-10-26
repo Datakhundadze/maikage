@@ -32,5 +32,6 @@ Allow: /
 Disallow: /admin
 Disallow: /admin/*
 Disallow: /api
+Disallow: /review
 
 Sitemap: https://maika.ge/sitemap.xml
