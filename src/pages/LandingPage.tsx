@@ -258,8 +258,8 @@ export default function LandingPage() {
                 </h2>
                 <p className="text-sm sm:text-base leading-relaxed max-w-2xl mb-8" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.7)" }}>
                   {lang === "en"
-                    ? "Professional sport uniforms with custom branding — club logo, number, name. Starting from 1 piece."
-                    : "პროფესიონალური სპორტული ფორმები ინდივიდუალური ბრენდინგით — კლუბის ლოგო, ნომერი, სახელი. 1 ცალიდან."}
+                    ? "Professional sport uniforms with custom branding — team logo, number, name. Name & number printing from 1 piece, custom team kits from 10–12 sets."
+                    : "პროფესიონალური სპორტული ფორმები ინდივიდუალური ბრენდინგით — გუნდის ლოგო, ნომერი, გვარი. გვარის და ნომრის ბეჭდვა 1 ცალიდან, შეკერვა 10–12 კომპლექტიდან."}
                 </p>
                 <button
                   onClick={() => setMode("sport")}
