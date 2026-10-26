@@ -57,6 +57,7 @@ export const LANDING_COPY: Readonly<Record<string, LandingCopy>> = {
       {
         h3: "ხარისხი",
         body: "ვბეჭდავთ DTF ტექნოლოგიით. ფერი ნათელია, პრინტი რეცხვას უძლებს.",
+        link: { href: "/maisurebze-bechdva", label: "ბეჭდვის მეთოდები და ვადები" },
       },
       {
         h3: "მიწოდება და შოურუმი",

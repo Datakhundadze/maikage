@@ -6,6 +6,7 @@ import { productTypeKa, translations } from "@/lib/i18n";
 import { FAQ_GROUPS, FAQ_PAGE, faqPageSchema } from "@/lib/faqContent";
 import { LANDING_TAIL_KA, landingSeo } from "@/lib/landingSeo";
 import { LEAD_TIME_KA } from "@/lib/leadTime";
+import { SERVICE_PAGE_LIST } from "@/lib/serviceCopy";
 import {
   CONTACT,
   CORPORATE,
@@ -115,8 +116,13 @@ describe("landing routes come from the slugs App.tsx registers", () => {
 
   it("titles: Georgian, no price, the same function the page uses", () => {
     expect(landingSeo("T-Shirt", productTypeKa("T-Shirt"), null).title).toBe(
-      "მაისურები ბეჭდვით — შენი დიზაინით, თბილისი | maika.ge",
+      "მაისური — მაისურების დამზადება და ბეჭდვა თბილისში | maika.ge",
     );
+    expect(landingSeo("Hoodie", productTypeKa("Hoodie"), null).title).toBe(
+      "ჰუდი შენი დიზაინით — ჰუდებზე ბეჭდვა თბილისში | maika.ge",
+    );
+    // Every other bare product route keeps the generic title.
+    expect(landingSeo("Mug", productTypeKa("Mug"), null).title).toBe("ჭიქები ბეჭდვით — შენი დიზაინით, თბილისი | maika.ge");
     for (const r of routes) {
       const seo = landingSeo(r.product, productTypeKa(r.product), r.brand);
       expect(containsPrice(seo.title) || containsPrice(seo.description), r.path).toBe(false);
@@ -206,7 +212,9 @@ describe("FAQ — static page and its JSON-LD carry EVERY Q&A (prices from prici
   it("prerender.mjs writes the unfiltered FAQ with the shared builders", () => {
     const pre = source("scripts/prerender.mjs");
     expect(pre).toContain("jsonLd: [app.faqPageSchema(app.FAQ_GROUPS)]");
-    expect(pre).toContain("rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE })");
+    expect(pre).toContain(
+      "rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }, { heading: app.SERVICES_HEADING, links: app.SERVICE_LINKS })",
+    );
     expect(pre).not.toContain("priceFreeFaq");
     expect(source("src/pages/FaqPage.tsx")).toContain("const FAQ_SCHEMA = faqPageSchema(FAQ_GROUPS);");
   });
@@ -224,6 +232,7 @@ describe("public/llms.txt", () => {
     landingSeo,
     servicesKa: LANDING_TAIL_KA,
     faqPage: FAQ_PAGE,
+    servicePages: SERVICE_PAGE_LIST,
   });
 
   it("matches its builder (run `node scripts/generate-llms-txt.mjs` after changing a source)", () => {
@@ -234,7 +243,14 @@ describe("public/llms.txt", () => {
     for (const s of [CONTACT.address, CONTACT.email, ...CONTACT.hours, ...CONTACT.phones.map((p) => p.display)]) {
       expect(expected).toContain(s);
     }
-    for (const url of ["https://maika.ge/t-shirt", "https://maika.ge/contact", "https://maika.ge/faq", "https://maika.ge/corporate"]) {
+    for (const url of [
+      "https://maika.ge/t-shirt",
+      "https://maika.ge/contact",
+      "https://maika.ge/faq",
+      "https://maika.ge/corporate",
+      "https://maika.ge/maisurebze-bechdva",
+      "https://maika.ge/sportuli-formebi",
+    ]) {
       expect(expected).toContain(`(${url})`);
     }
     expect(containsPrice(expected)).toBe(false);

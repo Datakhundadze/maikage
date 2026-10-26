@@ -3,7 +3,8 @@
 // the landing slugs App.tsx registers, the FAQ text (and its FAQPage JSON-LD
 // builder) FaqPage shows, the lead
 // time LandingHero prints, the landing <title>s SeoHead sets, the /corporate
-// title and text section.
+// title and text section, the service pages (lib/serviceCopy.ts), the
+// /designs title and the /design/:slug title / fallback description.
 //
 // How: a bare Vite dev server in middleware mode (no config file, no plugins,
 // no dependency scan, no file watcher) and ssrLoadModule — esbuild strips the
@@ -31,6 +32,9 @@ const MODULES = {
   landingCopy: "/src/lib/landingCopy.ts",
   corporateCopy: "/src/lib/corporateCopy.ts",
   imageTransform: "/src/lib/imageTransform.ts",
+  serviceCopy: "/src/lib/serviceCopy.ts",
+  pageSeo: "/src/lib/pageSeo.ts",
+  designSeo: "/src/lib/designSeo.ts",
 };
 
 /**
@@ -60,6 +64,13 @@ const MODULES = {
  *     sections: { h3: string, body?: string, bullets?: { term: string, text: string }[], link?: { href: string, label: string } }[],
  *   },
  *   transformedDisplayUrl: (url: string, opts: { width: number, quality?: number }) => string,
+ *   SERVICE_PAGE_LIST: object[],   // lib/serviceCopy.ts ServicePageCopy[]
+ *   serviceSchemas: (page: object) => object[],
+ *   SERVICE_LINKS: { href: string, label: string }[],
+ *   SERVICES_HEADING: string,
+ *   CATALOG_SEO: { title: string, description: string },
+ *   designSeoTitle: (name: string, categoryLabel: string | null) => string,
+ *   designFallbackDescription: (name: string, categoryLabel: string | null, priceGEL: number | null) => string,
  * }>}
  */
 export async function loadAppModules(log) {
@@ -96,6 +107,13 @@ export async function loadAppModules(log) {
       CORPORATE_SEO: m.corporateCopy.CORPORATE_SEO,
       CORPORATE_COPY: m.corporateCopy.CORPORATE_COPY,
       transformedDisplayUrl: m.imageTransform.transformedDisplayUrl,
+      SERVICE_PAGE_LIST: m.serviceCopy.SERVICE_PAGE_LIST,
+      serviceSchemas: m.serviceCopy.serviceSchemas,
+      SERVICE_LINKS: m.serviceCopy.SERVICE_LINKS,
+      SERVICES_HEADING: m.serviceCopy.SERVICES_HEADING,
+      CATALOG_SEO: m.pageSeo.CATALOG_SEO,
+      designSeoTitle: m.designSeo.designSeoTitle,
+      designFallbackDescription: m.designSeo.designFallbackDescription,
     };
   } catch (e) {
     console.warn(`${log} WARNING: could not load app modules from src/: ${e?.message ?? e}`);

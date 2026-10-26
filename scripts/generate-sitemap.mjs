@@ -21,7 +21,10 @@
 //
 // App routes: after the fetch (or, if it failed, on the previous file) the
 // product landing routes App.tsx registers (/t-shirt, /hoodie/premium-washed,
-// …) and — only while lib/showroomSeo.ts marks it indexable — /showroom are
+// …), the service pages (lib/serviceCopy.ts: /maisurebze-bechdva,
+// /sportuli-formebi — the edge function does not list these yet, so this step
+// adds them on every build) and — only while lib/showroomSeo.ts marks it
+// indexable — /showroom are
 // appended if the sitemap lacks them. Their slugs are read from the same
 // src/ modules the app routes come from (scripts/lib/appModules.mjs), never
 // retyped here; entries already present are left as the function wrote them.
@@ -32,7 +35,7 @@ import { readFile, writeFile, access, constants } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadAppModules } from "./lib/appModules.mjs";
-import { SITE_URL, landingRoutes, landingSitemapEntries, mergeSitemapEntries } from "./lib/seo.mjs";
+import { SITE_URL, landingRoutes, landingSitemapEntries, mergeSitemapEntries, serviceSitemapEntries } from "./lib/seo.mjs";
 
 const SITEMAP_FN_URL =
   "https://ykoseamefoabptuijsza.supabase.co/functions/v1/sitemap";
@@ -107,7 +110,7 @@ async function withAppRoutes(xml) {
       console.warn("[generate-sitemap] Landing routes not added (app modules unavailable). Build continues.");
       return null;
     }
-    const entries = landingSitemapEntries(landingRoutes(app));
+    const entries = [...landingSitemapEntries(landingRoutes(app)), ...serviceSitemapEntries(app.SERVICE_PAGE_LIST ?? [])];
     if (app.SHOWROOM_INDEXABLE) entries.push({ loc: `${SITE_URL}/showroom`, priority: "0.6", changefreq: "monthly" });
     const before = countUrls(xml);
     const { xml: merged, added } = mergeSitemapEntries(xml, entries);

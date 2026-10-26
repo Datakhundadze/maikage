@@ -1,3 +1,5 @@
+import { designFallbackDescription } from "@/lib/designSeo";
+
 /**
  * Build the meta description shown to Google for a /design/:slug page.
  *
@@ -6,10 +8,9 @@
  *  2. The long-form `description_ka` truncated cleanly (~120 chars
  *     ending at a word boundary), with a price + brand tail appended
  *     only when the snippet doesn't already say them.
- *  3. A category-aware fallback that varies the noun phrase so two
- *     designs in different categories don't end up with duplicate
- *     descriptions — the previous fallback used the same template for
- *     every design.
+ *  3. designFallbackDescription (lib/designSeo.ts): the design's name,
+ *     its category and the "from" price — unique per design, and shared
+ *     with the static prerender.
  */
 export function buildDesignMetaDescription(
   design: { title_ka: string; meta_description_ka: string | null; description_ka: string | null },
@@ -37,8 +38,8 @@ export function buildDesignMetaDescription(
     return (prefix + tail).trim();
   }
 
-  if (categoryLabel) {
-    return `${design.title_ka} — უნიკალური ${categoryLabel} დიზაინი მაისურზე. DTF ბეჭდვა მაღალი ხარისხით, ფასი ₾${priceGEL}-დან. შეუკვეთე ონლაინ Maika.ge-ზე.`;
-  }
-  return `${design.title_ka} — უნიკალური დიზაინი მაისურზე. DTF ბეჭდვა მაღალი ხარისხით, ფასი ₾${priceGEL}-დან. შეუკვეთე ონლაინ Maika.ge-ზე.`;
+  // Fallback: lib/designSeo.ts — the same sentence the static prerender
+  // writes (there without the price clause); a placeholder name
+  // ("დიზაინი 1 (11)") is never quoted.
+  return designFallbackDescription(design.title_ka, categoryLabel, priceGEL);
 }

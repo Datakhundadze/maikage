@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import {
@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FAQ_GROUPS, FAQ_PAGE, faqPageSchema } from "@/lib/faqContent";
+import { SERVICE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
 
 // FAQPage schema, derived once at module load from the same FAQ_GROUPS
 // (lib/faqContent.ts) by the same builder the static prerender uses. No text
@@ -65,6 +66,24 @@ export default function FaqPage() {
             </section>
           ))}
         </div>
+
+        {/* Links to the service pages — same block in the static /faq
+            (scripts/lib/seo.mjs faqPageHtml). */}
+        <nav aria-label={SERVICES_HEADING} className="mt-12 border-t border-gray-200 dark:border-white/10 pt-6 text-sm">
+          <h2 className="text-xs font-semibold uppercase tracking-wider mb-3 text-[#26BB89]">{SERVICES_HEADING}</h2>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1">
+            {SERVICE_LINKS.map((l) => (
+              <li key={l.href}>
+                <Link
+                  to={l.href}
+                  className="font-medium text-gray-900 dark:text-white underline underline-offset-2 hover:text-amber-500"
+                >
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </div>
   );

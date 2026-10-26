@@ -27,6 +27,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { compositeDesignOnProduct } from "@/lib/catalogCompositing";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
 import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
+import { designSeoTitle } from "@/lib/designSeo";
 import { colorKa, productTypeKa } from "@/lib/i18n";
 import { ArrowLeft, ShoppingBag, ShoppingCart, ImageOff, Search, Loader2 } from "lucide-react";
 import QuantityStepper from "@/components/QuantityStepper";
@@ -637,7 +638,8 @@ export default function DesignDetailPage() {
   return (
     <div className="flex flex-col h-screen">
       <SeoHead
-        title={`${design.title_ka} — Maika.ge`}
+        // lib/designSeo.ts — the same title the static prerender writes.
+        title={designSeoTitle(design.title_ka, categoryLabel)}
         description={description}
         image={ogImage}
         url={canonical}

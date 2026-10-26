@@ -93,8 +93,8 @@ export default function PortfolioPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
       <SeoHead
-        title="პორტფოლიო — ჩვენი ნამუშევრები | Maika.ge"
-        description="Maika.ge-ის ნამუშევრების გალერეა — დაბეჭდილი მაისურები, ჰუდები, ჩანთები და კასტომ აპარელი. ნახე რას ვქმნით და შეუკვეთე შენი დიზაინი."
+        title="ნამუშევრები — ბრენდირებული მაისურები და ჰუდები | maika.ge"
+        description="ჩვენი ნამუშევრები — ბრენდირებული მაისურები, ჰუდები და სპორტული ფორმები კომპანიებისა და გუნდებისთვის. ნახე გალერეა და შეუკვეთე შენი დიზაინი."
         url={`${SITE_URL}/portfolio`}
         schemas={schemas}
       />

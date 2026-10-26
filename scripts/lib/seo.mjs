@@ -64,9 +64,9 @@ export const CORPORATE = {
 
 /** src/pages/PortfolioPage.tsx */
 export const PORTFOLIO = {
-  title: "პორტფოლიო — ჩვენი ნამუშევრები | Maika.ge",
+  title: "ნამუშევრები — ბრენდირებული მაისურები და ჰუდები | maika.ge",
   description:
-    "Maika.ge-ის ნამუშევრების გალერეა — დაბეჭდილი მაისურები, ჰუდები, ჩანთები და კასტომ აპარელი. ნახე რას ვქმნით და შეუკვეთე შენი დიზაინი.",
+    "ჩვენი ნამუშევრები — ბრენდირებული მაისურები, ჰუდები და სპორტული ფორმები კომპანიებისა და გუნდებისთვის. ნახე გალერეა და შეუკვეთე შენი დიზაინი.",
   backLabel: "მთავარი გვერდი",
   h1: "პორტფოლიო",
   intro: "ჩვენი ნამუშევრები — დაბეჭდილი მაისურები, ჰუდები და კასტომ აპარელი.",
@@ -197,6 +197,69 @@ export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY }, { esc, link, st
   };
 }
 
+// ── Service pages ───────────────────────────────────────────────────────────
+
+/**
+ * /maisurebze-bechdva, /sportuli-formebi as static HTML: pages/ServicePage's
+ * structure, in its order — breadcrumb, h1, intro, the hero links, every
+ * section (h2, body, bullet list "<strong>term</strong> — text", numbered
+ * steps, note, links), the FAQ (h2 + h3/p per Q&A) and the CTA block. Every
+ * string comes from lib/serviceCopy.ts (loaded through appModules.mjs); the
+ * prices in it are read from pricing.ts there, as on the live page.
+ *
+ * @param page  a ServicePageCopy (lib/serviceCopy.ts)
+ * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
+ */
+export function servicePageHtml(page, { esc, link, style }) {
+  const links = (list) => `<p style="${style.p}">${list.map((l) => link(l.href, l.label)).join(" · ")}</p>`;
+  return [
+    `<main style="${style.main}">`,
+    `<nav style="${style.nav}">${link("/", LANDING_LABELS.home)} › ${esc(page.name)}</nav>`,
+    `<h1 style="${style.h1}">${esc(page.h1)}</h1>`,
+    `<p style="${style.p}">${esc(page.intro)}</p>`,
+    page.heroLinks?.length ? links(page.heroLinks) : "",
+    ...page.sections.map((s) =>
+      [
+        `<section>`,
+        `<h2 style="${style.h2}">${esc(s.h2)}</h2>`,
+        s.body !== undefined ? `<p style="${style.p}">${esc(s.body)}</p>` : "",
+        s.bullets?.length
+          ? `<ul style="${style.ul}">${s.bullets
+              .map((b) => `<li style="${style.li}"><strong>${esc(b.term)}</strong> — ${esc(b.text)}</li>`)
+              .join("")}</ul>`
+          : "",
+        s.steps?.length
+          ? `<ol style="${style.ul.replace("list-style:disc", "list-style:decimal")}">${s.steps
+              .map((step) => `<li style="${style.li}">${esc(step)}</li>`)
+              .join("")}</ol>`
+          : "",
+        s.note !== undefined ? `<p style="${style.p}">${esc(s.note)}</p>` : "",
+        s.links?.length ? links(s.links) : "",
+        `</section>`,
+      ].filter(Boolean).join("\n"),
+    ),
+    [
+      `<section>`,
+      `<h2 style="${style.h2}">${esc(page.faqHeading)}</h2>`,
+      ...page.faq.map((item) => `<h3 style="${style.h3}">${esc(item.q)}</h3>\n<p style="${style.p}">${esc(item.a)}</p>`),
+      `</section>`,
+    ].join("\n"),
+    [
+      `<section>`,
+      `<h2 style="${style.h2}">${esc(page.cta.h2)}</h2>`,
+      `<p style="${style.p}">${esc(page.cta.body)}</p>`,
+      links(page.cta.links),
+      `</section>`,
+    ].join("\n"),
+    `</main>`,
+  ].filter(Boolean).join("\n");
+}
+
+/** Sitemap entries for the service pages: same weight as a product route. */
+export function serviceSitemapEntries(pages) {
+  return pages.map((p) => ({ loc: `${SITE_URL}${p.path}`, priority: "0.8", changefreq: "monthly" }));
+}
+
 // ── Sitemap ─────────────────────────────────────────────────────────────────
 
 /** Same priorities / changefreq as the sitemap edge function's product-routes block. */
@@ -264,11 +327,15 @@ export function containsPrice(text) {
  * checkout show. The FAQPage JSON-LD comes from faqContent.ts faqPageSchema,
  * the builder FaqPage.tsx uses.
  *
- * @param page    FAQ_PAGE
- * @param groups  FAQ_GROUPS
- * @param h       prerender.mjs's own helpers: esc, link, style (its STYLE)
+ * After the Q&As, when given, the "სერვისები" links block FaqPage shows
+ * (lib/serviceRouteSlugs.ts SERVICES_HEADING / SERVICE_LINKS).
+ *
+ * @param page      FAQ_PAGE
+ * @param groups    FAQ_GROUPS
+ * @param h         prerender.mjs's own helpers: esc, link, style (its STYLE)
+ * @param services  optional { heading, links }
  */
-export function faqPageHtml(page, groups, { esc, link, style }) {
+export function faqPageHtml(page, groups, { esc, link, style }, services) {
   return [
     `<main style="${style.main}">`,
     `<nav style="${style.nav}">${link("/", page.backLabel)}</nav>`,
@@ -282,6 +349,13 @@ export function faqPageHtml(page, groups, { esc, link, style }) {
         `</section>`,
       ].join("\n"),
     ),
+    ...(services?.links?.length
+      ? [
+          `<nav>\n<h2 style="${style.h2}">${esc(services.heading)}</h2>\n<ul style="${style.ul}">${services.links
+            .map((l) => `<li style="${style.li}">${link(l.href, l.label)}</li>`)
+            .join("")}</ul>\n</nav>`,
+        ]
+      : []),
     `</main>`,
   ].join("\n");
 }
@@ -305,8 +379,9 @@ export function jsonLdText(value) {
  * @param input.landingSeo   lib/landingSeo.ts
  * @param input.servicesKa   LANDING_TAIL_KA — photo / text / AI design, DTF, lead time, showroom, delivery
  * @param input.faqPage      FAQ_PAGE
+ * @param input.servicePages lib/serviceCopy.ts SERVICE_PAGE_LIST (optional)
  */
-export function buildLlmsTxt({ routes, productKa, landingSeo, servicesKa, faqPage }) {
+export function buildLlmsTxt({ routes, productKa, landingSeo, servicesKa, faqPage, servicePages = [] }) {
   const c = CONTACT;
   const brandSuffix = " | maika.ge";
   const products = routes.filter((r) => !r.brandSlug);
@@ -324,6 +399,9 @@ export function buildLlmsTxt({ routes, productKa, landingSeo, servicesKa, faqPag
       return `- [${title.endsWith(brandSuffix) ? title.slice(0, -brandSuffix.length) : title}](${SITE_URL}${r.path})`;
     }),
     "",
+    ...(servicePages.length
+      ? ["## სერვისები", "", ...servicePages.map((p) => `- [${p.h1}](${SITE_URL}${p.path}): ${p.seo.description}`), ""]
+      : []),
     `## ${CORPORATE.h1}`,
     "",
     CORPORATE.intro,
