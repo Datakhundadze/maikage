@@ -491,6 +491,8 @@ function blogIndexRoot(posts) {
 }
 
 // /contact — CONTACT lives in scripts/lib/seo.mjs (shared with public/llms.txt).
+const LEGAL_LINE = 'შპს „მაიკა.ჯი" (MAIKA.GE LTD) · ს/კ 404430175 · N 2/5 Ierusalimi Street, Tbilisi';
+
 function contactRoot() {
   const c = CONTACT;
   const ext = (href, text) =>
@@ -511,6 +513,7 @@ function contactRoot() {
     `<h2 style="${STYLE.h3}">${esc(c.mapLabel)}</h2>`,
     `<p style="${STYLE.p}">${ext(c.mapUrl, c.mapLinkText)}</p>`,
     `<p style="${STYLE.footer}">${c.socials.map((x) => ext(x.url, x.label)).join(" · ")}</p>`,
+    `<p style="${STYLE.footer}">${esc(LEGAL_LINE)}</p>`,
     `</main>`,
   ].join("\n");
 }
@@ -969,6 +972,7 @@ function homeRoot(app) {
     `<ul style="${STYLE.ul}">${c.phones.map((p) => `<li style="${STYLE.li}">${link(`tel:${p.tel}`, p.display)}</li>`).join("")}</ul>`,
     `<h2 style="${STYLE.h3}">${esc(c.emailLabel)}</h2>`,
     `<p style="${STYLE.p}">${link(`mailto:${c.email}`, c.email)}</p>`,
+    `<p style="${STYLE.footer}">${esc(LEGAL_LINE)}</p>`,
     `</main>`,
   ].join("\n");
 }
