@@ -261,6 +261,17 @@ const STYLE = {
 };
 const link = (href, text) => `<a href="${esc(href)}" style="${STYLE.a}">${esc(text)}</a>`;
 
+// The static #root content is for crawlers and no-JS visitors. For a person
+// with JS it used to sit on screen for a moment as an unstyled list of links
+// ("a sitemap flashes before the site opens", David 2026-10-27). It is now
+// wrapped in #seo-static and hidden by the inline script right after it,
+// which runs while the parser is still inside #root — before first paint.
+// No JS → the script never runs and the content stays readable. React's
+// createRoot replaces #root's children on mount, wrapper included.
+const HIDE_STATIC =
+  '<script>var s=document.getElementById("seo-static");if(s)s.style.visibility="hidden"</script>';
+const wrapStatic = (html) => `<div id="seo-static">${html}</div>${HIDE_STATIC}`;
+
 /**
  * Markdown → minimal escaped HTML for crawlers: headings and paragraphs only.
  * Images are dropped, links keep their text, inline markers are stripped.
@@ -319,7 +330,7 @@ function renderPage(template, { title, description, canonical, image, rootHtml, 
   html = html.replace(/[ \t]*<meta\s+name="description"[^>]*>[ \t]*\n?/i, "");
   html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${esc(title)}</title>`);
   html = html.replace(/<\/head>/i, () => `    ${tags}\n  </head>`);
-  html = html.replace(/<div id="root"><\/div>/, () => `<div id="root">${rootHtml}</div>`);
+  html = html.replace(/<div id="root"><\/div>/, () => `<div id="root">${wrapStatic(rootHtml)}</div>`);
   return html;
 }
 
@@ -985,7 +996,7 @@ async function writeHomeShell(app) {
       console.warn(`${LOG} home shell: expected exactly one ${EMPTY_ROOT}, found ${count} — dist/index.html left untouched.`);
       return;
     }
-    const block = homeRoot(app) + HOME_GUARD;
+    const block = wrapStatic(homeRoot(app)) + HOME_GUARD;
     const at = html.indexOf(EMPTY_ROOT) + '<div id="root">'.length;
     const enriched = html.slice(0, at) + block + html.slice(at);
 
