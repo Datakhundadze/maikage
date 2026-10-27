@@ -56,6 +56,27 @@ const VIEW_W = 512;
 // while the tab sits in front of you untouched.
 const STALE_AFTER_MS = 60_000;
 
+// LIVE LIST WHILE THE TAB IS IN FRONT OF YOU. Reveal-refetch (above) does not
+// cover an admin who keeps this tab open and visible all day: a new order only
+// showed up after a manual reload. Every POLL_MS a LIGHT query (id + statuses of
+// the last few days, a few KB) is compared with what is on screen; only when an
+// order appeared, vanished or changed status does the full fetch run. Skipped
+// while hidden or while a fetch is already in flight.
+const POLL_MS = 30_000;
+const POLL_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+// Payment auto-sync after each load used to call check-payment for EVERY order
+// with a provider id that was not paid — 218 rows on 2026-10-27, 215 of them
+// long-final "failed" — i.e. 218 edge-function calls per page load, which made
+// each refresh slow enough to look like orders were missing. Only recent
+// "pending" orders can still change; failed/old ones are left to the per-order
+// „გადამოწმება" button and the provider callbacks.
+const SYNC_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+// PostgREST returns at most 1000 rows per request; page through so the list
+// never silently stops at 1000 orders.
+const PAGE_SIZE = 1000;
+
 interface Order {
   id: string;
   first_name: string;
@@ -190,6 +211,9 @@ function renderTextDataUrl(rawPrompt: string): string | null {
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  // Latest list for the poller, which is registered once.
+  const ordersRef = useRef<Order[]>([]);
+  useEffect(() => { ordersRef.current = orders; }, [orders]);
   // FIRST LOAD ONLY. `loading` swaps the whole table for a spinner, so a
   // background refresh must never set it — blanking the list on every
   // visibility refetch would be a new bug, and it would also hide the rows
@@ -365,6 +389,33 @@ export default function AdminOrders() {
     };
   }, []);
 
+  useEffect(() => {
+    let stopped = false;
+    const tick = async () => {
+      if (stopped || document.hidden || inFlightRef.current || !hasLoadedOnceRef.current) return;
+      const sinceMs = Date.now() - POLL_WINDOW_MS;
+      const since = new Date(sinceMs).toISOString();
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id,status,payment_status")
+        .gte("created_at", since);
+      if (stopped || error || !data) return;
+      const onScreen = new Map(
+        ordersRef.current
+          .filter((o) => new Date(o.created_at).getTime() >= sinceMs)
+          .map((o) => [o.id, `${o.status}|${o.payment_status}`]),
+      );
+      const changed =
+        data.length !== onScreen.size ||
+        (data as { id: string; status: string; payment_status: string }[]).some(
+          (r) => onScreen.get(r.id) !== `${r.status}|${r.payment_status}`,
+        );
+      if (changed && !inFlightRef.current) fetchRef.current();
+    };
+    const id = window.setInterval(tick, POLL_MS);
+    return () => { stopped = true; window.clearInterval(id); };
+  }, []);
+
   async function fetchOrders() {
     // Claimed BEFORE the await, so a later call supersedes this one by simply
     // being newer. No re-entry block here on purpose: the generation check is
@@ -377,12 +428,22 @@ export default function AdminOrders() {
 
     let rows: Order[];
     try {
-      const { data, error } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
       // PostgREST reports failure in `error`; the network layer THROWS. Both
       // funnel into the catch below — the throw used to escape entirely and
       // leave `loading` stuck true with no message at all.
-      if (error) throw new Error(error.message);
-      rows = (data as any as Order[]) || [];
+      rows = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw new Error(error.message);
+        const page = (data as any as Order[]) || [];
+        rows.push(...page);
+        if (page.length < PAGE_SIZE) break;
+      }
     } catch (e) {
       // Superseded: a newer fetch owns the flag and will report for itself.
       if (gen !== fetchGenRef.current) return;
@@ -408,18 +469,31 @@ export default function AdminOrders() {
     // A newer fetch already applied its rows — drop these on the floor rather
     // than overwriting fresher data with older data.
     if (gen !== fetchGenRef.current) return;
+    const wasLoaded = hasLoadedOnceRef.current;
+    const knownIds = new Set(ordersRef.current.map((o) => o.id));
     inFlightRef.current = false;
     setFetching(false);
     hasLoadedOnceRef.current = true;
     setOrders(rows);
+    if (wasLoaded && knownIds.size > 0) {
+      const fresh = rows.filter((o) => !knownIds.has(o.id));
+      const freshCarts = new Set(fresh.map((o) => o.cart_id ?? o.id));
+      if (freshCarts.size > 0) {
+        toast({ title: `🆕 ახალი შეკვეთა (${freshCarts.size})`, description: fresh[0]?.first_name || undefined });
+      }
+    }
     setLoading(false);
     setFetchError(null);
     setLastRefresh(new Date());
     lastSuccessRef.current = Date.now();
 
     // Auto-sync any non-paid orders that have a payment provider order id
+    const syncSince = Date.now() - SYNC_WINDOW_MS;
     const unsynced = rows.filter(
-      (o) => o.bog_order_id && o.payment_status !== "paid" && o.payment_status !== "refunded"
+      (o) =>
+        o.bog_order_id &&
+        o.payment_status === "pending" &&
+        new Date(o.created_at).getTime() >= syncSince
     );
     if (unsynced.length > 0) {
       const updates = await Promise.allSettled(
