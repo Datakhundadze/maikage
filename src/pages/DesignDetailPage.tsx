@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/hooks/useCart";
 import AppHeader from "@/components/AppHeader";
 import CatalogDesignCard from "@/components/CatalogDesignCard";
+import DesignDescription from "@/components/catalog/DesignDescription";
 const OrderDialog = lazy(() => import("@/components/OrderDialog"));
 import { Button } from "@/components/ui/button";
 import {
@@ -710,6 +711,7 @@ export default function DesignDetailPage() {
                     </>
                   )}
                 </div>
+                <DesignDescription text={design.description_ka} />
               </div>
 
               {/* Product switcher — Sol's t-shirt ⇄ hoodies. Shown only when
