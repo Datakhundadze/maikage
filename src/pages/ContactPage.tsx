@@ -217,6 +217,11 @@ export default function ContactPage() {
             </div>
           </section>
         )}
+
+        {/* Legal entity — must match the bank letter used for Meta business verification. */}
+        <p className="mt-10 text-xs text-gray-500 dark:text-white/40">
+          შპს „მაიკა.ჯი" (MAIKA.GE LTD) · ს/კ 404430175 · იურიდიული მისამართი: იერუსალიმის ქ. N 2/5, თბილისი (N 2/5 Ierusalimi Street, Tbilisi)
+        </p>
       </div>
     </div>
   );
