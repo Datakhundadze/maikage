@@ -359,7 +359,7 @@ export default function LandingPage() {
               </button>
             </FeedbackModal>
           </div>
-          <p className="text-xs text-muted-foreground">© 2026 maika.ge · MAIKA.GE LTD ({lang === "en" ? "ID" : "ს/კ"} 404430175) · N 2/5 Ierusalimi Street, Tbilisi</p>
+          <p className="text-xs text-muted-foreground">© 2026 maika.ge · MAIKA GE LLC ({lang === "en" ? "ID" : "ს/კ"} 404430175) · N 2/5 Jerusalemi st., Krtsanisi district, Tbilisi</p>
         </div>
       </div>
     </div>
