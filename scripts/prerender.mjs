@@ -491,7 +491,7 @@ function blogIndexRoot(posts) {
 }
 
 // /contact — CONTACT lives in scripts/lib/seo.mjs (shared with public/llms.txt).
-const LEGAL_LINE = 'შპს „მაიკა.ჯი" (MAIKA.GE LTD) · ს/კ 404430175 · N 2/5 Ierusalimi Street, Tbilisi';
+const LEGAL_LINE = 'შპს „მაიკა ჯი" (MAIKA GE LLC) · ს/კ 404430175 · Georgia, Tbilisi, Krtsanisi district, Jerusalemi st., N 2/5';
 
 function contactRoot() {
   const c = CONTACT;
