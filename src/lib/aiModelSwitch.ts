@@ -8,6 +8,15 @@
 export const USE_GPT_PHOTO_BG = true;
 export const USE_GPT_RESTYLE = true;
 
+// The main AI design generator (2026-10-30): runGenerationPipeline tries
+// gemini-proxy "generate-design-gpt" (GPT Image 2.5 Sunburst) first. It returns
+// a real transparent PNG in one call, so the convert-bg-black matte is skipped
+// — ~$0.14 per design against up to $0.72 on Gemini. A/B on 10 real prompts:
+// GPT 6, Gemini 3, tie 1. Any failure (error, no image, no real alpha) falls
+// back to the untouched Gemini generate-design → transparency pipeline. Set to
+// false to go back to Gemini only, nothing else needs to change.
+export const USE_GPT_GENERATE = true;
+
 /**
  * Share of pixels that are (partly) transparent, 0..1, sampled on a ≤256 px
  * copy. The GPT background removal returns a real transparent PNG, so this is

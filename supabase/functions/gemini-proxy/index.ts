@@ -6,6 +6,7 @@ import { sanitizeReply } from "./replySanitize.ts";
 import { guardSketchBlocks, userTurnsFromMessages } from "./blockGuard.ts";
 import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
+import { buildGptGeneratePrompt, joinPromptText } from "./gptGeneratePrompt.ts";
 import {
   CALLBACK_DAY_LIMIT,
   CALLBACK_LOG_MARKER,
@@ -26,7 +27,16 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // Actions that each cost a paid image call at the gateway → rate-limited per
 // caller. convert-bg-black (internal second half of a generate-design) and
 // randomize-prompt (cheap text) are intentionally exempt.
-const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt"]);
+// generate-design-gpt (2026-10-30) is the GPT Image version of generate-design
+// and gets exactly its treatment: 1 guest unit (not pro tier), and the same
+// check_generation_block rule (see GENERATION_BLOCK_ACTION below).
+const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt", "generate-design-gpt"]);
+
+// The p_action sent to check_generation_block. The RPC applies its
+// generations-count anti-abuse rule only when p_action = 'generate-design', so
+// the GPT design generator asks AS generate-design — the same lifetime cap,
+// with no change to the SQL function. Every other action passes through as is.
+const GENERATION_BLOCK_ACTION: Record<string, string> = { "generate-design-gpt": "generate-design" };
 
 // GUEST allowance, in UNITS, per IP (real signed-in users keep 30/hour and
 // 100/day, one unit per call, untouched).
@@ -2080,10 +2090,11 @@ CRITICAL:
         // — applies to ALL billable actions) OR, for generate-design only, the
         // >15-generations-and-no-paid-order anti-abuse rule. Anonymous sessions
         // and admins are unaffected. Fails open on RPC error.
+        // generate-design-gpt asks as generate-design (GENERATION_BLOCK_ACTION).
         if (user && user.is_anonymous !== true) {
           const { data: blocked, error: blockErr } = await client.rpc(
             "check_generation_block",
-            { p_user_id: user.id, p_action: action },
+            { p_user_id: user.id, p_action: GENERATION_BLOCK_ACTION[action] ?? action },
           );
           if (blockErr) {
             // Fail open: never block real users on an infra hiccup.
@@ -2358,6 +2369,111 @@ CRITICAL:
         if (attempt < gMaxAttempts - 1) await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
       }
       return gJson(500, { error: `AI generation failed: ${gLastError}` });
+    }
+
+    // ── ADD-ONLY (2026-10-30): generate-design-gpt ─────────────────────────
+    // The GPT Image 2.5 Sunburst version of generate-design (owner GO
+    // 2026-10-30, after an A/B on 10 real prompts: GPT 6, Gemini 3, tie 1;
+    // ~$0.14 per design against $0.72 for realistic Gemini pro +
+    // convert-bg-black). The Gemini generate-design branch below is untouched;
+    // the client picks the action (src/lib/aiModelSwitch.ts USE_GPT_GENERATE)
+    // and falls back to generate-design when this one fails.
+    //
+    // PROMPT: the SAME text production sends — buildGenerateDesignMessages
+    // (unchanged) joined to one string — plus GPT-only substitutions from
+    // gptGeneratePrompt.ts (no-text clause, safety line, transparent line).
+    // images/generations takes no reference images; any are dropped and logged
+    // (the client only calls this action without them).
+    //
+    // REQUEST: the body the admin probe-image-model used in the A/B, on the
+    // first endpoint it tries for openai/* — images/generations, JSON, PNG,
+    // 1024x1024, quality medium, background transparent. One call returns a
+    // real alpha PNG, so the client skips convert-bg-black.
+    //
+    // LIMITS: in BILLABLE_ACTIONS (1 guest unit, like generate-design) and
+    // checked by check_generation_block AS generate-design, both above. Error
+    // handling, retries and ai_calls rows copy isolate-subject-gpt.
+    // Response { image, text, model } — callGemini reads `image`.
+    if (action === "generate-design-gpt") {
+      const dgJson = (status: number, body: unknown) =>
+        new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const dgKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!dgKey) return dgJson(500, { error: "LOVABLE_API_KEY is not configured" });
+
+      const dgModel = "openai/gpt-image-2.5-sunburst";
+      const dgTransparent = params.transparent !== false;
+      const dgHasText = typeof params.text === "string" && params.text.trim() !== "";
+      const dgJoined = joinPromptText(buildGenerateDesignMessages(params));
+      if (dgJoined.droppedImages > 0) {
+        console.warn(`[gemini-proxy] generate-design-gpt: ${dgJoined.droppedImages} reference image(s) not sent (images/generations takes text only)`);
+      }
+      const dgPrompt = buildGptGeneratePrompt(dgJoined.text, { hasText: dgHasText, transparent: dgTransparent });
+      console.log(`[gemini-proxy] generate-design-gpt: isRealistic=${params.isRealistic === true} slogan=${dgHasText} transparent=${dgTransparent} model=${dgModel}`);
+
+      const IMAGES_URL = GATEWAY_URL.replace("/chat/completions", "/images/generations");
+      const dgMaxAttempts = 2;
+      let dgLastError = "";
+
+      for (let attempt = 0; attempt < dgMaxAttempts; attempt++) {
+        const startedAt = Date.now();
+        const dgLog = (success: boolean, errorCode: string | null) =>
+          logAiCall({
+            action, model: dgModel,
+            userId: callerUserId,
+            sessionId: callerSessionId,
+            isGuest: callerIsGuest,
+            success,
+            durationMs: Date.now() - startedAt,
+            errorCode,
+          });
+        try {
+          const res = await fetch(IMAGES_URL, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${dgKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: dgModel,
+              prompt: dgPrompt,
+              n: 1,
+              size: "1024x1024",
+              quality: "medium",
+              output_format: "png",
+              background: dgTransparent ? "transparent" : "auto",
+            }),
+          });
+          if (!res.ok) {
+            const status = res.status;
+            const text = await res.text();
+            dgLog(false, `http_${status}`);
+            console.error(`[gemini-proxy] ${action} HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 300));
+            if (status === 429) return dgJson(429, { error: "Rate limit exceeded. Please wait a moment and try again." });
+            if (status === 402) {
+              // Same customer-facing wording as the main loop's 402.
+              return dgJson(402, {
+                error: "სერვისი დროებით მიუწვდომელია — სცადეთ ცოტა ხანში ან დაგვიკავშირდით. (The service is temporarily unavailable — please try again shortly or contact us.)",
+                code: "SERVICE_UNAVAILABLE",
+              });
+            }
+            if (status >= 400 && status < 500) return dgJson(500, { error: "AI generation failed. Please try again." });
+            dgLastError = `Gateway returned ${status}`;
+          } else {
+            const data: unknown = await res.json();
+            const img = extractImage(data);
+            if (img) {
+              dgLog(true, null);
+              console.log(`[gemini-proxy] Success: action=${action}, attempt=${attempt + 1}`);
+              return dgJson(200, { image: img, text: "", model: dgModel });
+            }
+            dgLog(false, "no_image");
+            dgLastError = "No image in response";
+          }
+        } catch (dgErr) {
+          dgLog(false, "exception");
+          dgLastError = dgErr instanceof Error ? dgErr.message : String(dgErr);
+          console.error(`[gemini-proxy] ${action} attempt ${attempt + 1} exception:`, dgLastError);
+        }
+        if (attempt < dgMaxAttempts - 1) await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+      }
+      return dgJson(500, { error: `AI generation failed: ${dgLastError}` });
     }
 
     let model: string;

@@ -1,4 +1,4 @@
-import { USE_GPT_RESTYLE } from "@/lib/aiModelSwitch";
+import { USE_GPT_RESTYLE, USE_GPT_GENERATE, transparentShare } from "@/lib/aiModelSwitch";
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignParams } from "@/hooks/useDesign";
 import { COLORS } from "@/lib/catalog";
@@ -561,6 +561,56 @@ export async function runTransparencyPipeline(
   }
 }
 
+// ── GPT Image design generation (add-only, 2026-10-30) ────────────────────
+// Minimum share of (partly) transparent pixels for a GPT result to count as a
+// real cutout. Below it (the model ignored background:"transparent"), the
+// Gemini path runs instead.
+export const GPT_MIN_TRANSPARENT_SHARE = 0.03;
+
+/** The transparent PNG composited onto #FFFFFF — GenerationResult.designImage is "design on white bg". */
+async function flattenOnWhite(transparentDataUrl: string): Promise<string> {
+  const img = await loadImage(transparentDataUrl);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+  return canvas.toDataURL("image/png");
+}
+
+/**
+ * One "generate-design-gpt" call. Returns null — and the caller runs the
+ * Gemini path — on any error, a missing image, or no real alpha. Rate-limit
+ * and generation-block errors are rethrown: Gemini would hit the same server
+ * limit, so falling back would only charge the caller a second unit.
+ * Reference images are skipped (images/generations takes text only), and the
+ * call does not retry on the client: a failure goes straight to Gemini.
+ */
+async function tryGptGenerateDesign(
+  designParams: Record<string, unknown>,
+): Promise<{ designImage: string; transparentImage: string; text: string } | null> {
+  const hasReferenceImages =
+    (Array.isArray(designParams.characterImages) && designParams.characterImages.length > 0) ||
+    !!designParams.sceneImage || !!designParams.styleImage || !!designParams.textImage;
+  if (hasReferenceImages) return null;
+  try {
+    const result = await callGemini("generate-design-gpt", designParams, 0);
+    if (!result.image) return null;
+    const share = await transparentShare(result.image);
+    if (share <= GPT_MIN_TRANSPARENT_SHARE) {
+      console.warn(`[Generation] GPT design has no real alpha (${share.toFixed(3)}) — falling back to Gemini`);
+      return null;
+    }
+    return { designImage: await flattenOnWhite(result.image), transparentImage: result.image, text: result.text };
+  } catch (err) {
+    if (err instanceof RateLimitError || err instanceof GenerationBlockedError) throw err;
+    console.warn("[Generation] GPT design generation failed — falling back to Gemini:", err);
+    return null;
+  }
+}
+
 export async function runGenerationPipeline(
   params: GenerateDesignParams,
   placementCoords: { x: number; y: number; scale: number; scaleY?: number },
@@ -582,20 +632,42 @@ export async function runGenerationPipeline(
     style: "realistic hyperrealistic photographic render — ultra-detailed surface textures, NO black outlines, smooth natural color gradients, photographic lighting and shadows, NOT illustration NOT drawing NOT cartoon NOT graphic art",
   } : params.designParams;
 
-  const designResult = await callGemini("generate-design", {
-    ...adjustedDesignParams,
-    product: params.product,
-    color: params.color,
-    speed: isRealistic ? "pro" : params.speed, // Force pro model for realistic
-    isRealistic,
-  });
+  // GPT Image first when USE_GPT_GENERATE (add-only, 2026-10-30): a real
+  // transparent PNG in one call, so Stage 2 is skipped. null → the Gemini
+  // path below, exactly as before.
+  const gpt = USE_GPT_GENERATE
+    ? await tryGptGenerateDesign({
+      ...adjustedDesignParams,
+      product: params.product,
+      color: params.color,
+      isRealistic,
+    })
+    : null;
 
-  const designImage = designResult.image;
+  let designImage: string;
+  let transparentImage: string;
+  let designText: string;
+  if (gpt) {
+    designImage = gpt.designImage;
+    transparentImage = gpt.transparentImage;
+    designText = gpt.text;
+  } else {
+    const designResult = await callGemini("generate-design", {
+      ...adjustedDesignParams,
+      product: params.product,
+      color: params.color,
+      speed: isRealistic ? "pro" : params.speed, // Force pro model for realistic
+      isRealistic,
+    });
 
-  // Stage 2: Background removal via difference matting with fallback
-  onStatusChange("PROCESSING_TRANSPARENCY");
+    designImage = designResult.image;
+    designText = designResult.text;
 
-  const { transparentImage } = await runTransparencyPipeline(designImage, { isRealistic });
+    // Stage 2: Background removal via difference matting with fallback
+    onStatusChange("PROCESSING_TRANSPARENCY");
+
+    ({ transparentImage } = await runTransparencyPipeline(designImage, { isRealistic }));
+  }
 
   // Stage 3: Mockup compositing
   onStatusChange("GENERATING_MOCKUP");
@@ -626,7 +698,7 @@ export async function runGenerationPipeline(
     designImage,
     transparentImage,
     mockupImage,
-    prompt: designResult.text,
+    prompt: designText,
   };
 }
 
