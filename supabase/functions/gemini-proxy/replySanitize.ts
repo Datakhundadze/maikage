@@ -42,6 +42,12 @@ export function sanitizeReply(text: string): string {
 // carries a maika-mockup / maika-generate fence; never touches text inside any
 // fence; nothing matched → the same string is returned.
 
+// The one line left when every sentence of the prose was a pointer.
+export const SKETCH_FALLBACK_KA = "ესკიზი კონსტრუქტორში უკვე ჩანს.";
+export const SKETCH_FALLBACK_EN = "The sketch is already on the product in the constructor.";
+export const GENERATE_FALLBACK_KA = "კარგი.";
+export const GENERATE_FALLBACK_EN = "Sure.";
+
 const MAIKA_BLOCK_RE = /```maika-(?:mockup|generate)/;
 const ANY_FENCE_RE = /```[\s\S]*?(?:```|$)/g;
 // Phrases that only point at the block. Each is matched against ONE sentence.
@@ -170,8 +176,8 @@ export function stripBlockAnnouncements(text: string): string {
     const ka = GEORGIAN_RE.test(text.replace(ANY_FENCE_RE, ""));
     const isMockup = /```maika-mockup/.test(text);
     const line = isMockup
-      ? (ka ? "ესკიზი კონსტრუქტორში უკვე ჩანს." : "The sketch is already on the product in the constructor.")
-      : (ka ? "კარგი." : "Sure.");
+      ? (ka ? SKETCH_FALLBACK_KA : SKETCH_FALLBACK_EN)
+      : (ka ? GENERATE_FALLBACK_KA : GENERATE_FALLBACK_EN);
     out = line + "\n\n" + out.replace(/^\s+/, "");
   }
   return out.replace(/^\s+/, "");

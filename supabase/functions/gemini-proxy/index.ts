@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { redactPii } from "./redactPii.ts";
 import { fixBankAccounts } from "./bankAccounts.ts";
 import { sanitizeReply } from "./replySanitize.ts";
+import { guardSketchBlocks, userTurnsFromMessages } from "./blockGuard.ts";
 import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import {
@@ -74,7 +75,8 @@ const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
 # Prices = exactly what the cart charges (pricing.ts). Update here when prices change.
 # Last reconciled: 2026-10-23 (v2.4 — owner answers + replay round 4)
 # v2.5 (2026-10-24 — live-stock exception)
-# v2.6 (2026-10-30 — sketch-block audit: no colour/two-sided/garment-photo guessing, no empty or kit blocks)
+# v2.6 (2026-10-30 — sketch-block audit: no colour/two-sided/garment-photo guessing, no empty or kit blocks;
+#   photo + price example, single-sided only)
 
 ═══════════════════════════════════════════════════════════════
 ## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
@@ -305,6 +307,17 @@ KA — წესი:
 - დანამატი ემატება მხოლოდ მაშინ, როცა კლიენტი ცხადად ითხოვს ორივე მხარეს ბეჭდვას.
 - თუ ბუნდოვანია (ვერ ხვდები ერთი მხარეა თუ ორივე) — ჰკითხე: „წინ და უკან ორივეზე გნებავთ ბეჭდვა, თუ მხოლოდ ერთ მხარეს?"
 - ⚠️ ფოტო თავისთავად ორმხრივ ბეჭდვას არასოდეს ნიშნავს — ასახელებ ცალმხრივ ფასს, სანამ კლიენტი თავად არ იტყვის „წინ და უკან".
+- ᲛᲐᲒᲐᲚᲘᲗᲘ — ფოტო + „რა ფასი იქნება?" (მაისურის საუბარში): მხოლოდ ცალმხრივი ფასები (§2-ის ᲞᲘᲠᲕᲔᲚᲘ რიცხვი),
+  თითო ხაზზე თითო მოდელი; სიტყვები „ორმხრივი" და „წინ და უკან" პასუხში საერთოდ არ არის:
+  „სტანდარტული (GILDAN) მაისური — 35₾
+  საბავშვო (GILDAN KIDS) მაისური — 35₾
+  … (ყველა მოდელი, იაფიდან ძვირისკენ) …
+  NIKE მაისური — 100₾"
+  და ბლოკი "color"-ის გარეშე (ფერი არ დაუსახელებია):
+\`\`\`maika-mockup
+{"product":"T-Shirt","side":"front"}
+\`\`\`
+  მხოლოდ თუ ზურგზე იკითხა — ერთი ხაზი ფასების შემდეგ: „ზურგზეც თუ გნებავთ — +15₾." არ უკითხავს → ეს ხაზიც არა.
 
 მაგალითები:
 - „ნაცრისფერ Oversize-ზე უკან სახელი მინდა" → ცალმხრივი, 70₾ ✅
@@ -319,6 +332,9 @@ EN — rule:
 - The surcharge applies only when the customer clearly wants both sides printed.
 - If unclear — ask: "Would you like the print on both front and back, or just one side?"
 - ⚠️ A photo alone NEVER means two-sided printing — quote single-sided prices unless the customer says front + back.
+- EXAMPLE — photo + „რა ფასი იქნება?": the single-sided list above (ONLY the first price of each §2 line, one
+  model per line), no „ორმხრივი" / „წინ და უკან" / "two-sided" anywhere, and the block WITHOUT "color".
+  Only if they asked about the back, ONE line after the list: „ზურგზეც თუ გნებავთ — +15₾."
 
 Examples:
 - "Name on the back of a grey Oversize" → single-sided, 70₾ ✅
@@ -341,7 +357,7 @@ KA — მაისურები (ცალმხრივი ბეჭდვ�
 - პრემიუმ მაისური (SOL'S) — 50₾ · ორმხრივი 65₾
   ↳ 🏷️ SALE: კატალოგიდან (maika.ge/designs) მზა დიზაინის შეკვეთისას SOL'S მაისური — 45₾ (მხოლოდ წინა მხარეს ბეჭდვა, ვადა არ აქვს). საკუთარი/AI დიზაინი SOL'S-ზე — ჩვეულებრივ 50₾; ორმხრივი — 65₾.
 - Khundadze მაისური — 55₾ · ორმხრივი 70₾
-- პრემიუმ მაისური (GILDAN Hammer) — 60₾ · ორმხრივი 75₾
+- პრემიუმ მაისური (GILDAN HUMMER) — 60₾ · ორმხრივი 75₾
 - ჯორდანოს (GIORDANO) მაისური — 70₾ · ორმხრივი 85₾
 - მოხარშული ნაჭრის მაისური (JEL) — 70₾ · ორმხრივი 85₾
 - მძიმე ნაჭრის, oversize სტილის მაისური — 70₾ · ორმხრივი 85₾
@@ -2985,7 +3001,14 @@ Output: one photorealistic composite photo.`;
             // the corrected text (bankAccounts.ts). No IBAN → unchanged.
             // REPLY SANITIZER (2026-10-24, replySanitize.ts): strips leaked
             // "§" section refs and turns invented wa.me links into the number.
-            const bankSafeText = sanitizeReply(fixBankAccounts(textContent));
+            // SKETCH BLOCK GUARD (2026-10-30, blockGuard.ts): drops an unasked
+            // garment "color" and a mockup block that can show nothing (no text,
+            // no removeWhite, no image on this request). Edits only the block
+            // JSON; no maika fence → unchanged. `raw` in eval mode stays textContent.
+            const bankSafeText = sanitizeReply(guardSketchBlocks(fixBankAccounts(textContent), {
+              userTurns: userTurnsFromMessages(params.messages),
+              hasImage: isAcceptableChatImage(params.image),
+            }));
             // ── CALLBACK REQUEST (§9d, callbackRequest.ts) ─────────────────
             // The maika-callback block is a signal for the server, never text
             // for the customer: it is ALWAYS stripped here, before chat_logs

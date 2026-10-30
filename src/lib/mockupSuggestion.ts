@@ -80,7 +80,7 @@ const norm = (s: string) => s.trim().toLowerCase();
  * words. Accepting these would print "your text" on a shirt, so they are
  * dropped (the block survives if a photo is attached).
  */
-const PLACEHOLDER_TEXTS = new Set([
+export const PLACEHOLDER_TEXTS = new Set([
   "თქვენი ტექსტი",
   "თქვენი ტექსტი აქ",
   "your text",
