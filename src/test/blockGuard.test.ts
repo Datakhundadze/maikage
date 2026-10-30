@@ -56,23 +56,25 @@ describe("guardSketchBlocks — colour", () => {
     expect(guardSketchBlocks(t, ctx([]))).toBe(t);
   });
 
-  it("drops color when no customer turn names one (photo case)", () => {
+  it("sets color White when no customer turn names one (photo case)", () => {
     const t = "ჩვენს მაისურზე ასე დაიბეჭდება.\n" + mock({ product: "T-Shirt", subProduct: "GILDAN", color: "Red", side: "front" });
     expect(guardSketchBlocks(t, ctx(["როგორ გამოვა ეს მაისურზე?"], true))).toBe(
-      "ჩვენს მაისურზე ასე დაიბეჭდება.\n" + mock({ product: "T-Shirt", subProduct: "GILDAN", side: "front" }),
+      "ჩვენს მაისურზე ასე დაიბეჭდება.\n" + mock({ product: "T-Shirt", subProduct: "GILDAN", color: "White", side: "front" }),
     );
   });
 
-  it("drops color in a maika-generate block too", () => {
-    const t = "კარგი.\n" + gen({ prompt: "ლომი", style: "Realistic", color: "White" });
-    expect(guardSketchBlocks(t, ctx(["დამიხატე ლომი"]))).toBe("კარგი.\n" + gen({ prompt: "ლომი", style: "Realistic" }));
+  it("maika-generate: invented colour → White, missing colour → White, White → unchanged", () => {
+    const t = "კარგი.\n" + gen({ prompt: "ლომი", style: "Realistic", color: "Black" });
+    expect(guardSketchBlocks(t, ctx(["დამიხატე ლომი"]))).toBe("კარგი.\n" + gen({ prompt: "ლომი", style: "Realistic", color: "White" }));
+    const w = "კარგი.\n" + gen({ prompt: "ლომი", style: "Realistic", color: "White" });
+    expect(guardSketchBlocks(w, ctx(["დამიხატე ლომი"]))).toBe(w);
   });
 
   it("keeps color when any customer turn of the request named a colour; textColor never touched", () => {
     const block = mock({ text: "ნიკა", color: "Black", textColor: "White" });
     const t = "ნიკა.\n" + block;
     expect(guardSketchBlocks(t, ctx(["შავ მაისურზე მინდა", "ნიკა დაწერე"]))).toBe(t);
-    expect(guardSketchBlocks(t, ctx(["ნიკა დაწერე"]))).toBe("ნიკა.\n" + mock({ text: "ნიკა", textColor: "White" }));
+    expect(guardSketchBlocks(t, ctx(["ნიკა დაწერე"]))).toBe("ნიკა.\n" + mock({ text: "ნიკა", color: "White", textColor: "White" }));
   });
 
   it("leaves an unparsable fence alone", () => {
@@ -107,13 +109,13 @@ describe("guardSketchBlocks — empty mockup", () => {
     expect(guardSketchBlocks("ok.\n" + mock({ removeBackground: true }), ctx(["ფონი მოაშორე"]))).toBe("ok.");
     expect(guardSketchBlocks("ok.\n" + mock({ editPrompt: "დაადე ქუდი" }), ctx(["დაადე ქუდი"]))).toBe("ok.");
     expect(guardSketchBlocks("ok.\n" + mock({ text: "ნიკა", removeBackground: true, editPrompt: "x" }), ctx(["ნიკა"])))
-      .toBe("ok.\n" + mock({ text: "ნიკა" }));
+      .toBe("ok.\n" + mock({ text: "ნიკა", color: "White" }));
   });
 
   it("keeps the block with an image, with real text, or with removeWhite", () => {
-    const photo = "ok.\n" + mock({ product: "T-Shirt", removeBackground: true });
+    const photo = "ok.\n" + mock({ product: "T-Shirt", removeBackground: true, color: "White" });
     expect(guardSketchBlocks(photo, ctx(["ფონი მოაშორე"], true))).toBe(photo);
-    const txt = "ok.\n" + mock({ text: "საქართველო" });
+    const txt = "ok.\n" + mock({ text: "საქართველო", color: "White" });
     expect(guardSketchBlocks(txt, ctx(["საქართველო დაწერე"]))).toBe(txt);
     const rw = "ok.\n" + mock({ removeWhite: true });
     expect(guardSketchBlocks(rw, ctx(["დიზაინიდან ამოიღე ყველა თეთრი ფერი"]))).toBe(rw);
@@ -121,7 +123,7 @@ describe("guardSketchBlocks — empty mockup", () => {
 
   it("never drops a maika-generate block for lack of an image", () => {
     const t = "კარგი.\n" + gen({ prompt: "ლომი" });
-    expect(guardSketchBlocks(t, ctx(["დამიხატე ლომი"]))).toBe(t);
+    expect(guardSketchBlocks(t, ctx(["დამიხატე ლომი"]))).toBe("კარგი.\n" + gen({ prompt: "ლომი", color: "White" }));
   });
 
   it("composes with sanitizeReply as at the call site (no false 'sketch is visible' line)", () => {
