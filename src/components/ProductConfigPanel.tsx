@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { ChevronDown } from "lucide-react";
+import { SizeChartLink } from "@/components/SizeChartLink";
 
 interface ProductConfigPanelProps {
   config: ProductConfig;
@@ -199,7 +200,10 @@ export default function ProductConfigPanel({
       {/* Size — always flat */}
       {availableSizes.length > 0 && (
         <div id="size-selector">
-          <h3 className="text-sm font-semibold text-card-foreground mb-2">{t(lang, "config.size")}</h3>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <h3 className="text-sm font-semibold text-card-foreground">{t(lang, "config.size")}</h3>
+            <SizeChartLink subProduct={config.subProduct} lang={lang} />
+          </div>
           <select
             value={selectedSize || ""}
             onChange={(e) => onSizeChange?.(e.target.value)}
