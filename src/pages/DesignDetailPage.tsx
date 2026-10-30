@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
+import { SizeChartLink } from "@/components/SizeChartLink";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
@@ -782,7 +783,10 @@ export default function DesignDetailPage() {
               {/* Size */}
               {sizeOptions.length > 0 && (
                 <div id="size-selector">
-                  <h3 className="text-sm font-semibold mb-2">ზომა {needsSize && <span className="text-destructive">*</span>}</h3>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h3 className="text-sm font-semibold">ზომა {needsSize && <span className="text-destructive">*</span>}</h3>
+                    <SizeChartLink subProduct={activeSub} />
+                  </div>
                   <select
                     value={selectedSize}
                     onChange={(e) => { setSelectedSize(e.target.value); setSizeError(false); }}
