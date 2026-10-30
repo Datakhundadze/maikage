@@ -80,7 +80,7 @@ const norm = (s: string) => s.trim().toLowerCase();
  * words. Accepting these would print "your text" on a shirt, so they are
  * dropped (the block survives if a photo is attached).
  */
-const PLACEHOLDER_TEXTS = new Set([
+export const PLACEHOLDER_TEXTS = new Set([
   "თქვენი ტექსტი",
   "თქვენი ტექსტი აქ",
   "your text",
@@ -89,7 +89,34 @@ const PLACEHOLDER_TEXTS = new Set([
   "ტექსტი",
   "...",
   "…",
+  // 2026-10-30 sketch audit: kit lettering placeholders.
+  "გვარი",
+  "სახელი",
+  "სახელი გვარი",
 ]);
+
+/**
+ * A placeholder, alone or with digits-only lines/words such as a dummy squad
+ * number — "გვარი\n00", "სახელი გვარი 10". Real text is never only a
+ * placeholder plus digits.
+ */
+function isPlaceholderText(t: string): boolean {
+  if (PLACEHOLDER_TEXTS.has(norm(t))) return true;
+  const tokens = t.split(/\s+/).filter(Boolean);
+  const words = tokens.filter((w) => !/^\d+$/.test(w));
+  return words.length > 0 && words.length < tokens.length && PLACEHOLDER_TEXTS.has(norm(words.join(" ")));
+}
+
+/**
+ * Brand spellings the model emits that the catalog spells differently. Maps
+ * the normalised alias to the catalog's own name.
+ */
+const BRAND_ALIASES: Record<string, string> = {
+  "gildan hammer": "GILDAN HUMMER",
+  "hammer": "GILDAN HUMMER",
+  "hummer": "GILDAN HUMMER",
+};
+const unalias = (raw: string) => BRAND_ALIASES[norm(raw).replace(/\s+/g, " ")] ?? raw;
 
 /** Resolve a product TYPE, case-insensitively, against the real catalog. */
 function resolveProductType(raw: string): ProductType | null {
@@ -102,8 +129,9 @@ function resolveProductType(raw: string): ProductType | null {
  * a brand ("GILDAN") placed in the `product` slot.
  */
 function resolveBrand(raw: string): { product: ProductType; subProduct: string } | null {
+  const name = unalias(raw);
   for (const p of PRODUCTS) {
-    const hit = catalog.getSubProducts(p.type).find((s) => norm(s) === norm(raw));
+    const hit = catalog.getSubProducts(p.type).find((s) => norm(s) === norm(name));
     if (hit) return { product: p.type, subProduct: hit };
   }
   return null;
@@ -199,7 +227,7 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
     // text — the customer's ACTUAL words. Placeholders are dropped, not printed.
     if (typeof parsed.text === "string") {
       const t = parsed.text.trim();
-      if (t && t.length <= MAX_SEED_TEXT_LENGTH && !PLACEHOLDER_TEXTS.has(norm(t))) {
+      if (t && t.length <= MAX_SEED_TEXT_LENGTH && !isPlaceholderText(t)) {
         out.text = t;
       }
     }
@@ -223,7 +251,8 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
     // value wins over one inferred from the `product` slot above.
     if (typeof parsed.subProduct === "string") {
       const base = out.product ?? storedProductContext().product;
-      const hit = catalog.getSubProducts(base).find((s) => norm(s) === norm(parsed.subProduct as string));
+      const wanted = unalias(parsed.subProduct);
+      const hit = catalog.getSubProducts(base).find((s) => norm(s) === norm(wanted));
       if (hit) {
         out.subProduct = hit;
         if (!out.product) out.product = base;
