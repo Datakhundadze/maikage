@@ -5,6 +5,11 @@ import type { ProductType } from "@/lib/catalog";
 
 export type BackType = "none" | "photo" | "text";
 
+// Size of the BACK print when both sides carry a design. "small" = lettering /
+// small logo, charged at tier.backText; "big" = large image/print, charged at
+// tier.backPhoto. Default "big" keeps every pre-existing caller byte-identical.
+export type BackPrintSize = "small" | "big";
+
 interface PriceTier {
   frontOnly: number;
   backPhoto: number;
@@ -56,6 +61,10 @@ export interface PriceBreakdown {
   hasFront: boolean;
   hasBack: boolean;
   isStudio: boolean;
+  /** Back print size that was charged. Present ONLY when both sides have
+   *  content (the only case a back surcharge applies), so front-only /
+   *  back-only breakdowns keep exactly their previous shape. */
+  backSize?: BackPrintSize;
 }
 
 export function calculatePrice(
@@ -64,6 +73,7 @@ export function calculatePrice(
   hasFront: boolean,
   hasBack: boolean,
   isStudio: boolean,
+  backSize: BackPrintSize = "big",
 ): PriceBreakdown {
   // For standalone products (no sub-brands), key is the product type
   const key = subProduct === product ? product : subProduct;
@@ -72,7 +82,11 @@ export function calculatePrice(
   const basePrice = tier.frontOnly;
   // Charge the second-side surcharge only when BOTH sides have content.
   // Back-only or front-only orders pay just the base price.
-  const backExtra = hasFront && hasBack ? tier.backPhoto - tier.frontOnly : 0;
+  // The surcharge depends on the back print size: small → backText, big → backPhoto.
+  const bothSides = hasFront && hasBack;
+  const backExtra = bothSides
+    ? (backSize === "small" ? tier.backText : tier.backPhoto) - tier.frontOnly
+    : 0;
   const aiSurcharge = isStudio ? AI_SURCHARGE : 0;
 
   return {
@@ -83,5 +97,20 @@ export function calculatePrice(
     hasFront,
     hasBack,
     isStudio,
+    ...(bothSides ? { backSize } : {}),
   };
+}
+
+/** Back-print surcharges (₾ over the front-only price) for the size picker,
+ *  read from the same PRICES tier calculatePrice charges. Returns null when
+ *  the product has no size distinction (backText === backPhoto, e.g. Mug,
+ *  Cap, Apron, Phone Case) or no tier at all — the picker is then hidden. */
+export function getBackPrintExtras(
+  product: ProductType,
+  subProduct: string,
+): { small: number; big: number } | null {
+  const key = subProduct === product ? product : subProduct;
+  const tier = PRICES[key];
+  if (!tier || tier.backText === tier.backPhoto) return null;
+  return { small: tier.backText - tier.frontOnly, big: tier.backPhoto - tier.frontOnly };
 }

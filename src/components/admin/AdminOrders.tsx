@@ -954,6 +954,11 @@ export default function AdminOrders() {
                                       <span className="text-destructive"> — გადახდის დროს ვერ ატვირთა</span>
                                     )}
                                   </p>
+                                  {unit.design_state.back?.printSize && (
+                                    <p className="text-xs text-muted-foreground mb-1.5">
+                                      უკანა პრინტი: <span className="font-medium text-foreground">{unit.design_state.back.printSize === "small" ? "პატარა" : "დიდი"}</span>
+                                    </p>
+                                  )}
                                   <div className="flex gap-2 flex-wrap">
                                     {unit.design_state.front && (
                                       <Button

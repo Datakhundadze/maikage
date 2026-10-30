@@ -23,7 +23,7 @@ import { TEXT_COLORS, resolveTextColorHex, contrastingTextColorHex } from "@/lib
 import type { DesignState, DesignStateSide } from "@/lib/designState";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { createDesignStartTracker } from "@/lib/designStart";
-import { calculatePrice } from "@/lib/pricing";
+import { calculatePrice, getBackPrintExtras, type BackPrintSize } from "@/lib/pricing";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { getGuestSessionId } from "@/lib/guestSession";
@@ -31,6 +31,7 @@ import { getGuestSessionId } from "@/lib/guestSession";
 // restyle it. Fire-and-forget: nothing here waits on it or reads a result.
 import { announcePhotoUploaded } from "@/lib/photoRestyleOffer";
 import PriceDisplay from "@/components/PriceDisplay";
+import BackPrintSizeToggle from "@/components/BackPrintSizeToggle";
 // OrderDialog ships ~21 KB (radix dialog + form code) and never renders on
 // initial paint — wait until the customer actually opens it.
 const OrderDialog = lazy(() => import("@/components/OrderDialog"));
@@ -600,6 +601,7 @@ function buildDesignStateInput(
   product: string,
   subProduct: string,
   color: string,
+  backPrintSize?: BackPrintSize,
 ): DesignState | null {
   const buildSide = (s: SideData, view: "front" | "back"): DesignStateSide | null => {
     if (s.photos.length === 0 && !sideHasText(s)) return null;
@@ -646,6 +648,8 @@ function buildDesignStateInput(
   const front = buildSide(frontData, "front");
   const back = buildSide(backData, "back");
   if (!front && !back) return null;
+  // Record the charged back-print size (both sides only) so the admin sees it.
+  if (front && back && backPrintSize) back.printSize = backPrintSize;
   return { version: 1, front, back };
 }
 
@@ -981,6 +985,17 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // Per-side state
   const [frontData, setFrontData] = useState<SideData>({ ...DEFAULT_SIDE });
   const [backData, setBackData] = useState<SideData>({ ...DEFAULT_SIDE });
+
+  // Back-print size (pricing.ts BackPrintSize). null = customer hasn't picked,
+  // so it follows the back's content: photos → "big", text only → "small".
+  // A manual pick sticks until the back is emptied, then auto resumes.
+  const [backPrintSizeManual, setBackPrintSizeManual] = useState<BackPrintSize | null>(null);
+  const backHasContent = backData.photos.length > 0 || sideHasText(backData);
+  const backPrintSize: BackPrintSize =
+    backPrintSizeManual ?? (backData.photos.length > 0 ? "big" : "small");
+  useEffect(() => {
+    if (!backHasContent) setBackPrintSizeManual(null);
+  }, [backHasContent]);
 
   const currentView = productConfig.config.view;
   const isFront = currentView === "front";
@@ -3946,10 +3961,24 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
               hasFront,
               hasBack,
               false,
+              backPrintSize,
             );
+            const backExtras = getBackPrintExtras(
+              productConfig.config.product,
+              productConfig.config.subProduct,
+            );
+            // Only record a size in design_state when it actually changed the price.
+            const chargedBackSize = hasFront && hasBack && backExtras ? backPrintSize : undefined;
             return (
               <>
                 <PriceDisplay breakdown={breakdown} />
+                {hasFront && hasBack && backExtras && (
+                  <BackPrintSizeToggle
+                    value={backPrintSize}
+                    onChange={setBackPrintSizeManual}
+                    extras={backExtras}
+                  />
+                )}
                 {(() => {
                   const handleAddToCart = async () => {
                     if (needsSize && !productConfig.config.size) {
@@ -3985,6 +4014,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
                           productConfig.config.product,
                           productConfig.config.subProduct,
                           productConfig.config.color,
+                          chargedBackSize,
                         ),
                       });
                       toast({ title: "კალათაში დაემატა ✓" });
@@ -4038,6 +4068,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
                             productConfig.config.product,
                             productConfig.config.subProduct,
                             productConfig.config.color,
+                            chargedBackSize,
                           )}
                           quantity={quantity}
                         >
