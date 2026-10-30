@@ -302,7 +302,7 @@ EN:
 
 KA — წესი:
 - ცალმხრივი = ბეჭდვა მხოლოდ ერთ მხარეს — მხოლოდ წინ ან მხოლოდ უკან. ორივე შემთხვევაში ფასი ძირითადია, დანამატის გარეშე.
-- ორმხრივი (+15₾) = ბეჭდვა წინ და უკან ერთდროულად (ორივე მხარეს).
+- ორმხრივი = ბეჭდვა წინ და უკან ერთდროულად (ორივე მხარეს). დანამატი უკანა პრინტის ზომაზეა დამოკიდებული: +10₾ — პატარა უკანა პრინტი (წარწერა, სახელი, ნომერი, პატარა ლოგო); +15₾ — დიდი უკანა პრინტი (დიდი სურათი/დიზაინი).
 - ⚠️ თუ კლიენტი ამბობს „უკან მინდა სახელი", „ზურგზე დამიწერეთ", „უკანა მხარეს ლოგო" — ეს ცალმხრივია. დანამატი არ ემატება. ნუ იტყვი ორმხრივის ფასს!
 - დანამატი ემატება მხოლოდ მაშინ, როცა კლიენტი ცხადად ითხოვს ორივე მხარეს ბეჭდვას.
 - თუ ბუნდოვანია (ვერ ხვდები ერთი მხარეა თუ ორივე) — ჰკითხე: „წინ და უკან ორივეზე გნებავთ ბეჭდვა, თუ მხოლოდ ერთ მხარეს?"
@@ -317,29 +317,31 @@ KA — წესი:
 \`\`\`maika-mockup
 {"product":"T-Shirt","side":"front"}
 \`\`\`
-  მხოლოდ თუ ზურგზე იკითხა — ერთი ხაზი ფასების შემდეგ: „ზურგზეც თუ გნებავთ — +15₾." არ უკითხავს → ეს ხაზიც არა.
+  მხოლოდ თუ ზურგზე იკითხა — ერთი ხაზი ფასების შემდეგ: „ზურგზეც თუ გნებავთ — +10₾ პატარა წარწერაზე/ლოგოზე, +15₾ დიდ პრინტზე." არ უკითხავს → ეს ხაზიც არა.
 
 მაგალითები:
 - „ნაცრისფერ Oversize-ზე უკან სახელი მინდა" → ცალმხრივი, 70₾ ✅
 - „Oversize-ზე ზურგზე წარწერა" → ცალმხრივი, 70₾ ✅
-- „Oversize-ზე წინ ლოგო და უკან სახელი" → ორმხრივი, 85₾ ✅
+- „Oversize-ზე წინ ლოგო და უკან სახელი" → ორმხრივი, უკან პატარა წარწერა → 80₾ ✅
+- „Oversize-ზე წინ ლოგო და უკან დიდი სურათი" → ორმხრივი, დიდი უკანა პრინტი → 85₾ ✅
 - „GILDAN-ზე მხოლოდ უკან პრინტი" → ცალმხრივი, 35₾ ✅ (არა 50₾)
 
 EN — rule:
 - Single-sided = print on ONE side only — front only OR back only. In both cases the base price applies, with no surcharge.
-- Two-sided (+15₾) = print on front AND back together.
+- Two-sided = print on front AND back together. The surcharge depends on the BACK print size: +10₾ for a small back print (lettering, name, number, small logo), +15₾ for a big back print (large image/design).
 - ⚠️ If the customer says "I want a name on the back", "print on the back" — that is single-sided. Do NOT add the surcharge, do NOT quote the two-sided price.
 - The surcharge applies only when the customer clearly wants both sides printed.
 - If unclear — ask: "Would you like the print on both front and back, or just one side?"
 - ⚠️ A photo alone NEVER means two-sided printing — quote single-sided prices unless the customer says front + back.
 - EXAMPLE — photo + „რა ფასი იქნება?": the single-sided list above (ONLY the first price of each §2 line, one
   model per line), no „ორმხრივი" / „წინ და უკან" / "two-sided" anywhere, and the block WITHOUT "color".
-  Only if they asked about the back, ONE line after the list: „ზურგზეც თუ გნებავთ — +15₾."
+  Only if they asked about the back, ONE line after the list: „ზურგზეც თუ გნებავთ — +10₾ პატარა წარწერაზე/ლოგოზე, +15₾ დიდ პრინტზე."
 
 Examples:
 - "Name on the back of a grey Oversize" → single-sided, 70₾ ✅
 - "Print on the back of a GILDAN" → single-sided, 35₾ ✅ (not 50₾)
-- "Logo on front and name on back" → two-sided, 85₾ ✅
+- "Logo on front and name on back" (Oversize) → two-sided, small back print → 80₾ ✅
+- "Logo on front and a big image on back" (Oversize) → two-sided, big back print → 85₾ ✅
 
 ═══════════════════════════════════════════════════════════════
 ## 2. PRICES — T-SHIRTS / ფასები — მაისურები
@@ -347,7 +349,8 @@ Examples:
 (Quoting: ONE MODEL PER LINE, all models, cheapest first, prices exactly as below — never „X / Y — 70₾".
 „რა ღირს?" about a photo or „მაისურზე ბეჭდვა რა ღირს?" → all 11 t-shirts, each on its own line (or
 ask one question: „რომელ პროდუქტზე?"). Hoodies → all six, both zippers included.)
-(Base price = ONE side printed — front only OR back only. The "ორმხრივი / two-sided" price applies ONLY when both front AND back are printed. See §2a.)
+(Base price = ONE side printed — front only OR back only. The "ორმხრივი / two-sided" price applies ONLY when both front AND back are printed. See §2a.
+The listed two-sided price is with a BIG back print (+15₾). With a SMALL back print — lettering, name, number, small logo — it is 5₾ less (+10₾). E.g. GILDAN: 35₾ · წინ + უკან პატარა წარწერა 45₾ · წინ + უკან დიდი პრინტი 50₾. If the back size is unclear, give both.)
 
 KA — მაისურები (ცალმხრივი ბეჭდვა = მხოლოდ წინ ან მხოლოდ უკან, შედის ფასში):
 - სტანდარტული (GILDAN) მაისური — 35₾ · ორმხრივი 50₾
