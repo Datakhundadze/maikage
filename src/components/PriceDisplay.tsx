@@ -18,8 +18,13 @@ export default function PriceDisplay({ breakdown }: PriceDisplayProps) {
   });
 
   if (backExtra > 0) {
+    const sizeLabel = breakdown.backSize
+      ? lang === "en"
+        ? breakdown.backSize === "small" ? " (small)" : " (large)"
+        : breakdown.backSize === "small" ? " (პატარა)" : " (დიდი)"
+      : "";
     lines.push({
-      label: `+ ${lang === "en" ? "Back side" : "უკანა მხარე"}`,
+      label: `+ ${lang === "en" ? "Back side" : "უკანა მხარე"}${sizeLabel}`,
       amount: backExtra,
     });
   }

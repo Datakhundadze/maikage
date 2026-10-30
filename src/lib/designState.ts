@@ -66,6 +66,11 @@ export interface DesignStateSide {
    *  getDesignStateTexts(), which falls back to [text] when `texts` is absent. */
   text?: DesignStateText | null;
   zone: DesignStateZone;
+  /** BACK side only: the back-print size the customer was charged for
+   *  ("small" = lettering / small logo, "big" = large image). Written only
+   *  when both sides had content and the product prices the sizes
+   *  differently. Optional — absent on older orders and single-side orders. */
+  printSize?: "small" | "big";
 }
 
 export interface DesignState {
