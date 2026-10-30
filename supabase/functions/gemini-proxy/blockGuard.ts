@@ -27,6 +27,7 @@ export interface BlockGuardContext {
   hasImage: boolean;
 }
 
+export const DEFAULT_GARMENT_COLOUR = "White";
 export const ASK_FOR_DESIGN_KA = "რა წარწერა გნებავთ, ან მიამაგრეთ დიზაინის ფოტო?";
 export const ASK_FOR_DESIGN_EN = "What should we print — or attach a photo of the design?";
 
@@ -96,8 +97,8 @@ const FALLBACKS = new Set([SKETCH_FALLBACK_KA, SKETCH_FALLBACK_EN, GENERATE_FALL
 
 /**
  * Apply the two block rules:
- *  1. "color" is removed from either block unless a customer turn names a colour
- *     ("textColor" is never touched);
+ *  1. "color" is set to "White" in either block unless a customer turn names a
+ *     colour ("textColor" is never touched);
  *  2. without an image on this request, "removeBackground" / "editPrompt" are
  *     removed from a mockup block, and a mockup block left with no real "text"
  *     and no "removeWhite" is removed entirely.
@@ -119,7 +120,11 @@ export function guardSketchBlocks(text: string, ctx: BlockGuardContext): string 
       return whole;
     }
     let edited = false;
-    if ("color" in obj && !colourNamed) { delete obj.color; edited = true; }
+    // No colour named by the customer → White (David, 2026-10-30: prints best,
+    // the house default). A colour the model saw or invented never survives.
+    // The client maps "White" to the nearest stocked white, or keeps the
+    // current selection when the brand stocks no white at all.
+    if (!colourNamed && obj.color !== DEFAULT_GARMENT_COLOUR) { obj.color = DEFAULT_GARMENT_COLOUR; edited = true; }
     if (kind === "mockup" && !ctx.hasImage) {
       if ("removeBackground" in obj) { delete obj.removeBackground; edited = true; }
       if ("editPrompt" in obj) { delete obj.editPrompt; edited = true; }
