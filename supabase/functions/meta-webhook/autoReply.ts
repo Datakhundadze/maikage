@@ -14,6 +14,11 @@
 //      sketchFlow.ts; the reply then ends in SKETCH_NOTICE instead of the link.
 //      Up to MAX_SKETCHES_PER_REPLY blocks (one per side for a drawing /
 //      lettering, one per photo + side for "photo": N) → one image each.
+//   7. DM ORDERS (deps.order, add-only 2026-11-01, orderFlow.ts): a phone /
+//      email of the trigger message → the draft (before the debounce); the
+//      draft's sketches → a note in the history; every sent sketch → a draft
+//      item; a ```maika-order block → the texts orderFlow writes (summary,
+//      missing info, or the created order + bank transfer details).
 //
 // DEBOUNCE. Every new inbound message starts its own run, and a run that sees
 // a newer inbound message skips as "superseded" (decideAutoReply). So the
@@ -59,6 +64,17 @@ import {
   withinCaps,
   type SketchDeps,
 } from "./sketchFlow.ts";
+import { hasContacts, type CapturedContacts } from "./orderContacts.ts";
+import { isStale, orderStatusNote, sketchesNote, withDraftNote } from "./orderDraft.ts";
+import {
+  ORDER_FAILED_TEXT,
+  recordSketches,
+  runOrderBlock,
+  saveContacts,
+  type OrderDeps,
+  type OrderRun,
+  type SentSketch,
+} from "./orderFlow.ts";
 
 /** 10 s (was 4 s, owner 2026-10-31): people type in many short lines. */
 export const DEBOUNCE_MS = 10_000;
@@ -108,11 +124,23 @@ export interface AutoReplyDeps {
   /** Insert a send record (text redacted by the caller's implementation); returns its id. */
   recordSend: (conversationKey: string, kind: "reply" | "handoff" | "photo" | "sketch", text: string) => Promise<string | null>;
   markSent: (recordId: string, messageId: string) => Promise<void>;
-  askBot: (channel: Channel, conversationKey: string, history: ChatTurn[], schedule: BotSchedule) => Promise<string | null>;
+  /** opts.orders: the DM order rules are on (the draft table is readable). */
+  askBot: (channel: Channel, conversationKey: string, history: ChatTurn[], schedule: BotSchedule, opts?: { orders?: boolean }) => Promise<string | null>;
   send: (channel: Channel, recipientId: string, text: string) => Promise<SendResult>;
   log: (level: "info" | "warn" | "error", msg: string) => void;
   /** DM sketch images. Absent → design blocks get the link line, as before. */
   sketch?: SketchDeps;
+  /**
+   * DM orders (orderFlow.ts, add-only 2026-11-01). Absent, or the draft table
+   * unreadable → no draft, no order rules for the model: exactly as before.
+   */
+  order?: OrderDeps;
+}
+
+/** In-memory extras of the trigger row that are never stored on it. */
+export interface TriggerExtras {
+  /** Phone / email from the RAW text (orderContacts.ts); never logged. */
+  contacts?: CapturedContacts;
 }
 
 export const conversationKeyOf = (r: Pick<TriggerRow, "channel" | "page_id" | "customer_id">) =>
@@ -120,7 +148,7 @@ export const conversationKeyOf = (r: Pick<TriggerRow, "channel" | "page_id" | "c
 
 let tokenWarned = false;
 
-export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promise<string> {
+export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras: TriggerExtras = {}): Promise<string> {
   const key = conversationKeyOf(row);
   const runStartedAt = deps.now().getTime();
   try {
@@ -138,6 +166,13 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       return "no_token";
     }
     const schedule = settings.schedule as BotSchedule;
+
+    // A phone / email in THIS message → the draft, before the debounce (a
+    // newer message supersedes this run, but must not lose the number).
+    if (deps.order && hasContacts(extras.contacts)) {
+      const saved = await saveContacts(key, row.channel, deps.now(), extras.contacts, deps.order).catch(() => "error");
+      deps.log("info", `order draft contacts ${row.channel}: ${saved}`);
+    }
 
     await deps.sleep(DEBOUNCE_MS);
 
@@ -166,29 +201,57 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
     }
 
     let kind: "reply" | "handoff" | "photo";
-    let text: string;
+    let texts: string[];
     const sketches: { plan: RenderPlan; cached: Uint8Array | null }[] = [];
     // A block of this reply got no sketch (unsupported / cap): when others do,
     // the link line still goes out once, after them.
     let owedLink = false;
     const tester = Array.isArray(settings.allowKeys) && settings.allowKeys.includes(key);
     const { turns: history, photos } = buildHistoryWithPhotos(thread, 8);
+    // DM orders: the open draft's sketches (and order) go to the model as a
+    // note on our side of the history. Unreadable draft table → orders off.
+    let ordersOn = false;
+    let askHistory = history;
+    if (deps.order && decision.action === "reply" && history.length > 0) {
+      const d = await deps.order.loadDraft(key).catch((): "error" => "error");
+      if (d !== "error") {
+        ordersOn = true;
+        if (d && !isStale(d, now)) {
+          askHistory = withDraftNote(history, [sketchesNote(d.items ?? []), orderStatusNote(d)].filter((s) => s !== "").join("\n"));
+        }
+      }
+    }
     // AI call failed while photos wait for an answer → the old fixed
     // „ფოტო მივიღეთ" (an operator will look) instead of silence.
     const raw = decision.action === "reply" && history.length > 0
-      ? await deps.askBot(row.channel, key, history, schedule)
+      ? await (ordersOn
+        ? deps.askBot(row.channel, key, askHistory, schedule, { orders: true })
+        : deps.askBot(row.channel, key, askHistory, schedule))
       : null;
+    // DM orders: a maika-order block → the reply texts are written by
+    // orderFlow from computed numbers; the model's own prose is not sent.
+    const orderRun = raw !== null && ordersOn && deps.order
+      ? await runOrderBlock(raw, { conversationKey: key, channel: row.channel, now: deps.now(), log: deps.log }, deps.order)
+        .catch((e: unknown): OrderRun => {
+          deps.log("error", `order step failed: ${e instanceof Error ? e.name : "error"}`);
+          return { messages: [ORDER_FAILED_TEXT], outcome: "order_error" };
+        })
+      : null;
+    if (orderRun) deps.log("info", `order step ${row.channel}: ${orderRun.outcome}`);
     if (decision.action === "handoff") {
       await deps.insertHandoff(key, "customer_asked");
       kind = "handoff";
-      text = handoffMessage(schedule);
+      texts = [handoffMessage(schedule)];
     } else if (history.length === 0) {
       return "empty_history";
     } else if (raw === null && photos.pending.length > 0) {
       kind = "photo";
-      text = photoMessage(schedule);
+      texts = [photoMessage(schedule)];
     } else if (raw === null) {
       return "bot_failed";
+    } else if (orderRun) {
+      kind = "reply";
+      texts = orderRun.messages;
     } else {
       kind = "reply";
       // Parse BEFORE cleanBotReply strips the fences.
@@ -228,11 +291,11 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
           }
         }
       }
-      text = cleanBotReply(raw, schedule, sketches.length > 0 ? { designNotice: SKETCH_NOTICE } : undefined);
+      texts = [cleanBotReply(raw, schedule, sketches.length > 0 ? { designNotice: SKETCH_NOTICE } : undefined)];
     }
 
     let sent = 0;
-    for (const chunk of splitForChannel(text, row.channel)) {
+    for (const chunk of texts.flatMap((t) => splitForChannel(t, row.channel))) {
       const recordId = await deps.recordSend(key, kind, chunk);
       if (!recordId) {
         // Without the record its echo would look like an operator's reply and
@@ -264,6 +327,8 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       };
       const productCache = new Map<string, RgbaImage>();
       const cpu = { ms: 0 };
+      // DM orders: every sketch that went out → the draft (after the loop).
+      const sentSketches: SentSketch[] = [];
       for (const { plan, cached } of sketches) {
         // The budget was measured before the text went out; re-measure.
         const budgetMs = sketchBudgetMs(runStartedAt, deps.now().getTime());
@@ -278,11 +343,23 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
           { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan, budgetMs, cachedDesign: cached, productCache, cpu },
           { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
           deps.sketch,
-          { linkOnFailure: !linkSent },
+          {
+            linkOnFailure: !linkSent,
+            onSent: (url: string, messageId: string | null): void => { sentSketches.push({ plan, url, messageId }); },
+          },
         );
         if (outcome !== "sent") linkSent = true;
       }
       if (owedLink) await sendLinkOnce();
+      if (ordersOn && deps.order && sentSketches.length > 0) {
+        const sk: SketchDeps = deps.sketch;
+        for (const s of sentSketches) {
+          if (s.plan.kind === "generate") s.cacheKey = await designCacheKey(s.plan, sk.hashKey).catch((): undefined => undefined);
+        }
+        const r = await recordSketches(key, row.channel, deps.now(), sentSketches, deps.order, deps.log)
+          .catch((): string => "error");
+        deps.log("info", `order draft sketches ${row.channel}: ${r}`);
+      }
     }
     return kind;
   } catch (e) {

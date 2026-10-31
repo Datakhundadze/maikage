@@ -38,11 +38,18 @@ export const photoTag = (n: number) => `[ფოტო ${n}]`;
 /** Any image tag, numbered or the old bare „[ფოტო]" — the model may copy one. */
 const ANY_IMAGE_TAG_RE = /\[ფოტო(?:\s*\d{1,2})?\]/g;
 
+/**
+ * The draft notes the history carries on our side (orderDraft.ts, add-only
+ * 2026-11-01): „[ესკიზი 1: …]" per sketched item and „[შეკვეთა #… …]". The
+ * model may copy them, like „[ფოტო]" before.
+ */
+export const DRAFT_TAG_RE = /\[(?:ესკიზ(?:ი|ები)|შეკვეთა\s+#)[^\]\n]*\]/g;
+
 /** Remove the sketch system lines and the history's image tags from a text. */
 export function stripSketchSystemText(text: string): string {
   let t = text;
   for (const line of SKETCH_SYSTEM_LINES) t = t.split(line).join("");
-  t = t.replace(ANY_IMAGE_TAG_RE, "");
+  t = t.replace(ANY_IMAGE_TAG_RE, "").replace(DRAFT_TAG_RE, "");
   // Meta can drop or swap the emoji; also catch the lines without it.
   t = t.replace(/ესკიზს ვამზადებ,? ცოტა ხანში აქვე გამოგიგზავნით\s*\S{0,2}/g, "")
     .replace(/ესკიზი\s*\S{0,2}\s*შესაცვლელად ან შესაკვეთად მოგვწერეთ\.?/g, "");

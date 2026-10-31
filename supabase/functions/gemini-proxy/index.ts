@@ -8,6 +8,7 @@ import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import { resolveTrustedSocialChannel, socialSchedule, withSocialBlock, type SocialChannel } from "./socialChannel.ts";
 import { billableGateApplies, resolveTrustedSocialSketch } from "./socialChannel.ts";
+import { redactOrderBlockForLog, socialOrdersOn } from "./socialChannel.ts";
 import { buildGptGeneratePrompt, joinPromptText } from "./gptGeneratePrompt.ts";
 import {
   CALLBACK_DAY_LIMIT,
@@ -2913,7 +2914,8 @@ Output: one photorealistic composite photo.`;
         // Social DM rules, before the CALLER line. Website calls never get here.
         messages[0] = {
           role: "system",
-          content: withSocialBlock(messages[0].content as string, faqSocialChannel, socialSchedule(params?.schedule)),
+          // DM orders (add-only, 2026-11-01): params.dm_orders from the webhook adds the order rules.
+          content: withSocialBlock(messages[0].content as string, faqSocialChannel, socialSchedule(params?.schedule), { orders: socialOrdersOn(faqSocialChannel, params?.dm_orders) }),
         };
       }
 
@@ -3295,7 +3297,7 @@ Output: one photorealistic composite photo.`;
                   // A callback turn is logged as the stripped reply plus a
                   // marker; the number itself lives only in callback_requests.
                   const callbackMarker = callbackRequested ? `\n${CALLBACK_LOG_MARKER}` : "";
-                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: redactPii(String(replyText).slice(0, 8000)) + callbackMarker, lang: logLang });
+                  rows.push({ session_id: sessionId, user_id: faqChatUserId, role: "assistant", content: redactPii((faqSocialChannel ? redactOrderBlockForLog(String(replyText)) : String(replyText)).slice(0, 8000)) + callbackMarker, lang: logLang });
                 }
                 if (rows.length) {
                   const logClient = createClient(srUrl, srKey);
