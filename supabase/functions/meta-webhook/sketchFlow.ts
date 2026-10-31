@@ -37,13 +37,14 @@ import {
   type Box,
   type ProductImage,
 } from "./sketchLayout.ts";
-import { buildGenerateParams, type SketchPlan } from "./sketchParse.ts";
+import { KEY_COLOR_HEX, buildFlagGenerateParams, buildGenerateParams, isFlagBlock, type SketchPlan } from "./sketchParse.ts";
 import { TEXT_COLORS } from "./catalogSnapshot.ts";
 import {
   drawContained,
   flattenOnWhite,
   renderTextImage,
   resample,
+  keyOutColor,
   tintLuminance,
   trimTransparent,
   type FontLike,
@@ -120,7 +121,7 @@ export interface SketchDeps {
  * the key — the generator gets it.
  */
 export async function designCacheKey(plan: Extract<SketchPlan, { kind: "generate" }>, hash: (s: string) => Promise<string>): Promise<string> {
-  const p = buildGenerateParams(plan.block, plan.target);
+  const p = isFlagBlock(plan.block) ? buildFlagGenerateParams(plan.block, plan.target) : buildGenerateParams(plan.block, plan.target);
   const keyed = { c: p.character, s: p.style, t: p.text, r: p.isRealistic, b: p.transparent ?? true, col: p.color };
   return (await hash(JSON.stringify(keyed))).slice(0, 40);
 }
@@ -213,15 +214,23 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
   // Start the slow part first; the photo downloads meanwhile.
   const designP: Promise<RgbaImage[]> = (async () => {
     if (ctx.plan.kind === "generate") {
-      if (ctx.cachedDesign) return [await decodeImage(ctx.cachedDesign, deps)];
-      const params = buildGenerateParams(ctx.plan.block, ctx.plan.target);
+      const flag = isFlagBlock(ctx.plan.block);
+      const keyed = async (bytes: Uint8Array) => {
+        const img = await decodeImage(bytes, deps);
+        if (flag) keyOutColor(img, KEY_COLOR_HEX);
+        return img;
+      };
+      if (ctx.cachedDesign) return [await keyed(ctx.cachedDesign)];
+      const params = flag
+        ? buildFlagGenerateParams(ctx.plan.block, ctx.plan.target)
+        : buildGenerateParams(ctx.plan.block, ctx.plan.target);
       const png = await deps.generateDesign(ctx.channel, ctx.conversationKey, params, left());
       if (!png) throw new SketchError("generate_failed");
       if (deps.cachePut) {
         const plan = ctx.plan;
         designCacheKey(plan, deps.hashKey).then((k) => deps.cachePut!(k, png)).catch(() => {});
       }
-      return [await decodeImage(png, deps)];
+      return [await keyed(png)];
     }
     return [];
   })();

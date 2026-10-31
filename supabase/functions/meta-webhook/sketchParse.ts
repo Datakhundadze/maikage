@@ -458,3 +458,41 @@ export function planSketches(raw: string, customerSentPhoto: boolean, max = 2): 
   }
   return out;
 }
+
+// ── flags: chroma-key instead of GPT transparency (add-only, 2026-10-31) ────
+//
+// GPT's transparent mode treats a flag's WHITE field as background (sim: the
+// Georgian flag came back as red crosses only, even when told to keep whites
+// opaque). For a flag / coat of arms the DM sketch therefore asks for an
+// opaque image on a solid magenta key colour and cuts the magenta out itself
+// (sketchRaster.keyOutColor). The site path is unchanged.
+
+export const FLAG_PROMPT_RE = /დროშ|გერბ|ემბლემ|\bflags?\b|coat of arms|\bemblem/i;
+export const KEY_COLOR_HEX = "#FF00FF";
+
+export function isFlagBlock(g: GenerateBlock): boolean {
+  return !g.withBackground && FLAG_PROMPT_RE.test(g.prompt);
+}
+
+export const GUARD_FLAG_ON_KEY =
+  "Draw ONLY the flag / coat of arms itself, flat and straight on, large, centred, with its exact colours " +
+  "and proportions — its white parts are solid opaque white. Everything around it is a SOLID, uniform PURE " +
+  "MAGENTA (#FF00FF) background: no gradient, no shadow, no texture, no border, no pole. Magenta is a cut-out " +
+  "key colour: never use magenta or pink inside the flag.";
+
+export function buildFlagGenerateParams(g: GenerateBlock, target: ProductChoice): Record<string, unknown> {
+  return {
+    character: `${g.prompt.trim()}. ${GUARD_FLAG_ON_KEY}`,
+    style: "flat vector graphic",
+    scene: "",
+    text: "",
+    characterImages: [],
+    sceneImage: null,
+    styleImage: null,
+    textImage: null,
+    product: target.product,
+    color: target.color,
+    isRealistic: false,
+    transparent: false,
+  };
+}

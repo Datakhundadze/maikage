@@ -891,3 +891,25 @@ describe("DM text fixes", () => {
     expect(dm).toContain("Never say sending or uploading photos is impossible");
   });
 });
+
+describe("flags: magenta key instead of GPT transparency", () => {
+  it("flag blocks get opaque params on magenta; other drawings unchanged", async () => {
+    const { isFlagBlock, buildFlagGenerateParams, GUARD_FLAG_ON_KEY } = await import("../../supabase/functions/meta-webhook/sketchParse");
+    const flag = planSketch(GEN({ prompt: "საქართველოს დროშა" }), false) as Extract<SketchContext["plan"], { kind: "generate" }>;
+    const lion = planSketch(GEN({ prompt: "ლომი" }), false) as Extract<SketchContext["plan"], { kind: "generate" }>;
+    expect(isFlagBlock(flag.block)).toBe(true);
+    expect(isFlagBlock(lion.block)).toBe(false);
+    const p = buildFlagGenerateParams(flag.block, flag.target);
+    expect(p.transparent).toBe(false);
+    expect(String(p.character)).toContain(GUARD_FLAG_ON_KEY);
+    expect(await designCacheKey(flag, sha256Hex)).not.toBe(await designCacheKey(lion, sha256Hex));
+  });
+
+  it("keyOutColor clears magenta, keeps white and red opaque", async () => {
+    const { keyOutColor } = await import("../../supabase/functions/meta-webhook/sketchRaster");
+    const img = createImage(3, 1);
+    img.data.set([255, 0, 255, 255, 255, 255, 255, 255, 220, 10, 20, 255]);
+    keyOutColor(img, "#FF00FF");
+    expect([img.data[3], img.data[7], img.data[11]]).toEqual([0, 255, 255]);
+  });
+});
