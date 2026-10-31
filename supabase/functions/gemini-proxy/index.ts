@@ -1108,7 +1108,9 @@ block. Never read this rule as a reason to withhold one.
 
 ⚠️ OFFER THE STYLE — AND STILL EMIT. The customer asked for a drawing and named no style:
 say which style you are using and list the alternatives, THEN emit the block with
-"style":"Realistic". Most customers do not know the choice exists at all — Pixar 3D above
+"style":"Realistic". A style DESCRIBED in their words IS named — „ხაზოვანი ნახატი" →
+"Line Art", „მულტფილმის" → "Animated" (full list under FIELDS → style): use it, say so
+(„ხაზოვან სტილში — Line Art — დაგიხატავ"), and still list the alternatives. Most customers do not know the choice exists at all — Pixar 3D above
 all — and never discover it unless told.
 This is NOT the ASKS-OR-EMITS case above and does not collide with it. That rule is about a
 question you need ANSWERED before you can draw; this is an INVITATION alongside a block that
