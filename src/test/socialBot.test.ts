@@ -22,6 +22,7 @@ import {
   humanTookOver,
   isBotCandidate,
   isBotEcho,
+  photoMessage,
   sendBody,
   splitForChannel,
   wantsHuman,
@@ -195,13 +196,16 @@ describe("decideAutoReply", () => {
     const outRows = [{ meta_message_id: "b1", text: "x", sent_at: "2026-11-01T07:00:05Z" }];
     expect(decideAutoReply(decideInput({ thread, botSends, outRows }))).toEqual({ action: "reply" });
   });
-  it("acknowledges a photo once, then answers text normally", () => {
+  it("photos go to the AI reply (photo sketches, 2026-10-31) — no canned acknowledgement", () => {
     const photo = row({ meta_message_id: "m3", attachments: [{ type: "image", url: "u" }], sent_at: "2026-11-01T08:00:00Z" });
-    expect(decideAutoReply(decideInput({ thread: [photo] }))).toEqual({ action: "photo" });
+    expect(decideAutoReply(decideInput({ thread: [photo] }))).toEqual({ action: "reply" });
+    // an earlier acknowledgement no longer silences a photo-only burst
     const sent: BotSendRecord = { meta_message_id: "p1", text: "ფოტო", kind: "photo", created_at: "2026-11-01T07:00:00Z" };
-    expect(decideAutoReply(decideInput({ thread: [photo], botSends: [sent] }))).toEqual({ action: "skip", reason: "photo_already_acknowledged" });
+    expect(decideAutoReply(decideInput({ thread: [photo], botSends: [sent] }))).toEqual({ action: "reply" });
     const photoText = { ...photo, text: "ასეთი შეგიძლიათ?" };
     expect(decideAutoReply(decideInput({ thread: [photoText], botSends: [sent] }))).toEqual({ action: "reply" });
+    // handoff still wins over a photo
+    expect(decideAutoReply(decideInput({ thread: [{ ...photo, text: "ოპერატორი" }] }))).toEqual({ action: "handoff" });
   });
   it("caps bot messages per conversation", () => {
     const botSends = Array.from({ length: MAX_BOT_MESSAGES_PER_WINDOW }, (_, n) => ({
@@ -230,7 +234,7 @@ describe("buildHistory", () => {
     expect(h).toEqual([
       { role: "user", content: "გამარჯობა" },
       { role: "assistant", content: "გამარჯობა! რით დაგეხმაროთ?" },
-      { role: "user", content: "[ფოტო]" },
+      { role: "user", content: "[ფოტო 1]" },
       { role: "user", content: "ფასი?" },
     ]);
   });
@@ -365,11 +369,24 @@ describe("runAutoReply", () => {
     expect(f.sent).toEqual([]);
   });
 
-  it("photo: fixed acknowledgement, no AI on the image", async () => {
-    const f = fakeDeps({ thread: [row({ meta_message_id: "m1", attachments: [{ type: "image", url: "u" }], sent_at: trigger.sent_at })] });
-    expect(await runAutoReply({ ...trigger, text: null }, f.deps)).toBe("photo");
-    expect(f.calls).not.toContain("ask");
-    expect(f.sent[0].text).toContain("https://maika.ge/chat");
+  it("photo: the AI answers it (sees „[ფოტო 1]\"); the fixed acknowledgement only if the AI call fails", async () => {
+    const thread = [row({ meta_message_id: "m1", attachments: [{ type: "image", url: "u" }], sent_at: trigger.sent_at })];
+    let seen: string[] = [];
+    const f = fakeDeps({ thread, askBot: async (_c, _k, h) => { seen = h.map((t) => t.content); return "რომელ პროდუქტზე გნებავთ?"; } });
+    expect(await runAutoReply({ ...trigger, text: null }, f.deps)).toBe("reply");
+    expect(seen).toEqual(["[ფოტო 1]"]);
+    expect(f.sent.map((s) => s.text)).toEqual(["რომელ პროდუქტზე გნებავთ?"]);
+    expect(f.records[0].kind).toBe("reply");
+
+    const g = fakeDeps({ thread, askBot: async () => null });
+    expect(await runAutoReply({ ...trigger, text: null }, g.deps)).toBe("photo");
+    expect(g.sent.map((s) => s.text)).toEqual([photoMessage("sunday")]);
+    expect(g.records[0].kind).toBe("photo");
+
+    // no photo pending + AI failure → silence, as before
+    const h = fakeDeps({ askBot: async () => null });
+    expect(await runAutoReply(trigger, h.deps)).toBe("bot_failed");
+    expect(h.sent).toEqual([]);
   });
 
   it("send failure is logged by status and code, never crashes", async () => {

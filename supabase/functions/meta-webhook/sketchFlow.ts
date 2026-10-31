@@ -8,7 +8,9 @@
 //   1. record a 'sketch' row (text = SKETCH_MARKER[kind]) — counts toward the
 //      caps from this moment, even if the render fails later (cost bound)
 //   2. render: generate → gemini-proxy generate-design-gpt (≈ $0.14), or
-//      text → Noto Sans Georgian Bold; then the product photo, tint, fit,
+//      text → Noto Sans Georgian Bold, or photo → the customer's own photo
+//      from the private social-uploads bucket (≤ PHOTO_MAX_SIDE, optional
+//      local removeWhite; no AI, $0); then the product photo, tint, fit,
 //      JPEG ≈ 1024 px wide, quality 85
 //   3. upload to the public "designs" bucket, social-sketches/<hash>/<ts>.jpg
 //   4. Graph Send API image attachment; the mid is written back to the row
@@ -37,22 +39,34 @@ import {
   type Box,
   type ProductImage,
 } from "./sketchLayout.ts";
-import { KEY_COLOR_HEX, buildFlagGenerateParams, buildGenerateParams, isFlagBlock, type SketchPlan } from "./sketchParse.ts";
+import {
+  KEY_COLOR_HEX,
+  buildFlagGenerateParams,
+  buildGenerateParams,
+  isFlagBlock,
+  type RenderPlan,
+  type SketchPlan,
+} from "./sketchParse.ts";
 import { TEXT_COLORS } from "./catalogSnapshot.ts";
 import {
+  downscaleBy,
   drawContained,
   flattenOnWhite,
   renderTextImage,
   resample,
   keyOutColor,
+  keyOutWhite,
   tintLuminance,
   trimTransparent,
   type FontLike,
 } from "./sketchRaster.ts";
 
 export { SKETCH_NOTICE };
-/** Max sketches from one reply (two sides of one product today). */
-export const MAX_SKETCHES_PER_REPLY = 2;
+/**
+ * Max sketches from one reply: two sides of one drawing / lettering, or one
+ * per customer photo (2026-10-31: up to 5 photos at once).
+ */
+export const MAX_SKETCHES_PER_REPLY = 5;
 
 export const SKETCH_CAP_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MAX_GENERATE_SKETCHES = 3;
@@ -65,19 +79,25 @@ export const MIN_SKETCH_BUDGET_MS = 30_000;
 export const SKETCH_WIDTH = 1024;
 export const SKETCH_JPEG_QUALITY = 85;
 
-export const SKETCH_MARKER = { generate: "sketch:generate", text: "sketch:mockup" } as const;
+/** A customer-photo sketch has its own marker and counts as a mockup (no AI cost). */
+export const SKETCH_MARKER = { generate: "sketch:generate", text: "sketch:mockup", photo: "sketch:photo" } as const;
 
 export type SketchKind = "generate" | "text";
 export interface SketchCounts { generate: number; text: number }
 
-/** Count the 24 h sketch rows by marker. */
+/** Count the 24 h sketch rows by marker (photo sketches count as text / mockup). */
 export function countSketchRows(rows: { text: string | null }[]): SketchCounts {
   let generate = 0, text = 0;
   for (const r of rows) {
     if (r.text === SKETCH_MARKER.generate) generate++;
-    else if (r.text === SKETCH_MARKER.text) text++;
+    else if (r.text === SKETCH_MARKER.text || r.text === SKETCH_MARKER.photo) text++;
   }
   return { generate, text };
+}
+
+/** Which cap a plan counts toward: only a fresh generation is "generate". */
+export function capKindOf(plan: RenderPlan, cached: boolean): SketchKind {
+  return plan.kind === "generate" && !cached ? "generate" : "text";
 }
 
 /** Test conversations (social_bot_settings.allow_keys) get roomier caps. */
@@ -113,6 +133,11 @@ export interface SketchDeps {
   /** Generated-design cache (PNG by params hash). Optional; absent → always generate. */
   cacheGet?: (key: string) => Promise<Uint8Array | null>;
   cachePut?: (key: string, png: Uint8Array) => Promise<void>;
+  /**
+   * A customer photo from the PRIVATE social-uploads bucket, by its stored
+   * path (service role). Absent → photo sketches fail to the link line.
+   */
+  downloadUpload?: (path: string) => Promise<Uint8Array | null>;
 }
 
 /**
@@ -138,11 +163,27 @@ export interface SketchContext {
   channel: Channel;
   conversationKey: string;
   customerId: string;
-  plan: Extract<SketchPlan, { kind: "generate" | "text" }>;
+  plan: RenderPlan;
   budgetMs: number;
   /** A design already generated for the same params (see designCacheKey). */
   cachedDesign?: Uint8Array | null;
+  /**
+   * Product canvases already prepared in this reply (by photo URL + tint), so
+   * five photos on the same shirt decode the product PNG once. Optional.
+   */
+  productCache?: Map<string, RgbaImage>;
+  /** Pixel time spent so far in this reply (ms), added to by renderSketch. */
+  cpu?: { ms: number };
 }
+
+/**
+ * The edge CPU limit is 2 s per request and the whole bot run is one request
+ * (waitUntil). Once a reply's sketches have spent this much pixel time
+ * (decode / prepare / compose / encode, measured), no further sketch starts —
+ * the rest get the link line. ≈ 0.25–0.4 s per photo measured locally, so
+ * 3–4 photos fit; the text reply, JSON and TLS need the rest.
+ */
+export const PIXEL_BUDGET_MS = 1_200;
 
 class SketchError extends Error {
   constructor(readonly reason: string) { super(reason); }
@@ -186,7 +227,8 @@ export function scaleBox(b: Box, f: number, w: number, h: number): Box {
 /** Boxes (in output pixels) the design / lettering go into. */
 export function sketchBoxes(plan: SketchContext["plan"], img: ProductImage, w: number, h: number): Box[] {
   const large = plan.block.size === "large";
-  if (plan.kind === "generate") {
+  // A customer photo is placed exactly like a drawing.
+  if (plan.kind === "generate" || plan.kind === "photo") {
     const base = placementBox(img.zone, designCoords(plan.block.placement), w, h);
     const unplaced = !plan.block.placement || plan.block.placement === "center";
     const f = (unplaced && plan.target.side === "back" ? BACK_DRAWING_FACTOR : 1) * (large ? LARGE_DRAWING_FACTOR : 1);
@@ -205,19 +247,73 @@ export function textHexFor(textColor: string | undefined, garmentHex: string | n
   return named ?? contrastingTextColorHex(garmentHex);
 }
 
+/** The prepared product canvas; from `cache` (a copy) when this reply already made it. */
+async function productCanvas(
+  img: ProductImage,
+  deps: SketchDeps,
+  left: () => number,
+  cache: Map<string, RgbaImage> | undefined,
+  spend: (since: number) => void,
+  now: () => number,
+): Promise<RgbaImage> {
+  const key = `${img.url}|${img.tintHex ?? ""}`;
+  const hit = cache?.get(key);
+  if (hit) return { width: hit.width, height: hit.height, data: new Uint8ClampedArray(hit.data) };
+  const photoBytes = await deps.fetchImage(img.url, Math.min(20_000, left()));
+  if (!photoBytes) throw new SketchError("product_photo_fetch");
+  const t0 = now();
+  const canvas = prepareProduct(await decodeImage(photoBytes, deps), img);
+  cache?.set(key, { width: canvas.width, height: canvas.height, data: new Uint8ClampedArray(canvas.data) });
+  spend(t0);
+  return canvas;
+}
+
+// ── the customer's own photo (add-only, 2026-10-31) ─────────────────────────
+
+/**
+ * Long side of a customer photo before any per-pixel work. The print box on a
+ * 1024 px sketch is at most ~900 px, so nothing visible is lost, and the key /
+ * trim / fit passes stay small (edge CPU limit: 2 s per request).
+ */
+export const PHOTO_MAX_SIDE = 1200;
+/** Decoded photos above this are refused rather than processed (memory / CPU). */
+export const PHOTO_MAX_PIXELS = 24_000_000;
+
+/**
+ * Customer photo → the design layer: downscale to PHOTO_MAX_SIDE, key out
+ * near-white when the block asked for it ("removeWhite"), crop transparent
+ * padding (a PNG logo with alpha). A plain white background is NOT removed on
+ * its own, even on a dark garment: the sketch shows what would be printed.
+ */
+export function preparePhoto(photo: RgbaImage, opts: { removeWhite?: boolean } = {}): RgbaImage {
+  if (!(photo.width > 0 && photo.height > 0) || photo.width * photo.height > PHOTO_MAX_PIXELS) {
+    throw new SketchError("photo_too_large");
+  }
+  // Integer block shrink (one cheap pass): long side ≤ PHOTO_MAX_SIDE. The
+  // final fit into the print box is drawContained's area-average, as for a drawing.
+  const long = Math.max(photo.width, photo.height);
+  const img = downscaleBy(photo, Math.ceil(long / PHOTO_MAX_SIDE));
+  if (opts.removeWhite) keyOutWhite(img);
+  return trimTransparent(img);
+}
+
 /** Steps 2 of the flow: the finished JPEG bytes. Throws SketchError. */
 export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadline: number, now: () => number): Promise<Uint8Array> {
   const left = () => Math.max(1000, deadline - now());
   const img = findProductImage(ctx.plan.target);
   if (!img) throw new SketchError("no_product_photo");
+  // Pixel time (decode / prepare / compose / encode) → ctx.cpu, see PIXEL_BUDGET_MS.
+  const spend = (since: number) => { if (ctx.cpu) ctx.cpu.ms += Math.max(0, now() - since); };
 
   // Start the slow part first; the photo downloads meanwhile.
   const designP: Promise<RgbaImage[]> = (async () => {
     if (ctx.plan.kind === "generate") {
       const flag = isFlagBlock(ctx.plan.block);
       const keyed = async (bytes: Uint8Array) => {
+        const t0 = now();
         const img = await decodeImage(bytes, deps);
         if (flag) keyOutColor(img, KEY_COLOR_HEX);
+        spend(t0);
         return img;
       };
       if (ctx.cachedDesign) return [await keyed(ctx.cachedDesign)];
@@ -232,20 +328,31 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
       }
       return [await keyed(png)];
     }
+    if (ctx.plan.kind === "photo") {
+      if (!deps.downloadUpload) throw new SketchError("photo_download_unavailable");
+      const bytes = await deps.downloadUpload(ctx.plan.path);
+      if (!bytes) throw new SketchError("photo_download");
+      const t0 = now();
+      const layer = preparePhoto(await decodeImage(bytes, deps), { removeWhite: ctx.plan.block.removeWhite === true });
+      spend(t0);
+      return [layer];
+    }
     return [];
   })();
   // Marked handled now: if the photo step throws first, a later rejection of
   // the design must not surface as an unhandled rejection in the isolate.
   designP.catch(() => {});
   const fontP = ctx.plan.kind === "text" ? deps.loadFont().catch(() => null) : Promise.resolve(null);
-  const photoBytes = await deps.fetchImage(img.url, Math.min(20_000, left()));
-  if (!photoBytes) throw new SketchError("product_photo_fetch");
-  const canvas = prepareProduct(await decodeImage(photoBytes, deps), img);
+  const canvas = await productCanvas(img, deps, left, ctx.productCache, spend, now);
   const boxes = sketchBoxes(ctx.plan, img, canvas.width, canvas.height);
 
-  if (ctx.plan.kind === "generate") {
+  if (ctx.plan.kind === "generate" || ctx.plan.kind === "photo") {
     const [design] = await designP;
-    drawContained(canvas, trimTransparent(design), boxes[0]);
+    const t0 = now();
+    drawContained(canvas, ctx.plan.kind === "generate" ? trimTransparent(design) : design, boxes[0]);
+    const jpeg = deps.encodeJpeg(canvas, SKETCH_JPEG_QUALITY);
+    spend(t0);
+    return jpeg;
   } else {
     const font = await fontP;
     if (!font) throw new SketchError("font_unavailable");
@@ -253,14 +360,17 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
     const parts = ctx.plan.block.placement === "jersey-back"
       ? [ctx.plan.block.text, ctx.plan.block.number]
       : [ctx.plan.block.text];
+    const t0 = now();
     parts.forEach((t, i) => {
       if (!t || !boxes[i]) return;
       const glyphs = renderTextImage(font, t, hex, boxes[i].w, boxes[i].h);
       if (!glyphs) throw new SketchError("text_render");
       drawContained(canvas, glyphs, boxes[i]);
     });
+    const jpeg = deps.encodeJpeg(canvas, SKETCH_JPEG_QUALITY);
+    spend(t0);
+    return jpeg;
   }
-  return deps.encodeJpeg(canvas, SKETCH_JPEG_QUALITY);
 }
 
 /**
@@ -281,7 +391,9 @@ export async function runSketch(
 
   const work = (async (): Promise<string> => {
     // A cached design costs nothing: it counts as a mockup, not a generation.
-    const marker = ctx.plan.kind === "generate" && ctx.cachedDesign ? SKETCH_MARKER.text : SKETCH_MARKER[ctx.plan.kind];
+    const marker = ctx.plan.kind === "photo"
+      ? SKETCH_MARKER.photo
+      : ctx.plan.kind === "generate" && ctx.cachedDesign ? SKETCH_MARKER.text : SKETCH_MARKER[ctx.plan.kind];
     const recordId = await base.recordSend(ctx.conversationKey, "sketch", marker);
     if (!recordId) throw new SketchError("record_failed");
     const jpeg = await renderSketch(ctx, deps, deadline, now);
