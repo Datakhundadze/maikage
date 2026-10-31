@@ -459,3 +459,15 @@ describe("Meta automation echoes are not a human takeover", () => {
     expect(humanTookOver([...rows, { meta_message_id: "m3", text: "ჰუდი 80 ლარია", sent_at: "2026-11-01T09:59:30Z" }], [], now)).toBe(true);
   });
 });
+
+describe("away-message echo after the customer's message", () => {
+  it("still leaves the customer's message pending and out of history", async () => {
+    const { pendingInbound, buildHistory } = await import("../../supabase/functions/meta-webhook/botReply");
+    const thread = [
+      { meta_message_id: "a", direction: "in" as const, text: "რა ღირს ჰუდი?", attachments: null, unsupported: false, sent_at: "2026-10-31T14:33:40Z" },
+      { meta_message_id: "b", direction: "out" as const, text: "მოგესალმებით! 👋\nთქვენ დაგვიკავშირდით არასამუშაო დროს.", attachments: null, unsupported: false, sent_at: "2026-10-31T14:33:43Z" },
+    ];
+    expect(pendingInbound(thread).map((r) => r.meta_message_id)).toEqual(["a"]);
+    expect(buildHistory(thread)).toEqual([{ role: "user", content: "რა ღირს ჰუდი?" }]);
+  });
+});
