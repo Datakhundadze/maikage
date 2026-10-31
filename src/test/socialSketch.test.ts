@@ -40,8 +40,14 @@ import {
 import {
   MAX_GENERATE_SKETCHES,
   MAX_TEXT_SKETCHES,
+  BACK_DRAWING_FACTOR,
+  LARGE_TEXT_FACTOR,
   SKETCH_MARKER,
   SKETCH_NOTICE,
+  TESTER_CAPS,
+  designCacheKey,
+  scaleBox,
+  sketchBoxes,
   countSketchRows,
   runSketch,
   sketchBudgetMs,
@@ -790,5 +796,98 @@ describe("KB: flags print flat", () => {
     expect(src).toContain("ბრტყელი ვექტორული, ბოძის გარეშე");
     const dm = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/socialChannel.ts"), "utf8");
     expect(dm).toContain("emit BOTH blocks in the SAME reply");
+  });
+});
+
+// ── 2026-10-31 owner test 2: size, cache, tester caps, flat flags, prices ──
+
+describe("sketch size", () => {
+  it("size large parses on both blocks; junk ignored", () => {
+    expect(parseGenerateBlock(GEN({ prompt: "x", size: "large" }))?.size).toBe("large");
+    expect(parseMockupBlock(MOCK({ text: "ab", size: "BIG" }))?.size).toBe("large");
+    expect(parseMockupBlock(MOCK({ text: "ab", size: "huge!" }))?.size).toBeUndefined();
+  });
+
+  it("back drawing is BACK_DRAWING_FACTOR bigger, large text LARGE_TEXT_FACTOR, inside the image", () => {
+    const back = planSketch(GEN({ prompt: "დროშა", side: "back", product: "Hoodie", color: "Black" }), false) as SketchContext["plan"];
+    const front = planSketch(GEN({ prompt: "დროშა", side: "front", product: "Hoodie", color: "Black" }), false) as SketchContext["plan"];
+    const img = findProductImage(back.target)!;
+    const b = sketchBoxes(back, img, 1000, 1000)[0];
+    const f = sketchBoxes(front, findProductImage(front.target)!, 1000, 1000)[0];
+    expect(b.w / f.w).toBeCloseTo(BACK_DRAWING_FACTOR, 2);
+    const t = planSketch(MOCK({ text: "საქართველო" }), false) as SketchContext["plan"];
+    const tl = planSketch(MOCK({ text: "საქართველო", size: "large" }), false) as SketchContext["plan"];
+    const ti = findProductImage(t.target)!;
+    expect(sketchBoxes(tl, ti, 1000, 1000)[0].w / sketchBoxes(t, ti, 1000, 1000)[0].w).toBeCloseTo(LARGE_TEXT_FACTOR, 2);
+    const big = scaleBox({ x: 0, y: 0, w: 900, h: 900 }, 2, 1000, 1000);
+    expect(big.x).toBeGreaterThanOrEqual(0);
+    expect(big.x + big.w).toBeLessThanOrEqual(1000);
+  });
+});
+
+describe("generated-design cache", () => {
+  beforeEach(() => _resetTokenWarning());
+  const hash = async (x: string) => x.length.toString(16).padStart(64, "0") + x.slice(0, 8);
+
+  it("size / side change keeps the key; prompt or colour change does not", async () => {
+    const k = (o: Record<string, unknown>) => designCacheKey(planSketch(GEN({ prompt: "დროშა", ...o }), false) as Extract<SketchContext["plan"], { kind: "generate" }>, async (x) => sha256Hex(x));
+    expect(await k({ size: "large" })).toBe(await k({}));
+    expect(await k({ side: "back" })).toBe(await k({ side: "front" }));
+    expect(await k({ prompt: "ლომი" })).not.toBe(await k({}));
+    expect(await k({ color: "Black" })).not.toBe(await k({ color: "White" }));
+  });
+
+  it("cache hit: no generation call, counted as a mockup, allowed past the generate cap", async () => {
+    const pngBytes = pngOf(2, 2, 6, 8, [[255, 0, 0, 255, 0, 0, 0, 0], [0, 0, 0, 0, 255, 0, 0, 255]]);
+    let generated = 0;
+    const s = sketchFakes({
+      countSketches: async () => ({ generate: 3, text: 0 }),
+      generateDesign: async () => { generated++; return pngBytes; },
+      hashKey: hash,
+      cacheGet: async () => pngBytes,
+      cachePut: async () => {},
+    });
+    const a = autoDeps(GEN({ prompt: "დროშა", size: "large" }), s.deps);
+    await runAutoReply(trigger, a.deps);
+    expect(generated).toBe(0);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(1);
+    expect(a.records.find((r) => r.kind === "sketch")?.text).toBe(SKETCH_MARKER.text);
+  });
+
+  it("cache miss: generates once and stores the PNG", async () => {
+    const pngBytes = pngOf(2, 2, 6, 8, [[255, 0, 0, 255, 0, 0, 0, 0], [0, 0, 0, 0, 255, 0, 0, 255]]);
+    const put: string[] = [];
+    const s = sketchFakes({ generateDesign: async () => pngBytes, hashKey: hash, cacheGet: async () => null, cachePut: async (k) => { put.push(k); } });
+    const a = autoDeps(GEN({ prompt: "დროშა" }), s.deps);
+    await runAutoReply(trigger, a.deps);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(put).toHaveLength(1);
+  });
+});
+
+describe("tester caps", () => {
+  beforeEach(() => _resetTokenWarning());
+  it("an allow-listed conversation gets TESTER_CAPS, others the normal 3", async () => {
+    expect(withinCaps("generate", { generate: 3, text: 0 })).toBe(false);
+    expect(withinCaps("generate", { generate: 3, text: 0 }, TESTER_CAPS)).toBe(true);
+    const pngBytes = pngOf(2, 2, 6, 8, [[255, 0, 0, 255, 0, 0, 0, 0], [0, 0, 0, 0, 255, 0, 0, 255]]);
+    const s = sketchFakes({ countSketches: async () => ({ generate: 3, text: 0 }), generateDesign: async () => pngBytes });
+    const key = "messenger:159657880717306:psid1";
+    const a = autoDeps(GEN({ prompt: "ლომი" }), s.deps, { loadSettings: async () => ({ enabled: true, schedule: "sunday", allowKeys: [key] }) });
+    await runAutoReply(trigger, a.deps);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(1);
+  });
+});
+
+describe("DM text fixes", () => {
+  it("[maika.ge/chat](https://maika.ge/chat) → the bare URL", () => {
+    expect(cleanBotReply("ნახეთ: [maika.ge/chat](https://maika.ge/chat)")).toBe("ნახეთ: https://maika.ge/chat");
+  });
+  it("DM prompt: size, one font, one price line, own photo wording", () => {
+    const dm = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/socialChannel.ts"), "utf8");
+    expect(dm).toContain('\\"size\\":\\"large\\"');
+    expect(dm).toContain("ONE font");
+    expect(dm).toContain("NEVER list other models");
+    expect(dm).toContain("Never say sending or uploading photos is impossible");
   });
 });

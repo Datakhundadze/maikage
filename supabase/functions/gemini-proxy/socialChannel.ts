@@ -56,7 +56,11 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "- For a drawing or lettering on a product, emit the maika-generate / maika-mockup block exactly as on the website: the system turns it into a sketch IMAGE and sends it in this chat automatically. Do NOT send them to the website for it and do not say a sketch is attached — the system announces it.",
     "- TWO SIDES HERE („წინ X, უკან Y\"): emit BOTH blocks in the SAME reply, one per side, each with its own \"side\" — the system sends a sketch of each. This OVERRIDES the website rule of one side per reply: never ask them to write „წინაც\" or to confirm the second side.",
     "- Never write yourself that a sketch is being prepared or attached, never „[ფოტო]\", never „ესკიზი 👆\" — the system adds its own line. No \"write to us to change or order\" line either.",
-    "- A sketch from the customer's OWN photo is not possible here yet: for that, invite them to https://maika.ge/chat.",
+    "- BIGGER / SMALLER („უფრო დიდი\", „დიდზე\", „მთელ ზურგზე\"): re-emit the SAME block(s) with \"size\":\"large\" and every other field unchanged — the drawing is re-used, only its size on the product changes. Keep the same prompt word for word.",
+    "- FONTS: the sketch has ONE font. Never promise another (გაკრული, ხელნაწერი, სხვა შრიფტი…): say the font is chosen with the operator when the order is finalised. Do not re-emit a block just for a font.",
+    "- PRICE HERE: one line with the price of the product they named (two-sided → that model + 10/15). NEVER list other models unless they ask what models/prices exist.",
+    `- Their OWN photo / logo / lettering image to print: say in one line we print it, give the one-line price, and that an operator will send the sketch with it ${back}; to see it right away they can upload it at https://maika.ge/chat. Never say sending or uploading photos is impossible.`,
+    "- Links: write the plain URL (https://maika.ge/chat), no markdown.",
     "- Tell them they can type „ოპერატორი\" to reach a human.",
   ].join("\n");
 }

@@ -527,6 +527,17 @@ function sketchDeps(admin: Admin): SketchDeps {
     },
     hashKey: (key) => sha256Hex(key),
     sendImage: graphSendImage,
+    // Generated designs by params hash (sketchFlow.designCacheKey), same bucket.
+    cacheGet: async (k) => {
+      const { data, error } = await admin.storage.from(SKETCH_BUCKET).download(`social-sketches/cache/${k}.png`);
+      if (error || !data) return null;
+      return new Uint8Array(await data.arrayBuffer());
+    },
+    cachePut: async (k, png) => {
+      const { error } = await admin.storage.from(SKETCH_BUCKET)
+        .upload(`social-sketches/cache/${k}.png`, png, { contentType: "image/png", upsert: true });
+      if (error) log("warn", `sketch: cache put failed: ${error.message}`);
+    },
   };
 }
 

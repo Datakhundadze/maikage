@@ -47,6 +47,8 @@ import {
   SKETCH_CAP_WINDOW_MS,
   MAX_SKETCHES_PER_REPLY,
   SKETCH_NOTICE,
+  TESTER_CAPS,
+  designCacheKey,
   runSketch,
   sketchBudgetMs,
   withinCaps,
@@ -142,7 +144,8 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
 
     let kind: "reply" | "handoff" | "photo";
     let text: string;
-    const sketches: Extract<SketchPlan, { kind: "generate" | "text" }>[] = [];
+    const sketches: { plan: Extract<SketchPlan, { kind: "generate" | "text" }>; cached: Uint8Array | null }[] = [];
+    const tester = Array.isArray(settings.allowKeys) && settings.allowKeys.includes(key);
     if (decision.action === "handoff") {
       await deps.insertHandoff(key, "customer_asked");
       kind = "handoff";
@@ -169,13 +172,21 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
           else {
             // Caps count the sketches of this reply too.
             const running = counts ? { ...counts } : null;
+            const limits = tester ? TESTER_CAPS : undefined;
             for (const p of wanted) {
-              if (!withinCaps(p.kind, running)) {
+              // Same drawing as before (size / side / garment change) → no new generation.
+              let cached: Uint8Array | null = null;
+              if (p.kind === "generate" && deps.sketch.cacheGet) {
+                const sk = deps.sketch;
+                cached = await designCacheKey(p, sk.hashKey).then((k) => sk.cacheGet!(k)).catch(() => null);
+              }
+              const capKind = p.kind === "generate" && cached ? "text" : p.kind;
+              if (!withinCaps(capKind, running, limits)) {
                 deps.log("info", `sketch skipped ${row.channel}: ${running ? "cap" : "count_failed"}`);
                 continue;
               }
-              sketches.push(p);
-              if (running) running[p.kind]++;
+              sketches.push({ plan: p, cached });
+              if (running) running[capKind]++;
             }
           }
         }
@@ -205,10 +216,10 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       // One image per side, in the order the bot wrote them. The link line
       // goes out at most once, after the first failure.
       let linkSent = false;
-      for (const plan of sketches) {
+      for (const { plan, cached } of sketches) {
         // The budget was measured before the text went out; re-measure.
         const budgetMs = sketchBudgetMs(runStartedAt, deps.now().getTime());
-        const need = plan.kind === "generate" ? MIN_SKETCH_BUDGET_MS : MIN_SKETCH_BUDGET_MS / 3;
+        const need = plan.kind === "generate" && !cached ? MIN_SKETCH_BUDGET_MS : MIN_SKETCH_BUDGET_MS / 3;
         if (budgetMs < need) {
           deps.log("info", `sketch skipped ${row.channel}: no_time (${budgetMs} ms left)`);
           if (!linkSent) {
@@ -221,7 +232,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
           break;
         }
         const outcome = await runSketch(
-          { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan, budgetMs },
+          { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan, budgetMs, cachedDesign: cached },
           { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
           deps.sketch,
           { linkOnFailure: !linkSent },
