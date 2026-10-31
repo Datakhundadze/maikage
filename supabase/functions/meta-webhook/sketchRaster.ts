@@ -139,6 +139,26 @@ export function flattenOnWhite(img: RgbaImage): void {
 
 /** Resize `design` to contain-fit `box` (centred) and draw it onto `dst`. */
 /**
+ * Make pixels close to the key colour transparent (soft edge between `inner`
+ * and `outer` RGB distance), and pull the key's tint out of the edge pixels.
+ */
+export function keyOutColor(img: RgbaImage, hex: string, inner = 60, outer = 140): void {
+  const [kr, kg, kb] = hexToRgb(hex);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const dist = Math.hypot(d[i] - kr, d[i + 1] - kg, d[i + 2] - kb);
+    if (dist <= inner) { d[i + 3] = 0; continue; }
+    if (dist >= outer) continue;
+    const a = (dist - inner) / (outer - inner);
+    d[i + 3] = Math.round(d[i + 3] * a);
+    // un-premultiply the key out of the edge colour
+    d[i] = Math.max(0, Math.min(255, Math.round((d[i] - kr * (1 - a)) / a)));
+    d[i + 1] = Math.max(0, Math.min(255, Math.round((d[i + 1] - kg * (1 - a)) / a)));
+    d[i + 2] = Math.max(0, Math.min(255, Math.round((d[i + 2] - kb * (1 - a)) / a)));
+  }
+}
+
+/**
  * Crop to the visible pixels (alpha > threshold) plus a small margin, so the
  * design fills its print box instead of floating in GPT's transparent padding.
  * Fully transparent → the image unchanged.
