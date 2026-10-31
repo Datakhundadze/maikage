@@ -116,6 +116,28 @@ export interface GenerateSuggestion {
   subProduct?: string;
   color?: ProductColor;
   side?: "front" | "back";
+  /**
+   * Where the generated design sits — "left-chest"/"right-chest" are the
+   * WEARER's sides, "small" a reduced centred print. Absent → today's
+   * full-size centred placement. Never "jersey-back": that arrangement is two
+   * TEXT layers and has no meaning for a single generated picture.
+   */
+  placement?: GeneratePlacement;
+}
+
+/** The placements a generated design accepts — the seed's set minus "jersey-back". */
+export type GeneratePlacement = "center" | "small" | "left-chest" | "right-chest";
+
+/**
+ * A model-supplied placement, validated. Same rule as the mockup block's:
+ * case- and whitespace-insensitive membership in a closed set, nothing fuzzy.
+ * "jersey-back" and anything unrecognised resolve to undefined, which leaves
+ * the constructor's default placement.
+ */
+export function parseGeneratePlacement(raw: unknown): GeneratePlacement | undefined {
+  if (typeof raw !== "string") return undefined;
+  const pl = norm(raw);
+  return pl === "center" || pl === "small" || pl === "left-chest" || pl === "right-chest" ? pl : undefined;
 }
 
 /** Remove every maika-generate fence (closed OR truncated) from displayed text. */
@@ -214,6 +236,10 @@ export function parseGenerateSuggestion(raw: string): GenerateSuggestion | null 
       if (s === "front" || s === "back") out.side = s;
     }
 
+    // placement — see parseGeneratePlacement; anything else is dropped.
+    const placement = parseGeneratePlacement(parsed.placement);
+    if (placement) out.placement = placement;
+
     return out;
   } catch {
     return null;
@@ -295,6 +321,10 @@ export function openGenerateInConstructor(g: GenerateSuggestion): boolean {
     subProduct: g.subProduct,
     color: g.color,
     side: g.side,
+    // The seed's own top-level placement field — the one text and photo seeds
+    // already use, re-validated by normalizeConstructorSeed. Spread only when
+    // set, so a block without one produces exactly the seed it did before.
+    ...(g.placement ? { placement: g.placement } : {}),
     generate: toSeedGenerate(g),
   }, colorIsAvailable);
   const seed: ConstructorSeed = {

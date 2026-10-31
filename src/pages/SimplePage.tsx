@@ -785,6 +785,27 @@ function chestPhotoCoords(placement: "left-chest" | "right-chest"): PlacementCoo
   };
 }
 
+/**
+ * Where a SEEDED GENERATION's design lands, or null for the default placement
+ * (zone-fill, centred — today's behaviour, untouched).
+ *
+ * The generated design reaches the garment as a photo layer, so it takes the
+ * PHOTO geometry: chest → chestPhotoCoords, exactly as a chat photo with that
+ * placement. "small" has no photo geometry of its own (a photo seed ignores it)
+ * and the text one — DEFAULT_TEXT_COORDS, a 0.4×0.12 lettering box — is the
+ * wrong shape for a picture: a portrait cut-out would contain-fit to 0.12 tall.
+ * So "small" is the chest print's square box at the default photo centre —
+ * both halves existing values, no new numbers.
+ */
+function seededGenerationCoords(placement: ConstructorSeed["placement"]): PlacementCoords | null {
+  if (placement === "left-chest" || placement === "right-chest") return chestPhotoCoords(placement);
+  if (placement === "small") {
+    const chestBox = chestPhotoCoords("left-chest");
+    return { ...DEFAULT_PHOTO_COORDS, scale: chestBox.scale, scaleY: chestBox.scaleY };
+  }
+  return null;
+}
+
 // ── Paired layout: photo above, lettering below ──────────────────────────
 //
 // A seed that carries BOTH a photo and text used to stack them on top of each
@@ -2300,6 +2321,20 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       const want = chestPhotoCoords(chest);
       if (nextPhotoCoords.x !== want.x || nextPhotoCoords.y !== want.y || nextPhotoCoords.scale !== want.scale) {
         setNextPhotoCoords(want);
+        return;
+      }
+    }
+    // Same mechanism for a seeded GENERATION that asked for the chest or a
+    // small print („გულთან პატარა გული"). Its result reaches the garment through
+    // handleAiTransfer → addPhotoLayer, which lands the side's first photo at
+    // nextPhotoCoords verbatim — so set it here, BEFORE the generation is
+    // queued below, and let this effect re-run. handleAiGenerate never reads
+    // nextPhotoCoords, so the product it generates against is unaffected; and
+    // a seed without one of these placements skips this block entirely.
+    const genCoords = seed.generate && !seed.image ? seededGenerationCoords(seed.placement) : null;
+    if (genCoords) {
+      if (nextPhotoCoords.x !== genCoords.x || nextPhotoCoords.y !== genCoords.y || nextPhotoCoords.scale !== genCoords.scale) {
+        setNextPhotoCoords(genCoords);
         return;
       }
     }
