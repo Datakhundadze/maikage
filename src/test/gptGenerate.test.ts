@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   buildGptGeneratePrompt,
+  GPT_FLAT_FLAG_LINE,
   joinPromptText,
   ILLUSTRATION_NO_TEXT_CLAUSE,
   REALISTIC_NO_TEXT_CLAUSE,
@@ -197,5 +198,14 @@ describe("client: USE_GPT_GENERATE + runGenerationPipeline", () => {
     expect(p).toContain("const transparentImg = await loadImage(transparentImage);");
     expect(p).toContain("mockupImage = compositeMockup(productImg, transparentImg, placementCoords, placementZone);");
     expect(p).toContain("prompt: designText,");
+  });
+});
+
+describe("flags print flat (owner 2026-10-31)", () => {
+  it("a flag / coat of arms / emblem prompt gets the flat line; others do not", () => {
+    for (const p of ["საქართველოს დროშა", "Georgian flag", "ქალაქის გერბი", "coat of arms of Tbilisi"]) {
+      expect(buildGptGeneratePrompt(p, { hasText: false, transparent: true })).toContain(GPT_FLAT_FLAG_LINE);
+    }
+    expect(buildGptGeneratePrompt("მგელი მთვარეზე", { hasText: false, transparent: true })).not.toContain(GPT_FLAT_FLAG_LINE);
   });
 });

@@ -162,6 +162,8 @@ export interface GenerateBlock {
   color?: string;
   side?: "front" | "back";
   placement?: Exclude<Placement, "jersey-back">;
+  /** DM only: „უფრო დიდი" → "large". The site ignores the field. */
+  size?: "large";
 }
 
 export interface MockupBlock {
@@ -176,6 +178,8 @@ export interface MockupBlock {
   removeBackground?: boolean;
   editPrompt?: string;
   removeWhite?: boolean;
+  /** DM only: „უფრო დიდი" → "large". The site ignores the field. */
+  size?: "large";
 }
 
 const truthy = (v: unknown) => v === true || (typeof v === "string" && norm(v) === "true");
@@ -251,6 +255,7 @@ export function parseGenerateBlock(raw: string): GenerateBlock | null {
     const pl = norm(parsed.placement);
     if (pl === "center" || pl === "small" || pl === "left-chest" || pl === "right-chest") out.placement = pl;
   }
+  if (typeof parsed.size === "string" && /^(large|big|xl)$/i.test(parsed.size.trim())) out.size = "large";
   return out;
 }
 
@@ -291,6 +296,7 @@ export function parseMockupBlock(raw: string): MockupBlock | null {
     const hit = resolveNearestColor(parsed.textColor, TEXT_COLORS.map((c) => c.name), TEXT_COLORS);
     if (hit) out.textColor = hit;
   }
+  if (typeof parsed.size === "string" && /^(large|big|xl)$/i.test(parsed.size.trim())) out.size = "large";
   return out;
 }
 

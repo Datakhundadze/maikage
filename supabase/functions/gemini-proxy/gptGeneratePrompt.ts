@@ -31,6 +31,11 @@ export const GPT_SAFETY_LINE =
 
 export const GPT_TRANSPARENT_LINE = "Background: fully transparent (no white backdrop).";
 
+/** Owner 2026-10-31: a flag / coat of arms prints as a clean flat graphic. */
+export const GPT_FLAT_FLAG_LINE =
+  "The flag / coat of arms / emblem must be a FLAT graphic seen straight on: a clean rectangle (or the emblem's exact shape), NO waving, NO folds, NO ripples, NO fabric texture, NO pole, NO shadow, NO perspective — crisp flat vector colours with exact proportions.";
+export const FLAG_RE = /დროშ|გერბ|ემბლემ|\bflags?\b|coat of arms|\bemblem/i;
+
 type PromptPart = { type?: string; text?: unknown };
 type PromptMessage = { content?: unknown };
 
@@ -84,6 +89,7 @@ export function buildGptGeneratePrompt(
       .split(REALISTIC_NO_TEXT_CLAUSE).join(`• ${GPT_TEXT_ONLY_IF_ASKED}`);
   }
   out = `${out}\n\n${GPT_SAFETY_LINE}`;
+  if (FLAG_RE.test(basePrompt)) out = `${out}\n${GPT_FLAT_FLAG_LINE}`;
   if (opts.transparent) out = `${out}\n${GPT_TRANSPARENT_LINE}`;
   return out;
 }

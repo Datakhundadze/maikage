@@ -79,9 +79,16 @@ export function countSketchRows(rows: { text: string | null }[]): SketchCounts {
   return { generate, text };
 }
 
-export function withinCaps(kind: SketchKind, counts: SketchCounts | null): boolean {
+/** Test conversations (social_bot_settings.allow_keys) get roomier caps. */
+export const TESTER_CAPS = { generate: 20, text: 50 } as const;
+
+export function withinCaps(
+  kind: SketchKind,
+  counts: SketchCounts | null,
+  limits: { generate: number; text: number } = { generate: MAX_GENERATE_SKETCHES, text: MAX_TEXT_SKETCHES },
+): boolean {
   if (!counts) return false; // unreadable → fail closed, send the link
-  return kind === "generate" ? counts.generate < MAX_GENERATE_SKETCHES : counts.text < MAX_TEXT_SKETCHES;
+  return kind === "generate" ? counts.generate < limits.generate : counts.text < limits.text;
 }
 
 export function sketchBudgetMs(runStartedAtMs: number, nowMs: number): number {
@@ -102,6 +109,20 @@ export interface SketchDeps {
   upload: (path: string, bytes: Uint8Array) => Promise<string | null>;
   hashKey: (conversationKey: string) => Promise<string>;
   sendImage: (channel: Channel, recipientId: string, url: string) => Promise<SendResultLike>;
+  /** Generated-design cache (PNG by params hash). Optional; absent → always generate. */
+  cacheGet?: (key: string) => Promise<Uint8Array | null>;
+  cachePut?: (key: string, png: Uint8Array) => Promise<void>;
+}
+
+/**
+ * Same drawing → same key: a size / side / product change re-uses the design
+ * instead of paying for it again (owner 2026-10-31). Garment colour is part of
+ * the key — the generator gets it.
+ */
+export async function designCacheKey(plan: Extract<SketchPlan, { kind: "generate" }>, hash: (s: string) => Promise<string>): Promise<string> {
+  const p = buildGenerateParams(plan.block, plan.target);
+  const keyed = { c: p.character, s: p.style, t: p.text, r: p.isRealistic, b: p.transparent ?? true, col: p.color };
+  return (await hash(JSON.stringify(keyed))).slice(0, 40);
 }
 
 export interface SketchBaseDeps {
@@ -118,6 +139,8 @@ export interface SketchContext {
   customerId: string;
   plan: Extract<SketchPlan, { kind: "generate" | "text" }>;
   budgetMs: number;
+  /** A design already generated for the same params (see designCacheKey). */
+  cachedDesign?: Uint8Array | null;
 }
 
 class SketchError extends Error {
@@ -139,15 +162,41 @@ export function prepareProduct(photo: RgbaImage, img: ProductImage, width = SKET
   return out;
 }
 
+/**
+ * Sketch-only size factors (owner 2026-10-31: the site's print zone looked tiny
+ * on a DM sketch). A big back print (A3, the +15 option) is ~1.3× the zone on
+ * the photos; „უფრო დიდი" (size "large") adds 1.3× more for a drawing and 1.6×
+ * for lettering. The site's own mockup is unchanged.
+ */
+export const BACK_DRAWING_FACTOR = 1.3;
+export const LARGE_DRAWING_FACTOR = 1.3;
+export const LARGE_TEXT_FACTOR = 1.6;
+
+/** Grow a box around its centre, kept inside the w×h image. */
+export function scaleBox(b: Box, f: number, w: number, h: number): Box {
+  if (f === 1) return b;
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+  const nw = Math.min(b.w * f, w * 0.9), nh = Math.min(b.h * f, h * 0.9);
+  const x = Math.min(Math.max(0, cx - nw / 2), w - nw);
+  const y = Math.min(Math.max(0, cy - nh / 2), h - nh);
+  return { x, y, w: nw, h: nh };
+}
+
 /** Boxes (in output pixels) the design / lettering go into. */
 export function sketchBoxes(plan: SketchContext["plan"], img: ProductImage, w: number, h: number): Box[] {
-  if (plan.kind === "generate") return [placementBox(img.zone, designCoords(plan.block.placement), w, h)];
+  const large = plan.block.size === "large";
+  if (plan.kind === "generate") {
+    const base = placementBox(img.zone, designCoords(plan.block.placement), w, h);
+    const unplaced = !plan.block.placement || plan.block.placement === "center";
+    const f = (unplaced && plan.target.side === "back" ? BACK_DRAWING_FACTOR : 1) * (large ? LARGE_DRAWING_FACTOR : 1);
+    return [scaleBox(base, f, w, h)];
+  }
   if (plan.block.placement === "jersey-back") {
     const boxes = [placementBox(img.zone, JERSEY_NAME_COORDS, w, h)];
     if (plan.block.number) boxes.push(placementBox(img.zone, JERSEY_NUMBER_COORDS, w, h));
     return boxes;
   }
-  return [placementBox(img.zone, textCoords(plan.block.placement, plan.target.product), w, h)];
+  return [scaleBox(placementBox(img.zone, textCoords(plan.block.placement, plan.target.product), w, h), large ? LARGE_TEXT_FACTOR : 1, w, h)];
 }
 
 export function textHexFor(textColor: string | undefined, garmentHex: string | null): string {
@@ -164,9 +213,14 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
   // Start the slow part first; the photo downloads meanwhile.
   const designP: Promise<RgbaImage[]> = (async () => {
     if (ctx.plan.kind === "generate") {
+      if (ctx.cachedDesign) return [await decodeImage(ctx.cachedDesign, deps)];
       const params = buildGenerateParams(ctx.plan.block, ctx.plan.target);
       const png = await deps.generateDesign(ctx.channel, ctx.conversationKey, params, left());
       if (!png) throw new SketchError("generate_failed");
+      if (deps.cachePut) {
+        const plan = ctx.plan;
+        designCacheKey(plan, deps.hashKey).then((k) => deps.cachePut!(k, png)).catch(() => {});
+      }
       return [await decodeImage(png, deps)];
     }
     return [];
@@ -217,7 +271,9 @@ export async function runSketch(
   let sendingImage = false;
 
   const work = (async (): Promise<string> => {
-    const recordId = await base.recordSend(ctx.conversationKey, "sketch", SKETCH_MARKER[ctx.plan.kind]);
+    // A cached design costs nothing: it counts as a mockup, not a generation.
+    const marker = ctx.plan.kind === "generate" && ctx.cachedDesign ? SKETCH_MARKER.text : SKETCH_MARKER[ctx.plan.kind];
+    const recordId = await base.recordSend(ctx.conversationKey, "sketch", marker);
     if (!recordId) throw new SketchError("record_failed");
     const jpeg = await renderSketch(ctx, deps, deadline, now);
     if (timedOut) throw new SketchError("timeout");

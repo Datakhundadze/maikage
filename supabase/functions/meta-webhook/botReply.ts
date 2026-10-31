@@ -285,7 +285,7 @@ export function cleanBotReply(
     return "";
   });
   text = stripSketchSystemText(text)
-    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, url: string) => (label === url ? url : `${label}: ${url}`))
+    .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, url: string) => (sameLink(label, url) ? url : `${label}: ${url}`))
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")
     .replace(/__([^_\n]+)__/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
@@ -301,6 +301,12 @@ export function cleanBotReply(
   text = capText(text, budget);
   if (!text) text = emptyReplyFallback(schedule);
   return link ? `${text}\n${link}` : text;
+}
+
+/** "[maika.ge/chat](https://maika.ge/chat)" → just the URL, not "label: url". */
+function sameLink(label: string, url: string): boolean {
+  const bare = (u: string) => u.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/+$/, "").toLowerCase();
+  return bare(label) === bare(url);
 }
 
 /** Cut at a sentence / line end before `max` characters, else at a space. */
