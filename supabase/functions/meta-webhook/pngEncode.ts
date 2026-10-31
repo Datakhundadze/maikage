@@ -31,8 +31,14 @@ function chunk(type: string, data: Uint8Array): Uint8Array[] {
 }
 
 async function deflate(raw: Uint8Array): Promise<Uint8Array> {
+  // CompressionStream's writable is typed WritableStream<BufferSource>, which
+  // TS won't accept in pipeThrough; the runtime contract is plain bytes.
+  const zipped = new CompressionStream("deflate") as unknown as {
+    readable: ReadableStream<Uint8Array>;
+    writable: WritableStream<Uint8Array>;
+  };
   const stream = new ReadableStream<Uint8Array>({ start(c) { c.enqueue(raw); c.close(); } })
-    .pipeThrough(new CompressionStream("deflate"));
+    .pipeThrough(zipped);
   const chunks: Uint8Array[] = [];
   const reader = stream.getReader();
   for (;;) {
