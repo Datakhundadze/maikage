@@ -138,6 +138,38 @@ export function flattenOnWhite(img: RgbaImage): void {
 }
 
 /** Resize `design` to contain-fit `box` (centred) and draw it onto `dst`. */
+/**
+ * Crop to the visible pixels (alpha > threshold) plus a small margin, so the
+ * design fills its print box instead of floating in GPT's transparent padding.
+ * Fully transparent → the image unchanged.
+ */
+export function trimTransparent(img: RgbaImage, threshold = 8, marginRatio = 0.02): RgbaImage {
+  const { width: w, height: h, data: d } = img;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (d[(y * w + x) * 4 + 3] > threshold) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) return img;
+  const m = Math.round(Math.max(x1 - x0 + 1, y1 - y0 + 1) * marginRatio);
+  x0 = Math.max(0, x0 - m); y0 = Math.max(0, y0 - m);
+  x1 = Math.min(w - 1, x1 + m); y1 = Math.min(h - 1, y1 + m);
+  const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
+  if (cw === w && ch === h) return img;
+  const out = createImage(cw, ch);
+  for (let y = 0; y < ch; y++) {
+    const from = ((y + y0) * w + x0) * 4;
+    out.data.set(d.subarray(from, from + cw * 4), y * cw * 4);
+  }
+  return out;
+}
+
 export function drawContained(dst: RgbaImage, design: RgbaImage, box: Box): Box {
   const fit = containFit(box, design.width, design.height);
   if (fit.w < 1 || fit.h < 1) return fit;

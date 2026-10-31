@@ -421,3 +421,34 @@ export function buildGenerateParams(g: GenerateBlock, target: ProductChoice): Re
   }
   return { character: characterWithGuard, style: aiStyle, ...base, transparent: false };
 }
+
+// ── several sketches from one reply (add-only, 2026-10-31) ─────────────────
+
+const ANY_FENCE_RE = /```maika-(generate|mockup)\s*[\s\S]*?```/g;
+
+/**
+ * Every design block in a RAW bot reply, in order, one plan each — so „წინ X,
+ * უკან Y" gets both sketches in one go. One plan per side (the first block for
+ * a side wins), at most `max`. [] = no design block. Unsupported plans stay in
+ * the list so the caller can log them and add the link line.
+ */
+export function planSketches(raw: string, customerSentPhoto: boolean, max = 2): SketchPlan[] {
+  const s = String(raw ?? "");
+  if (!/```maika-(generate|mockup)\b/.test(s)) return [];
+  if (ORDER_STATUS_RE.test(s)) return [{ kind: "unsupported", reason: "order_status" }];
+  const fences = s.match(ANY_FENCE_RE) ?? [];
+  if (fences.length === 0) return [{ kind: "unsupported", reason: "unparseable" }];
+  const out: SketchPlan[] = [];
+  const sides = new Set<string>();
+  for (const fence of fences) {
+    if (out.length >= max) break;
+    const plan = planSketch(fence, customerSentPhoto);
+    if (!plan) continue;
+    if (plan.kind !== "unsupported") {
+      if (sides.has(plan.target.side)) continue;
+      sides.add(plan.target.side);
+    }
+    out.push(plan);
+  }
+  return out;
+}

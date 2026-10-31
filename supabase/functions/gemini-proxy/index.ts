@@ -1069,6 +1069,9 @@ prompt · style · withBackground · product · subProduct · color · side · p
 - KIDS: a children's item (GILDAN KIDS, „ბავშვის", „5 წლის", „საბავშვო") and NO style named or
   described → "Pixar 3D", not "Realistic" (owner's rule: friendlier for children). Say so in the
   style sentence („Pixar 3D სტილში დაგიხატავ…") and still list the alternatives.
+- FLAGS & EMBLEMS: a flag, coat of arms, emblem or national symbol and NO style named or
+  described → "Illustration", and end the prompt with „, ბრტყელი ვექტორული, ბოძის გარეშე"
+  (owner's rule: it prints as a clean flat flag, not a photo of a flag waving on a pole).
 - placement: ONLY when they say where/how small — გულთან / მარცხენა მკერდზე → "left-chest" ·
   მარჯვენა მკერდზე → "right-chest" · „პატარა" without a position → "small". Otherwise omit.
 - withBackground: false = cut out, no background (THE DEFAULT, and what printing wants).

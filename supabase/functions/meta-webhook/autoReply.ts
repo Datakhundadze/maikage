@@ -9,7 +9,8 @@
 //   4. decideAutoReply (botReply.ts)
 //   5. handoff / photo / AI reply → record → send → write the mid back
 //   6. (AI reply with a design block, deps.sketch set) the sketch image —
-//      sketchFlow.ts; the reply then ends in SKETCH_NOTICE instead of the link
+//      sketchFlow.ts; the reply then ends in SKETCH_NOTICE instead of the link.
+//      Up to MAX_SKETCHES_PER_REPLY blocks (one per side) → one image each.
 //
 // DEBOUNCE. Every new inbound message starts its own run, and a run that sees
 // a newer inbound message skips as "superseded" (decideAutoReply). So the
@@ -26,6 +27,7 @@ import type { Channel } from "./handler.ts";
 import type { BotSchedule } from "./botSchedule.ts";
 import { isScheduleActive } from "./botSchedule.ts";
 import {
+  DESIGN_LINK_LINE,
   buildHistory,
   cleanBotReply,
   decideAutoReply,
@@ -39,10 +41,11 @@ import {
   type OutRow,
   type ThreadRow,
 } from "./botReply.ts";
-import { planSketch, type SketchPlan } from "./sketchParse.ts";
+import { planSketches, type SketchPlan } from "./sketchParse.ts";
 import {
   MIN_SKETCH_BUDGET_MS,
   SKETCH_CAP_WINDOW_MS,
+  MAX_SKETCHES_PER_REPLY,
   SKETCH_NOTICE,
   runSketch,
   sketchBudgetMs,
@@ -139,7 +142,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
 
     let kind: "reply" | "handoff" | "photo";
     let text: string;
-    let sketch: { plan: Extract<SketchPlan, { kind: "generate" | "text" }>; budgetMs: number } | null = null;
+    const sketches: Extract<SketchPlan, { kind: "generate" | "text" }>[] = [];
     if (decision.action === "handoff") {
       await deps.insertHandoff(key, "customer_asked");
       kind = "handoff";
@@ -155,19 +158,29 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       kind = "reply";
       // Parse BEFORE cleanBotReply strips the fences.
       if (deps.sketch) {
-        const plan = planSketch(raw, pendingInbound(thread).some(hasImage));
-        if (plan && plan.kind !== "unsupported") {
+        const plans = planSketches(raw, pendingInbound(thread).some(hasImage), MAX_SKETCHES_PER_REPLY);
+        const wanted = plans.filter((p): p is Extract<SketchPlan, { kind: "generate" | "text" }> => p.kind !== "unsupported");
+        for (const p of plans) if (p.kind === "unsupported") deps.log("info", `sketch skipped ${row.channel}: ${p.reason}`);
+        if (wanted.length > 0) {
           const since = new Date(deps.now().getTime() - SKETCH_CAP_WINDOW_MS).toISOString();
           const counts = await deps.sketch.countSketches(key, since);
           const budgetMs = sketchBudgetMs(runStartedAt, deps.now().getTime());
-          if (!withinCaps(plan.kind, counts)) deps.log("info", `sketch skipped ${row.channel}: ${counts ? "cap" : "count_failed"}`);
-          else if (budgetMs < MIN_SKETCH_BUDGET_MS) deps.log("info", `sketch skipped ${row.channel}: no_time (${budgetMs} ms left)`);
-          else sketch = { plan, budgetMs };
-        } else if (plan && plan.kind === "unsupported") {
-          deps.log("info", `sketch skipped ${row.channel}: ${plan.reason}`);
+          if (budgetMs < MIN_SKETCH_BUDGET_MS) deps.log("info", `sketch skipped ${row.channel}: no_time (${budgetMs} ms left)`);
+          else {
+            // Caps count the sketches of this reply too.
+            const running = counts ? { ...counts } : null;
+            for (const p of wanted) {
+              if (!withinCaps(p.kind, running)) {
+                deps.log("info", `sketch skipped ${row.channel}: ${running ? "cap" : "count_failed"}`);
+                continue;
+              }
+              sketches.push(p);
+              if (running) running[p.kind]++;
+            }
+          }
         }
       }
-      text = cleanBotReply(raw, schedule, sketch ? { designNotice: SKETCH_NOTICE } : undefined);
+      text = cleanBotReply(raw, schedule, sketches.length > 0 ? { designNotice: SKETCH_NOTICE } : undefined);
     }
 
     let sent = 0;
@@ -188,14 +201,33 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       if (res.messageId) await deps.markSent(recordId, res.messageId);
     }
     deps.log("info", `auto-reply sent ${row.channel}: ${kind} (${sent} message${sent === 1 ? "" : "s"})`);
-    if (sketch && deps.sketch) {
-      // The budget was measured before the text went out; re-measure.
-      const budgetMs = Math.min(sketch.budgetMs, sketchBudgetMs(runStartedAt, deps.now().getTime()));
-      await runSketch(
-        { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan: sketch.plan, budgetMs },
-        { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
-        deps.sketch,
-      );
+    if (sketches.length > 0 && deps.sketch) {
+      // One image per side, in the order the bot wrote them. The link line
+      // goes out at most once, after the first failure.
+      let linkSent = false;
+      for (const plan of sketches) {
+        // The budget was measured before the text went out; re-measure.
+        const budgetMs = sketchBudgetMs(runStartedAt, deps.now().getTime());
+        const need = plan.kind === "generate" ? MIN_SKETCH_BUDGET_MS : MIN_SKETCH_BUDGET_MS / 3;
+        if (budgetMs < need) {
+          deps.log("info", `sketch skipped ${row.channel}: no_time (${budgetMs} ms left)`);
+          if (!linkSent) {
+            const id = await deps.recordSend(key, "reply", DESIGN_LINK_LINE);
+            if (id) {
+              const res = await deps.send(row.channel, row.customer_id, DESIGN_LINK_LINE);
+              if (res.ok && res.messageId) await deps.markSent(id, res.messageId);
+            }
+          }
+          break;
+        }
+        const outcome = await runSketch(
+          { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan, budgetMs },
+          { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
+          deps.sketch,
+          { linkOnFailure: !linkSent },
+        );
+        if (outcome !== "sent") linkSent = true;
+      }
     }
     return kind;
   } catch (e) {
