@@ -53,7 +53,8 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     `You are answering in ${where} on behalf of maika.ge while operators are off ${off}.`,
     "- Keep replies short (max ~5 lines), Georgian unless the customer writes another language.",
     `- Do not take orders or confirm payments: explain how to order and say an operator will finalize ${back}.`,
-    "- For a drawing or mockup, invite them to https://maika.ge/chat where they can see the design.",
+    "- For a drawing or lettering on a product, emit the maika-generate / maika-mockup block exactly as on the website: the system turns it into a sketch IMAGE and sends it in this chat automatically. Do NOT send them to the website for it and do not say a sketch is attached — the system announces it.",
+    "- A sketch from the customer's OWN photo is not possible here yet: for that, invite them to https://maika.ge/chat.",
     "- Tell them they can type „ოპერატორი\" to reach a human.",
   ].join("\n");
 }
@@ -68,4 +69,33 @@ export function withSocialBlock(systemContent: string, channel: SocialChannel | 
   const at = systemContent.lastIndexOf("\n\nCALLER: ");
   if (at === -1) return `${systemContent}\n\n${block}`;
   return `${systemContent.slice(0, at)}\n\n${block}${systemContent.slice(at)}`;
+}
+
+// ── DM sketch (add-only, 2026-10-31) ───────────────────────────────────────
+//
+// meta-webhook renders a sketch for a DM by calling generate-design-gpt
+// SERVER TO SERVER, exactly like faq-chat above: params.channel plus the
+// service-role bearer. That caller has no user and one shared egress IP, so
+// the anonymous BILLABLE gate (gen:ip:<ip>, 4 units a day) would refuse the
+// bot after a few sketches for EVERYONE. For this trusted call only, the gate
+// is skipped; the webhook caps sketches per conversation itself (3 generated
+// designs per 24 h). Every website call (no channel, an anon key, a user JWT)
+// resolves to null and goes through the gate exactly as before.
+
+export const SOCIAL_SKETCH_ACTION = "generate-design-gpt";
+
+export function resolveTrustedSocialSketch(
+  action: unknown,
+  channel: unknown,
+  authorization: string | null | undefined,
+  serviceRoleKey: string | null | undefined,
+): SocialChannel | null {
+  if (action !== SOCIAL_SKETCH_ACTION) return null;
+  // Same bearer / channel check as faq-chat, asked as faq-chat.
+  return resolveTrustedSocialChannel("faq-chat", channel, authorization, serviceRoleKey);
+}
+
+/** Does the BILLABLE rate-limit / block gate apply to this call? */
+export function billableGateApplies(isBillableAction: boolean, trustedSketchChannel: SocialChannel | null): boolean {
+  return isBillableAction && !trustedSketchChannel;
 }

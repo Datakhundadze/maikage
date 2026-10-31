@@ -56,6 +56,18 @@ export interface OutRow {
   meta_message_id: string;
   text: string | null;
   sent_at: string;
+  /** Needed only to recognise the bot's own sketch image echoes (no text). */
+  attachments?: SocialAttachment[] | null;
+}
+
+/** An image-only echo this close to a recorded 'sketch' send is the bot's own. */
+export const SKETCH_ECHO_MS = 2 * 60 * 1000;
+
+/** No text, and at least one image attachment. */
+export function isImageOnly(row: Pick<OutRow, "text" | "attachments">): boolean {
+  const noText = row.text === null || row.text.trim() === "";
+  return noText && Array.isArray(row.attachments) && row.attachments.length > 0 &&
+    row.attachments.every((a) => a && a.type === "image");
 }
 
 export interface BotSendRecord {
@@ -72,6 +84,7 @@ export interface BotSendRecord {
  *     two times are within ECHO_TEXT_MATCH_MS. The bot records its text BEFORE
  *     calling Meta, so this also covers the echo landing before the mid is
  *     written back, and an Instagram echo whose mid differs from the Send API's.
+ *  3. it is an image-only echo within SKETCH_ECHO_MS of a 'sketch' send.
  */
 export function isBotEcho(row: OutRow, sends: BotSendRecord[]): boolean {
   const t = Date.parse(row.sent_at);
@@ -80,6 +93,16 @@ export function isBotEcho(row: OutRow, sends: BotSendRecord[]): boolean {
     if (row.text !== null && s.text !== null && row.text === s.text) {
       const st = Date.parse(s.created_at);
       if (Number.isFinite(t) && Number.isFinite(st) && Math.abs(t - st) <= ECHO_TEXT_MATCH_MS) return true;
+    }
+  }
+  // 3. A sketch image echo has no text to match. If its mid was not written
+  //    back (yet) or differs (Instagram), an image-only echo within
+  //    SKETCH_ECHO_MS of a recorded 'sketch' send is the bot's own.
+  if (isImageOnly(row) && Number.isFinite(t)) {
+    for (const s of sends) {
+      if (s.kind !== "sketch") continue;
+      const st = Date.parse(s.created_at);
+      if (Number.isFinite(st) && Math.abs(t - st) <= SKETCH_ECHO_MS) return true;
     }
   }
   return false;
@@ -216,10 +239,15 @@ const FENCE_RE = /```maika-([a-z0-9_-]+)[^\n]*\n?[\s\S]*?(```|$)/gi;
 /**
  * Strip every ```maika-*``` block (meant for the website widget) and the
  * markdown a DM cannot render. If a mockup / generate block was removed, add
- * one line pointing to the chat where the design can be seen. Cap the length.
+ * one line pointing to the chat where the design can be seen — or, with
+ * opts.designNotice (a sketch image will follow), that line instead. Cap the length.
  * The proxy already ran fixBankAccounts / sanitizeReply on this text.
  */
-export function cleanBotReply(raw: string, schedule: BotSchedule = "sunday"): string {
+export function cleanBotReply(
+  raw: string,
+  schedule: BotSchedule = "sunday",
+  opts?: { designNotice?: string },
+): string {
   let hadDesign = false;
   let text = String(raw ?? "").replace(FENCE_RE, (_m, kind: string) => {
     const k = kind.toLowerCase();
@@ -235,7 +263,10 @@ export function cleanBotReply(raw: string, schedule: BotSchedule = "sunday"): st
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  const link = hadDesign && !text.includes("maika.ge/chat") ? DESIGN_LINK_LINE : "";
+  // A sketch image is on its way (sketchFlow.ts): say so instead of the link.
+  const link = hadDesign && opts?.designNotice
+    ? opts.designNotice
+    : hadDesign && !text.includes("maika.ge/chat") ? DESIGN_LINK_LINE : "";
   const budget = MAX_REPLY_CHARS - (link ? link.length + 1 : 0);
   text = capText(text, budget);
   if (!text) text = emptyReplyFallback(schedule);
@@ -289,6 +320,20 @@ export function splitForChannel(text: string, channel: Channel): string[] {
  */
 export function sendBody(channel: Channel, recipientId: string, text: string): Record<string, unknown> {
   const message: Record<string, unknown> = { text };
+  if (channel === "messenger") message.metadata = BOT_METADATA;
+  return { recipient: { id: recipientId }, messaging_type: "RESPONSE", message };
+}
+
+/**
+ * A sketch image by URL (Graph Send API attachment). Messenger: is_reusable
+ * false and the metadata marker, both documented Send API fields. Instagram's
+ * send docs show only {type: "image", payload: {url}} (png / jpeg, ≤ 8 MB), so
+ * nothing else is added there.
+ */
+export function sendImageBody(channel: Channel, recipientId: string, url: string): Record<string, unknown> {
+  const payload: Record<string, unknown> = { url };
+  if (channel === "messenger") payload.is_reusable = false;
+  const message: Record<string, unknown> = { attachment: { type: "image", payload } };
   if (channel === "messenger") message.metadata = BOT_METADATA;
   return { recipient: { id: recipientId }, messaging_type: "RESPONSE", message };
 }
