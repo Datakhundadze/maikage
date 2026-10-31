@@ -1246,6 +1246,72 @@ export type Database = {
         }
         Relationships: []
       }
+      social_bot_handoffs: {
+        Row: {
+          conversation_key: string
+          created_at: string
+          reason: string | null
+        }
+        Insert: {
+          conversation_key: string
+          created_at?: string
+          reason?: string | null
+        }
+        Update: {
+          conversation_key?: string
+          created_at?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      social_bot_replies: {
+        Row: {
+          conversation_key: string
+          created_at: string
+          id: string
+          kind: string
+          meta_message_id: string | null
+          text: string | null
+        }
+        Insert: {
+          conversation_key: string
+          created_at?: string
+          id?: string
+          kind: string
+          meta_message_id?: string | null
+          text?: string | null
+        }
+        Update: {
+          conversation_key?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          meta_message_id?: string | null
+          text?: string | null
+        }
+        Relationships: []
+      }
+      social_bot_settings: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          schedule: string
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          schedule?: string
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          schedule?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       social_messages: {
         Row: {
           attachments: Json
