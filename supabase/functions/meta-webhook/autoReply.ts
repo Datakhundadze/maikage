@@ -177,7 +177,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
               // Same drawing as before (size / side / garment change) → no new generation.
               let cached: Uint8Array | null = null;
               if (p.kind === "generate" && deps.sketch.cacheGet) {
-                const sk = deps.sketch;
+                const sk: SketchDeps = deps.sketch;
                 cached = await designCacheKey(p, sk.hashKey).then((k) => sk.cacheGet!(k)).catch(() => null);
               }
               const capKind = p.kind === "generate" && cached ? "text" : p.kind;
