@@ -270,3 +270,4 @@ async function sendText(ctx: SketchContext, base: SketchBaseDeps, text: string):
   if (res.messageId) await base.markSent(id, res.messageId);
   return true;
 }
+
