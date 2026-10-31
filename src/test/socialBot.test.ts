@@ -97,7 +97,7 @@ describe("handoff regex", () => {
   });
   it("Sunday handoff text is the fixed message", () => {
     expect(handoffMessage("sunday")).toBe(
-      "კარგი, ოპერატორს გადავეცი 🙌 ის გიპასუხებთ ორშაბათს, 11:00-დან. თუ სასწრაფოა, დაგვირეკეთ: 032 2 05 06 20",
+      "კარგი, ოპერატორს გადავეცი 🙌 ის გიპასუხებთ ორშაბათს, 11:00-დან.",
     );
   });
 });
@@ -443,5 +443,19 @@ describe("gemini-proxy social channel", () => {
 
   it("chat_logs still uses params.session_id (the webhook sends conversation_key there)", () => {
     expect(SRC).toContain("const sessionId = typeof params.session_id === \"string\" ? params.session_id : null;");
+  });
+});
+
+describe("Meta automation echoes are not a human takeover", () => {
+  it("instant reply / away message do not silence the bot", async () => {
+    const { humanTookOver, isMetaAutomationEcho } = await import("../../supabase/functions/meta-webhook/botReply");
+    const now = new Date("2026-11-01T10:00:00Z");
+    const rows = [
+      { meta_message_id: "m1", text: "გამარჯობა, maika.ge-ის გუნდი მალე გიპასუხებთ.", sent_at: "2026-11-01T09:59:00Z" },
+      { meta_message_id: "m2", text: "მოგესალმებით! 👋\nთქვენ დაგვიკავშირდით არასამუშაო დროს. ოპერატორი უახლოეს სამუშაო საათებში გიპასუხებთ.", sent_at: "2026-11-01T09:59:01Z" },
+    ];
+    expect(isMetaAutomationEcho(rows[0].text)).toBe(true);
+    expect(humanTookOver(rows, [], now)).toBe(false);
+    expect(humanTookOver([...rows, { meta_message_id: "m3", text: "ჰუდი 80 ლარია", sent_at: "2026-11-01T09:59:30Z" }], [], now)).toBe(true);
   });
 });

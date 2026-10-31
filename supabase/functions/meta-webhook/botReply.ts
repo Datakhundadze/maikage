@@ -38,7 +38,7 @@ function operatorBack(schedule: BotSchedule): string {
 }
 
 export function handoffMessage(schedule: BotSchedule): string {
-  return `კარგი, ოპერატორს გადავეცი 🙌 ის გიპასუხებთ ${operatorBack(schedule)}. თუ სასწრაფოა, დაგვირეკეთ: 032 2 05 06 20`;
+  return `კარგი, ოპერატორს გადავეცი 🙌 ის გიპასუხებთ ${operatorBack(schedule)}.`;
 }
 
 export function photoMessage(schedule: BotSchedule): string {
@@ -85,10 +85,26 @@ export function isBotEcho(row: OutRow, sends: BotSendRecord[]): boolean {
   return false;
 }
 
+/**
+ * Meta Business Suite automations (instant reply, away message, location
+ * reply) come back as echoes too. They are not an operator taking over, so
+ * they must not silence the bot. Matched on stable fragments of their text.
+ */
+const META_AUTOMATION_FRAGMENTS = [
+  "maika.ge-ის გუნდი მალე გიპასუხებთ",
+  "დაგვიკავშირდით არასამუშაო დროს",
+  "ახლა არასამუშაო დროა",
+  "ოპერატორი უახლოეს სამუშაო საათებში",
+];
+export function isMetaAutomationEcho(text: string | null): boolean {
+  if (!text) return false;
+  return META_AUTOMATION_FRAGMENTS.some((f) => text.includes(f));
+}
+
 /** An operator wrote in this conversation within HUMAN_TAKEOVER_MS. */
 export function humanTookOver(outRows: OutRow[], sends: BotSendRecord[], now: Date): boolean {
   const since = now.getTime() - HUMAN_TAKEOVER_MS;
-  return outRows.some((r) => Date.parse(r.sent_at) >= since && !isBotEcho(r, sends));
+  return outRows.some((r) => Date.parse(r.sent_at) >= since && !isBotEcho(r, sends) && !isMetaAutomationEcho(r.text));
 }
 
 // ── the decision ───────────────────────────────────────────────────────────
