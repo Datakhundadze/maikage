@@ -335,6 +335,10 @@ KA — წესი:
 - „Oversize-ზე წინ ლოგო და უკან სახელი" → ორმხრივი, უკან პატარა წარწერა → 80₾ ✅
 - „Oversize-ზე წინ ლოგო და უკან დიდი სურათი" → ორმხრივი, დიდი უკანა პრინტი → 85₾ ✅
 - „GILDAN-ზე მხოლოდ უკან პრინტი" → ცალმხრივი, 35₾ ✅ (არა 50₾)
+- „ზურგზე დიდი ლომი შავ GILDAN ჰუდიზე" (წინ არაფერი) → ცალმხრივი, 80₾ ✅ (არა 95₾ — „დიდი" ორმხრივს არ ნიშნავს)
+- „წინ გულთან სახელი, ზურგზე დიდი ნომერი, შავ GILDAN მაისურზე" → 35₾ + 15₾ = 50₾ ✅
+- „წინ დიდი ფოტო, ზურგზე პატარა სახელი, GILDAN მაისური" → 35₾ + 10₾ = 45₾ ✅
+- ორმხრივის ფასი ყოველთვის = ᲘᲛᲐᲕᲔ მოდელის ცალმხრივი ფასი (§2) + 10₾ ან +15₾. არასოდეს აიღო სხვა მოდელის ფასი.
 
 EN — rule:
 - Single-sided = print on ONE side only — front only OR back only. In both cases the base price applies, with no surcharge.
@@ -350,6 +354,8 @@ EN — rule:
 Examples:
 - "Name on the back of a grey Oversize" → single-sided, 70₾ ✅
 - "Print on the back of a GILDAN" → single-sided, 35₾ ✅ (not 50₾)
+- "Big lion on the back of a black GILDAN hoodie" (nothing on the front) → single-sided, 80₾ ✅ ("big" does not make it two-sided)
+- Two-sided price = the SAME model's single-sided price (§2) + 10₾ or +15₾. Never borrow another model's price.
 - "Logo on front and name on back" (Oversize) → two-sided, small back print → 80₾ ✅
 - "Logo on front and a big image on back" (Oversize) → two-sided, big back print → 85₾ ✅
 
