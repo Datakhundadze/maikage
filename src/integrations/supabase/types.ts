@@ -1363,6 +1363,57 @@ export type Database = {
         }
         Relationships: []
       }
+      social_order_drafts: {
+        Row: {
+          cart_id: string | null
+          channel: string
+          conversation_key: string
+          created_at: string
+          customer: Json
+          delivery_price: number | null
+          delivery_type: string | null
+          id: string
+          items: Json
+          lines: Json | null
+          receipt: Json | null
+          status: string
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          cart_id?: string | null
+          channel: string
+          conversation_key: string
+          created_at?: string
+          customer?: Json
+          delivery_price?: number | null
+          delivery_type?: string | null
+          id?: string
+          items?: Json
+          lines?: Json | null
+          receipt?: Json | null
+          status?: string
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cart_id?: string | null
+          channel?: string
+          conversation_key?: string
+          created_at?: string
+          customer?: Json
+          delivery_price?: number | null
+          delivery_type?: string | null
+          id?: string
+          items?: Json
+          lines?: Json | null
+          receipt?: Json | null
+          status?: string
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       spend_settings: {
         Row: {
           id: boolean
