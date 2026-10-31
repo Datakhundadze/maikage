@@ -54,7 +54,8 @@ export interface AutoReplyDeps {
   now: () => Date;
   sleep: (ms: number) => Promise<void>;
   tokenSet: boolean;
-  loadSettings: () => Promise<{ enabled: boolean; schedule: string } | null>;
+  /** allowKeys: when non-empty, the bot answers ONLY these conversation keys (testing). */
+  loadSettings: () => Promise<{ enabled: boolean; schedule: string; allowKeys?: string[] } | null>;
   isHandedOff: (conversationKey: string) => Promise<boolean>;
   insertHandoff: (conversationKey: string, reason: string) => Promise<void>;
   /** Last `limit` messages, oldest-first. */
@@ -80,6 +81,9 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
     const settings = await deps.loadSettings();
     if (!settings || settings.enabled !== true) return "disabled";
     if (!isScheduleActive(settings.schedule, deps.now())) return "outside_schedule";
+    if (Array.isArray(settings.allowKeys) && settings.allowKeys.length > 0 && !settings.allowKeys.includes(key)) {
+      return "not_allowlisted";
+    }
     if (!deps.tokenSet) {
       if (!tokenWarned) {
         tokenWarned = true;
