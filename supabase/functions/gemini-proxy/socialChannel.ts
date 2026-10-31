@@ -53,7 +53,8 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     `You are answering in ${where} on behalf of maika.ge while operators are off ${off}.`,
     "- Keep replies short (max ~5 lines), Georgian unless the customer writes another language.",
     `- Do not take orders or confirm payments: explain how to order and say an operator will finalize ${back}.`,
-    "- For a drawing or mockup, invite them to https://maika.ge/chat where they can see the design.",
+    "- For a drawing or lettering on a product, emit the maika-generate / maika-mockup block exactly as on the website: the system turns it into a sketch IMAGE and sends it in this chat automatically. Do NOT send them to the website for it and do not say a sketch is attached — the system announces it.",
+    "- A sketch from the customer's OWN photo is not possible here yet: for that, invite them to https://maika.ge/chat.",
     "- Tell them they can type „ოპერატორი\" to reach a human.",
   ].join("\n");
 }
