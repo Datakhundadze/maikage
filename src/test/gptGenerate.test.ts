@@ -128,7 +128,8 @@ describe("gptGeneratePrompt (pure)", () => {
 
   it("always appends the safety line; the transparent line only for transparent output", () => {
     expect(GPT_SAFETY_LINE).toBe("No blood, gore, wounds or graphic violence. Keep it tasteful and print-friendly for apparel.");
-    expect(GPT_TRANSPARENT_LINE).toBe("Background: fully transparent (no white backdrop).");
+    expect(GPT_TRANSPARENT_LINE).toMatch(/^Background: fully transparent \(no white backdrop\)\. /);
+    expect(GPT_TRANSPARENT_LINE).toContain("stay OPAQUE white");
     const t = buildGptGeneratePrompt("P", { hasText: true, transparent: true });
     expect(t).toBe(`P\n\n${GPT_SAFETY_LINE}\n${GPT_TRANSPARENT_LINE}`);
     const o = buildGptGeneratePrompt("P", { hasText: true, transparent: false });
