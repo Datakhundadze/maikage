@@ -29,11 +29,11 @@ export const GPT_TEXT_ONLY_IF_ASKED =
 export const GPT_SAFETY_LINE =
   "No blood, gore, wounds or graphic violence. Keep it tasteful and print-friendly for apparel.";
 
-export const GPT_TRANSPARENT_LINE = "Background: fully transparent (no white backdrop).";
+export const GPT_TRANSPARENT_LINE = "Background: fully transparent (no white backdrop). White parts that belong to the design itself (a white flag field, white lettering, highlights) stay OPAQUE white — only the empty surroundings are transparent.";
 
 /** Owner 2026-10-31: a flag / coat of arms prints as a clean flat graphic. */
 export const GPT_FLAT_FLAG_LINE =
-  "The flag / coat of arms / emblem must be a FLAT graphic seen straight on: a clean rectangle (or the emblem's exact shape), NO waving, NO folds, NO ripples, NO fabric texture, NO pole, NO shadow, NO perspective — crisp flat vector colours with exact proportions.";
+  "The flag / coat of arms / emblem must be a FLAT graphic seen straight on: a clean rectangle (or the emblem's exact shape), NO waving, NO folds, NO ripples, NO fabric texture, NO pole, NO shadow, NO perspective — crisp flat vector colours with exact proportions. Its WHITE field is part of the flag: paint it OPAQUE white (#FFFFFF, full alpha), never transparent.";
 export const FLAG_RE = /დროშ|გერბ|ემბლემ|\bflags?\b|coat of arms|\bemblem/i;
 
 type PromptPart = { type?: string; text?: unknown };
