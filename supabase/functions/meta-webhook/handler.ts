@@ -49,6 +49,7 @@
 
 import { redactPii } from "./redactPii.ts";
 import { recordReferrals, type SocialAdReferralRow } from "./referrals.ts";
+import { extractContacts, hasContacts, type CapturedContacts } from "./orderContacts.ts";
 
 export type Channel = "messenger" | "instagram";
 export type Direction = "in" | "out";
@@ -88,11 +89,18 @@ export interface StoreResult {
   error: string | null;
 }
 
+/**
+ * DM orders (add-only, 2026-11-01): phone / email found in the RAW text of an
+ * inbound message, keyed by its mid. In memory only — never on the row, never
+ * logged; index.ts hands it to the bot run (orderContacts.ts).
+ */
+export type ContactsByMid = Map<string, CapturedContacts>;
+
 export interface HandlerDeps {
   appSecret: string;
   verifyToken: string;
   /** Insert with ON CONFLICT (meta_message_id) DO NOTHING semantics. */
-  store: (rows: SocialMessageRow[]) => Promise<StoreResult>;
+  store: (rows: SocialMessageRow[], contacts?: ContactsByMid) => Promise<StoreResult>;
   /** Optional, best-effort writer for social_ad_referrals (see referrals.ts). */
   storeReferrals?: (rows: SocialAdReferralRow[]) => Promise<void>;
   log?: (level: "info" | "warn" | "error", msg: string) => void;
@@ -137,6 +145,8 @@ export interface ParseOutcome {
   ignored: Record<string, number>;
   /** Events that could not be read at all. */
   malformed: number;
+  /** Raw-text phones / emails of inbound messages (see ContactsByMid). */
+  contacts: ContactsByMid;
 }
 
 function channelFor(object: unknown): Channel | null {
@@ -150,7 +160,7 @@ function channelFor(object: unknown): Channel | null {
  * Returns { row } to store, { ignore: kind } to count, or throws on a shape
  * that cannot be read (the caller counts it as malformed and moves on).
  */
-function eventToRow(channel: Channel, entryId: string | null, ev: unknown): { row: SocialMessageRow } | { ignore: string } {
+function eventToRow(channel: Channel, entryId: string | null, ev: unknown): { row: SocialMessageRow; contacts?: CapturedContacts } | { ignore: string } {
   if (!isObj(ev)) throw new Error("event is not an object");
   const message = ev.message;
   if (!isObj(message)) {
@@ -189,7 +199,11 @@ function eventToRow(channel: Channel, entryId: string | null, ev: unknown): { ro
     }
   }
 
+  // Captured BEFORE redactPii masks them (customer messages only).
+  const contacts = !isEcho && rawText !== null ? extractContacts(rawText) : null;
+
   return {
+    ...(contacts && hasContacts(contacts) ? { contacts } : {}),
     row: {
       channel,
       page_id: pageId,
@@ -207,7 +221,7 @@ function eventToRow(channel: Channel, entryId: string | null, ev: unknown): { ro
 
 /** Parse a whole delivery. Never throws: bad events are counted, not fatal. */
 export function parseDelivery(body: unknown): ParseOutcome {
-  const out: ParseOutcome = { rows: [], ignored: {}, malformed: 0 };
+  const out: ParseOutcome = { rows: [], ignored: {}, malformed: 0, contacts: new Map() };
   const count = (k: string) => { out.ignored[k] = (out.ignored[k] ?? 0) + 1; };
   if (!isObj(body)) { out.malformed += 1; return out; }
   const channel = channelFor(body.object);
@@ -225,8 +239,10 @@ export function parseDelivery(body: unknown): ParseOutcome {
     for (const ev of entry.messaging) {
       try {
         const r = eventToRow(channel, entryId, ev);
-        if ("row" in r) out.rows.push(r.row);
-        else count(r.ignore);
+        if ("row" in r) {
+          out.rows.push(r.row);
+          if (r.contacts && !out.contacts.has(r.row.meta_message_id)) out.contacts.set(r.row.meta_message_id, r.contacts);
+        } else count(r.ignore);
       } catch {
         out.malformed += 1;
       }
@@ -289,7 +305,7 @@ export async function handleMetaWebhook(req: Request, deps: HandlerDeps): Promis
   if (deps.storeReferrals) await recordReferrals(body, deps.storeReferrals, log);
   if (parsed.rows.length === 0) return text(200, "ok");
 
-  const stored = await deps.store(parsed.rows);
+  const stored = parsed.contacts.size > 0 ? await deps.store(parsed.rows, parsed.contacts) : await deps.store(parsed.rows);
   if (stored.error) {
     // The only failure worth a Meta retry: the bytes were fine, the write was not.
     log("error", `store failed: ${stored.error}`);

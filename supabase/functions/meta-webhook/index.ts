@@ -22,6 +22,11 @@
 // 2019 / 2018). PNG decoding is pngDecode.ts. Images go to the public
 // "designs" bucket under social-sketches/. Run the SQL in
 // migrations/20261031200000_social_bot_sketch_kind.sql BEFORE deploying.
+// DM ORDERS (add-only, 2026-11-01, orderFlow.ts): sketches → social_order_drafts,
+// a confirmed ```maika-order → orders + order_attribution rows (service role),
+// print files → designs/social-orders/<hash>/. Run the SQL in
+// migrations/20261101120000_social_order_drafts.sql BEFORE deploying; until
+// then the draft read fails and the bot behaves exactly as before.
 // PHOTO SKETCHES (add-only, 2026-10-31): a block with "photo": N places the
 // customer's own photo N; it is read from the private social-uploads bucket
 // with the service role (sketchDeps.downloadUpload) and never made public —
@@ -53,7 +58,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { handleMetaWebhook, type SocialAttachment, type SocialMessageRow, type StoreResult } from "./handler.ts";
+import { handleMetaWebhook, type ContactsByMid, type SocialAttachment, type SocialMessageRow, type StoreResult } from "./handler.ts";
 import {
   MAX_IMAGE_BYTES,
   SOCIAL_UPLOAD_BUCKET,
@@ -70,6 +75,9 @@ import { countSketchRows, type SketchDeps } from "./sketchFlow.ts";
 import { loadSketchFont, sha256Hex } from "./sketchFont.ts";
 import type { FontLike } from "./sketchRaster.ts";
 import type { RgbaImage } from "./pngDecode.ts";
+import type { OrderDeps } from "./orderFlow.ts";
+import { OPEN_DRAFT_STATUSES, type DraftItem, type OrderDraft } from "./orderDraft.ts";
+import { PRINT_BUCKET, type PrintDeps } from "./printFile.ts";
 import jpeg from "npm:jpeg-js@0.4.4";
 import opentype from "npm:opentype.js@1.3.4";
 
@@ -94,7 +102,7 @@ if (!META_APP_SECRET || !META_VERIFY_TOKEN) {
  * a time so a single bad row cannot take the rest of the batch with it, and
  * report an error only if a row still cannot be written.
  */
-async function store(rows: SocialMessageRow[]): Promise<StoreResult> {
+async function store(rows: SocialMessageRow[], contacts?: ContactsByMid): Promise<StoreResult> {
   if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return { inserted: 0, error: "service role not configured" };
   const admin = makeAdmin();
   const table = () => admin.from("social_messages");
@@ -103,7 +111,7 @@ async function store(rows: SocialMessageRow[]): Promise<StoreResult> {
     .upsert(rows, { onConflict: "meta_message_id", ignoreDuplicates: true })
     .select("meta_message_id");
   if (!batch.error) {
-    afterStore(admin, rows, (batch.data ?? []).map((r: { meta_message_id: string }) => r.meta_message_id));
+    afterStore(admin, rows, (batch.data ?? []).map((r: { meta_message_id: string }) => r.meta_message_id), contacts);
     return { inserted: batch.data?.length ?? 0, error: null };
   }
 
@@ -121,7 +129,7 @@ async function store(rows: SocialMessageRow[]): Promise<StoreResult> {
       for (const r of one.data ?? []) newIds.push((r as { meta_message_id: string }).meta_message_id);
     }
   }
-  afterStore(admin, rows, newIds);
+  afterStore(admin, rows, newIds, contacts);
   if (failures.length > 0) {
     console.error(`[meta-webhook] ${failures.length} row(s) could not be stored: ${failures.join(" | ")}`);
     return { inserted, error: `${failures.length} row(s) failed` };
@@ -211,7 +219,7 @@ const PURGE_EVERY_MS = 6 * 60 * 60 * 1000;
 let lastPurgeAt = 0;
 
 /** Copy the photos of rows inserted just now; now and then, delete old ones. */
-function afterStore(admin: Admin, rows: SocialMessageRow[], newIds: string[]): void {
+function afterStore(admin: Admin, rows: SocialMessageRow[], newIds: string[], contacts?: ContactsByMid): void {
   const fresh = new Set(newIds);
   const withPhotos = rows.filter((r) => fresh.has(r.meta_message_id) && mirrorTargets(r.attachments).length > 0);
   const d = deps(admin);
@@ -235,7 +243,8 @@ function afterStore(admin: Admin, rows: SocialMessageRow[], newIds: string[]): v
   const candidates = rows.filter((r) => fresh.has(r.meta_message_id) && isBotCandidate(r));
   if (candidates.length > 0) {
     const ar = autoReplyDeps(admin);
-    for (const r of candidates) runInBackground(runAutoReply(r, ar), "auto-reply");
+    // Raw-text phone / email (orderContacts.ts) ride along in memory only.
+    for (const r of candidates) runInBackground(runAutoReply(r, ar, { contacts: contacts?.get(r.meta_message_id) }), "auto-reply");
   }
 }
 
@@ -318,6 +327,7 @@ async function askBot(
   conversationKey: string,
   history: { role: "user" | "assistant"; content: string }[],
   schedule: string,
+  opts?: { orders?: boolean },
 ): Promise<string | null> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
@@ -325,7 +335,8 @@ async function askBot(
       headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "faq-chat",
-        params: { messages: history, lang: "ka", session_id: conversationKey, channel, schedule },
+        // dm_orders: the DM order rules (socialChannel.ts) — only when the draft table is readable.
+        params: { messages: history, lang: "ka", session_id: conversationKey, channel, schedule, ...(opts?.orders ? { dm_orders: true } : {}) },
       }),
       signal: AbortSignal.timeout(60_000),
     });
@@ -423,10 +434,110 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
       const { error } = await admin.from("social_bot_replies").update({ meta_message_id: messageId }).eq("id", id);
       warn("send record update", error);
     },
-    askBot: (channel, key, history, schedule) => askBot(channel, key, history, schedule),
+    askBot: (channel, key, history, schedule, opts) => askBot(channel, key, history, schedule, opts),
     send: graphSend,
     log,
     sketch: sketchDeps(admin),
+    order: orderDeps(admin),
+  };
+}
+
+// ── DM orders (add-only, 2026-11-01) ───────────────────────────────────────
+//
+// public.social_order_drafts (migration 20261101120000_social_order_drafts.sql,
+// RUN IT BEFORE DEPLOYING — without it loadDraft answers "error" and the bot
+// behaves exactly as before: no draft, no order rules). orders and
+// order_attribution are written with the service role (RLS bypassed), like
+// the payment functions do. No customer field is ever logged.
+
+const DRAFT_COLUMNS =
+  "id, conversation_key, channel, status, items, lines, delivery_type, delivery_price, total, customer, receipt, cart_id, created_at, updated_at";
+
+function toDraft(r: Record<string, unknown>): OrderDraft {
+  return {
+    ...(r as unknown as OrderDraft),
+    items: Array.isArray(r.items) ? (r.items as DraftItem[]) : [],
+    lines: Array.isArray(r.lines) ? (r.lines as OrderDraft["lines"]) : null,
+    customer: r.customer && typeof r.customer === "object" ? (r.customer as OrderDraft["customer"]) : {},
+    delivery_price: r.delivery_price === null || r.delivery_price === undefined ? null : Number(r.delivery_price),
+    total: r.total === null || r.total === undefined ? null : Number(r.total),
+  };
+}
+
+function orderDeps(admin: Admin): OrderDeps {
+  const drafts = () => admin.from("social_order_drafts");
+  const loadDraft = async (key: string): Promise<OrderDraft | null | "error"> => {
+    const { data, error } = await drafts()
+      .select(DRAFT_COLUMNS)
+      .eq("conversation_key", key)
+      .in("status", OPEN_DRAFT_STATUSES)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      log("warn", `order draft read failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+      return "error";
+    }
+    return data ? toDraft(data as Record<string, unknown>) : null;
+  };
+  return {
+    loadDraft,
+    createDraft: async (row) => {
+      const { data, error } = await drafts()
+        .insert({ conversation_key: row.conversation_key, channel: row.channel, status: "collecting", items: row.items ?? [], customer: row.customer ?? {} })
+        .select(DRAFT_COLUMNS)
+        .maybeSingle();
+      if (!error && data) return toDraft(data as Record<string, unknown>);
+      // 23505 = the one-open-draft index: another run opened it a moment ago.
+      if (error && error.code !== "23505") log("warn", `order draft insert failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+      const again = await loadDraft(row.conversation_key);
+      return again === "error" ? null : again;
+    },
+    updateDraft: async (id, patch, guard) => {
+      let q = drafts().update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+      if (guard?.status) q = q.eq("status", guard.status);
+      if (guard?.cartIdNull) q = q.is("cart_id", null);
+      const { data, error } = await q.select("id");
+      if (error) {
+        log("warn", `order draft update failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+        return false;
+      }
+      return Array.isArray(data) && data.length > 0;
+    },
+    insertOrders: async (rows) => {
+      const { error } = await admin.from("orders").upsert(rows, { onConflict: "id", ignoreDuplicates: true });
+      if (error) log("error", `order insert failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+      return !error;
+    },
+    insertAttribution: async (rows) => {
+      const { error } = await admin.from("order_attribution").upsert(rows, { onConflict: "order_id", ignoreDuplicates: true });
+      if (error) log("warn", `order attribution insert failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+      return !error;
+    },
+    newId: () => crypto.randomUUID(),
+    hashKey: (s: string) => sha256Hex(s),
+    print: printDeps(admin),
+  };
+}
+
+function printDeps(admin: Admin): PrintDeps {
+  const sk = sketchDeps(admin);
+  return {
+    now: () => Date.now(),
+    loadFont: sk.loadFont,
+    decodeJpeg: sk.decodeJpeg,
+    cacheGet: sk.cacheGet,
+    downloadUpload: sk.downloadUpload,
+    hashKey: (s: string) => sha256Hex(s),
+    upload: async (path: string, bytes: Uint8Array, contentType: string): Promise<string | null> => {
+      const bucket = admin.storage.from(PRINT_BUCKET);
+      const { error } = await bucket.upload(path, bytes, { contentType, upsert: true });
+      if (error) {
+        log("warn", `order print upload failed: ${error.message}`);
+        return null;
+      }
+      return bucket.getPublicUrl(path).data.publicUrl ?? null;
+    },
   };
 }
 

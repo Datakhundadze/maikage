@@ -381,13 +381,16 @@ export async function runSketch(
   ctx: SketchContext,
   base: SketchBaseDeps,
   deps: SketchDeps,
-  opts: { linkOnFailure?: boolean } = {},
+  opts: { linkOnFailure?: boolean; onSent?: (url: string, messageId: string | null) => void } = {},
 ): Promise<string> {
   const startedAt = base.now().getTime();
   const deadline = startedAt + ctx.budgetMs;
   const now = () => base.now().getTime();
   let timedOut = false;
   let sendingImage = false;
+  // DM orders (add-only, 2026-11-01): the sent sketch's URL / mid for the draft.
+  let sentUrl = "";
+  let sentMid: string | null = null;
 
   const work = (async (): Promise<string> => {
     // A cached design costs nothing: it counts as a mockup, not a generation.
@@ -405,6 +408,8 @@ export async function runSketch(
     sendingImage = true;
     const res = await deps.sendImage(ctx.channel, ctx.customerId, url);
     if (!res.ok) throw new SketchError(`image_send_failed status=${res.status} code=${res.code}`);
+    sentUrl = url;
+    sentMid = res.messageId ?? null;
     if (res.messageId) await base.markSent(recordId, res.messageId);
     return "sent";
   })();
@@ -433,6 +438,9 @@ export async function runSketch(
 
   if (outcome === "sent") {
     base.log("info", `sketch sent ${ctx.channel}: ${ctx.plan.kind} in ${now() - startedAt} ms`);
+    if (opts.onSent && sentUrl) {
+      try { opts.onSent(sentUrl, sentMid); } catch { /* the draft is best-effort */ }
+    }
     return "sent";
   }
   base.log("warn", `sketch failed ${ctx.channel} (${ctx.plan.kind}): ${outcome}`);

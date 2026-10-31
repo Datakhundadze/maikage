@@ -41,7 +41,27 @@ export function socialSchedule(v: unknown): SocialSchedule {
   return v === "off_hours" ? "off_hours" : "sunday";
 }
 
-export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule): string {
+/**
+ * DM ORDERS (add-only, 2026-11-01). Only when the webhook sends
+ * params.dm_orders = true (its draft table is readable): these lines replace
+ * the "do not take orders" line. Without the flag the block is byte-identical
+ * to before. The webhook (meta-webhook/orderFlow.ts) reads the maika-order
+ * block, prices it in code and writes every number the customer sees.
+ */
+export function socialOrderRules(back: string): string[] {
+  return [
+    `- Never confirm a payment or say an order is paid: an operator checks bank transfers ${back}.`,
+    "- ORDERS HERE: you can take an order for what was sketched in this chat. Our side of the history lists the sketches as „[ესკიზი N: …]\" — N is the item number; the front and back of one garment are ONE item. Never copy these tags (or „[შეკვეთა #…]\") into your reply.",
+    "  · When they want to order, ask in ONE short message for whatever is still missing: which sketch(es), the size of each (only sizes that brand has), how many, delivery (pickup free / courier Tbilisi 8 ₾ / courier regions 12 ₾), first and last name, phone, and the address for a courier. A phone shown as [phone:***NN] in the history means we HAVE it — never ask for it again.",
+    "  · As soon as everything is known, reply with ONLY this block (the system writes the summary with the exact prices — never write prices, totals or a summary yourself):",
+    "    ```maika-order\n    {\"confirm\":false,\"items\":[{\"sketch\":1,\"size\":\"M\",\"qty\":1}],\"delivery\":\"courier_tbilisi\",\"name\":\"სახელი გვარი\",\"address\":\"ქალაქი, ქუჩა, ნომერი\"}\n    ```",
+    "    delivery is pickup, courier_tbilisi or courier_outside; address only for a courier; one entry per sketch + size (two sizes of one sketch → two entries). Only sketches they want — not every sketch shown.",
+    "  · When they confirm THAT summary („ვადასტურებ\", „კი\", „დიახ\"), reply with ONLY ```maika-order\n    {\"confirm\":true}\n    ``` — the system creates the order from the summary it showed and sends the bank transfer details. Never say yourself that the order is placed. Any change instead → the full block with the change and \"confirm\":false.",
+    "  · Never emit maika-order together with maika-mockup / maika-generate. „[შეკვეთა #… ელოდება გადარიცხვას]\" in the history = that order exists: ask them to send the transfer receipt here; changes to it go through the operator. A photo sent after that without other words is most likely the receipt: thank them and say the operator will check it — NO sketch block for it.",
+  ];
+}
+
+export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule, opts?: { orders?: boolean }): string {
   const where = channel === "instagram" ? "Instagram" : "Facebook Messenger";
   const off = schedule === "sunday" ? "(Sunday)" : "(outside working hours)";
   const back = schedule === "sunday"
@@ -52,7 +72,9 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "SOCIAL DM MODE",
     `You are answering in ${where} on behalf of maika.ge while operators are off ${off}.`,
     "- Keep replies short (max ~5 lines), Georgian unless the customer writes another language.",
-    `- Do not take orders or confirm payments: explain how to order and say an operator will finalize ${back}.`,
+    ...(opts?.orders
+      ? socialOrderRules(back)
+      : [`- Do not take orders or confirm payments: explain how to order and say an operator will finalize ${back}.`]),
     "- For a drawing or lettering on a product, emit the maika-generate / maika-mockup block exactly as on the website: the system turns it into a sketch IMAGE and sends it in this chat automatically. Do NOT send them to the website for it and do not say a sketch is attached — the system announces it.",
     "- TWO SIDES HERE („წინ X, უკან Y\"): emit BOTH blocks in the SAME reply, one per side, each with its own \"side\" — the system sends a sketch of each. This OVERRIDES the website rule of one side per reply: never ask them to write „წინაც\" or to confirm the second side.",
     "- Never write yourself that a sketch is being prepared or attached, never „[ფოტო]\", never „ესკიზი 👆\" — the system adds its own line. No \"write to us to change or order\" line either.",
@@ -76,12 +98,34 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
  * Insert the block before the final "\n\nCALLER: " line. With channel null the
  * content is returned unchanged (the website path).
  */
-export function withSocialBlock(systemContent: string, channel: SocialChannel | null, schedule: SocialSchedule = "sunday"): string {
+export function withSocialBlock(
+  systemContent: string,
+  channel: SocialChannel | null,
+  schedule: SocialSchedule = "sunday",
+  opts?: { orders?: boolean },
+): string {
   if (!channel) return systemContent;
-  const block = socialPromptBlock(channel, schedule);
+  const block = socialPromptBlock(channel, schedule, opts);
   const at = systemContent.lastIndexOf("\n\nCALLER: ");
   if (at === -1) return `${systemContent}\n\n${block}`;
   return `${systemContent.slice(0, at)}\n\n${block}${systemContent.slice(at)}`;
+}
+
+/** The webhook's DM order flag; only meaningful for a trusted social channel. */
+export function socialOrdersOn(channel: SocialChannel | null, dmOrders: unknown): boolean {
+  return !!channel && dmOrders === true;
+}
+
+/**
+ * chat_logs copy of a reply (add-only, 2026-11-01): the "name" / "address"
+ * values inside a ```maika-order block are replaced with "***". They live in
+ * the admin-only order draft; the log keeps the rest of the block. Text
+ * without such a block → the same string.
+ */
+export function redactOrderBlockForLog(text: string): string {
+  if (!text || !/```maika-order(?![\w-])/.test(text)) return text;
+  return text.replace(/```maika-order(?![\w-])[\s\S]*?(```|$)/g, (fence) =>
+    fence.replace(/("(?:name|address)"\s*:\s*)"(?:[^"\\]|\\.)*"/g, '$1"***"'));
 }
 
 // ── DM sketch (add-only, 2026-10-31) ───────────────────────────────────────
