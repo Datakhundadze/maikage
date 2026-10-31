@@ -222,6 +222,36 @@ function afterStore(admin: Admin, rows: SocialMessageRow[], newIds: string[]): v
 // ── auto-reply bot ─────────────────────────────────────────────────────────
 
 const GRAPH_SEND_URL = "https://graph.facebook.com/v21.0/me/messages";
+const MAIKA_PAGE_ID = "159657880717306";
+
+/**
+ * META_PAGE_TOKEN may hold either a Page token or a USER / SYSTEM-USER token
+ * (Business Settings → System users, never expires). The Send API needs a
+ * Page token, so a user-type token is exchanged once per isolate via
+ * GET me/accounts. A Page token makes me/accounts fail → used as-is.
+ * Tokens travel only in the Authorization header and are never logged.
+ */
+let cachedPageToken: string | null = null;
+async function pageToken(): Promise<string> {
+  if (cachedPageToken) return cachedPageToken;
+  try {
+    const res = await fetch("https://graph.facebook.com/v21.0/me/accounts?fields=id,access_token&limit=100", {
+      headers: { Authorization: `Bearer ${META_PAGE_TOKEN}` },
+      signal: AbortSignal.timeout(15_000),
+    });
+    const data = await res.json().catch(() => null) as { data?: { id?: unknown; access_token?: unknown }[] } | null;
+    const page = Array.isArray(data?.data) ? data!.data!.find((p) => p?.id === MAIKA_PAGE_ID) : undefined;
+    if (res.ok && page && typeof page.access_token === "string" && page.access_token) {
+      cachedPageToken = page.access_token;
+      console.log("[meta-webhook] page token resolved from a user-type token");
+      return cachedPageToken;
+    }
+  } catch {
+    /* fall through: use the secret as a Page token */
+  }
+  cachedPageToken = META_PAGE_TOKEN;
+  return cachedPageToken;
+}
 
 /**
  * Graph Send API. Works for Messenger PSIDs and, with the same Page token,
@@ -233,7 +263,7 @@ async function graphSend(channel: "messenger" | "instagram", recipientId: string
   try {
     const res = await fetch(GRAPH_SEND_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${META_PAGE_TOKEN}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${await pageToken()}`, "Content-Type": "application/json" },
       body: JSON.stringify(sendBody(channel, recipientId, text)),
       signal: AbortSignal.timeout(20_000),
     });
@@ -241,6 +271,7 @@ async function graphSend(channel: "messenger" | "instagram", recipientId: string
       | { message_id?: unknown; error?: { code?: unknown; error_subcode?: unknown; type?: unknown } }
       | null;
     if (!res.ok) {
+      if (res.status === 401) cachedPageToken = null; // re-resolve next time
       const err = data?.error;
       const code = err ? `${String(err.code ?? "?")}/${String(err.error_subcode ?? "-")}/${String(err.type ?? "-")}` : "no_body";
       return { ok: false, status: res.status, code };
