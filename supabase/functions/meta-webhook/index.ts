@@ -13,6 +13,16 @@
 //                      the bot logs once and stays silent; the mirror is unaffected.
 // Their values are never logged.
 //
+// SKETCH IMAGES (add-only, 2026-10-31). When the bot's reply carries a
+// maika-generate / maika-mockup (text) block, the design is rendered on the
+// product server-side and sent as an image (sketchFlow.ts). Libraries are
+// npm packages pinned to exact versions: jpeg-js@0.4.4 (JPEG encode/decode,
+// no dependencies) and opentype.js@1.3.4 (TTF outlines; its two caret deps,
+// tiny-inflate and string.prototype.codepointat, have had no release since
+// 2019 / 2018). PNG decoding is pngDecode.ts. Images go to the public
+// "designs" bucket under social-sketches/. Run the SQL in
+// migrations/20261031200000_social_bot_sketch_kind.sql BEFORE deploying.
+//
 // AUTO-REPLY (add-only). After a NEW inbound customer row is stored, the bot
 // run (autoReply.ts) is scheduled in the background like the photo copy. It
 // reads public.social_bot_settings first; with enabled = false (the default)
@@ -50,8 +60,14 @@ import {
 } from "./media.ts";
 import type { SocialAdReferralRow } from "./referrals.ts";
 import { redactPii } from "./redactPii.ts";
-import { isBotCandidate, sendBody, type BotSendRecord, type OutRow, type ThreadRow } from "./botReply.ts";
+import { isBotCandidate, sendBody, sendImageBody, type BotSendRecord, type OutRow, type ThreadRow } from "./botReply.ts";
 import { runAutoReply, scrubSecrets, type AutoReplyDeps, type SendResult } from "./autoReply.ts";
+import { countSketchRows, type SketchDeps } from "./sketchFlow.ts";
+import { loadSketchFont, sha256Hex } from "./sketchFont.ts";
+import type { FontLike } from "./sketchRaster.ts";
+import type { RgbaImage } from "./pngDecode.ts";
+import jpeg from "npm:jpeg-js@0.4.4";
+import opentype from "npm:opentype.js@1.3.4";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -260,11 +276,16 @@ async function pageToken(): Promise<string> {
  * message or log line can carry it.
  */
 async function graphSend(channel: "messenger" | "instagram", recipientId: string, text: string): Promise<SendResult> {
+  return await postGraph(sendBody(channel, recipientId, text));
+}
+
+/** The Send API call itself, for a text (graphSend) or an image (graphSendImage) body. */
+async function postGraph(body: Record<string, unknown>): Promise<SendResult> {
   try {
     const res = await fetch(GRAPH_SEND_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${await pageToken()}`, "Content-Type": "application/json" },
-      body: JSON.stringify(sendBody(channel, recipientId, text)),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(20_000),
     });
     const data = await res.json().catch(() => null) as
@@ -280,6 +301,11 @@ async function graphSend(channel: "messenger" | "instagram", recipientId: string
   } catch (e) {
     return { ok: false, status: 0, code: e instanceof Error ? e.name : "fetch_error" };
   }
+}
+
+/** A sketch image by its public URL. */
+async function graphSendImage(channel: "messenger" | "instagram", recipientId: string, url: string): Promise<SendResult> {
+  return await postGraph(sendImageBody(channel, recipientId, url));
 }
 
 /** gemini-proxy faq-chat, server to server, as the trusted social channel. */
@@ -358,7 +384,7 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     loadOutRows: async (key, sinceIso) => {
       const { data, error } = await admin
         .from("social_messages")
-        .select("meta_message_id, text, sent_at")
+        .select("meta_message_id, text, sent_at, attachments")
         .eq("conversation_key", key)
         .eq("direction", "out")
         .gte("sent_at", sinceIso)
@@ -396,6 +422,111 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     askBot: (channel, key, history, schedule) => askBot(channel, key, history, schedule),
     send: graphSend,
     log,
+    sketch: sketchDeps(admin),
+  };
+}
+
+// ── sketch images ──────────────────────────────────────────────────────────
+
+const SKETCH_BUCKET = "designs";
+const MAX_SKETCH_INPUT_BYTES = 15 * 1024 * 1024;
+
+async function fetchBytes(url: string, timeoutMs: number): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) {
+      log("warn", `sketch: fetch ${new URL(url).host} HTTP ${res.status}`);
+      return null;
+    }
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    return bytes.length > 0 && bytes.length <= MAX_SKETCH_INPUT_BYTES ? bytes : null;
+  } catch (e) {
+    log("warn", `sketch: fetch ${new URL(url).host} failed: ${e instanceof Error ? e.name : "error"}`);
+    return null;
+  }
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/** gemini-proxy generate-design-gpt as the trusted social call; the PNG bytes. */
+async function generateSketchDesign(
+  channel: "messenger" | "instagram",
+  conversationKey: string,
+  params: Record<string, unknown>,
+  timeoutMs: number,
+): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "generate-design-gpt", params: { ...params, channel, session_id: conversationKey } }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const data = await res.json().catch(() => null) as { image?: unknown; code?: unknown } | null;
+    if (!res.ok) {
+      log("error", `sketch: generate-design-gpt HTTP ${res.status} code=${String(data?.code ?? "-")}`);
+      return null;
+    }
+    const image = typeof data?.image === "string" ? data.image : "";
+    const m = /^data:image\/[a-z+.-]+;base64,(.+)$/i.exec(image);
+    if (m) return base64ToBytes(m[1]);
+    if (/^https:\/\//i.test(image)) return await fetchBytes(image, 20_000);
+    log("error", "sketch: generate-design-gpt returned no image");
+    return null;
+  } catch (e) {
+    log("error", `sketch: generate-design-gpt call failed: ${e instanceof Error ? e.name : "error"}`);
+    return null;
+  }
+}
+
+function sketchDeps(admin: Admin): SketchDeps {
+  return {
+    countSketches: async (key, sinceIso) => {
+      const { data, error } = await admin
+        .from("social_bot_replies")
+        .select("text")
+        .eq("conversation_key", key)
+        .eq("kind", "sketch")
+        .gte("created_at", sinceIso)
+        .limit(200);
+      if (error) {
+        log("warn", `sketch: count read failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+        return null;
+      }
+      return countSketchRows((data ?? []) as { text: string | null }[]);
+    },
+    generateDesign: generateSketchDesign,
+    fetchImage: fetchBytes,
+    loadFont: () =>
+      loadSketchFont({
+        fetchBytes: (url) => fetchBytes(url, 15_000),
+        parse: (buf) => opentype.parse(buf) as unknown as FontLike,
+        log,
+      }),
+    decodeJpeg: (bytes) => {
+      const d = jpeg.decode(bytes, { useTArray: true, formatAsRGBA: true, maxMemoryUsageInMB: 128 });
+      return { width: d.width, height: d.height, data: new Uint8ClampedArray(d.data.buffer, d.data.byteOffset, d.data.byteLength) };
+    },
+    encodeJpeg: (img: RgbaImage, quality) => {
+      const out = jpeg.encode({ data: img.data, width: img.width, height: img.height }, quality);
+      return new Uint8Array(out.data.buffer, out.data.byteOffset, out.data.byteLength);
+    },
+    upload: async (path, bytes) => {
+      const bucket = admin.storage.from(SKETCH_BUCKET);
+      const { error } = await bucket.upload(path, bytes, { contentType: "image/jpeg", upsert: false });
+      if (error) {
+        log("warn", `sketch: upload failed: ${error.message}`);
+        return null;
+      }
+      return bucket.getPublicUrl(path).data.publicUrl ?? null;
+    },
+    hashKey: (key) => sha256Hex(key),
+    sendImage: graphSendImage,
   };
 }
 

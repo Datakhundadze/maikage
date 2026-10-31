@@ -8,6 +8,13 @@
 //   3. read: handoff row, last 8 messages, outbound rows + bot sends (12 h)
 //   4. decideAutoReply (botReply.ts)
 //   5. handoff / photo / AI reply → record → send → write the mid back
+//   6. (AI reply with a design block, deps.sketch set) the sketch image —
+//      sketchFlow.ts; the reply then ends in SKETCH_NOTICE instead of the link
+//
+// DEBOUNCE. Every new inbound message starts its own run, and a run that sees
+// a newer inbound message skips as "superseded" (decideAutoReply). So the
+// window slides: the one answer goes DEBOUNCE_MS after the LAST message of a
+// burst like „გამარჯობა" / „მინდა" / „მაიკაზე" / „წარწერა, რა ღირს?".
 //
 // The bot's text is recorded in social_bot_replies BEFORE the Graph call, so
 // its echo is recognised even if it lands first (see isBotEcho). The message
@@ -23,6 +30,8 @@ import {
   cleanBotReply,
   decideAutoReply,
   handoffMessage,
+  hasImage,
+  pendingInbound,
   photoMessage,
   splitForChannel,
   type BotSendRecord,
@@ -30,8 +39,19 @@ import {
   type OutRow,
   type ThreadRow,
 } from "./botReply.ts";
+import { planSketch, type SketchPlan } from "./sketchParse.ts";
+import {
+  MIN_SKETCH_BUDGET_MS,
+  SKETCH_CAP_WINDOW_MS,
+  SKETCH_NOTICE,
+  runSketch,
+  sketchBudgetMs,
+  withinCaps,
+  type SketchDeps,
+} from "./sketchFlow.ts";
 
-export const DEBOUNCE_MS = 4000;
+/** 10 s (was 4 s, owner 2026-10-31): people type in many short lines. */
+export const DEBOUNCE_MS = 10_000;
 
 export interface TriggerRow {
   channel: Channel;
@@ -63,11 +83,13 @@ export interface AutoReplyDeps {
   loadOutRows: (conversationKey: string, sinceIso: string) => Promise<OutRow[]>;
   loadBotSends: (conversationKey: string, sinceIso: string) => Promise<BotSendRecord[]>;
   /** Insert a send record (text redacted by the caller's implementation); returns its id. */
-  recordSend: (conversationKey: string, kind: "reply" | "handoff" | "photo", text: string) => Promise<string | null>;
+  recordSend: (conversationKey: string, kind: "reply" | "handoff" | "photo" | "sketch", text: string) => Promise<string | null>;
   markSent: (recordId: string, messageId: string) => Promise<void>;
   askBot: (channel: Channel, conversationKey: string, history: ChatTurn[], schedule: BotSchedule) => Promise<string | null>;
   send: (channel: Channel, recipientId: string, text: string) => Promise<SendResult>;
   log: (level: "info" | "warn" | "error", msg: string) => void;
+  /** DM sketch images. Absent → design blocks get the link line, as before. */
+  sketch?: SketchDeps;
 }
 
 export const conversationKeyOf = (r: Pick<TriggerRow, "channel" | "page_id" | "customer_id">) =>
@@ -77,6 +99,7 @@ let tokenWarned = false;
 
 export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promise<string> {
   const key = conversationKeyOf(row);
+  const runStartedAt = deps.now().getTime();
   try {
     const settings = await deps.loadSettings();
     if (!settings || settings.enabled !== true) return "disabled";
@@ -116,6 +139,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
 
     let kind: "reply" | "handoff" | "photo";
     let text: string;
+    let sketch: { plan: Extract<SketchPlan, { kind: "generate" | "text" }>; budgetMs: number } | null = null;
     if (decision.action === "handoff") {
       await deps.insertHandoff(key, "customer_asked");
       kind = "handoff";
@@ -129,7 +153,21 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       const raw = await deps.askBot(row.channel, key, history, schedule);
       if (raw === null) return "bot_failed";
       kind = "reply";
-      text = cleanBotReply(raw, schedule);
+      // Parse BEFORE cleanBotReply strips the fences.
+      if (deps.sketch) {
+        const plan = planSketch(raw, pendingInbound(thread).some(hasImage));
+        if (plan && plan.kind !== "unsupported") {
+          const since = new Date(deps.now().getTime() - SKETCH_CAP_WINDOW_MS).toISOString();
+          const counts = await deps.sketch.countSketches(key, since);
+          const budgetMs = sketchBudgetMs(runStartedAt, deps.now().getTime());
+          if (!withinCaps(plan.kind, counts)) deps.log("info", `sketch skipped ${row.channel}: ${counts ? "cap" : "count_failed"}`);
+          else if (budgetMs < MIN_SKETCH_BUDGET_MS) deps.log("info", `sketch skipped ${row.channel}: no_time (${budgetMs} ms left)`);
+          else sketch = { plan, budgetMs };
+        } else if (plan && plan.kind === "unsupported") {
+          deps.log("info", `sketch skipped ${row.channel}: ${plan.reason}`);
+        }
+      }
+      text = cleanBotReply(raw, schedule, sketch ? { designNotice: SKETCH_NOTICE } : undefined);
     }
 
     let sent = 0;
@@ -150,6 +188,15 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       if (res.messageId) await deps.markSent(recordId, res.messageId);
     }
     deps.log("info", `auto-reply sent ${row.channel}: ${kind} (${sent} message${sent === 1 ? "" : "s"})`);
+    if (sketch && deps.sketch) {
+      // The budget was measured before the text went out; re-measure.
+      const budgetMs = Math.min(sketch.budgetMs, sketchBudgetMs(runStartedAt, deps.now().getTime()));
+      await runSketch(
+        { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan: sketch.plan, budgetMs },
+        { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
+        deps.sketch,
+      );
+    }
     return kind;
   } catch (e) {
     const msg = e instanceof Error ? `${e.name}: ${e.message}` : "error";

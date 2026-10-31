@@ -7,6 +7,7 @@ import { guardSketchBlocks, userTurnsFromMessages } from "./blockGuard.ts";
 import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import { resolveTrustedSocialChannel, socialSchedule, withSocialBlock, type SocialChannel } from "./socialChannel.ts";
+import { billableGateApplies, resolveTrustedSocialSketch } from "./socialChannel.ts";
 import { buildGptGeneratePrompt, joinPromptText } from "./gptGeneratePrompt.ts";
 import {
   CALLBACK_DAY_LIMIT,
@@ -2116,7 +2117,18 @@ CRITICAL:
     // Keyed on user_id for authed callers, IP for anon. Admins (trusted batch
     // generation) are exempt. Enforced BEFORE any gateway call so blocked
     // requests cost nothing. verify_jwt stays false — anon Studio must work.
-    if (BILLABLE_ACTIONS.has(action)) {
+    // DM sketch (add-only, socialChannel.ts): a trusted server-to-server
+    // generate-design-gpt call from meta-webhook skips this gate. It is null
+    // for every website call, so the condition below is then exactly
+    // BILLABLE_ACTIONS.has(action), as before.
+    const socialSketchChannel = resolveTrustedSocialSketch(
+      action,
+      params?.channel,
+      req.headers.get("Authorization"),
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    );
+    if (socialSketchChannel) console.log(`[gemini-proxy] trusted social sketch call (${socialSketchChannel}): billable gate skipped`);
+    if (billableGateApplies(BILLABLE_ACTIONS.has(action), socialSketchChannel)) {
       // Admins bypass the limit entirely (mirrors check-design-quality's
       // has_role gate). On any rpc error, treat as non-admin (still limited).
       let isAdmin = false;
