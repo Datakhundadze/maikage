@@ -6,6 +6,7 @@ import { sanitizeReply } from "./replySanitize.ts";
 import { guardSketchBlocks, userTurnsFromMessages } from "./blockGuard.ts";
 import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
+import { resolveTrustedSocialChannel, socialSchedule, withSocialBlock, type SocialChannel } from "./socialChannel.ts";
 import { buildGptGeneratePrompt, joinPromptText } from "./gptGeneratePrompt.ts";
 import {
   CALLBACK_DAY_LIMIT,
@@ -1733,6 +1734,11 @@ serve(async (req) => {
     // blocks the bot emitted. Non-admin callers can never enable it.
     let faqEvalMode = false;
 
+    // SOCIAL DM BOT (2026-10-31, add-only, socialChannel.ts). Set only for a
+    // server-to-server faq-chat call from meta-webhook (params.channel plus the
+    // service-role bearer). null for every website call → nothing below changes.
+    let faqSocialChannel: SocialChannel | null = null;
+
     // Caller identity, resolved ONCE, for EVERY action, from the request's
     // own Authorization header — before either gate below. The two gates and
     // the ai_calls cost log all read it from here.
@@ -2237,8 +2243,14 @@ CRITICAL:
         isAdmin = adminFlag === true;
       }
       faqEvalMode = isAdmin && params?.eval === true;
+      faqSocialChannel = resolveTrustedSocialChannel(
+        action,
+        params?.channel,
+        req.headers.get("Authorization"),
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+      );
 
-      if (!isAdmin) {
+      if (!isAdmin && !faqSocialChannel) {
         // Manual admin block only: p_action != 'generate-design', so
         // check_generation_block returns true ONLY when profiles.is_blocked.
         if (user && user.is_anonymous !== true) {
@@ -2882,6 +2894,13 @@ Output: one photorealistic composite photo.`;
         try { stockBlock = await getStockBlock(); } catch { stockBlock = ""; }
       }
       messages = [{ role: "system", content: `${faqKb}${stockBlock}\n\nCALLER: ${caller}` }, ...history];
+      if (faqSocialChannel) {
+        // Social DM rules, before the CALLER line. Website calls never get here.
+        messages[0] = {
+          role: "system",
+          content: withSocialBlock(messages[0].content as string, faqSocialChannel, socialSchedule(params?.schedule)),
+        };
+      }
 
       // ── OPTIONAL PHOTO (add-only) ──────────────────────────────────────
       // When params.image is absent, everything above is untouched and this
@@ -3197,7 +3216,9 @@ Output: one photorealistic composite photo.`;
                       sessionId: typeof params.session_id === "string" ? params.session_id : null,
                       userId: callerUserId,
                       lang: typeof params.lang === "string" ? params.lang : null,
-                      rateKey: callerUserId ? `callback:user:${callerUserId}` : `callback:ip:${ip}`,
+                      rateKey: faqSocialChannel
+                        ? `callback:social:${String(params.session_id ?? "")}`
+                        : callerUserId ? `callback:user:${callerUserId}` : `callback:ip:${ip}`,
                     }).then((outcome) => console.log(`[gemini-proxy] callback request: ${outcome}`)),
                     "callback request",
                   );

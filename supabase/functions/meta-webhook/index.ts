@@ -8,9 +8,15 @@
 //   META_APP_SECRET    the App Secret from the Meta App dashboard; signs every POST
 //   META_VERIFY_TOKEN  a string you invent and paste into the dashboard's
 //                      "Verify token" field; checked on the GET subscription call
-// No META_PAGE_TOKEN: the only outbound calls are downloads of the photo
-// URLs Meta itself put in a signed delivery (see media.ts).
+//   META_PAGE_TOKEN    OPTIONAL. Long-lived Page access token (pages_messaging)
+//                      for the social auto-reply bot (autoReply.ts). Without it
+//                      the bot logs once and stays silent; the mirror is unaffected.
 // Their values are never logged.
+//
+// AUTO-REPLY (add-only). After a NEW inbound customer row is stored, the bot
+// run (autoReply.ts) is scheduled in the background like the photo copy. It
+// reads public.social_bot_settings first; with enabled = false (the default)
+// that single read is all it does, and nothing is ever sent.
 //
 // PHOTOS. After a NEW row is stored, its images are copied into the private
 // "social-uploads" bucket in the background (EdgeRuntime.waitUntil), so the
@@ -43,11 +49,15 @@ import {
   type FetchedImage,
 } from "./media.ts";
 import type { SocialAdReferralRow } from "./referrals.ts";
+import { redactPii } from "./redactPii.ts";
+import { isBotCandidate, sendBody, type BotSendRecord, type OutRow, type ThreadRow } from "./botReply.ts";
+import { runAutoReply, scrubSecrets, type AutoReplyDeps, type SendResult } from "./autoReply.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const META_APP_SECRET = Deno.env.get("META_APP_SECRET") ?? "";
 const META_VERIFY_TOKEN = Deno.env.get("META_VERIFY_TOKEN") ?? "";
+const META_PAGE_TOKEN = Deno.env.get("META_PAGE_TOKEN") ?? "";
 
 if (!META_APP_SECRET || !META_VERIFY_TOKEN) {
   // Names only, never values. With an empty secret the handler refuses every
@@ -200,6 +210,158 @@ function afterStore(admin: Admin, rows: SocialMessageRow[], newIds: string[]): v
     lastPurgeAt = now;
     runInBackground(purgeExpired(new Date(now), d), "photo purge");
   }
+  // Auto-reply bot: only rows inserted just now (a Meta retry is a no-op),
+  // inbound, not unsupported, with text or a photo. Background only.
+  const candidates = rows.filter((r) => fresh.has(r.meta_message_id) && isBotCandidate(r));
+  if (candidates.length > 0) {
+    const ar = autoReplyDeps(admin);
+    for (const r of candidates) runInBackground(runAutoReply(r, ar), "auto-reply");
+  }
+}
+
+// ── auto-reply bot ─────────────────────────────────────────────────────────
+
+const GRAPH_SEND_URL = "https://graph.facebook.com/v21.0/me/messages";
+
+/**
+ * Graph Send API. Works for Messenger PSIDs and, with the same Page token,
+ * for Instagram IGSIDs (Messenger Platform for Instagram: POST me/messages).
+ * The token goes in the Authorization header, never the URL, so no error
+ * message or log line can carry it.
+ */
+async function graphSend(channel: "messenger" | "instagram", recipientId: string, text: string): Promise<SendResult> {
+  try {
+    const res = await fetch(GRAPH_SEND_URL, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${META_PAGE_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify(sendBody(channel, recipientId, text)),
+      signal: AbortSignal.timeout(20_000),
+    });
+    const data = await res.json().catch(() => null) as
+      | { message_id?: unknown; error?: { code?: unknown; error_subcode?: unknown; type?: unknown } }
+      | null;
+    if (!res.ok) {
+      const err = data?.error;
+      const code = err ? `${String(err.code ?? "?")}/${String(err.error_subcode ?? "-")}/${String(err.type ?? "-")}` : "no_body";
+      return { ok: false, status: res.status, code };
+    }
+    return { ok: true, messageId: typeof data?.message_id === "string" ? data.message_id : null };
+  } catch (e) {
+    return { ok: false, status: 0, code: e instanceof Error ? e.name : "fetch_error" };
+  }
+}
+
+/** gemini-proxy faq-chat, server to server, as the trusted social channel. */
+async function askBot(
+  channel: "messenger" | "instagram",
+  conversationKey: string,
+  history: { role: "user" | "assistant"; content: string }[],
+  schedule: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "faq-chat",
+        params: { messages: history, lang: "ka", session_id: conversationKey, channel, schedule },
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    const data = await res.json().catch(() => null) as { text?: unknown; code?: unknown } | null;
+    if (!res.ok) {
+      log("error", `auto-reply: gemini-proxy HTTP ${res.status} code=${String(data?.code ?? "-")}`);
+      return null;
+    }
+    const text = typeof data?.text === "string" ? data.text : "";
+    if (!text.trim()) {
+      log("warn", "auto-reply: gemini-proxy returned empty text");
+      return null;
+    }
+    return text;
+  } catch (e) {
+    log("error", `auto-reply: gemini-proxy call failed: ${scrubSecrets(e instanceof Error ? e.name : "error")}`);
+    return null;
+  }
+}
+
+function autoReplyDeps(admin: Admin): AutoReplyDeps {
+  const warn = (what: string, error: { code?: string; message?: string } | null) => {
+    if (error) log("warn", `auto-reply: ${what} failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+  };
+  return {
+    now: () => new Date(),
+    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
+    tokenSet: META_PAGE_TOKEN.length > 0,
+    loadSettings: async () => {
+      const { data, error } = await admin.from("social_bot_settings").select("enabled, schedule").limit(1).maybeSingle();
+      warn("settings read", error);
+      return error || !data ? null : { enabled: data.enabled === true, schedule: String(data.schedule ?? "") };
+    },
+    isHandedOff: async (key) => {
+      const { data, error } = await admin.from("social_bot_handoffs").select("conversation_key").eq("conversation_key", key).maybeSingle();
+      warn("handoff read", error);
+      // Fail closed: if we cannot tell, treat the conversation as handed off.
+      return error ? true : !!data;
+    },
+    insertHandoff: async (key, reason) => {
+      const { error } = await admin
+        .from("social_bot_handoffs")
+        .upsert({ conversation_key: key, reason }, { onConflict: "conversation_key", ignoreDuplicates: true });
+      warn("handoff insert", error);
+    },
+    loadThread: async (key, limit) => {
+      const { data, error } = await admin
+        .from("social_messages")
+        .select("meta_message_id, direction, text, attachments, unsupported, sent_at")
+        .eq("conversation_key", key)
+        .order("sent_at", { ascending: false })
+        .limit(limit);
+      warn("thread read", error);
+      return ((data ?? []) as ThreadRow[]).reverse();
+    },
+    loadOutRows: async (key, sinceIso) => {
+      const { data, error } = await admin
+        .from("social_messages")
+        .select("meta_message_id, text, sent_at")
+        .eq("conversation_key", key)
+        .eq("direction", "out")
+        .gte("sent_at", sinceIso)
+        .limit(200);
+      warn("outbound read", error);
+      // Fail closed: an unreadable history counts as "a human is here".
+      if (error) return [{ meta_message_id: "?", text: null, sent_at: new Date().toISOString() }];
+      return (data ?? []) as OutRow[];
+    },
+    loadBotSends: async (key, sinceIso) => {
+      const { data, error } = await admin
+        .from("social_bot_replies")
+        .select("meta_message_id, text, kind, created_at")
+        .eq("conversation_key", key)
+        .gte("created_at", sinceIso)
+        .limit(200);
+      warn("bot sends read", error);
+      return (data ?? []) as BotSendRecord[];
+    },
+    recordSend: async (key, kind, text) => {
+      // Redacted exactly like the echo's social_messages.text, so isBotEcho
+      // can match the two by text.
+      const { data, error } = await admin
+        .from("social_bot_replies")
+        .insert({ conversation_key: key, kind, text: redactPii(text) })
+        .select("id")
+        .maybeSingle();
+      warn("send record", error);
+      return (data as { id?: string } | null)?.id ?? null;
+    },
+    markSent: async (id, messageId) => {
+      const { error } = await admin.from("social_bot_replies").update({ meta_message_id: messageId }).eq("id", id);
+      warn("send record update", error);
+    },
+    askBot: (channel, key, history, schedule) => askBot(channel, key, history, schedule),
+    send: graphSend,
+    log,
+  };
 }
 
 // ── ad referrals ───────────────────────────────────────────────────────────
