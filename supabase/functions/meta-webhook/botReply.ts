@@ -134,7 +134,9 @@ export function isBotCandidate(r: { direction: string; unsupported: boolean; tex
  */
 export function pendingInbound(thread: ThreadRow[]): ThreadRow[] {
   let lastOut = -1;
-  thread.forEach((r, i) => { if (r.direction === "out") lastOut = i; });
+  // A Meta Business Suite automation (instant reply / away message) is not an
+  // answer to the customer: the bot still owes one after it.
+  thread.forEach((r, i) => { if (r.direction === "out" && !isMetaAutomationEcho(r.text)) lastOut = i; });
   return thread.slice(lastOut + 1).filter((r) => r.direction === "in");
 }
 
@@ -196,7 +198,7 @@ export interface ChatTurn { role: "user" | "assistant"; content: string }
 /** Last messages (oldest-first) → faq-chat turns: in → user, out → assistant. */
 export function buildHistory(thread: ThreadRow[], max = 8): ChatTurn[] {
   const turns: ChatTurn[] = [];
-  for (const r of thread.slice(-max)) {
+  for (const r of thread.filter((r) => !(r.direction === "out" && isMetaAutomationEcho(r.text))).slice(-max)) {
     const text = typeof r.text === "string" ? r.text.trim() : "";
     const content = text ? (hasImage(r) ? `${text} [ფოტო]` : text) : (hasImage(r) ? "[ფოტო]" : "");
     if (!content) continue;
