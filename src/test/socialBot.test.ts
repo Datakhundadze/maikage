@@ -471,3 +471,16 @@ describe("away-message echo after the customer's message", () => {
     expect(buildHistory(thread)).toEqual([{ role: "user", content: "რა ღირს ჰუდი?" }]);
   });
 });
+
+describe("allowlist", () => {
+  it("skips conversations not on a non-empty allowlist", async () => {
+    const { runAutoReply } = await import("../../supabase/functions/meta-webhook/autoReply");
+    const deps: any = {
+      now: () => new Date("2026-11-01T10:00:00Z"), sleep: async () => {}, tokenSet: true,
+      loadSettings: async () => ({ enabled: true, schedule: "sunday", allowKeys: ["messenger:1:me"] }),
+      log: () => {},
+    };
+    const row: any = { channel: "messenger", page_id: "1", customer_id: "other", meta_message_id: "x", direction: "in", text: "hi", attachments: null, unsupported: false, sent_at: "2026-11-01T09:59:59Z" };
+    expect(await runAutoReply(row, deps)).toBe("not_allowlisted");
+  });
+});

@@ -325,9 +325,13 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     tokenSet: META_PAGE_TOKEN.length > 0,
     loadSettings: async () => {
-      const { data, error } = await admin.from("social_bot_settings").select("enabled, schedule").limit(1).maybeSingle();
+      const { data, error } = await admin.from("social_bot_settings").select("enabled, schedule, allow_keys").limit(1).maybeSingle();
       warn("settings read", error);
-      return error || !data ? null : { enabled: data.enabled === true, schedule: String(data.schedule ?? "") };
+      return error || !data ? null : {
+        enabled: data.enabled === true,
+        schedule: String(data.schedule ?? ""),
+        allowKeys: Array.isArray(data.allow_keys) ? (data.allow_keys as unknown[]).filter((k): k is string => typeof k === "string") : [],
+      };
     },
     isHandedOff: async (key) => {
       const { data, error } = await admin.from("social_bot_handoffs").select("conversation_key").eq("conversation_key", key).maybeSingle();
