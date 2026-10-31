@@ -19,6 +19,9 @@
 //      draft's sketches → a note in the history; every sent sketch → a draft
 //      item; a ```maika-order block → the texts orderFlow writes (summary,
 //      missing info, or the created order + bank transfer details).
+//   8. RECEIPTS (deps.receipt, add-only 2026-11-01, receiptFlow.ts): with an
+//      order waiting for the transfer, a new image of the burst is read as a
+//      receipt BEFORE the model; a receipt → the code's reply, no model call.
 //
 // DEBOUNCE. Every new inbound message starts its own run, and a run that sees
 // a newer inbound message skips as "superseded" (decideAutoReply). So the
@@ -75,6 +78,9 @@ import {
   type OrderRun,
   type SentSketch,
 } from "./orderFlow.ts";
+import type { OrderDraft } from "./orderDraft.ts";
+import { runReceiptStep, type ReceiptDeps, type ReceiptRun } from "./receiptFlow.ts";
+import { receiptSourcePaths } from "./receiptCheck.ts";
 
 /** 10 s (was 4 s, owner 2026-10-31): people type in many short lines. */
 export const DEBOUNCE_MS = 10_000;
@@ -135,6 +141,11 @@ export interface AutoReplyDeps {
    * unreadable → no draft, no order rules for the model: exactly as before.
    */
   order?: OrderDeps;
+  /**
+   * Bank-transfer receipts (receiptFlow.ts, add-only 2026-11-01). Needs
+   * `order`. Absent → an image after the order goes to the model as before.
+   */
+  receipt?: ReceiptDeps;
 }
 
 /** In-memory extras of the trigger row that are never stored on it. */
@@ -185,7 +196,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       deps.loadBotSends(key, sinceIso),
     ]);
     let thread = firstThread;
-    if (deps.sketch && awaitingMirror(thread)) {
+    if ((deps.sketch || deps.receipt) && awaitingMirror(thread)) {
       await deps.sleep(PHOTO_MIRROR_WAIT_MS);
       thread = await deps.loadThread(key, 8);
     }
@@ -212,18 +223,39 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
     // note on our side of the history. Unreadable draft table → orders off.
     let ordersOn = false;
     let askHistory = history;
+    let openDraft: OrderDraft | null = null;
     if (deps.order && decision.action === "reply" && history.length > 0) {
       const d = await deps.order.loadDraft(key).catch((): "error" => "error");
       if (d !== "error") {
         ordersOn = true;
+        openDraft = d;
         if (d && !isStale(d, now)) {
           askHistory = withDraftNote(history, [sketchesNote(d.items ?? []), orderStatusNote(d)].filter((s) => s !== "").join("\n"));
         }
       }
     }
+    // RECEIPT (add-only, 2026-11-01): an order waiting for the transfer and a
+    // new image in this burst → read it as a receipt first. A receipt gets
+    // the reply receiptFlow writes and the model is not asked; anything else
+    // (no image, not a receipt, cap, failure) → the normal reply below.
+    let receiptRun: ReceiptRun | null = null;
+    const receiptPhotos: Set<string> = openDraft ? receiptSourcePaths(openDraft.receipt) : new Set<string>();
+    if (deps.receipt && deps.order && openDraft) {
+      const od: OrderDraft = openDraft;
+      const r = await runReceiptStep(
+        { conversationKey: key, channel: row.channel, now: deps.now(), schedule, thread, draft: od, log: deps.log },
+        deps.order,
+        deps.receipt,
+      ).catch((e: unknown): ReceiptRun => {
+        deps.log("error", `receipt step failed: ${e instanceof Error ? e.name : "error"}`);
+        return { messages: null, outcome: "receipt_error" };
+      });
+      if (r.outcome !== "no_order") deps.log("info", `receipt step ${row.channel}: ${r.outcome}`);
+      if (r.messages && r.messages.length > 0) receiptRun = r;
+    }
     // AI call failed while photos wait for an answer → the old fixed
     // „ფოტო მივიღეთ" (an operator will look) instead of silence.
-    const raw = decision.action === "reply" && history.length > 0
+    const raw = receiptRun === null && decision.action === "reply" && history.length > 0
       ? await (ordersOn
         ? deps.askBot(row.channel, key, askHistory, schedule, { orders: true })
         : deps.askBot(row.channel, key, askHistory, schedule))
@@ -244,6 +276,9 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       texts = [handoffMessage(schedule)];
     } else if (history.length === 0) {
       return "empty_history";
+    } else if (receiptRun && receiptRun.messages) {
+      kind = "reply";
+      texts = receiptRun.messages;
     } else if (raw === null && photos.pending.length > 0) {
       kind = "photo";
       texts = [photoMessage(schedule)];
@@ -256,7 +291,9 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       kind = "reply";
       // Parse BEFORE cleanBotReply strips the fences.
       if (deps.sketch) {
-        const plans = planSketches(raw, photos, MAX_SKETCHES_PER_REPLY);
+        // A photo already taken as a bank receipt is never placed on a product.
+        const plans = planSketches(raw, photos, MAX_SKETCHES_PER_REPLY)
+          .filter((p) => !(p.kind === "photo" && receiptPhotos.has(p.path)));
         const wanted = plans.filter((p): p is RenderPlan => p.kind !== "unsupported");
         for (const p of plans) {
           if (p.kind !== "unsupported") continue;

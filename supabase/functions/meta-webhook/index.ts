@@ -31,6 +31,12 @@
 // customer's own photo N; it is read from the private social-uploads bucket
 // with the service role (sketchDeps.downloadUpload) and never made public —
 // only the rendered sketch goes to designs/social-sketches/<hash>/. No SQL.
+// RECEIPTS (add-only, 2026-11-01, receiptFlow.ts): with an order waiting for
+// the transfer, a new customer image is read by gemini-proxy read-receipt
+// (trusted social call); a receipt is copied to social-uploads/receipts/
+// <cart_id>/ (outside the 90-day purge, which deletes only attachment paths),
+// recorded on the draft and noted on the orders rows. No SQL. REDEPLOY
+// gemini-proxy too (the read-receipt action).
 //
 // AUTO-REPLY (add-only). After a NEW inbound customer row is stored, the bot
 // run (autoReply.ts) is scheduled in the background like the photo copy. It
@@ -78,6 +84,8 @@ import type { RgbaImage } from "./pngDecode.ts";
 import type { OrderDeps } from "./orderFlow.ts";
 import { OPEN_DRAFT_STATUSES, type DraftItem, type OrderDraft } from "./orderDraft.ts";
 import { PRINT_BUCKET, type PrintDeps } from "./printFile.ts";
+import type { ReceiptDeps } from "./receiptFlow.ts";
+import { coerceReceiptFields, type ReceiptFields } from "./receiptCheck.ts";
 import jpeg from "npm:jpeg-js@0.4.4";
 import opentype from "npm:opentype.js@1.3.4";
 
@@ -439,6 +447,86 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     log,
     sketch: sketchDeps(admin),
     order: orderDeps(admin),
+    receipt: receiptDeps(admin),
+  };
+}
+
+// ── bank-transfer receipts (add-only, 2026-11-01) ──────────────────────────
+//
+// Service role throughout (RLS bypassed), like the order writes above. The
+// image never leaves our side except to gemini-proxy as a data URL; no
+// amount, name, IBAN or path is logged.
+
+/** gemini-proxy read-receipt as the trusted social call. */
+async function readReceipt(channel: "messenger" | "instagram", conversationKey: string, image: string): Promise<ReceiptFields | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "read-receipt", params: { image, channel, session_id: conversationKey } }),
+      signal: AbortSignal.timeout(45_000),
+    });
+    const data = await res.json().catch((): null => null) as { receipt?: unknown; code?: unknown } | null;
+    if (!res.ok) {
+      log("error", `receipt: read-receipt HTTP ${res.status} code=${String(data?.code ?? "-")}`);
+      return null;
+    }
+    return coerceReceiptFields(data?.receipt);
+  } catch (e) {
+    log("error", `receipt: read-receipt call failed: ${e instanceof Error ? e.name : "error"}`);
+    return null;
+  }
+}
+
+function receiptDeps(admin: Admin): ReceiptDeps {
+  const uploads = () => admin.storage.from(SOCIAL_UPLOAD_BUCKET);
+  return {
+    readReceipt,
+    downloadUpload: async (path: string): Promise<Uint8Array | null> => {
+      try {
+        const { data, error } = await uploads().download(path);
+        if (error || !data) return null;
+        const bytes = new Uint8Array(await data.arrayBuffer());
+        return bytes.length > 0 && bytes.length <= MAX_IMAGE_BYTES ? bytes : null;
+      } catch {
+        return null;
+      }
+    },
+    copyUpload: async (fromPath: string, toPath: string): Promise<boolean> => {
+      const { error } = await uploads().copy(fromPath, toPath);
+      if (!error) return true;
+      const msg = (error.message ?? "").toLowerCase();
+      // A re-run finds its own earlier copy.
+      if (msg.includes("already exists") || msg.includes("duplicate")) return true;
+      log("warn", `receipt: copy failed: ${error.message}`);
+      return false;
+    },
+    orderTotal: async (cartId: string): Promise<{ total: number; createdAt: string | null } | null> => {
+      const { data, error } = await admin.from("orders").select("total_price, created_at").eq("cart_id", cartId).limit(200);
+      if (error) {
+        log("warn", `receipt: orders read failed (${error.code ?? "?"})`);
+        return null;
+      }
+      const rows = (data ?? []) as { total_price: number | string | null; created_at: string | null }[];
+      if (rows.length === 0) return null;
+      const total = rows.reduce((s: number, r: { total_price: number | string | null }) => s + Number(r.total_price ?? 0), 0);
+      const times = rows.map((r: { created_at: string | null }) => r.created_at).filter((t): t is string => typeof t === "string").sort();
+      return { total: Math.round(total * 100) / 100, createdAt: times[0] ?? null };
+    },
+    loadOrderComments: async (cartId: string): Promise<{ id: string; comment: string | null }[] | null> => {
+      const { data, error } = await admin.from("orders").select("id, comment").eq("cart_id", cartId).limit(200);
+      if (error) {
+        log("warn", `receipt: orders comment read failed (${error.code ?? "?"})`);
+        return null;
+      }
+      return (data ?? []) as { id: string; comment: string | null }[];
+    },
+    updateOrderComment: async (id: string, comment: string): Promise<boolean> => {
+      // comment only — payment_status / status are the operator's.
+      const { error } = await admin.from("orders").update({ comment }).eq("id", id);
+      if (error) log("warn", `receipt: orders comment update failed (${error.code ?? "?"})`);
+      return !error;
+    },
   };
 }
 

@@ -10,6 +10,7 @@ import { resolveTrustedSocialChannel, socialSchedule, withSocialBlock, type Soci
 import { billableGateApplies, resolveTrustedSocialSketch } from "./socialChannel.ts";
 import { redactOrderBlockForLog, socialOrdersOn } from "./socialChannel.ts";
 import { buildGptGeneratePrompt, joinPromptText } from "./gptGeneratePrompt.ts";
+import { RECEIPT_MODEL, isReceiptImage, parseReceiptResponse, receiptRequestBody, resolveTrustedSocialReceipt } from "./receiptRead.ts";
 import {
   CALLBACK_DAY_LIMIT,
   CALLBACK_LOG_MARKER,
@@ -3085,6 +3086,76 @@ Output: one photorealistic composite photo.`;
         console.error("[gemini-proxy] social-reply-draft response parse failed:", e);
         return draftJson(500, { error: "Draft failed", code: "DRAFT_FAILED" });
       }
+    } else if (action === "read-receipt") {
+      // ── ADD-ONLY (2026-11-01): DM bank-transfer receipt reader ─────────
+      // Self-contained like social-reply-draft: its own gateway call, RETURNS
+      // before the shared loop; in neither BILLABLE_ACTIONS nor TEXT_ACTIONS,
+      // so no gate above ran for it. TRUSTED SOCIAL CALL ONLY (meta-webhook:
+      // service-role bearer + params.channel, receiptRead.ts) — anything else
+      // is refused here, before any gateway call. The webhook caps reads per
+      // conversation (3 / 24 h). The model only transcribes the image; the
+      // checks and the verdict are meta-webhook/receiptCheck.ts. No amount,
+      // name or IBAN is logged; the image is never stored here.
+      const rrJson = (status: number, body: Record<string, unknown>): Response =>
+        new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const rrChannel = resolveTrustedSocialReceipt(
+        action,
+        params?.channel,
+        req.headers.get("Authorization"),
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+      );
+      if (!rrChannel) return rrJson(403, { error: "Forbidden", code: "FORBIDDEN" });
+      const rrImage: unknown = params?.image;
+      if (!isReceiptImage(rrImage)) return rrJson(400, { error: "Bad image", code: "BAD_REQUEST" });
+      const rrKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!rrKey) return rrJson(500, { error: "LOVABLE_API_KEY is not configured", code: "CONFIG" });
+
+      const rrStartedAt = Date.now();
+      const rrLog = (success: boolean, errorCode: string | null): void =>
+        logAiCall({
+          action,
+          model: RECEIPT_MODEL,
+          userId: callerUserId,
+          sessionId: callerSessionId,
+          isGuest: callerIsGuest,
+          success,
+          durationMs: Date.now() - rrStartedAt,
+          errorCode,
+        });
+      let rrRes: Response;
+      try {
+        rrRes = await fetch(GATEWAY_URL, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${rrKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify(receiptRequestBody(rrImage)),
+        });
+      } catch (e) {
+        rrLog(false, "exception");
+        console.error("[gemini-proxy] read-receipt gateway exception:", e instanceof Error ? e.name : "error");
+        return rrJson(502, { error: "Read failed", code: "READ_FAILED" });
+      }
+      if (!rrRes.ok) {
+        const rrStatus = rrRes.status;
+        rrLog(false, `http_${rrStatus}`);
+        console.error(`[gemini-proxy] read-receipt gateway HTTP ${rrStatus}:`, (await rrRes.text()).slice(0, 300));
+        if (rrStatus === 402) return rrJson(402, { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" });
+        if (rrStatus === 429) return rrJson(429, { error: "Rate limited", code: "RATE_LIMITED" });
+        return rrJson(502, { error: "Read failed", code: "READ_FAILED" });
+      }
+      let rrData: unknown = null;
+      try {
+        rrData = await rrRes.json();
+      } catch {
+        rrData = null;
+      }
+      const rrRead = parseReceiptResponse(rrData);
+      if (!rrRead) {
+        rrLog(false, "bad_output");
+        return rrJson(502, { error: "Read failed", code: "BAD_OUTPUT" });
+      }
+      rrLog(true, null);
+      console.log(`[gemini-proxy] read-receipt (${rrChannel}): is_receipt=${rrRead.is_receipt}`);
+      return rrJson(200, { receipt: rrRead, model: RECEIPT_MODEL });
     } else {
       return new Response(JSON.stringify({ error: "Unknown action" }), {
         status: 400,

@@ -67,7 +67,7 @@ export function wantsHuman(text: string | null | undefined): boolean {
 const WORKING_HOURS = "სამუშაო საათებში (ორშ–პარ 11:00–19:00, შაბ 11:00–18:00)";
 
 /** When the operator is back, in the words of the schedule. */
-function operatorBack(schedule: BotSchedule): string {
+export function operatorBack(schedule: BotSchedule): string {
   return schedule === "sunday" ? "ორშაბათს, 11:00-დან" : WORKING_HOURS;
 }
 
