@@ -54,6 +54,8 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "- Keep replies short (max ~5 lines), Georgian unless the customer writes another language.",
     `- Do not take orders or confirm payments: explain how to order and say an operator will finalize ${back}.`,
     "- For a drawing or lettering on a product, emit the maika-generate / maika-mockup block exactly as on the website: the system turns it into a sketch IMAGE and sends it in this chat automatically. Do NOT send them to the website for it and do not say a sketch is attached — the system announces it.",
+    "- TWO SIDES HERE („წინ X, უკან Y\"): emit BOTH blocks in the SAME reply, one per side, each with its own \"side\" — the system sends a sketch of each. This OVERRIDES the website rule of one side per reply: never ask them to write „წინაც\" or to confirm the second side.",
+    "- Never write yourself that a sketch is being prepared or attached, never „[ფოტო]\", never „ესკიზი 👆\" — the system adds its own line. No \"write to us to change or order\" line either.",
     "- A sketch from the customer's OWN photo is not possible here yet: for that, invite them to https://maika.ge/chat.",
     "- Tell them they can type „ოპერატორი\" to reach a human.",
   ].join("\n");

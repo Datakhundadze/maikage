@@ -26,6 +26,7 @@ import {
   parseGenerateBlock,
   parseMockupBlock,
   planSketch,
+  planSketches,
   productChoice,
 } from "../../supabase/functions/meta-webhook/sketchParse";
 import {
@@ -39,7 +40,6 @@ import {
 import {
   MAX_GENERATE_SKETCHES,
   MAX_TEXT_SKETCHES,
-  SKETCH_FOLLOWUP,
   SKETCH_MARKER,
   SKETCH_NOTICE,
   countSketchRows,
@@ -55,6 +55,7 @@ import {
   createImage,
   drawContained,
   renderTextImage,
+  trimTransparent,
   tintLuminance,
   type FontLike,
   type PathCommand,
@@ -63,6 +64,7 @@ import { FONT_SHA256, FONT_URLS, _resetSketchFont, loadSketchFont, sha256Hex } f
 import {
   DESIGN_LINK_LINE,
   SKETCH_ECHO_MS,
+  buildHistory,
   cleanBotReply,
   decideAutoReply,
   humanTookOver,
@@ -496,19 +498,19 @@ const trigger: TriggerRow = {
 describe("runAutoReply with sketches", () => {
   beforeEach(() => _resetTokenWarning());
 
-  it("generate: text + notice first, then the image, then the follow-up", async () => {
+  it("generate: text + notice first, then the image — no follow-up text", async () => {
     // a real PNG so the decoder runs end to end
     const pngBytes = pngOf(2, 2, 6, 8, [[255, 0, 0, 255, 0, 0, 0, 0], [0, 0, 0, 0, 255, 0, 0, 255]]);
     const s = sketchFakes({ generateDesign: async (_c, _k, p) => { s.calls.push(`generate:${String(p.style)}`); return pngBytes; } });
     const a = autoDeps(GEN({ prompt: "ლომი", style: "Anime", product: "GILDAN", color: "Black" }), s.deps);
     expect(await runAutoReply(trigger, a.deps)).toBe("reply");
-    expect(a.sent).toEqual([`აი იდეა!\n${SKETCH_NOTICE}`, SKETCH_FOLLOWUP]);
+    expect(a.sent).toEqual([`აი იდეა!\n${SKETCH_NOTICE}`]);
     expect(a.sent[0]).not.toContain(DESIGN_LINK_LINE);
     expect(s.calls).toContain("generate:ანიმე");
     expect(s.calls).toContain("fetch:https://maika.ge/products/tshirt/gildan-white-front.png");
     expect(s.calls.some((c) => c.startsWith("jpeg:1024x"))).toBe(true);
     expect(s.calls.find((c) => c.startsWith("upload:"))).toMatch(/^upload:social-sketches\/h{32}\/\d+\.jpg$/);
-    expect(a.records.map((r) => r.kind)).toEqual(["reply", "sketch", "reply"]);
+    expect(a.records.map((r) => r.kind)).toEqual(["reply", "sketch"]);
     expect(a.records[1]).toMatchObject({ text: SKETCH_MARKER.generate, mid: "mid_img" });
   });
 
@@ -700,5 +702,93 @@ describe("gemini-proxy trusted sketch call", () => {
         expect(billableGateApplies(billable.has(a), trusted)).toBe(billable.has(a));
       }
     }
+  });
+});
+
+// ── 2026-10-31 owner test: two sides at once, no follow-up, clean history ──
+
+describe("two sides in one reply", () => {
+  beforeEach(() => _resetTokenWarning());
+  const TWO = `ზურგზე დროშა, წინ წარწერა.\n\`\`\`maika-generate\n${JSON.stringify({ prompt: "საქართველოს დროშა", style: "Illustration", side: "back", color: "White" })}\n\`\`\`\n\`\`\`maika-mockup\n${JSON.stringify({ text: "საქართველო", side: "front", placement: "left-chest", color: "White" })}\n\`\`\``;
+
+  it("planSketches: one plan per block, in order, one per side, max 2", () => {
+    const plans = planSketches(TWO, false);
+    expect(plans.map((p) => p.kind)).toEqual(["generate", "text"]);
+    expect(plans.map((p) => (p.kind === "unsupported" ? null : p.target.side))).toEqual(["back", "front"]);
+    expect(planSketches("ფასი 25 ლარია", false)).toEqual([]);
+    const sameSide = `${GEN({ prompt: "კატა", side: "front" })}\n${MOCK({ text: "ანა ბ", side: "front" })}`;
+    expect(planSketches(sameSide, false)).toHaveLength(1);
+    expect(planSketches(`${TWO}\n${MOCK({ text: "x y", side: "front" })}`, false, 1)).toHaveLength(1);
+  });
+
+  it("runAutoReply: one notice, then an image per side, nothing after", async () => {
+    const pngBytes = pngOf(2, 2, 6, 8, [[255, 0, 0, 255, 0, 0, 0, 0], [0, 0, 0, 0, 255, 0, 0, 255]]);
+    const s = sketchFakes({ generateDesign: async () => pngBytes });
+    const a = autoDeps(TWO, s.deps);
+    expect(await runAutoReply(trigger, a.deps)).toBe("reply");
+    expect(a.sent).toEqual([`ზურგზე დროშა, წინ წარწერა.\n${SKETCH_NOTICE}`]);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(2);
+    expect(a.records.map((r) => r.kind)).toEqual(["reply", "sketch", "sketch"]);
+  });
+
+  it("caps count this reply's sketches too", async () => {
+    const s = sketchFakes({ countSketches: async () => ({ generate: 0, text: MAX_TEXT_SKETCHES - 1 }) });
+    const two = `${MOCK({ text: "ანა ბ", side: "front" })}\n${MOCK({ text: "ნიკა გ", side: "back" })}`;
+    const a = autoDeps(two, s.deps);
+    await runAutoReply(trigger, a.deps);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(1);
+  });
+
+  it("a failed second sketch still sends the link line only once", async () => {
+    let n = 0;
+    const s = sketchFakes({ sendImage: async () => ({ ok: false, status: 400, code: "100" }), upload: async (p) => { n++; return `https://x/${p}`; } });
+    const two = `${MOCK({ text: "ანა ბ", side: "front" })}\n${MOCK({ text: "ნიკა გ", side: "back" })}`;
+    const a = autoDeps(two, s.deps);
+    await runAutoReply(trigger, a.deps);
+    expect(n).toBe(2);
+    expect(a.sent.filter((t) => t === DESIGN_LINK_LINE)).toHaveLength(1);
+  });
+});
+
+describe("sketch system lines never reach the model or the customer twice", () => {
+  it("history: our sketch notice, old follow-up and image-only echoes are dropped", () => {
+    const h = buildHistory([
+      row({ meta_message_id: "a", text: "ზურგზე დროშა", sent_at: "2026-10-31T17:28:16Z" }),
+      row({ meta_message_id: "b", direction: "out", text: `ჯერ ზურგზე დაგიხატავთ.\n${SKETCH_NOTICE}`, sent_at: "2026-10-31T17:28:38Z" }),
+      row({ meta_message_id: "c", direction: "out", text: null, attachments: [{ type: "image", url: "https://x/y.jpg" }] as ThreadRow["attachments"], sent_at: "2026-10-31T17:29:00Z" }),
+      row({ meta_message_id: "d", direction: "out", text: "ესკიზი 👆 შესაცვლელად ან შესაკვეთად მოგვწერეთ.", sent_at: "2026-10-31T17:29:02Z" }),
+      row({ meta_message_id: "e", text: "წინაც", sent_at: "2026-10-31T17:29:16Z" }),
+    ]);
+    expect(h).toEqual([
+      { role: "user", content: "ზურგზე დროშა" },
+      { role: "assistant", content: "ჯერ ზურგზე დაგიხატავთ." },
+      { role: "user", content: "წინაც" },
+    ]);
+  });
+
+  it("cleanBotReply strips a copied notice / [ფოტო] / follow-up from the model", () => {
+    const raw = `ახლა წინ დავამატებ.\n\n${SKETCH_NOTICE}[ფოტო]ესკიზი 👆 შესაცვლელად ან შესაკვეთად მოგვწერეთ.`;
+    expect(cleanBotReply(raw)).toBe("ახლა წინ დავამატებ.");
+  });
+});
+
+describe("trimTransparent", () => {
+  it("crops GPT's transparent padding (with a small margin)", () => {
+    const img = createImage(100, 100);
+    for (let y = 40; y < 60; y++) for (let x = 30; x < 50; x++) img.data[(y * 100 + x) * 4 + 3] = 255;
+    const t = trimTransparent(img, 8, 0);
+    expect([t.width, t.height]).toEqual([20, 20]);
+    expect(t.data[3]).toBe(255);
+    expect(trimTransparent(createImage(10, 10)).width).toBe(10);
+  });
+});
+
+describe("KB: flags print flat", () => {
+  it("flag / emblem with no style → Illustration, flat, no pole", () => {
+    const src = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/index.ts"), "utf8");
+    expect(src).toContain("FLAGS & EMBLEMS");
+    expect(src).toContain("ბრტყელი ვექტორული, ბოძის გარეშე");
+    const dm = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/socialChannel.ts"), "utf8");
+    expect(dm).toContain("emit BOTH blocks in the SAME reply");
   });
 });

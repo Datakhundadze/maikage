@@ -12,8 +12,9 @@
 //      JPEG ≈ 1024 px wide, quality 85
 //   3. upload to the public "designs" bucket, social-sketches/<hash>/<ts>.jpg
 //   4. Graph Send API image attachment; the mid is written back to the row
-//   5. SKETCH_FOLLOWUP text
-// Any failure or the overall timeout → DESIGN_LINK_LINE, reason logged.
+// No follow-up text after the image (owner, 2026-10-31: it was noise).
+// Any failure or the overall timeout → DESIGN_LINK_LINE (unless opts.linkOnFailure
+// is false — a second sketch of the same reply), reason logged.
 //
 // TIME. One overall budget: min(SKETCH_TIMEOUT_MS, what is left of
 // WALL_CLOCK_BUDGET_MS since the run started). Supabase's wall-clock limit is
@@ -21,7 +22,7 @@
 // it; the run has already spent the debounce and the faq-chat call. CPU: the
 // limit is 2 s per request; pixel work here is ≈ 0.3–0.6 s (measured locally).
 
-import { DESIGN_LINK_LINE } from "./botReply.ts";
+import { DESIGN_LINK_LINE, SKETCH_NOTICE } from "./botReply.ts";
 import type { Channel } from "./handler.ts";
 import { decodePng, isJpeg, isPng, type RgbaImage } from "./pngDecode.ts";
 import {
@@ -44,11 +45,13 @@ import {
   renderTextImage,
   resample,
   tintLuminance,
+  trimTransparent,
   type FontLike,
 } from "./sketchRaster.ts";
 
-export const SKETCH_NOTICE = "ესკიზს ვამზადებ, ცოტა ხანში აქვე გამოგიგზავნით 🎨";
-export const SKETCH_FOLLOWUP = "ესკიზი 👆 შესაცვლელად ან შესაკვეთად მოგვწერეთ.";
+export { SKETCH_NOTICE };
+/** Max sketches from one reply (two sides of one product today). */
+export const MAX_SKETCHES_PER_REPLY = 2;
 
 export const SKETCH_CAP_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const MAX_GENERATE_SKETCHES = 3;
@@ -179,7 +182,7 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
 
   if (ctx.plan.kind === "generate") {
     const [design] = await designP;
-    drawContained(canvas, design, boxes[0]);
+    drawContained(canvas, trimTransparent(design), boxes[0]);
   } else {
     const font = await fontP;
     if (!font) throw new SketchError("font_unavailable");
@@ -201,7 +204,12 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
  * Steps 1–5. Returns the outcome for the log ("sent" or a failure reason).
  * Never throws; on failure the customer gets DESIGN_LINK_LINE.
  */
-export async function runSketch(ctx: SketchContext, base: SketchBaseDeps, deps: SketchDeps): Promise<string> {
+export async function runSketch(
+  ctx: SketchContext,
+  base: SketchBaseDeps,
+  deps: SketchDeps,
+  opts: { linkOnFailure?: boolean } = {},
+): Promise<string> {
   const startedAt = base.now().getTime();
   const deadline = startedAt + ctx.budgetMs;
   const now = () => base.now().getTime();
@@ -247,12 +255,11 @@ export async function runSketch(ctx: SketchContext, base: SketchBaseDeps, deps: 
   }
 
   if (outcome === "sent") {
-    await sendText(ctx, base, SKETCH_FOLLOWUP);
     base.log("info", `sketch sent ${ctx.channel}: ${ctx.plan.kind} in ${now() - startedAt} ms`);
     return "sent";
   }
   base.log("warn", `sketch failed ${ctx.channel} (${ctx.plan.kind}): ${outcome}`);
-  await sendText(ctx, base, DESIGN_LINK_LINE);
+  if (opts.linkOnFailure !== false) await sendText(ctx, base, DESIGN_LINK_LINE);
   return outcome;
 }
 

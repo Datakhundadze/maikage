@@ -22,6 +22,30 @@ export const IG_MAX_BYTES = 1000;
 export const CHAT_LINK = "https://maika.ge/chat";
 export const DESIGN_LINK_LINE = `დიზაინის სანახავად: ${CHAT_LINK}`;
 
+/** The reply's last line when a sketch image follows (sketchFlow.ts). */
+export const SKETCH_NOTICE = "ესკიზს ვამზადებ, ცოტა ხანში აქვე გამოგიგზავნით 🎨";
+/**
+ * Texts the bot itself sent around a sketch (incl. the retired follow-up). They
+ * are stripped from the history and from the model's answer: left in, the model
+ * copied them, wrote "I'm preparing a sketch" with no block, and nothing came.
+ */
+export const SKETCH_SYSTEM_LINES = [
+  SKETCH_NOTICE,
+  "ესკიზი 👆 შესაცვლელად ან შესაკვეთად მოგვწერეთ.",
+] as const;
+const IMAGE_TAG = "[ფოტო]";
+
+/** Remove the sketch system lines and the history's image tag from a text. */
+export function stripSketchSystemText(text: string): string {
+  let t = text;
+  for (const line of SKETCH_SYSTEM_LINES) t = t.split(line).join("");
+  t = t.split(IMAGE_TAG).join("");
+  // Meta can drop or swap the emoji; also catch the lines without it.
+  t = t.replace(/ესკიზს ვამზადებ,? ცოტა ხანში აქვე გამოგიგზავნით\s*\S{0,2}/g, "")
+    .replace(/ესკიზი\s*\S{0,2}\s*შესაცვლელად ან შესაკვეთად მოგვწერეთ\.?/g, "");
+  return t.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export const HANDOFF_RE = /ოპერატორ|operator|ადამიან|human|ცოცხალ/i;
 
 export function wantsHuman(text: string | null | undefined): boolean {
@@ -222,8 +246,14 @@ export interface ChatTurn { role: "user" | "assistant"; content: string }
 export function buildHistory(thread: ThreadRow[], max = 8): ChatTurn[] {
   const turns: ChatTurn[] = [];
   for (const r of thread.filter((r) => !(r.direction === "out" && isMetaAutomationEcho(r.text))).slice(-max)) {
+    // Our side: no image tag and no sketch system lines (see SKETCH_SYSTEM_LINES).
+    if (r.direction === "out") {
+      const content = stripSketchSystemText(typeof r.text === "string" ? r.text : "");
+      if (content) turns.push({ role: "assistant", content: content.slice(0, 1000) });
+      continue;
+    }
     const text = typeof r.text === "string" ? r.text.trim() : "";
-    const content = text ? (hasImage(r) ? `${text} [ფოტო]` : text) : (hasImage(r) ? "[ფოტო]" : "");
+    const content = text ? (hasImage(r) ? `${text} ${IMAGE_TAG}` : text) : (hasImage(r) ? IMAGE_TAG : "");
     if (!content) continue;
     turns.push({ role: r.direction === "in" ? "user" : "assistant", content: content.slice(0, 1000) });
   }
@@ -254,7 +284,7 @@ export function cleanBotReply(
     if (k === "mockup" || k === "generate") hadDesign = true;
     return "";
   });
-  text = text
+  text = stripSketchSystemText(text)
     .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, url: string) => (label === url ? url : `${label}: ${url}`))
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")
     .replace(/__([^_\n]+)__/g, "$1")
