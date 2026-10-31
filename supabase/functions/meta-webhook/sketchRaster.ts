@@ -159,6 +159,67 @@ export function keyOutColor(img: RgbaImage, hex: string, inner = 60, outer = 140
 }
 
 /**
+ * „removeWhite" on a customer photo: near-white → transparent with a soft
+ * edge (keyOutColor on #FFFFFF). Pure white up to ~#E9E9E9 (RGB distance 38)
+ * goes fully; from distance 96 (~#C8C8C8) on, a pixel is untouched. Global, like
+ * the site's removeWhite: white INSIDE the design goes too — that is the ask.
+ */
+export const WHITE_KEY_INNER = 38;
+export const WHITE_KEY_OUTER = 96;
+export function keyOutWhite(img: RgbaImage, inner = WHITE_KEY_INNER, outer = WHITE_KEY_OUTER): void {
+  // keyOutColor's maths with the key fixed at white, on squared distances
+  // first (Math.hypot on every pixel of a photo is the slow part).
+  const d = img.data;
+  const in2 = inner * inner, out2 = outer * outer;
+  for (let i = 0; i < d.length; i += 4) {
+    const dr = 255 - d[i], dg = 255 - d[i + 1], db = 255 - d[i + 2];
+    const dist2 = dr * dr + dg * dg + db * db;
+    if (dist2 >= out2) continue;
+    if (dist2 <= in2) { d[i + 3] = 0; continue; }
+    const a = (Math.sqrt(dist2) - inner) / (outer - inner);
+    d[i + 3] = Math.round(d[i + 3] * a);
+    // un-premultiply the white out of the edge colour
+    d[i] = Math.max(0, Math.min(255, Math.round((d[i] - 255 * (1 - a)) / a)));
+    d[i + 1] = Math.max(0, Math.min(255, Math.round((d[i + 1] - 255 * (1 - a)) / a)));
+    d[i + 2] = Math.max(0, Math.min(255, Math.round((d[i + 2] - 255 * (1 - a)) / a)));
+  }
+}
+
+/**
+ * Shrink by an integer factor k: each k×k block → one pixel, alpha-weighted
+ * (edge blocks use the pixels they have). One cheap pass over the source —
+ * a customer photo is cut to size before any other per-pixel work.
+ */
+export function downscaleBy(src: RgbaImage, k: number): RgbaImage {
+  k = Math.max(1, Math.floor(k));
+  if (k === 1) return src;
+  const { width: sw, height: sh, data: s } = src;
+  const dw = Math.ceil(sw / k), dh = Math.ceil(sh / k);
+  const out = createImage(dw, dh);
+  const o = out.data;
+  for (let y = 0; y < dh; y++) {
+    const y0 = y * k, y1 = Math.min(sh, y0 + k);
+    for (let x = 0; x < dw; x++) {
+      const x0 = x * k, x1 = Math.min(sw, x0 + k);
+      let r = 0, g = 0, b = 0, a = 0;
+      for (let sy = y0; sy < y1; sy++) {
+        let i = (sy * sw + x0) * 4;
+        for (let sx = x0; sx < x1; sx++, i += 4) {
+          const al = s[i + 3];
+          r += s[i] * al; g += s[i + 1] * al; b += s[i + 2] * al; a += al;
+        }
+      }
+      const j = (y * dw + x) * 4;
+      if (a > 0) {
+        o[j] = r / a; o[j + 1] = g / a; o[j + 2] = b / a;
+      }
+      o[j + 3] = a / ((y1 - y0) * (x1 - x0));
+    }
+  }
+  return out;
+}
+
+/**
  * Crop to the visible pixels (alpha > threshold) plus a small margin, so the
  * design fills its print box instead of floating in GPT's transparent padding.
  * Fully transparent → the image unchanged.

@@ -79,12 +79,23 @@ import {
   type BotSendRecord,
   type ThreadRow,
 } from "../../supabase/functions/meta-webhook/botReply";
-import { DEBOUNCE_MS, _resetTokenWarning, runAutoReply, type AutoReplyDeps, type TriggerRow } from "../../supabase/functions/meta-webhook/autoReply";
+import { DEBOUNCE_MS, PHOTO_MIRROR_WAIT_MS, _resetTokenWarning, runAutoReply, type AutoReplyDeps, type TriggerRow } from "../../supabase/functions/meta-webhook/autoReply";
 import {
   billableGateApplies,
   resolveTrustedSocialChannel,
   resolveTrustedSocialSketch,
+  socialPromptBlock,
 } from "../../supabase/functions/gemini-proxy/socialChannel";
+import { buildHistoryWithPhotos, photoTag, stripSketchSystemText } from "../../supabase/functions/meta-webhook/botReply";
+import {
+  MAX_SKETCHES_PER_REPLY,
+  PHOTO_MAX_PIXELS,
+  PHOTO_MAX_SIDE,
+  PIXEL_BUDGET_MS,
+  preparePhoto,
+} from "../../supabase/functions/meta-webhook/sketchFlow";
+import { downscaleBy, keyOutWhite } from "../../supabase/functions/meta-webhook/sketchRaster";
+import { parseChatSuggestion } from "@/lib/generateSuggestion";
 
 const ROOT = path.resolve(__dirname, "../..");
 const SUNDAY_NOON = new Date("2026-11-01T12:00:00+04:00");
@@ -164,8 +175,11 @@ describe("parse before strip", () => {
     if (p.kind === "text") expect(p.target).toEqual({ product: "T-Shirt", subProduct: "GILDAN", color: "White", side: "front" });
   });
 
-  it("v1 skips photo mockups, edits, placeholders and order status", () => {
-    expect(planSketch(MOCK({ text: "გიორგი" }), true)).toEqual({ kind: "unsupported", reason: "photo" });
+  it("skips unplaceable photo mockups, edits, placeholders and order status", () => {
+    // (2026-10-31) a photo in the chat no longer blocks a lettering sketch; a
+    // photo block whose photo is not in storage is unsupported (link line)
+    expect(planSketch(MOCK({ text: "გიორგი" }), true)?.kind).toBe("text");
+    expect(planSketch(MOCK({ color: "Black" }), true)).toEqual({ kind: "unsupported", reason: "photo_unavailable" });
     expect(planSketch(MOCK({ removeWhite: true, text: "x1" }), false)).toEqual({ kind: "unsupported", reason: "photo_edit" });
     expect(planSketch(MOCK({ text: "თქვენი ტექსტი" }), false)).toEqual({ kind: "unsupported", reason: "no_text" });
     expect(planSketch("```maika-order-status\n```\n" + MOCK({ text: "a b" }), false)).toEqual({ kind: "unsupported", reason: "order_status" });
@@ -559,13 +573,13 @@ describe("runAutoReply with sketches", () => {
     expect(a.sent).toEqual([`აი იდეა!\n${DESIGN_LINK_LINE}`]);
   });
 
-  it("customer sent a photo → v1 skips, link line", async () => {
+  it("customer photo not in our storage → link line, nothing rendered (after one mirror wait)", async () => {
     const s = sketchFakes();
-    const a = autoDeps(MOCK({ text: "ანა" }), s.deps, {
+    const a = autoDeps(MOCK({ photo: 1, color: "Black" }), s.deps, {
       loadThread: async () => [row({ meta_message_id: "m1", text: "ეს ფოტო დაადე", attachments: [{ type: "image", url: "u" }], sent_at: trigger.sent_at })],
-      loadBotSends: async () => [{ meta_message_id: "x", text: "ფოტო მივიღეთ", kind: "photo", created_at: "2026-11-01T07:00:00.000Z" }],
     });
     await runAutoReply(trigger, a.deps);
+    expect(a.sleeps).toEqual([DEBOUNCE_MS, PHOTO_MIRROR_WAIT_MS]);
     expect(a.sent[0]).toContain(DESIGN_LINK_LINE);
     expect(s.calls).toEqual([]);
   });
@@ -911,5 +925,272 @@ describe("flags: magenta key instead of GPT transparency", () => {
     img.data.set([255, 0, 255, 255, 255, 255, 255, 255, 220, 10, 20, 255]);
     keyOutColor(img, "#FF00FF");
     expect([img.data[3], img.data[7], img.data[11]]).toEqual([0, 255, 255]);
+  });
+});
+
+// ── 2026-10-31: one sketch per customer photo ──────────────────────────────
+
+/** A stored customer image attachment (url carries a token, like Meta's CDN). */
+const storedImg = (n: string) => ({ type: "image", url: `https://cdn.example/${n}.jpg?oh=SECRET`, path: `messenger/2026-10/${n}-0.jpg`, stored: true });
+/** w×h PNG: `inner` colour inside a 1-px border of `border` colour (RGBA). */
+function framedPng(w: number, h: number, border: number[], inner: number[]): Uint8Array {
+  const rows: number[][] = [];
+  for (let y = 0; y < h; y++) {
+    const r: number[] = [];
+    for (let x = 0; x < w; x++) r.push(...(x === 0 || y === 0 || x === w - 1 || y === h - 1 ? border : inner));
+    rows.push(r);
+  }
+  return pngOf(w, h, 6, 8, rows);
+}
+const RED_ON_WHITE = framedPng(6, 6, [255, 255, 255, 255], [255, 0, 0, 255]);
+const PHOTOS = (n: number) => ({ paths: Array.from({ length: n }, (_, i) => `messenger/2026-10/p${i + 1}-0.jpg`), pending: Array.from({ length: n }, (_, i) => i + 1) });
+const blocks = (...os: Record<string, unknown>[]) => `აი ესკიზები.\n${os.map((o) => `\`\`\`maika-mockup\n${JSON.stringify(o)}\n\`\`\``).join("\n")}`;
+
+describe("photo numbering in the history", () => {
+  it("[ფოტო N] in arrival order across the window, one per image; paths only for stored images; our images excluded", () => {
+    const h = buildHistoryWithPhotos([
+      row({ meta_message_id: "a", attachments: [storedImg("a")] as ThreadRow["attachments"], sent_at: "2026-11-01T07:00:00Z" }),
+      row({ meta_message_id: "b", direction: "out", text: "რომელ პროდუქტზე?", attachments: [{ type: "image", url: "https://x/sk.jpg" }] as ThreadRow["attachments"], sent_at: "2026-11-01T07:01:00Z" }),
+      row({ meta_message_id: "c", text: "ესენი", attachments: [storedImg("c1"), { type: "image", url: "u" }, storedImg("c3")] as ThreadRow["attachments"], sent_at: "2026-11-01T07:02:00Z" }),
+      row({ meta_message_id: "d", attachments: [{ type: "image", url: null, purged: true }, { type: "audio", url: "a" }] as ThreadRow["attachments"], sent_at: "2026-11-01T07:03:00Z" }),
+    ]);
+    expect(h.turns).toEqual([
+      { role: "user", content: "[ფოტო 1]" },
+      { role: "assistant", content: "რომელ პროდუქტზე?" },
+      { role: "user", content: "ესენი [ფოტო 2] [ფოტო 3] [ფოტო 4]" },
+      { role: "user", content: "[ფოტო 5]" },
+    ]);
+    expect(h.photos.paths).toEqual(["messenger/2026-10/a-0.jpg", "messenger/2026-10/c1-0.jpg", null, "messenger/2026-10/c3-0.jpg", null]);
+    // the burst after our last message
+    expect(h.photos.pending).toEqual([2, 3, 4, 5]);
+    expect(photoTag(7)).toBe("[ფოტო 7]");
+  });
+
+  it("a long text never loses its tags; the model's copied tags are stripped", () => {
+    const h = buildHistoryWithPhotos([row({ meta_message_id: "a", text: "ა".repeat(1500), attachments: [storedImg("a")] as ThreadRow["attachments"], sent_at: "1" })]);
+    expect(h.turns[0].content.endsWith(" [ფოტო 1]")).toBe(true);
+    expect(h.turns[0].content.length).toBeLessThanOrEqual(1000);
+    expect(stripSketchSystemText("კარგი [ფოტო 2] და [ფოტო] ✓")).toBe("კარგი  და  ✓");
+    expect(cleanBotReply("ფასი 25₾ [ფოტო 3]")).toBe("ფასი 25₾");
+  });
+});
+
+describe("photo blocks: parsing and plans", () => {
+  it('"photo" parses as an integer 1..20; junk dropped', () => {
+    expect(parseMockupBlock(MOCK({ photo: 2 }))?.photo).toBe(2);
+    expect(parseMockupBlock(MOCK({ photo: " 3 " }))?.photo).toBe(3);
+    for (const bad of [0, 21, 1.5, "x", -1, null, true]) expect(parseMockupBlock(MOCK({ photo: bad }))?.photo).toBeUndefined();
+  });
+
+  it("the website ignores the field (parser and chat suggestion unchanged)", () => {
+    const withPhoto = MOCK({ photo: 1, product: "Hoodie", color: "Black", side: "back" });
+    const without = MOCK({ product: "Hoodie", color: "Black", side: "back" });
+    expect(parseMockupSuggestion(withPhoto)).toEqual(parseMockupSuggestion(without));
+    expect(parseMockupSuggestion(withPhoto)).not.toHaveProperty("photo");
+    expect(parseChatSuggestion(withPhoto, true)).toEqual(parseChatSuggestion(without, true));
+  });
+
+  it("one plan per photo, each on its own product / colour / side", () => {
+    const plans = planSketches(blocks(
+      { photo: 1, product: "T-Shirt", subProduct: "GILDAN", color: "White", side: "front" },
+      { photo: 2, product: "Hoodie", subProduct: "GILDAN Hoodie", color: "Black", side: "back" },
+      { photo: 3, product: "Tote Bag", color: "Black" },
+    ), PHOTOS(3), MAX_SKETCHES_PER_REPLY);
+    expect(plans.map((p) => p.kind)).toEqual(["photo", "photo", "photo"]);
+    expect(plans.map((p) => (p.kind === "photo" ? [p.block.photo, p.path, p.target.product, p.target.color, p.target.side] : null))).toEqual([
+      [1, "messenger/2026-10/p1-0.jpg", "T-Shirt", "White", "front"],
+      [2, "messenger/2026-10/p2-0.jpg", "Hoodie", "Black", "back"],
+      [3, "messenger/2026-10/p3-0.jpg", "Tote Bag", "Black", "front"],
+    ]);
+  });
+
+  it("dedupe by (photo, side); drawing / lettering keep one per side; at most 5", () => {
+    const dup = planSketches(blocks({ photo: 1, side: "front" }, { photo: 1, side: "front", color: "Black" }, { photo: 1, side: "back" }, { photo: 2, side: "front" }), PHOTOS(2), 5);
+    expect(dup.map((p) => (p.kind === "photo" ? `${p.block.photo}:${p.target.side}` : p.kind))).toEqual(["1:front", "1:back", "2:front"]);
+    // a lettering block on the front next to a photo on the front: both go
+    const mixed = planSketches(blocks({ photo: 1, side: "front" }, { text: "ანა ბ", side: "front" }, { text: "ნიკა გ", side: "front" }), PHOTOS(1), 5);
+    expect(mixed.map((p) => p.kind)).toEqual(["photo", "text"]);
+    const six = planSketches(blocks(...[1, 2, 3, 4, 5, 6].map((photo) => ({ photo }))), PHOTOS(6), MAX_SKETCHES_PER_REPLY);
+    expect(MAX_SKETCHES_PER_REPLY).toBe(5);
+    expect(six).toHaveLength(5);
+  });
+
+  it("invalid N → unsupported; AI edits stay unsupported; removeWhite is a photo plan", () => {
+    const refs = { paths: ["messenger/2026-10/p1-0.jpg", null], pending: [1, 2] };
+    expect(planSketch(MOCK({ photo: 3 }), refs)).toEqual({ kind: "unsupported", reason: "photo_unknown" });
+    expect(planSketch(MOCK({ photo: 2 }), refs)).toEqual({ kind: "unsupported", reason: "photo_unavailable" });
+    expect(planSketch(MOCK({ photo: 1, removeBackground: true }), refs)).toEqual({ kind: "unsupported", reason: "photo_edit" });
+    expect(planSketch(MOCK({ photo: 1, editPrompt: "სათვალე დაადე" }), refs)).toEqual({ kind: "unsupported", reason: "photo_edit" });
+    const rw = planSketch(MOCK({ photo: 1, removeWhite: true, color: "Black" }), refs);
+    expect(rw?.kind === "photo" && rw.block.removeWhite).toBe(true);
+    // no photos in the window at all
+    expect(planSketch(MOCK({ photo: 1 }), false)).toEqual({ kind: "unsupported", reason: "photo_unknown" });
+  });
+
+  it('no "photo" and no "text": the burst\'s ONE photo is meant; with two it is not guessed', () => {
+    const one = planSketch(MOCK({ color: "Black" }), { paths: ["old.jpg", "new.jpg"], pending: [2] });
+    expect(one?.kind === "photo" && [one.block.photo, one.path]).toEqual([2, "new.jpg"]);
+    expect(planSketch(MOCK({ color: "Black" }), PHOTOS(2))).toEqual({ kind: "unsupported", reason: "no_text" });
+  });
+});
+
+describe("photo rendering", () => {
+  it("downscale to ≤ PHOTO_MAX_SIDE in one pass; oversize refused", () => {
+    const big = createImage(2500, 10);
+    big.data.fill(255);
+    expect(Math.max(preparePhoto(big).width, preparePhoto(big).height)).toBeLessThanOrEqual(PHOTO_MAX_SIDE);
+    const half = downscaleBy({ width: 4, height: 2, data: Uint8ClampedArray.from([0, 0, 0, 255, 255, 255, 255, 255, 9, 9, 9, 255, 9, 9, 9, 255, 0, 0, 0, 255, 255, 255, 255, 255, 9, 9, 9, 255, 9, 9, 9, 255]) }, 2);
+    expect([half.width, half.height]).toEqual([2, 1]);
+    expect(Array.from(half.data)).toEqual([128, 128, 128, 255, 9, 9, 9, 255]);
+    expect(() => preparePhoto({ width: 5000, height: 5000, data: new Uint8ClampedArray(4) })).toThrow();
+    expect(PHOTO_MAX_PIXELS).toBeLessThan(5000 * 5000);
+  });
+
+  it("removeWhite: near-white → transparent with a soft edge, colours kept; without it nothing is removed", async () => {
+    const img = createImage(4, 1);
+    img.data.set([255, 255, 255, 255, 240, 240, 240, 255, 215, 215, 215, 255, 180, 180, 180, 255]);
+    keyOutWhite(img);
+    expect([img.data[3], img.data[7], img.data[15]]).toEqual([0, 0, 255]);
+    expect(img.data[11]).toBeGreaterThan(0);
+    expect(img.data[11]).toBeLessThan(255);
+
+    const photo = await decodePng(RED_ON_WHITE);
+    const plain = preparePhoto({ ...photo, data: new Uint8ClampedArray(photo.data) });
+    expect([plain.width, plain.height]).toEqual([6, 6]); // white kept, even for a dark garment
+    expect(plain.data[3]).toBe(255);
+    const keyed = preparePhoto({ ...photo, data: new Uint8ClampedArray(photo.data) }, { removeWhite: true });
+    expect([keyed.width, keyed.height]).toEqual([4, 4]); // white border gone, then trimmed
+    expect(Array.from(keyed.data.slice(0, 4))).toEqual([255, 0, 0, 255]);
+  });
+
+  it("the photo lands in the drawing box on the product (private download, contain-fit)", async () => {
+    const canvases: { width: number; height: number; data: Uint8ClampedArray }[] = [];
+    const downloads: string[] = [];
+    const s = sketchFakes({
+      downloadUpload: async (p) => { downloads.push(p); return framedPng(6, 6, [255, 0, 0, 255], [255, 0, 0, 255]); },
+      encodeJpeg: (img) => { canvases.push(img); return new Uint8Array([1]); },
+    });
+    const plan = planSketch(MOCK({ photo: 1, product: "Hoodie", subProduct: "GILDAN Hoodie", color: "Black", side: "back" }), PHOTOS(1)) as SketchContext["plan"];
+    const base: SketchBaseDeps = { now: () => SUNDAY_NOON, recordSend: async () => "r", markSent: async () => {}, send: async () => ({ ok: true }), log: () => {} };
+    expect(await runSketch({ channel: "messenger", conversationKey: "k", customerId: "c", plan, budgetMs: 30_000 }, base, s.deps)).toBe("sent");
+    expect(downloads).toEqual(["messenger/2026-10/p1-0.jpg"]);
+    const c = canvases[0];
+    const box = sketchBoxes(plan, findProductImage(plan.target)!, c.width, c.height)[0];
+    const at = (x: number, y: number) => Array.from(c.data.slice((Math.round(y) * c.width + Math.round(x)) * 4, (Math.round(y) * c.width + Math.round(x)) * 4 + 3));
+    expect(at(box.x + box.w / 2, box.y + box.h / 2)).toEqual([255, 0, 0]);
+    expect(at(2, 2)).not.toEqual([255, 0, 0]); // outside the box: the garment
+    // a back photo is placed like a back drawing (BACK_DRAWING_FACTOR)
+    const front = planSketch(MOCK({ photo: 1, product: "Hoodie", subProduct: "GILDAN Hoodie", color: "Black", side: "front" }), PHOTOS(1)) as SketchContext["plan"];
+    const fb = sketchBoxes(front, findProductImage(front.target)!, 1000, 1000)[0];
+    const bb = sketchBoxes(plan, findProductImage(plan.target)!, 1000, 1000)[0];
+    expect(bb.w / fb.w).toBeCloseTo(BACK_DRAWING_FACTOR, 2);
+  });
+
+  it("no download dep / failed download → link line, reason logged without the path", async () => {
+    const logs: string[] = [];
+    const sent: string[] = [];
+    const base: SketchBaseDeps = { now: () => SUNDAY_NOON, recordSend: async () => "r", markSent: async () => {}, send: async (_c, _t, text) => { sent.push(text); return { ok: true }; }, log: (_l, m) => { logs.push(m); } };
+    const plan = planSketch(MOCK({ photo: 1 }), PHOTOS(1)) as SketchContext["plan"];
+    expect(await runSketch({ channel: "messenger", conversationKey: "k", customerId: "c", plan, budgetMs: 30_000 }, base, sketchFakes().deps)).toBe("photo_download_unavailable");
+    expect(await runSketch({ channel: "messenger", conversationKey: "k", customerId: "c", plan, budgetMs: 30_000 }, base, sketchFakes({ downloadUpload: async () => null }).deps)).toBe("photo_download");
+    expect(sent).toEqual([DESIGN_LINK_LINE, DESIGN_LINK_LINE]);
+    expect(logs.join(" ")).not.toContain("messenger/2026-10");
+  });
+});
+
+describe("runAutoReply with customer photos", () => {
+  beforeEach(() => _resetTokenWarning());
+  const photoThread = (n: number) => [row({
+    meta_message_id: "m1", text: "ეს თეთრ მაისურზე წინ, ის შავ ჰუდიზე ზურგზე",
+    attachments: Array.from({ length: n }, (_, i) => storedImg(`p${i + 1}`)) as ThreadRow["attachments"], sent_at: trigger.sent_at,
+  })];
+
+  it("no canned acknowledgement: the AI sees the numbered photos and every block becomes one image", async () => {
+    let history: string[] = [];
+    const downloads: string[] = [];
+    const logs: string[] = [];
+    const s = sketchFakes({ downloadUpload: async (p) => { downloads.push(p); return RED_ON_WHITE; } });
+    const raw = blocks(
+      { photo: 1, product: "T-Shirt", subProduct: "GILDAN", color: "White", side: "front" },
+      { photo: 2, product: "Hoodie", subProduct: "GILDAN Hoodie", color: "Black", side: "back" },
+    );
+    const a = autoDeps(raw, s.deps, {
+      loadThread: async () => photoThread(2),
+      askBot: async (_c, _k, h) => { history = h.map((t) => t.content); return raw; },
+      log: (_l, m) => { logs.push(m); },
+    });
+    expect(await runAutoReply(trigger, a.deps)).toBe("reply");
+    expect(history).toEqual(["ეს თეთრ მაისურზე წინ, ის შავ ჰუდიზე ზურგზე [ფოტო 1] [ფოტო 2]"]);
+    expect(a.sent).toEqual([`აი ესკიზები.\n${SKETCH_NOTICE}`]);
+    expect(downloads).toEqual(["messenger/2026-10/p1-0.jpg", "messenger/2026-10/p2-0.jpg"]);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(2);
+    expect(s.calls.filter((c) => c.startsWith("upload:")).every((c) => /^upload:social-sketches\/h{32}\/\d+\.jpg$/.test(c))).toBe(true);
+    expect(a.records.map((r) => [r.kind, r.text])).toEqual([["reply", `აი ესკიზები.\n${SKETCH_NOTICE}`], ["sketch", SKETCH_MARKER.photo], ["sketch", SKETCH_MARKER.photo]]);
+    expect(a.records.some((r) => r.kind === "photo")).toBe(false);
+    expect(a.sleeps).toEqual([DEBOUNCE_MS]); // already stored → no mirror wait
+    expect(logs.join(" ")).not.toMatch(/SECRET|messenger\/2026-10/);
+  });
+
+  it("the same product photo is decoded once per reply", async () => {
+    const s = sketchFakes({ downloadUpload: async () => RED_ON_WHITE });
+    const a = autoDeps(blocks({ photo: 1 }, { photo: 2 }, { photo: 3 }), s.deps, { loadThread: async () => photoThread(3) });
+    await runAutoReply(trigger, a.deps);
+    expect(s.calls.filter((c) => c.startsWith("fetch:"))).toHaveLength(1);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(3);
+  });
+
+  it("photos count toward the mockup cap; a capped / unplaceable one adds the link line once, after the images", async () => {
+    expect(countSketchRows([{ text: SKETCH_MARKER.photo }, { text: SKETCH_MARKER.text }, { text: SKETCH_MARKER.generate }])).toEqual({ generate: 1, text: 2 });
+    const s = sketchFakes({ countSketches: async () => ({ generate: 0, text: MAX_TEXT_SKETCHES - 1 }), downloadUpload: async () => RED_ON_WHITE });
+    const a = autoDeps(blocks({ photo: 1 }, { photo: 2 }, { photo: 9 }), s.deps, { loadThread: async () => photoThread(2) });
+    await runAutoReply(trigger, a.deps);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(1);
+    expect(a.sent).toEqual([`აი ესკიზები.\n${SKETCH_NOTICE}`, DESIGN_LINK_LINE]);
+  });
+
+  it("pixel budget: once PIXEL_BUDGET_MS is spent, the rest get the link line once", async () => {
+    let clock = SUNDAY_NOON.getTime();
+    const logs: string[] = [];
+    const s = sketchFakes({
+      downloadUpload: async () => RED_ON_WHITE,
+      encodeJpeg: () => { clock += Math.ceil(PIXEL_BUDGET_MS * 0.6); return new Uint8Array([1]); },
+    });
+    const a = autoDeps(blocks({ photo: 1 }, { photo: 2 }, { photo: 3 }, { photo: 4 }), s.deps, {
+      loadThread: async () => photoThread(4),
+      now: () => new Date(clock),
+      log: (_l, m) => { logs.push(m); },
+    });
+    await runAutoReply(trigger, a.deps);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(2);
+    expect(a.sent.filter((t) => t === DESIGN_LINK_LINE)).toHaveLength(1);
+    expect(logs.some((l) => l.includes("cpu_budget"))).toBe(true);
+  });
+
+  it("a photo still being copied: one PHOTO_MIRROR_WAIT_MS wait, then the stored copy is used", async () => {
+    let reads = 0;
+    const s = sketchFakes({ downloadUpload: async () => RED_ON_WHITE });
+    const fresh = [row({ meta_message_id: "m1", text: "შავ მაისურზე", attachments: [{ type: "image", url: "https://cdn.example/x?oh=SECRET" }], sent_at: trigger.sent_at })];
+    const a = autoDeps(blocks({ photo: 1, color: "Black" }), s.deps, { loadThread: async () => (++reads === 1 ? fresh : photoThread(1)) });
+    await runAutoReply(trigger, a.deps);
+    expect(a.sleeps).toEqual([DEBOUNCE_MS, PHOTO_MIRROR_WAIT_MS]);
+    expect(reads).toBe(2);
+    expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(1);
+  });
+});
+
+describe("DM prompt: customer photos", () => {
+  it("numbered photos, one block per photo, ask when the product is missing, prices per product", () => {
+    const dm = socialPromptBlock("messenger", "sunday");
+    expect(dm).toContain("„[ფოტო 1]\", „[ფოტო 2]\"");
+    expect(dm).toContain("emit ONE maika-mockup block with \"photo\": N");
+    expect(dm).toContain("{\"photo\":2,\"product\":\"Hoodie\",\"subProduct\":\"GILDAN Hoodie\",\"color\":\"Black\",\"side\":\"back\"}");
+    expect(dm).toContain("Several photos → several blocks in the SAME reply");
+    expect(dm).toContain("ask ONE short question");
+    expect(dm).toContain("one line per product they named (two-sided → that model + 10/15");
+    expect(dm).toContain("Never say sending or uploading photos is impossible");
+    expect(dm).not.toContain("an operator will send the sketch");
+    // the example blocks in the prompt are themselves valid photo blocks
+    const plans = planSketches(dm, PHOTOS(2), MAX_SKETCHES_PER_REPLY);
+    expect(plans.map((p) => p.kind)).toEqual(["photo", "photo"]);
   });
 });

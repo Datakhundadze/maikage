@@ -22,6 +22,10 @@
 // 2019 / 2018). PNG decoding is pngDecode.ts. Images go to the public
 // "designs" bucket under social-sketches/. Run the SQL in
 // migrations/20261031200000_social_bot_sketch_kind.sql BEFORE deploying.
+// PHOTO SKETCHES (add-only, 2026-10-31): a block with "photo": N places the
+// customer's own photo N; it is read from the private social-uploads bucket
+// with the service role (sketchDeps.downloadUpload) and never made public —
+// only the rendered sketch goes to designs/social-sketches/<hash>/. No SQL.
 //
 // AUTO-REPLY (add-only). After a NEW inbound customer row is stored, the bot
 // run (autoReply.ts) is scheduled in the background like the photo copy. It
@@ -509,7 +513,8 @@ function sketchDeps(admin: Admin): SketchDeps {
         log,
       }),
     decodeJpeg: (bytes) => {
-      const d = jpeg.decode(bytes, { useTArray: true, formatAsRGBA: true, maxMemoryUsageInMB: 128 });
+      // 24 MP = sketchFlow.PHOTO_MAX_PIXELS (customer photos; product photos are ~1 MP).
+      const d = jpeg.decode(bytes, { useTArray: true, formatAsRGBA: true, maxMemoryUsageInMB: 128, maxResolutionInMP: 24 });
       return { width: d.width, height: d.height, data: new Uint8ClampedArray(d.data.buffer, d.data.byteOffset, d.data.byteLength) };
     },
     encodeJpeg: (img: RgbaImage, quality) => {
@@ -537,6 +542,22 @@ function sketchDeps(admin: Admin): SketchDeps {
       const { error } = await admin.storage.from(SKETCH_BUCKET)
         .upload(`social-sketches/cache/${k}.png`, png, { contentType: "image/png", upsert: true });
       if (error) log("warn", `sketch: cache put failed: ${error.message}`);
+    },
+    // The customer's own photo, from the PRIVATE bucket with the service role —
+    // never a public or signed URL. The path is not logged.
+    downloadUpload: async (path: string): Promise<Uint8Array | null> => {
+      try {
+        const { data, error } = await admin.storage.from(SOCIAL_UPLOAD_BUCKET).download(path);
+        if (error || !data) {
+          log("warn", "sketch: customer photo download failed");
+          return null;
+        }
+        const bytes = new Uint8Array(await data.arrayBuffer());
+        return bytes.length > 0 && bytes.length <= MAX_SKETCH_INPUT_BYTES ? bytes : null;
+      } catch (e) {
+        log("warn", `sketch: customer photo download failed: ${e instanceof Error ? e.name : "error"}`);
+        return null;
+      }
     },
   };
 }

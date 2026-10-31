@@ -33,13 +33,16 @@ export const SKETCH_SYSTEM_LINES = [
   SKETCH_NOTICE,
   "ესკიზი 👆 შესაცვლელად ან შესაკვეთად მოგვწერეთ.",
 ] as const;
-const IMAGE_TAG = "[ფოტო]";
+/** The history's numbered image tag, „[ფოტო 2]" (photo sketches, 2026-10-31). */
+export const photoTag = (n: number) => `[ფოტო ${n}]`;
+/** Any image tag, numbered or the old bare „[ფოტო]" — the model may copy one. */
+const ANY_IMAGE_TAG_RE = /\[ფოტო(?:\s*\d{1,2})?\]/g;
 
-/** Remove the sketch system lines and the history's image tag from a text. */
+/** Remove the sketch system lines and the history's image tags from a text. */
 export function stripSketchSystemText(text: string): string {
   let t = text;
   for (const line of SKETCH_SYSTEM_LINES) t = t.split(line).join("");
-  t = t.split(IMAGE_TAG).join("");
+  t = t.replace(ANY_IMAGE_TAG_RE, "");
   // Meta can drop or swap the emoji; also catch the lines without it.
   t = t.replace(/ესკიზს ვამზადებ,? ცოტა ხანში აქვე გამოგიგზავნით\s*\S{0,2}/g, "")
     .replace(/ესკიზი\s*\S{0,2}\s*შესაცვლელად ან შესაკვეთად მოგვწერეთ\.?/g, "");
@@ -205,7 +208,6 @@ export interface DecideInput {
 export type Decision =
   | { action: "skip"; reason: string }
   | { action: "handoff" }
-  | { action: "photo" }
   | { action: "reply" };
 
 export function decideAutoReply(i: DecideInput): Decision {
@@ -228,13 +230,9 @@ export function decideAutoReply(i: DecideInput): Decision {
   const pending = pendingInbound(i.thread);
   if (pending.length === 0) return { action: "skip", reason: "nothing_pending" };
   if (pending.some((r) => wantsHuman(r.text))) return { action: "handoff" };
-  if (pending.some(hasImage)) {
-    // One "photo received" per window is enough; after that, text still gets answers.
-    const photoSent = recentSends.some((s) => s.kind === "photo");
-    const pendingText = pending.some((r) => typeof r.text === "string" && r.text.trim() !== "");
-    if (!photoSent) return { action: "photo" };
-    if (!pendingText) return { action: "skip", reason: "photo_already_acknowledged" };
-  }
+  // Photos go to the AI reply like text (2026-10-31): the model sees them as
+  // „[ფოტო N]" and answers with one sketch block per photo. photoMessage is
+  // only the fallback when that call fails (autoReply.ts).
   return { action: "reply" };
 }
 
@@ -242,24 +240,67 @@ export function decideAutoReply(i: DecideInput): Decision {
 
 export interface ChatTurn { role: "user" | "assistant"; content: string }
 
+/**
+ * The customer's photos in the history window, by number: paths[N - 1] is the
+ * private social-uploads path of „[ფოტო N]", or null when that image is not
+ * (yet / any more) in our storage. `pending` = the numbers sent in the
+ * current burst (after our last message).
+ */
+export interface PhotoRefs {
+  paths: (string | null)[];
+  pending: number[];
+}
+
+export interface HistoryWithPhotos {
+  turns: ChatTurn[];
+  photos: PhotoRefs;
+}
+
+/** The private storage path of a stored image attachment, else null. */
+function storedPath(a: SocialAttachment): string | null {
+  return a.stored === true && a.purged !== true && typeof a.path === "string" && a.path.trim() !== "" ? a.path : null;
+}
+
 /** Last messages (oldest-first) → faq-chat turns: in → user, out → assistant. */
 export function buildHistory(thread: ThreadRow[], max = 8): ChatTurn[] {
+  return buildHistoryWithPhotos(thread, max).turns;
+}
+
+/**
+ * buildHistory plus photo numbering: every customer image in the window gets
+ * „[ფოტო N]", N counting from 1 in arrival order (a message with three images
+ * → three tags), and its storage path goes to photos.paths[N - 1]. Our own
+ * outbound images (sketches) get no tag and no number.
+ */
+export function buildHistoryWithPhotos(thread: ThreadRow[], max = 8): HistoryWithPhotos {
   const turns: ChatTurn[] = [];
-  for (const r of thread.filter((r) => !(r.direction === "out" && isMetaAutomationEcho(r.text))).slice(-max)) {
+  const paths: (string | null)[] = [];
+  const pending: number[] = [];
+  const window = thread.filter((r) => !(r.direction === "out" && isMetaAutomationEcho(r.text))).slice(-max);
+  const pendingIds = new Set(pendingInbound(window).map((r) => r.meta_message_id));
+  for (const r of window) {
     // Our side: no image tag and no sketch system lines (see SKETCH_SYSTEM_LINES).
     if (r.direction === "out") {
       const content = stripSketchSystemText(typeof r.text === "string" ? r.text : "");
       if (content) turns.push({ role: "assistant", content: content.slice(0, 1000) });
       continue;
     }
-    const text = typeof r.text === "string" ? r.text.trim() : "";
-    const content = text ? (hasImage(r) ? `${text} ${IMAGE_TAG}` : text) : (hasImage(r) ? IMAGE_TAG : "");
+    const tags: string[] = [];
+    for (const a of Array.isArray(r.attachments) ? r.attachments : []) {
+      if (!a || a.type !== "image") continue;
+      paths.push(storedPath(a));
+      tags.push(photoTag(paths.length));
+      if (pendingIds.has(r.meta_message_id)) pending.push(paths.length);
+    }
+    // The text is capped first, so a long message never loses its tags.
+    const text = typeof r.text === "string" ? r.text.trim().slice(0, 900) : "";
+    const content = [text, ...tags].filter((s) => s !== "").join(" ");
     if (!content) continue;
-    turns.push({ role: r.direction === "in" ? "user" : "assistant", content: content.slice(0, 1000) });
+    turns.push({ role: "user", content: content.slice(0, 1000) });
   }
   // faq-chat answers the last user turn; never end on our own message.
   while (turns.length > 0 && turns[turns.length - 1].role !== "user") turns.pop();
-  return turns;
+  return { turns, photos: { paths, pending } };
 }
 
 // ── cleaning the bot's answer for a DM ─────────────────────────────────────

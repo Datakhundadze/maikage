@@ -5,12 +5,15 @@
 // ORDER (cheapest first, so a disabled bot costs one single-row read):
 //   1. settings + schedule          off → return
 //   2. wait DEBOUNCE_MS             a burst of messages gets ONE answer
-//   3. read: handoff row, last 8 messages, outbound rows + bot sends (12 h)
+//   3. read: handoff row, last 8 messages, outbound rows + bot sends (12 h);
+//      a burst photo not yet in social-uploads → wait PHOTO_MIRROR_WAIT_MS once
 //   4. decideAutoReply (botReply.ts)
-//   5. handoff / photo / AI reply → record → send → write the mid back
+//   5. handoff / AI reply → record → send → write the mid back. Photos go to
+//      the AI as „[ფოტო N]"; only if that call fails, the fixed photoMessage.
 //   6. (AI reply with a design block, deps.sketch set) the sketch image —
 //      sketchFlow.ts; the reply then ends in SKETCH_NOTICE instead of the link.
-//      Up to MAX_SKETCHES_PER_REPLY blocks (one per side) → one image each.
+//      Up to MAX_SKETCHES_PER_REPLY blocks (one per side for a drawing /
+//      lettering, one per photo + side for "photo": N) → one image each.
 //
 // DEBOUNCE. Every new inbound message starts its own run, and a run that sees
 // a newer inbound message skips as "superseded" (decideAutoReply). So the
@@ -28,11 +31,10 @@ import type { BotSchedule } from "./botSchedule.ts";
 import { isScheduleActive } from "./botSchedule.ts";
 import {
   DESIGN_LINK_LINE,
-  buildHistory,
+  buildHistoryWithPhotos,
   cleanBotReply,
   decideAutoReply,
   handoffMessage,
-  hasImage,
   pendingInbound,
   photoMessage,
   splitForChannel,
@@ -41,13 +43,16 @@ import {
   type OutRow,
   type ThreadRow,
 } from "./botReply.ts";
-import { planSketches, type SketchPlan } from "./sketchParse.ts";
+import { planSketches, type RenderPlan } from "./sketchParse.ts";
+import type { RgbaImage } from "./pngDecode.ts";
 import {
   MIN_SKETCH_BUDGET_MS,
   SKETCH_CAP_WINDOW_MS,
   MAX_SKETCHES_PER_REPLY,
+  PIXEL_BUDGET_MS,
   SKETCH_NOTICE,
   TESTER_CAPS,
+  capKindOf,
   designCacheKey,
   runSketch,
   sketchBudgetMs,
@@ -57,6 +62,19 @@ import {
 
 /** 10 s (was 4 s, owner 2026-10-31): people type in many short lines. */
 export const DEBOUNCE_MS = 10_000;
+/**
+ * A pending photo not yet copied to social-uploads (index.ts does that in the
+ * background) cannot be placed. Wait this long once and re-read the thread.
+ */
+export const PHOTO_MIRROR_WAIT_MS = 4_000;
+
+/** An inbound image of the burst whose copy to our storage may still land. */
+function awaitingMirror(thread: ThreadRow[]): boolean {
+  return pendingInbound(thread).some((r) =>
+    Array.isArray(r.attachments) &&
+    r.attachments.some((a) => a && a.type === "image" && a.stored !== true && a.purged !== true && typeof a.url === "string" && a.url !== "")
+  );
+}
 
 export interface TriggerRow {
   channel: Channel;
@@ -125,12 +143,17 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
 
     const now = deps.now();
     const sinceIso = new Date(now.getTime() - 13 * 60 * 60 * 1000).toISOString();
-    const [handedOff, thread, outRows, botSends] = await Promise.all([
+    const [handedOff, firstThread, outRows, botSends] = await Promise.all([
       deps.isHandedOff(key),
       deps.loadThread(key, 8),
       deps.loadOutRows(key, sinceIso),
       deps.loadBotSends(key, sinceIso),
     ]);
+    let thread = firstThread;
+    if (deps.sketch && awaitingMirror(thread)) {
+      await deps.sleep(PHOTO_MIRROR_WAIT_MS);
+      thread = await deps.loadThread(key, 8);
+    }
 
     const decision = decideAutoReply({
       settings, now, handedOff, outRows, botSends, tokenSet: deps.tokenSet,
@@ -144,26 +167,39 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
 
     let kind: "reply" | "handoff" | "photo";
     let text: string;
-    const sketches: { plan: Extract<SketchPlan, { kind: "generate" | "text" }>; cached: Uint8Array | null }[] = [];
+    const sketches: { plan: RenderPlan; cached: Uint8Array | null }[] = [];
+    // A block of this reply got no sketch (unsupported / cap): when others do,
+    // the link line still goes out once, after them.
+    let owedLink = false;
     const tester = Array.isArray(settings.allowKeys) && settings.allowKeys.includes(key);
+    const { turns: history, photos } = buildHistoryWithPhotos(thread, 8);
+    // AI call failed while photos wait for an answer → the old fixed
+    // „ფოტო მივიღეთ" (an operator will look) instead of silence.
+    const raw = decision.action === "reply" && history.length > 0
+      ? await deps.askBot(row.channel, key, history, schedule)
+      : null;
     if (decision.action === "handoff") {
       await deps.insertHandoff(key, "customer_asked");
       kind = "handoff";
       text = handoffMessage(schedule);
-    } else if (decision.action === "photo") {
+    } else if (history.length === 0) {
+      return "empty_history";
+    } else if (raw === null && photos.pending.length > 0) {
       kind = "photo";
       text = photoMessage(schedule);
+    } else if (raw === null) {
+      return "bot_failed";
     } else {
-      const history = buildHistory(thread, 8);
-      if (history.length === 0) return "empty_history";
-      const raw = await deps.askBot(row.channel, key, history, schedule);
-      if (raw === null) return "bot_failed";
       kind = "reply";
       // Parse BEFORE cleanBotReply strips the fences.
       if (deps.sketch) {
-        const plans = planSketches(raw, pendingInbound(thread).some(hasImage), MAX_SKETCHES_PER_REPLY);
-        const wanted = plans.filter((p): p is Extract<SketchPlan, { kind: "generate" | "text" }> => p.kind !== "unsupported");
-        for (const p of plans) if (p.kind === "unsupported") deps.log("info", `sketch skipped ${row.channel}: ${p.reason}`);
+        const plans = planSketches(raw, photos, MAX_SKETCHES_PER_REPLY);
+        const wanted = plans.filter((p): p is RenderPlan => p.kind !== "unsupported");
+        for (const p of plans) {
+          if (p.kind !== "unsupported") continue;
+          deps.log("info", `sketch skipped ${row.channel}: ${p.reason}`);
+          owedLink = true;
+        }
         if (wanted.length > 0) {
           const since = new Date(deps.now().getTime() - SKETCH_CAP_WINDOW_MS).toISOString();
           const counts = await deps.sketch.countSketches(key, since);
@@ -180,9 +216,10 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
                 const sk: SketchDeps = deps.sketch;
                 cached = await designCacheKey(p, sk.hashKey).then((k) => sk.cacheGet!(k)).catch(() => null);
               }
-              const capKind = p.kind === "generate" && cached ? "text" : p.kind;
+              const capKind = capKindOf(p, cached !== null);
               if (!withinCaps(capKind, running, limits)) {
                 deps.log("info", `sketch skipped ${row.channel}: ${running ? "cap" : "count_failed"}`);
+                owedLink = true;
                 continue;
               }
               sketches.push({ plan: p, cached });
@@ -216,29 +253,36 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps): Promis
       // One image per side, in the order the bot wrote them. The link line
       // goes out at most once, after the first failure.
       let linkSent = false;
+      const sendLinkOnce = async (): Promise<void> => {
+        if (linkSent) return;
+        linkSent = true;
+        const id = await deps.recordSend(key, "reply", DESIGN_LINK_LINE);
+        if (id) {
+          const res = await deps.send(row.channel, row.customer_id, DESIGN_LINK_LINE);
+          if (res.ok && res.messageId) await deps.markSent(id, res.messageId);
+        }
+      };
+      const productCache = new Map<string, RgbaImage>();
+      const cpu = { ms: 0 };
       for (const { plan, cached } of sketches) {
         // The budget was measured before the text went out; re-measure.
         const budgetMs = sketchBudgetMs(runStartedAt, deps.now().getTime());
         const need = plan.kind === "generate" && !cached ? MIN_SKETCH_BUDGET_MS : MIN_SKETCH_BUDGET_MS / 3;
-        if (budgetMs < need) {
-          deps.log("info", `sketch skipped ${row.channel}: no_time (${budgetMs} ms left)`);
-          if (!linkSent) {
-            const id = await deps.recordSend(key, "reply", DESIGN_LINK_LINE);
-            if (id) {
-              const res = await deps.send(row.channel, row.customer_id, DESIGN_LINK_LINE);
-              if (res.ok && res.messageId) await deps.markSent(id, res.messageId);
-            }
-          }
+        const outOfCpu = cpu.ms >= PIXEL_BUDGET_MS;
+        if (budgetMs < need || outOfCpu) {
+          deps.log("info", `sketch skipped ${row.channel}: ${outOfCpu ? `cpu_budget (${cpu.ms} ms spent)` : `no_time (${budgetMs} ms left)`}`);
+          await sendLinkOnce();
           break;
         }
         const outcome = await runSketch(
-          { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan, budgetMs, cachedDesign: cached },
+          { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan, budgetMs, cachedDesign: cached, productCache, cpu },
           { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
           deps.sketch,
           { linkOnFailure: !linkSent },
         );
         if (outcome !== "sent") linkSent = true;
       }
+      if (owedLink) await sendLinkOnce();
     }
     return kind;
   } catch (e) {

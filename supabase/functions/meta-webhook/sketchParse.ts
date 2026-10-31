@@ -180,7 +180,16 @@ export interface MockupBlock {
   removeWhite?: boolean;
   /** DM only: „უფრო დიდი" → "large". The site ignores the field. */
   size?: "large";
+  /**
+   * DM only: which customer photo („[ფოტო N]" in the history, 1-based) this
+   * block places. The site's parser builds its result field by field and
+   * never reads it.
+   */
+  photo?: number;
 }
+
+/** Highest „[ფოტო N]" a block may name (the history holds 8 messages). */
+export const MAX_PHOTO_NUMBER = 20;
 
 const truthy = (v: unknown) => v === true || (typeof v === "string" && norm(v) === "true");
 
@@ -297,6 +306,11 @@ export function parseMockupBlock(raw: string): MockupBlock | null {
     if (hit) out.textColor = hit;
   }
   if (typeof parsed.size === "string" && /^(large|big|xl)$/i.test(parsed.size.trim())) out.size = "large";
+  if (typeof parsed.photo === "number" || typeof parsed.photo === "string") {
+    const raw = String(parsed.photo).trim();
+    const n = /^\d{1,2}$/.test(raw) ? Number(raw) : NaN;
+    if (Number.isInteger(n) && n >= 1 && n <= MAX_PHOTO_NUMBER) out.photo = n;
+  }
   return out;
 }
 
@@ -312,7 +326,33 @@ export interface ProductChoice {
 export type SketchPlan =
   | { kind: "generate"; block: GenerateBlock; target: ProductChoice }
   | { kind: "text"; block: MockupBlock & { text: string }; target: ProductChoice }
+  /** The customer's own photo N, from the private social-uploads `path`. */
+  | { kind: "photo"; block: MockupBlock & { photo: number }; target: ProductChoice; path: string }
   | { kind: "unsupported"; reason: string };
+
+/** A plan that renders an image (everything but "unsupported"). */
+export type RenderPlan = Exclude<SketchPlan, { kind: "unsupported" }>;
+
+/**
+ * The customer's photos the reply may place: paths[N - 1] = storage path of
+ * „[ფოტო N]" (null = not stored), pending = the numbers of this burst.
+ * (botReply.buildHistoryWithPhotos builds it; same shape as its PhotoRefs.)
+ */
+export interface SketchPhotos {
+  paths: readonly (string | null)[];
+  pending: readonly number[];
+}
+export const NO_PHOTOS: SketchPhotos = { paths: [], pending: [] };
+
+/**
+ * `true` / `false` are the pre-photo-sketch callers' "the customer sent a
+ * photo" flag: true = one photo, not stored (so nothing can be placed).
+ */
+function photosOf(p: boolean | SketchPhotos | undefined): SketchPhotos {
+  if (p === true) return { paths: [null], pending: [1] };
+  if (!p) return NO_PHOTOS;
+  return p;
+}
 
 /** Fill the gaps the way the site's seed does, with the site's defaults. */
 export function productChoice(b: { product?: string; subProduct?: string; color?: string; side?: "front" | "back"; placement?: string }): ProductChoice {
@@ -333,10 +373,14 @@ const ORDER_STATUS_RE = /```maika-order-status\b/;
  * all (cleanBotReply then adds no link either). Same precedence as the site's
  * parseChatSuggestion: order status wins, then generate, then mockup.
  *
- * `customerSentPhoto`: a mockup with a photo to place (or to edit, cut out,
- * de-white) is not rendered in v1 — "unsupported" → the link line.
+ * PHOTOS (2026-10-31). A mockup with "photo": N places the customer's photo N
+ * when it is in our storage ("photo" plan); unknown / unstored N →
+ * "unsupported" (the link line). A mockup with neither "photo" nor "text"
+ * while the burst holds exactly ONE photo means that photo (the site's habit:
+ * a photo block has no text). "removeWhite" is done locally; the AI edits
+ * ("removeBackground", "editPrompt") stay unsupported in v1.
  */
-export function planSketch(raw: string, customerSentPhoto: boolean): SketchPlan | null {
+export function planSketch(raw: string, photos: boolean | SketchPhotos): SketchPlan | null {
   const s = String(raw ?? "");
   const hasGenerateFence = /```maika-generate\b/.test(s);
   const hasMockupFence = /```maika-mockup\b/.test(s);
@@ -348,7 +392,15 @@ export function planSketch(raw: string, customerSentPhoto: boolean): SketchPlan 
 
   const m = parseMockupBlock(s);
   if (!m) return { kind: "unsupported", reason: "unparseable" };
-  if (customerSentPhoto) return { kind: "unsupported", reason: "photo" };
+  const refs = photosOf(photos);
+  const n = m.photo ?? (!m.text && refs.pending.length === 1 ? refs.pending[0] : undefined);
+  if (n !== undefined) {
+    if (m.editPrompt || m.removeBackground) return { kind: "unsupported", reason: "photo_edit" };
+    if (n > refs.paths.length) return { kind: "unsupported", reason: "photo_unknown" };
+    const path = refs.paths[n - 1];
+    if (!path) return { kind: "unsupported", reason: "photo_unavailable" };
+    return { kind: "photo", block: { ...m, photo: n }, target: productChoice(m), path };
+  }
   if (m.editPrompt || m.removeBackground || m.removeWhite) return { kind: "unsupported", reason: "photo_edit" };
   if (!m.text) return { kind: "unsupported", reason: "no_text" };
   return { kind: "text", block: { ...m, text: m.text }, target: productChoice(m) };
@@ -437,8 +489,12 @@ const ANY_FENCE_RE = /```maika-(generate|mockup)\s*[\s\S]*?```/g;
  * უკან Y" gets both sketches in one go. One plan per side (the first block for
  * a side wins), at most `max`. [] = no design block. Unsupported plans stay in
  * the list so the caller can log them and add the link line.
+ *
+ * Photo plans (2026-10-31) are one per (photo, side) instead, on top of the
+ * drawing / text rule: „this on the front, that one on the back of a hoodie"
+ * → one sketch per photo.
  */
-export function planSketches(raw: string, customerSentPhoto: boolean, max = 2): SketchPlan[] {
+export function planSketches(raw: string, photos: boolean | SketchPhotos, max = 2): SketchPlan[] {
   const s = String(raw ?? "");
   if (!/```maika-(generate|mockup)\b/.test(s)) return [];
   if (ORDER_STATUS_RE.test(s)) return [{ kind: "unsupported", reason: "order_status" }];
@@ -446,11 +502,16 @@ export function planSketches(raw: string, customerSentPhoto: boolean, max = 2): 
   if (fences.length === 0) return [{ kind: "unsupported", reason: "unparseable" }];
   const out: SketchPlan[] = [];
   const sides = new Set<string>();
+  const photoSides = new Set<string>();
   for (const fence of fences) {
     if (out.length >= max) break;
-    const plan = planSketch(fence, customerSentPhoto);
+    const plan = planSketch(fence, photos);
     if (!plan) continue;
-    if (plan.kind !== "unsupported") {
+    if (plan.kind === "photo") {
+      const k = `${plan.block.photo}:${plan.target.side}`;
+      if (photoSides.has(k)) continue;
+      photoSides.add(k);
+    } else if (plan.kind !== "unsupported") {
       if (sides.has(plan.target.side)) continue;
       sides.add(plan.target.side);
     }
