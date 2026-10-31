@@ -1293,18 +1293,21 @@ export type Database = {
       }
       social_bot_settings: {
         Row: {
+          allow_keys: string[]
           enabled: boolean
           id: boolean
           schedule: string
           updated_at: string
         }
         Insert: {
+          allow_keys?: string[]
           enabled?: boolean
           id?: boolean
           schedule?: string
           updated_at?: string
         }
         Update: {
+          allow_keys?: string[]
           enabled?: boolean
           id?: boolean
           schedule?: string
