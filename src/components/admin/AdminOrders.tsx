@@ -29,6 +29,7 @@ import {
   type ManualChannel,
   type OrderAttributionRow,
 } from "@/hooks/useOrderAttribution";
+import OrderReceipt from "@/components/admin/OrderReceipt";
 
 // Display widths. Generous on purpose — a soft thumbnail is a worse bug than
 // one that loads in 40ms instead of 20: the 40px summary chip gets 128
@@ -1061,6 +1062,11 @@ export default function AdminOrders() {
                       <span>Order ID: <span className="font-mono">{order.bog_order_id}</span></span>
                     )}
                   </div>
+
+                  {/* DM bank transfer: the receipt the bot read (add-only, display only) */}
+                  {order.payment_provider === "bank_transfer" && order.cart_id && (
+                    <OrderReceipt cartId={order.cart_id} />
+                  )}
 
                   {/* Status controls */}
                   <div className="flex gap-3 items-end flex-wrap pt-2 border-t border-border">
