@@ -338,7 +338,7 @@ const FENCE_RE = /```maika-([a-z0-9_-]+)[^\n]*\n?[\s\S]*?(```|$)/gi;
 export function cleanBotReply(
   raw: string,
   schedule: BotSchedule = "sunday",
-  opts?: { designNotice?: string; allowPriceList?: boolean },
+  opts?: { designNotice?: string; allowPriceList?: boolean; trimPriceList?: boolean },
 ): string {
   let hadDesign = false;
   let text = String(raw ?? "").replace(FENCE_RE, (_m, kind: string) => {
@@ -355,7 +355,9 @@ export function cleanBotReply(
     .replace(/\n{3,}/g, "\n\n")
     .trim();
   // Owner 2026-11-01: one price line, not the model list (unless they asked for models).
-  if (!opts?.allowPriceList) text = trimPriceList(text);
+  // Owner 2026-11-01 (later): he LIKES the full model list — trimming is off by
+  // default; trimPriceList stays for an explicit opts.trimPriceList.
+  if (opts?.trimPriceList) text = trimPriceList(text);
   // Owner 2026-11-01: never the website-chat link in a DM — drop any line with it.
   text = text.split("\n").filter((l) => !/maika\.ge\/chat/i.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
