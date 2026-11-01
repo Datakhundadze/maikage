@@ -20,7 +20,12 @@ export const MAX_REPLY_CHARS = 1000;
 export const IG_MAX_BYTES = 1000;
 
 export const CHAT_LINK = "https://maika.ge/chat";
-export const DESIGN_LINK_LINE = `დიზაინის სანახავად: ${CHAT_LINK}`;
+/**
+ * Sent when a design block could not become a sketch here. Owner 2026-11-01: no
+ * maika.ge/chat link in DMs at all — an operator prepares the sketch instead.
+ * (Name kept for the existing call sites.)
+ */
+export const DESIGN_LINK_LINE = "ამ ესკიზს ოპერატორი მოამზადებს და აქვე გამოგიგზავნით.";
 
 /** The reply's last line when a sketch image follows (sketchFlow.ts). */
 export const SKETCH_NOTICE = "ესკიზს ვამზადებ, ცოტა ხანში აქვე გამოგიგზავნით 🎨";
@@ -76,8 +81,7 @@ export function handoffMessage(schedule: BotSchedule): string {
 }
 
 export function photoMessage(schedule: BotSchedule): string {
-  return `ფოტო მივიღეთ, მადლობა 📷 ოპერატორი ნახავს და გიპასუხებთ ${operatorBack(schedule)}. ` +
-    `თუ დიზაინის ნახვა ახლავე გინდათ, ატვირთეთ ფოტო აქ: ${CHAT_LINK}`;
+  return `ფოტო მივიღეთ, მადლობა 📷 ოპერატორი ნახავს და გიპასუხებთ ${operatorBack(schedule)}.`;
 }
 
 export function emptyReplyFallback(schedule: BotSchedule): string {
@@ -340,11 +344,13 @@ export function cleanBotReply(
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  // Owner 2026-11-01: never the website-chat link in a DM — drop any line with it.
+  text = text.split("\n").filter((l) => !/maika\.ge\/chat/i.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
   // A sketch image is on its way (sketchFlow.ts): say so instead of the link.
   const link = hadDesign && opts?.designNotice
     ? opts.designNotice
-    : hadDesign && !text.includes("maika.ge/chat") ? DESIGN_LINK_LINE : "";
+    : hadDesign ? DESIGN_LINK_LINE : "";
   const budget = MAX_REPLY_CHARS - (link ? link.length + 1 : 0);
   text = capText(text, budget);
   if (!text) text = emptyReplyFallback(schedule);

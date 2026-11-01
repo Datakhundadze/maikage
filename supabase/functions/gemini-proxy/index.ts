@@ -2928,6 +2928,24 @@ Output: one photorealistic composite photo.`;
       // THIS call only. It never enters `history` (which stays string-only, so
       // the .filter above would drop it anyway) and is therefore never resent
       // on a later turn. It is never persisted — no storage, no table.
+      // DM PHOTOS (add-only, 2026-11-01): the trusted social bot sends the
+      // customer's photos of this burst as params.images (data URLs, ≤ 4) so
+      // the model answers from what they show. Website calls never have
+      // faqSocialChannel set → this block never runs for them.
+      if (faqSocialChannel && Array.isArray(params.images) && !isAcceptableChatImage(params.image)) {
+        const imgs = (params.images as unknown[]).filter(isAcceptableChatImage).slice(0, 4) as string[];
+        const lastUserIdx = messages.map((m: { role: string }) => m.role).lastIndexOf("user");
+        if (imgs.length > 0 && lastUserIdx !== -1) {
+          const turn = messages[lastUserIdx] as { role: string; content: string };
+          messages[lastUserIdx] = {
+            role: "user",
+            content: [
+              { type: "text", text: turn.content },
+              ...imgs.map((url) => ({ type: "image_url", image_url: { url } })),
+            ],
+          };
+        }
+      }
       if (isAcceptableChatImage(params.image)) {
         const lastUserIdx = messages.map((m: { role: string }) => m.role).lastIndexOf("user");
         if (lastUserIdx !== -1) {

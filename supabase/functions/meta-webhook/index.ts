@@ -335,7 +335,7 @@ async function askBot(
   conversationKey: string,
   history: { role: "user" | "assistant"; content: string }[],
   schedule: string,
-  opts?: { orders?: boolean },
+  opts?: { orders?: boolean; images?: string[] },
 ): Promise<string | null> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
@@ -344,7 +344,8 @@ async function askBot(
       body: JSON.stringify({
         action: "faq-chat",
         // dm_orders: the DM order rules (socialChannel.ts) — only when the draft table is readable.
-        params: { messages: history, lang: "ka", session_id: conversationKey, channel, schedule, ...(opts?.orders ? { dm_orders: true } : {}) },
+        // images: the customer's photos of this burst (data URLs), so the model sees them.
+        params: { messages: history, lang: "ka", session_id: conversationKey, channel, schedule, ...(opts?.orders ? { dm_orders: true } : {}), ...(opts?.images && opts.images.length > 0 ? { images: opts.images } : {}) },
       }),
       signal: AbortSignal.timeout(60_000),
     });

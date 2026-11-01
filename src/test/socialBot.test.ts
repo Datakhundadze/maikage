@@ -259,9 +259,10 @@ describe("cleanBotReply", () => {
   it("strips an unterminated fence", () => {
     expect(cleanBotReply("ტექსტი\n```maika-mockup\n{\"a\":")).toBe(`ტექსტი\n${DESIGN_LINK_LINE}`);
   });
-  it("does not add the link twice", () => {
-    const out = cleanBotReply(`ნახეთ https://maika.ge/chat\n${fence("mockup")}`);
-    expect(out).toBe("ნახეთ https://maika.ge/chat");
+  it("never sends the website-chat link; a lost design block gets the operator line", () => {
+    const out = cleanBotReply(`კარგი\nნახეთ https://maika.ge/chat\n${fence("mockup")}`);
+    expect(out).toBe(`კარგი\n${DESIGN_LINK_LINE}`);
+    expect(out).not.toContain("maika.ge/chat");
   });
   it("removes markdown a DM cannot render", () => {
     expect(cleanBotReply("**ფასი:** 25₾\n[საიტი](https://maika.ge)")).toBe("ფასი: 25₾\nსაიტი: https://maika.ge");
@@ -436,7 +437,7 @@ describe("gemini-proxy social channel", () => {
     expect(out.endsWith("\n\nCALLER: guest")).toBe(true);
     expect(out).toContain("You are answering in Facebook Messenger on behalf of maika.ge");
     expect(out).toContain("operators are off (Sunday)");
-    expect(out).toContain("https://maika.ge/chat");
+    expect(out).toContain("NEVER send the maika.ge/chat link");
     expect(out).toContain("„ოპერატორი\"");
     expect(socialPromptBlock("instagram", "sunday")).toContain("answering in Instagram");
     expect(socialPromptBlock("messenger", "off_hours")).toContain("during working hours");
