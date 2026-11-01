@@ -917,7 +917,7 @@ describe("DM text fixes", () => {
     expect(dm).toContain('\\"size\\":\\"large\\"');
     expect(dm).toContain("ONE font");
     // 2026-11-02: the price rule names the product-type case (socialPhotoNudge.test.ts)
-    expect(dm).toContain("NEVER list the models / brands one by one");
+    expect(dm).toContain("The owner LIKES the full model price list");
     expect(dm).toContain("Never say sending or uploading photos is impossible");
   });
 });

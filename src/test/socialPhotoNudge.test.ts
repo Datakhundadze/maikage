@@ -439,9 +439,8 @@ describe("DM prompt 2026-11-02: new photo = new request, extract or not, print c
     expect(dm).toContain("NEVER promise a sketch, an extraction or a recolour in words („ამოვიღებთ\"");
   });
 
-  it("price for a product type: the default brand's one line, never the model list unless asked; prices from the KB", () => {
-    expect(dm).toContain("A product TYPE without a brand („ჰუდი\", „მაისური\") → the price of the default brand only");
-    expect(dm).toContain("NEVER list the models / brands one by one unless they explicitly ask which models or brands exist");
+  it("price: the block's product first, the full model list is welcome (owner), prices from the KB", () => {
+    expect(dm).toContain("The owner LIKES the full model price list");
     expect(dm).toContain("never invent a number");
   });
 
@@ -481,6 +480,8 @@ describe("owner 2026-11-01 (2): edits go to GPT, one price line", () => {
     const t = "ამოვიღებთ.\n\nმაისურების ფასები (ბეჭდვით):\nGILDAN — 35₾\nTH — 45₾\nSOL'S — 50₾\nNIKE — 100₾";
     expect(trimPriceList(t)).toBe("ამოვიღებთ.\n\nGILDAN — 35₾\nსხვა მოდელები 45₾-დან.");
     expect(trimPriceList("GILDAN — 35₾\nTH — 45₾")).toBe("GILDAN — 35₾\nTH — 45₾");
-    expect(cleanBotReply(t, "sunday", { allowPriceList: true })).toContain("NIKE — 100₾");
+    // Owner (later the same day): he likes the full list — cleanBotReply keeps it by default.
+    expect(cleanBotReply(t)).toContain("NIKE — 100₾");
+    expect(cleanBotReply(t, "sunday", { trimPriceList: true })).not.toContain("NIKE — 100₾");
   });
 });
