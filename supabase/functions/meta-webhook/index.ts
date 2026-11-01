@@ -696,19 +696,22 @@ async function generateSketchDesign(
 /**
  * gemini-proxy extract-print-gpt as the trusted social call (add-only,
  * 2026-11-01): the garment photo (data URL) → the print alone on magenta,
- * PNG bytes. Neither the image nor its path is logged.
+ * PNG bytes. Neither the image nor its path is logged. printColor
+ * (2026-11-02): a sketchParse.PRINT_COLORS name → params.printColor (the
+ * proxy validates it again against its own fixed list).
  */
 async function extractSketchPrint(
   channel: "messenger" | "instagram",
   conversationKey: string,
   image: string,
   timeoutMs: number,
+  printColor?: string,
 ): Promise<Uint8Array | null> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
       headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey } }),
+      body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey, ...(printColor ? { printColor } : {}) } }),
       signal: AbortSignal.timeout(timeoutMs),
     });
     const data = await res.json().catch((): null => null) as { image?: unknown; code?: unknown } | null;

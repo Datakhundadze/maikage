@@ -24,6 +24,10 @@
 //   8. RECEIPTS (deps.receipt, add-only 2026-11-01, receiptFlow.ts): with an
 //      order waiting for the transfer, a new image of the burst is read as a
 //      receipt BEFORE the model; a receipt → the code's reply, no model call.
+//   9. PHOTO BLOCK NUDGE (add-only, 2026-11-02): photos went to the model and
+//      its reply has no block at all → ONE follow-up faq-chat call for the
+//      block(s) only (photoBlockNudge); its blocks are appended to the reply.
+//      "photo" + "printColor" → the extracted print redrawn in that colour.
 //
 // DEBOUNCE. Every new inbound message starts its own run, and a run that sees
 // a newer inbound message skips as "superseded" (decideAutoReply). So the
@@ -266,6 +270,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
     // DM PHOTOS TO THE MODEL (owner 2026-11-01): the customer's photos of this
     // burst go to faq-chat as images, so the answer is about what they show.
     let images: string[] = [];
+    let visionNumbers: number[] = [];
     // One download per photo per run: the vision step and the photo sketches share it.
     const downloaded = new Map<string, Promise<Uint8Array | null>>();
     const rawDownload: ((path: string) => Promise<Uint8Array | null>) | undefined = deps.sketch?.downloadUpload;
@@ -278,6 +283,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
     if (receiptRun === null && decision.action === "reply" && history.length > 0 && rawDownload) {
       const v = await visionImages(photos, receiptPhotos, memoDownload);
       images = v.images;
+      visionNumbers = v.numbers;
       if (v.numbers.length > 0) askHistory = withAttachedNote(askHistory, v.numbers);
     }
     const askOpts: { orders?: boolean; images?: string[] } = {
@@ -286,11 +292,26 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
     };
     // AI call failed while photos wait for an answer → the old fixed
     // „ფოტო მივიღეთ" (an operator will look) instead of silence.
-    const raw = receiptRun === null && decision.action === "reply" && history.length > 0
+    const firstRaw = receiptRun === null && decision.action === "reply" && history.length > 0
       ? await (Object.keys(askOpts).length > 0
         ? deps.askBot(row.channel, key, askHistory, schedule, askOpts)
         : deps.askBot(row.channel, key, askHistory, schedule))
       : null;
+    // PHOTO BLOCK NUDGE (add-only, 2026-11-02): the model saw the burst's
+    // photos but wrote no block at all (owner test: „ამოვიღებთ…" and nothing
+    // sent) → ONE more faq-chat call asking for the block(s) only. Never on a
+    // handoff / receipt / order path (no maika-order block, no order waiting).
+    const orderWaiting = openDraft !== null && orderStatusNote(openDraft) !== "";
+    const raw = firstRaw !== null && decision.action === "reply" && receiptRun === null && !orderWaiting &&
+        needsPhotoBlockNudge(firstRaw, visionNumbers)
+      ? await photoBlockNudge(
+        firstRaw,
+        askHistory,
+        visionNumbers,
+        (h: ChatTurn[]): Promise<string | null> => deps.askBot(row.channel, key, h, schedule, askOpts),
+        (msg: string): void => deps.log("info", `${msg} (${row.channel})`),
+      )
+      : firstRaw;
     // DM orders: a maika-order block → the reply texts are written by
     // orderFlow from computed numbers; the model's own prose is not sent.
     const orderRun = raw !== null && ordersOn && deps.order
@@ -350,7 +371,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
                 // Same photo's print extracted before → re-use it (no GPT call).
                 const sk: SketchDeps = deps.sketch;
                 const path: string = p.path;
-                cached = await extractCacheKey(path, sk.hashKey)
+                cached = await extractCacheKey(path, sk.hashKey, p.block.printColor)
                   .then((k: string): Promise<Uint8Array | null> => sk.cacheGet!(k))
                   .catch((): null => null);
               }
@@ -443,7 +464,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
         const sk: SketchDeps = deps.sketch;
         for (const s of sentSketches) {
           if (s.plan.kind === "generate") s.cacheKey = await designCacheKey(s.plan, sk.hashKey).catch((): undefined => undefined);
-          else if (isExtractPlan(s.plan)) s.cacheKey = await extractCacheKey(s.plan.path, sk.hashKey).catch((): undefined => undefined);
+          else if (isExtractPlan(s.plan)) s.cacheKey = await extractCacheKey(s.plan.path, sk.hashKey, s.plan.block.printColor).catch((): undefined => undefined);
         }
         const r = await recordSketches(key, row.channel, deps.now(), sentSketches, deps.order, deps.log)
           .catch((): string => "error");
@@ -503,6 +524,77 @@ export async function visionImages(
     numbers.push(n);
   }
   return { images, numbers };
+}
+
+// ── photo block nudge (add-only, 2026-11-02) ───────────────────────────────
+//
+// The model SAW the customer's photos (params.images) and answered in prose
+// only — no maika-mockup, so no sketch went out although the prose promised
+// one. One follow-up call: the same history + our reply + this server turn,
+// with the same images (gemini-proxy attaches them to the LAST user turn,
+// i.e. this one). Only the design fences of the answer are kept and appended
+// to the first reply, whose prose is what the customer reads.
+//
+// chat_logs: faq-chat logs this turn as a "user" row of the same session_id
+// (admin-only; starts with „[სისტემა:"). It never re-enters a DM history —
+// the history is built from social_messages, and this text is never sent.
+
+export const PHOTO_BLOCK_NUDGE =
+  "[სისტემა: ეს შეტყობინება მომხმარებელს არ ეგზავნება. თუ მომხმარებელს ამ ფოტო(ებ)ის დაბეჭდვა სურს, " +
+  "ახლა დაწერე მხოლოდ maika-mockup ბლოკ(ებ)ი ამ ფოტოებისთვის წესების მიხედვით (\"photo\": N; " +
+  "\"extract\": true, თუ ფოტო ბეჭდვისთვის მზა სუფთა ნახატი არ არის; \"printColor\", თუ პრინტი სხვა ფერის უნდა). " +
+  "პროდუქტი, ტანსაცმლის ფერი და მხარე აიღე ამ ფოტოდან და ამ შეტყობინებების სიტყვებიდან — არასოდეს ისტორიის " +
+  "ადრინდელი, სხვა მოთხოვნიდან, თუ მომხმარებელი თავად არ მიუთითებს მასზე. თუ ბეჭდვა არ სურს — დაწერე მხოლოდ NONE.]";
+
+const ANY_BLOCK_RE = /```maika-(?:mockup|generate|order)/;
+const DESIGN_FENCE_RE = /```maika-(?:mockup|generate)\s*[\s\S]*?```/g;
+
+/** Photos went to the model and its reply has no mockup / generate / order block. */
+export function needsPhotoBlockNudge(raw: string, visionNumbers: readonly number[]): boolean {
+  return visionNumbers.length > 0 && !ANY_BLOCK_RE.test(String(raw ?? ""));
+}
+
+/** The closed maika-mockup / maika-generate fences of a text, prose dropped. */
+export function designFences(text: string): string[] {
+  return String(text ?? "").match(DESIGN_FENCE_RE) ?? [];
+}
+
+/** History for the follow-up: the tail of the first call's history + our reply + the server turn. */
+export function nudgeHistory(history: ChatTurn[], reply: string, numbers: readonly number[]): ChatTurn[] {
+  // faq-chat keeps the last 8 turns: 6 + 2, starting on a customer turn.
+  const tail = history.slice(-6);
+  while (tail.length > 0 && tail[0].role !== "user") tail.shift();
+  const note = numbers.length > 0 ? `\n[თანდართული: ${numbers.map((n) => `ფოტო ${n}`).join(", ")}]` : "";
+  return [
+    ...tail,
+    { role: "assistant", content: reply.slice(0, 1000) },
+    { role: "user", content: PHOTO_BLOCK_NUDGE + note },
+  ];
+}
+
+/**
+ * ONE follow-up call. Blocks in the answer → the first reply + those blocks;
+ * NONE / no block / failure → the first reply unchanged. Logged either way.
+ */
+export async function photoBlockNudge(
+  firstRaw: string,
+  history: ChatTurn[],
+  numbers: readonly number[],
+  ask: (history: ChatTurn[]) => Promise<string | null>,
+  log: (msg: string) => void,
+): Promise<string> {
+  const answer = await ask(nudgeHistory(history, firstRaw, numbers)).catch((): null => null);
+  if (answer === null) {
+    log("photo block nudge: failed (1 extra faq-chat call)");
+    return firstRaw;
+  }
+  const fences = designFences(answer);
+  if (fences.length === 0) {
+    log("photo block nudge: none (1 extra faq-chat call)");
+    return firstRaw;
+  }
+  log(`photo block nudge: ${fences.length} block${fences.length === 1 ? "" : "s"} added (1 extra faq-chat call)`);
+  return `${firstRaw.trimEnd()}\n\n${fences.join("\n")}`;
 }
 
 /** Tell the model which „[ფოტო N]" the attached images are, on the last user turn. */

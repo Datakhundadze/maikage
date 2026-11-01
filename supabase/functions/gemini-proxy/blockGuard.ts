@@ -103,7 +103,26 @@ const FALLBACKS = new Set([SKETCH_FALLBACK_KA, SKETCH_FALLBACK_EN, GENERATE_FALL
  *     removed from a mockup block, and a mockup block left with no real "text"
  *     and no "removeWhite" is removed entirely.
  * Unparsable fences are left as they are (the client already ignores them).
+ *
+ * DM PHOTO BLOCKS (add-only, 2026-11-02). A mockup block with "photo": N
+ * whose „[ფოტო N]" tag (or „[თანდართული: … ფოტო N]" note) is in a customer
+ * turn of this request places that customer photo (meta-webhook DM sketch):
+ * it shows something, so rule 2 does not apply to it — the DM sends its
+ * photos as params.images, so hasImage is false there and the block used to
+ * be dropped. With "extract" / "printColor" the garment colour is read from
+ * the photo or named with the print colour, so rule 1 does not apply either.
+ * Website turns never carry these tags: the website path is unchanged.
  */
+export function photoTagged(obj: Record<string, unknown>, userTurns: string[]): boolean {
+  if (typeof obj.photo !== "number" && typeof obj.photo !== "string") return false;
+  const raw = String(obj.photo).trim();
+  if (!/^\d{1,2}$/.test(raw)) return false;
+  const n = Number(raw);
+  if (n < 1) return false;
+  const tag = new RegExp(`\\[ფოტო ${n}\\]|\\[თანდართული:[^\\]\\n]*ფოტო ${n}(?!\\d)`);
+  return userTurns.some((t) => tag.test(t));
+}
+
 export function guardSketchBlocks(text: string, ctx: BlockGuardContext): string {
   if (!text || !text.includes("```maika-")) return text;
   const colourNamed = mentionsColour(ctx.userTurns);
@@ -120,12 +139,14 @@ export function guardSketchBlocks(text: string, ctx: BlockGuardContext): string 
       return whole;
     }
     let edited = false;
+    const dmPhoto = kind === "mockup" && photoTagged(obj, ctx.userTurns);
+    const dmExtract = dmPhoto && (isTrue(obj.extract) || (typeof obj.printColor === "string" && obj.printColor.trim() !== ""));
     // No colour named by the customer → White (David, 2026-10-30: prints best,
     // the house default). A colour the model saw or invented never survives.
     // The client maps "White" to the nearest stocked white, or keeps the
     // current selection when the brand stocks no white at all.
-    if (!colourNamed && obj.color !== DEFAULT_GARMENT_COLOUR) { obj.color = DEFAULT_GARMENT_COLOUR; edited = true; }
-    if (kind === "mockup" && !ctx.hasImage) {
+    if (!colourNamed && !dmExtract && obj.color !== DEFAULT_GARMENT_COLOUR) { obj.color = DEFAULT_GARMENT_COLOUR; edited = true; }
+    if (kind === "mockup" && !ctx.hasImage && !dmPhoto) {
       if ("removeBackground" in obj) { delete obj.removeBackground; edited = true; }
       if ("editPrompt" in obj) { delete obj.editPrompt; edited = true; }
       if (!isRealText(obj.text) && !isTrue(obj.removeWhite)) {

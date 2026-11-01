@@ -192,6 +192,13 @@ export interface MockupBlock {
    * THAT is placed, not the whole photo. Only meaningful with a photo.
    */
   extract?: boolean;
+  /**
+   * DM only (add-only, 2026-11-02): redraw the extracted print in ONE solid
+   * colour — a PRINT_COLORS name (English, canonical case). Implies
+   * "extract": true. Unknown names and colours near the magenta key are
+   * dropped by the parser.
+   */
+  printColor?: string;
 }
 
 /** Highest „[ფოტო N]" a block may name (the history holds 8 messages). */
@@ -318,6 +325,12 @@ export function parseMockupBlock(raw: string): MockupBlock | null {
     if (Number.isInteger(n) && n >= 1 && n <= MAX_PHOTO_NUMBER) out.photo = n;
   }
   if (truthy(parsed.extract)) out.extract = true;
+  // printColor (2026-11-02): a recolour needs the extraction, so it implies it.
+  const pc = resolvePrintColor(parsed.printColor);
+  if (pc) {
+    out.printColor = pc;
+    out.extract = true;
+  }
   return out;
 }
 
@@ -391,6 +404,7 @@ const ORDER_STATUS_RE = /```maika-order-status\b/;
  * ready garment with a print; the plan stays kind "photo" with
  * block.extract = true and sketchFlow places the GPT-recreated print instead
  * of the photo. "extract" on a text block (or without any photo) is ignored.
+ * A valid "printColor" (2026-11-02) sets block.extract too (parseMockupBlock).
  */
 export function planSketch(raw: string, photos: boolean | SketchPhotos): SketchPlan | null {
   const s = String(raw ?? "");
@@ -558,6 +572,35 @@ export const GUARD_FLAG_ON_KEY =
   "and proportions — its white parts are solid opaque white. Everything around it is a SOLID, uniform PURE " +
   "MAGENTA (#FF00FF) background: no gradient, no shadow, no texture, no border, no pole. Magenta is a cut-out " +
   "key colour: never use magenta or pink inside the flag.";
+
+// ── print colour of an extracted print (add-only, 2026-11-02) ──────────────
+//
+// „შავზე თეთრად": the customer wants their lettering / logo in another colour.
+// extract-print-gpt redraws the whole artwork in ONE colour (gemini-proxy
+// socialChannel.EXTRACT_PRINT_COLORS — the same list, a test keeps them equal).
+// Only TEXT_COLORS far enough from the magenta key survive the key-out
+// (sketchRaster.keyOutColor's outer radius, 140): Pink and Purple are out —
+// the print would come back partly transparent.
+
+export const PRINT_COLOR_KEY_DISTANCE = 140;
+
+function hexDistance(a: string, b: string): number {
+  const x = rgb(a), y = rgb(b);
+  if (!x || !y) return 0;
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+}
+
+export const PRINT_COLORS: readonly { name: string; hex: string }[] = TEXT_COLORS
+  .filter((c) => hexDistance(c.hex, KEY_COLOR_HEX) >= PRINT_COLOR_KEY_DISTANCE)
+  .map((c) => ({ name: c.name, hex: c.hex.toUpperCase() }));
+
+/** A PRINT_COLORS name, case-insensitive, exact (no nearest match) → its canonical name; else null. */
+export function resolvePrintColor(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const n = norm(raw);
+  if (!n) return null;
+  return PRINT_COLORS.find((c) => norm(c.name) === n)?.name ?? null;
+}
 
 export function buildFlagGenerateParams(g: GenerateBlock, target: ProductChoice): Record<string, unknown> {
   return {

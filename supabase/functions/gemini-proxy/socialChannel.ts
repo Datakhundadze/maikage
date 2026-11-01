@@ -80,16 +80,21 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "- Never write yourself that a sketch is being prepared or attached, never „[ფოტო]\", never „ესკიზი 👆\" — the system adds its own line. No \"write to us to change or order\" line either.",
     "- BIGGER / SMALLER („უფრო დიდი\", „დიდზე\", „მთელ ზურგზე\"): re-emit the SAME block(s) with \"size\":\"large\" and every other field unchanged — the drawing is re-used, only its size on the product changes. Keep the same prompt word for word.",
     "- FONTS: the sketch has ONE font. Never promise another (გაკრული, ხელნაწერი, სხვა შრიფტი…): say the font is chosen with the operator when the order is finalised. Do not re-emit a block just for a font.",
-    "- PRICE HERE: one line with the price of the product they named (two-sided → that model + 10/15). NEVER list other models unless they ask what models/prices exist.",
+    "- PRICE HERE: one line with the price of the product they named (two-sided → that model + 10/15). A product TYPE without a brand („ჰუდი\", „მაისური\") → the price of the default brand only — the same brand your block uses (GILDAN / GILDAN Hoodie unless they named another) — optionally followed by „სხვა მოდელებიც გვაქვს, X ₾-დან\" (X = the lowest price of that type in the knowledge base). NEVER list the models / brands one by one unless they explicitly ask which models or brands exist. Every price comes from the knowledge base — never invent a number.",
     "- THEIR OWN PHOTOS: each one is in the history as „[ფოტო 1]\", „[ფოტო 2]\"… numbered in the order they arrived. The photos of the CURRENT message are ATTACHED to it — you SEE them, in the order the note „[თანდართული: ფოტო N, …]\" lists. LOOK at them and answer from what they actually show (garment type, colour, where the print is, what the print is). Never ask what a photo shows, never guess a brand, club or sports kit the photo does not clearly show. This OVERRIDES the knowledge-base rule for a bare [ფოტო] tag.",
     "  · A photo of a READY GARMENT with a print (\"ესეთს დაამზადებთ?\") = they want the same thing. Do NOT ask what product, colour or side: take them from the photo — the product type (T-Shirt, Hoodie…), the garment colour, the side where the print is (back print → \"side\":\"back\"); the brand is GILDAN unless they name one or the photo clearly shows another — unless their words say otherwise. Emit AT ONCE one block with \"photo\": N and \"extract\": true plus those fields — the system recreates the print alone from the photo and sends the sketch. Example for a black hoodie with a back print in [ფოტო 1] →",
     "    ```maika-mockup\n    {\"photo\":1,\"extract\":true,\"product\":\"Hoodie\",\"subProduct\":\"GILDAN Hoodie\",\"color\":\"Black\",\"side\":\"back\"}\n    ```",
     "    Text: ONE line with what you see and that you are preparing the sketch from the photo, then the one-line price. NEVER ask for the logo / artwork file first and never say an operator must check the quality before the sketch (they may still send a better file later if they have one).",
-    "  · A photo that IS flat artwork (logo, picture, lettering image — no garment) → the photo block below WITHOUT \"extract\".",
+    "  · A NEW PHOTO STARTS A NEW REQUEST: the product type, garment colour and side come from what THIS photo shows and the words of THIS burst — never from an earlier, different request in the history (an older hoodie talk does not make a t-shirt photo a hoodie). Only when they refer back to it („იგივე ჰუდზე\", „ისიც\", „იმავე ფერში\") take it from the history. Example: a photo of a T-SHIRT with lettering + „შავზე თეთრად\" in [ფოტო 1] →",
+    "    ```maika-mockup\n    {\"photo\":1,\"extract\":true,\"printColor\":\"White\",\"product\":\"T-Shirt\",\"subProduct\":\"GILDAN\",\"color\":\"Black\",\"side\":\"front\"}\n    ```",
+    "  · EXTRACT OR NOT: \"extract\": true whenever the photo is NOT a clean flat artwork ready to print as it is — a print on a garment, lettering / a logo photographed on paper, a sign or a screen, at an angle, with shadows or a background around it — OR they want the print in another colour. A clean flat logo / picture (a screenshot of the artwork, an image file) → the photo block WITHOUT \"extract\" (it is placed as it is).",
+    "  · ANOTHER PRINT COLOUR („შავზე თეთრად\", „თეთრად\", „ოქროსფრად\"): add \"printColor\" with ONE of White, Black, Red, Blue, Green, Yellow, Orange, Gray, Gold, Navy, plus \"extract\": true — the whole artwork is redrawn in that one colour. The garment colour stays in \"color\" („შავზე\" = \"color\":\"Black\"). Pink / purple / magenta cannot be done in the sketch: no printColor, and say the operator prepares that colour. Example: a lettering photo on paper + „შავ ჰუდიზე თეთრად\" in [ფოტო 1] →",
+    "    ```maika-mockup\n    {\"photo\":1,\"extract\":true,\"printColor\":\"White\",\"product\":\"Hoodie\",\"subProduct\":\"GILDAN Hoodie\",\"color\":\"Black\",\"side\":\"front\"}\n    ```",
+    "  · NEVER promise a sketch, an extraction or a recolour in words („ამოვიღებთ\", „დავიტანთ\", „მოვამზადებ\") without emitting the block in the SAME reply: the block is what makes the sketch — words alone send nothing.",
     "  · For EACH photo they want printed, emit ONE maika-mockup block with \"photo\": N plus the product / subProduct / color / side / placement they named for THAT photo (anything not named: omit, the usual defaults apply). No \"text\" field in a photo block. Example: „ეს თეთრ GILDAN-ზე წინ, ის შავ ჰუდიზე ზურგზე\" after [ფოტო 1] [ფოტო 2] →",
     "    ```maika-mockup\n    {\"photo\":1,\"product\":\"T-Shirt\",\"subProduct\":\"GILDAN\",\"color\":\"White\",\"side\":\"front\"}\n    ```\n    ```maika-mockup\n    {\"photo\":2,\"product\":\"Hoodie\",\"subProduct\":\"GILDAN Hoodie\",\"color\":\"Black\",\"side\":\"back\"}\n    ```",
     "  · Several photos → several blocks in the SAME reply, one per photo (one photo on both sides → one block per side). The system sends a sketch of each. Never ask them to send the photos one by one.",
-    "  · A FLAT-ARTWORK photo and they did not say which product it goes on → do NOT guess: ask ONE short question (which product / colour / side) and emit no block for that photo. (A garment photo never needs this question — the photo shows it.)",
+    "  · A photo with NO garment in it (flat artwork, lettering on paper…) and they did not say in THIS burst which product it goes on → do NOT guess: ask ONE short question (which product / colour / side) and emit no block for that photo. (A garment photo never needs this question — the photo shows it.)",
     "  · „თეთრი მოაშორე\" / remove the white → add \"removeWhite\": true. Background removal („ფონი მოაშორე\") or a change to the picture itself → still the block with \"removeBackground\" / \"editPrompt\"; an operator then prepares that sketch.",
     "  · Price: one line per product they named (two-sided → that model + 10/15, as above); for flat artwork you may add that the operator confirms the print (never for a garment photo). Club / national-team kits: decide from their words only, as the knowledge base says.",
     "  · Never say sending or uploading photos is impossible.",
@@ -176,17 +181,59 @@ export function resolveTrustedSocialExtract(
   return resolveTrustedSocialChannel("faq-chat", channel, authorization, serviceRoleKey);
 }
 
-/** The extract-print-gpt edit prompt (the photo is the image input). */
+/**
+ * The extract-print-gpt edit prompt (the photo is the image input). 2026-11-02:
+ * any photographed print (garment, paper, sign, screen), not only garments.
+ */
 export const EXTRACT_PRINT_PROMPT = [
-  "This is a photo of a garment with a print on it. Recreate ONLY the printed artwork / logo as a clean, flat, print-ready graphic, seen perfectly straight on.",
-  "- Undo the perspective, folds, wrinkles, fabric texture, lighting, reflections and shadows: flat even colours, crisp clean edges.",
+  "This is a photo of a print, logo or lettering — on a garment, paper, a sign, a screen or another surface, possibly at an angle. Recreate ONLY the printed artwork / logo / lettering as a clean, flat, print-ready graphic, seen perfectly straight on.",
+  "- Undo the perspective, folds, wrinkles, fabric or paper texture, lighting, reflections and shadows: flat even colours, crisp clean edges.",
   "- Keep every word letter for letter (same spelling, same alphabet, same lettering style), and the exact colours, shapes, proportions and layout of the print. Do not add, remove, translate or redesign anything.",
   "- If there are several prints, recreate the main (largest) one.",
-  "- No garment, no t-shirt or hoodie, no hanger, no person, no mockup, no background scene.",
+  "- No garment, no t-shirt or hoodie, no hanger, no person, no paper sheet, no sign board, no screen frame, no mockup, no background scene.",
   "- Place the artwork centred and large (about 85% of the width or height) on a SOLID, uniform PURE MAGENTA (#FF00FF) background: no gradient, no shadow, no texture, no border, no frame.",
   "- Magenta is a cut-out key colour: never use magenta or pink inside the artwork.",
-  "- White parts of the artwork (white lettering, white outlines) stay solid opaque WHITE; never show the garment colour behind the artwork.",
+  "- White parts of the artwork (white lettering, white outlines) stay solid opaque WHITE; never show the garment, paper or surface colour behind the artwork.",
 ].join("\n");
+
+/**
+ * Print colours extract-print-gpt may redraw the artwork in (add-only,
+ * 2026-11-02). The same list as meta-webhook sketchParse.PRINT_COLORS (a test
+ * keeps them equal): the catalog's TEXT_COLORS minus Pink / Purple, which sit
+ * too close to the magenta key and would be partly keyed out. A fixed list:
+ * the request value is only ever matched against it, never put in the prompt.
+ */
+export const EXTRACT_PRINT_COLORS: readonly { name: string; hex: string }[] = [
+  { name: "Black", hex: "#000000" },
+  { name: "White", hex: "#FFFFFF" },
+  { name: "Red", hex: "#DC2626" },
+  { name: "Blue", hex: "#2563EB" },
+  { name: "Green", hex: "#16A34A" },
+  { name: "Yellow", hex: "#EAB308" },
+  { name: "Orange", hex: "#EA580C" },
+  { name: "Gray", hex: "#6B7280" },
+  { name: "Gold", hex: "#D4A017" },
+  { name: "Navy", hex: "#1E3A5F" },
+];
+
+/** params.printColor → its EXTRACT_PRINT_COLORS entry (case-insensitive), or null. */
+export function extractPrintColor(v: unknown): { name: string; hex: string } | null {
+  if (typeof v !== "string") return null;
+  const n = v.trim().toLowerCase();
+  if (!n) return null;
+  return EXTRACT_PRINT_COLORS.find((c) => c.name.toLowerCase() === n) ?? null;
+}
+
+/**
+ * The prompt for one call: EXTRACT_PRINT_PROMPT, plus the recolour line only
+ * for a valid print colour. Anything else (absent, unknown, magenta, pink…) →
+ * EXTRACT_PRINT_PROMPT unchanged.
+ */
+export function extractPrintPrompt(printColor: unknown): string {
+  const c = extractPrintColor(printColor);
+  if (!c) return EXTRACT_PRINT_PROMPT;
+  return `${EXTRACT_PRINT_PROMPT}\n- Render the whole artwork in ONE solid colour: ${c.name} (${c.hex}), keeping its shapes and lettering exactly. This replaces the original colours of the print.`;
+}
 
 /** Does the BILLABLE rate-limit / block gate apply to this call? */
 export function billableGateApplies(isBillableAction: boolean, trustedSketchChannel: SocialChannel | null): boolean {

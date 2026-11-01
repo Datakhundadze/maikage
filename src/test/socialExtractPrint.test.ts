@@ -475,7 +475,8 @@ describe("gemini-proxy extract-print-gpt", () => {
     expect(block).toContain('form.append("output_format", "png");');
     expect(block).toContain('form.append("background", "auto");');
     expect(block).not.toContain('"transparent"');
-    expect(block).toContain("form.append(\"prompt\", EXTRACT_PRINT_PROMPT);");
+    // 2026-11-02: EXTRACT_PRINT_PROMPT + the optional recolour line (socialPhotoNudge.test.ts)
+    expect(block).toContain("form.append(\"prompt\", xPrompt);");
     expect(block).toContain("logAiCall({");
     expect(block).toContain("return xJson(200, { image: img, text: \"\" });");
     // not billable (the webhook caps it); the GPT photo block next to it is unchanged
@@ -498,7 +499,7 @@ describe("gemini-proxy extract-print-gpt", () => {
 
   it("webhook calls it as the trusted social call", () => {
     const wh = read("supabase/functions/meta-webhook/index.ts");
-    expect(wh).toContain('body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey } }),');
+    expect(wh).toContain('body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey, ...(printColor ? { printColor } : {}) } }),');
     expect(wh).toContain("extractPrint: extractSketchPrint,");
   });
 });

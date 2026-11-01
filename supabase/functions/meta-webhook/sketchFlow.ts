@@ -161,9 +161,10 @@ export interface SketchDeps {
   /**
    * gemini-proxy extract-print-gpt, server to server (add-only, 2026-11-01):
    * the photo as a data URL → the print alone on magenta, PNG bytes or null.
-   * Absent → extract plans fail to the link line.
+   * Absent → extract plans fail to the link line. printColor (2026-11-02): a
+   * sketchParse.PRINT_COLORS name → the print is redrawn in that one colour.
    */
-  extractPrint?: (channel: Channel, conversationKey: string, imageDataUrl: string, timeoutMs: number) => Promise<Uint8Array | null>;
+  extractPrint?: (channel: Channel, conversationKey: string, imageDataUrl: string, timeoutMs: number, printColor?: string) => Promise<Uint8Array | null>;
 }
 
 /**
@@ -182,9 +183,12 @@ export async function designCacheKey(plan: Extract<SketchPlan, { kind: "generate
  * "extract"): a size / side / product / colour change, and the order's print
  * file, re-use it instead of paying for it again. The cached PNG is the KEYED
  * transparent print (magenta already removed, trimmed).
+ * A recoloured print (printColor, 2026-11-02) is a different picture → its own
+ * key; without printColor the key is exactly the old one (cache stays valid).
  */
-export async function extractCacheKey(path: string, hash: (s: string) => Promise<string>): Promise<string> {
-  return (await hash(JSON.stringify({ extract: 1, path }))).slice(0, 40);
+export async function extractCacheKey(path: string, hash: (s: string) => Promise<string>, printColor?: string): Promise<string> {
+  const keyed = printColor ? { extract: 1, path, printColor } : { extract: 1, path };
+  return (await hash(JSON.stringify(keyed))).slice(0, 40);
 }
 
 export interface SketchBaseDeps {
@@ -412,7 +416,8 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
       const mime = isJpeg(bytes) ? "image/jpeg" : isPng(bytes) ? "image/png" : null;
       if (!mime) throw new SketchError("image_format");
       if (bytes.length > MAX_EXTRACT_INPUT_BYTES) throw new SketchError("photo_too_large");
-      const png = await deps.extractPrint(ctx.channel, ctx.conversationKey, `data:${mime};base64,${bytesToBase64(bytes)}`, left());
+      const printColor: string | undefined = ctx.plan.block.printColor;
+      const png = await deps.extractPrint(ctx.channel, ctx.conversationKey, `data:${mime};base64,${bytesToBase64(bytes)}`, left(), printColor);
       if (!png) throw new SketchError("extract_failed");
       const t0 = now();
       const layer = keyExtractedPrint(await decodeImage(png, deps));
@@ -422,7 +427,7 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
       if (deps.cachePut && keyedPng) {
         const put = deps.cachePut;
         const bytesToCache: Uint8Array = keyedPng;
-        extractPut = extractCacheKey(ctx.plan.path, deps.hashKey)
+        extractPut = extractCacheKey(ctx.plan.path, deps.hashKey, printColor)
           .then((k: string): Promise<void> => put(k, bytesToCache))
           .catch((): void => {});
       }
