@@ -152,10 +152,17 @@ export interface PricedOrder {
   customer: Required<Pick<DraftCustomer, "name" | "phone">> & DraftCustomer;
 }
 
-/** The site's rule (SimplePage backPrintSize): photos / drawings → big, lettering only → small. */
+/**
+ * The site's rule (SimplePage backPrintSize): photos / drawings → big, lettering
+ * only → small. Owner 2026-11-01: lettering made bigger („უფრო დიდი", size
+ * "large") is a big back print (+15); ordinary lettering stays small (+10).
+ */
 export function backSizeOf(back: DraftSide | undefined): "small" | "big" {
-  return back && back.kind === "text" ? "small" : "big";
+  return back && back.kind === "text" && back.size !== "large" ? "small" : "big";
 }
+
+/** Owner 2026-11-01: production time shown in every recap. */
+export const LEAD_TIME_LINE = "დამზადება: 1–3 სამუშაო დღე";
 
 export function resolveOrder(items: DraftItem[], customer: DraftCustomer, block: OrderBlock): { ok: true; order: PricedOrder } | { ok: false; missing: Missing[] } {
   const missing: Missing[] = [];
@@ -288,6 +295,7 @@ export function totalsText(o: PricedOrder): string {
     `მიწოდება: ${DELIVERY_LABEL_KA[o.delivery]} — ${o.deliveryPrice} ₾`,
     `ჩანთა — ${o.bagFee} ₾`,
     `სულ: ${o.total} ₾`,
+    LEAD_TIME_LINE,
   ].join("\n");
 }
 

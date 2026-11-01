@@ -1,4 +1,5 @@
 import { USE_GPT_RESTYLE, USE_GPT_GENERATE, transparentShare } from "@/lib/aiModelSwitch";
+import { flagDesignParams, isFlagCharacter, keyOutMagenta } from "@/lib/flagKey";
 import { supabase } from "@/integrations/supabase/client";
 import type { DesignParams } from "@/hooks/useDesign";
 import { COLORS } from "@/lib/catalog";
@@ -595,9 +596,13 @@ async function tryGptGenerateDesign(
     (Array.isArray(designParams.characterImages) && designParams.characterImages.length > 0) ||
     !!designParams.sceneImage || !!designParams.styleImage || !!designParams.textImage;
   if (hasReferenceImages) return null;
+  // Flags (add-only, 2026-11-01): opaque on a magenta key, cut out here — GPT's
+  // transparency drops a flag's white field (see flagKey.ts).
+  const flag = isFlagCharacter(designParams.character);
   try {
-    const result = await callGemini("generate-design-gpt", designParams, 0);
+    const result = await callGemini("generate-design-gpt", flag ? flagDesignParams(designParams) : designParams, 0);
     if (!result.image) return null;
+    if (flag) result.image = await keyOutMagenta(result.image);
     const share = await transparentShare(result.image);
     if (share <= GPT_MIN_TRANSPARENT_SHARE) {
       console.warn(`[Generation] GPT design has no real alpha (${share.toFixed(3)}) — falling back to Gemini`);
