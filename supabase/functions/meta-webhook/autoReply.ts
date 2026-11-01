@@ -14,6 +14,8 @@
 //      sketchFlow.ts; the reply then ends in SKETCH_NOTICE instead of the link.
 //      Up to MAX_SKETCHES_PER_REPLY blocks (one per side for a drawing /
 //      lettering, one per photo + side for "photo": N) → one image each.
+//      "photo": N + "extract": true (a ready garment, 2026-11-01) → GPT
+//      recreates the print from the photo; cached per photo, generate cap.
 //   7. DM ORDERS (deps.order, add-only 2026-11-01, orderFlow.ts): a phone /
 //      email of the trigger message → the draft (before the debounce); the
 //      draft's sketches → a note in the history; every sent sketch → a draft
@@ -39,12 +41,14 @@ import type { BotSchedule } from "./botSchedule.ts";
 import { isScheduleActive } from "./botSchedule.ts";
 import {
   DESIGN_LINK_LINE,
+  HANDOFF_REASON_SKETCH_CAP,
   buildHistoryWithPhotos,
   cleanBotReply,
   decideAutoReply,
   handoffMessage,
   pendingInbound,
   photoMessage,
+  sketchCapMessage,
   splitForChannel,
   type BotSendRecord,
   type ChatTurn,
@@ -62,6 +66,8 @@ import {
   TESTER_CAPS,
   capKindOf,
   designCacheKey,
+  extractCacheKey,
+  isExtractPlan,
   runSketch,
   sketchBudgetMs,
   withinCaps,
@@ -217,6 +223,10 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
     // A block of this reply got no sketch (unsupported / cap): when others do,
     // the link line still goes out once, after them.
     let owedLink = false;
+    // A PAID sketch (fresh drawing / print extraction) refused by the cap
+    // (owner 2026-11-01): the cap text instead of the link line, once per
+    // reply, and a handoff to the operator.
+    let capHit = false;
     const tester = Array.isArray(settings.allowKeys) && settings.allowKeys.includes(key);
     const { turns: history, photos } = buildHistoryWithPhotos(thread, 8);
     // DM orders: the open draft's sketches (and order) go to the model as a
@@ -336,11 +346,19 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
               if (p.kind === "generate" && deps.sketch.cacheGet) {
                 const sk: SketchDeps = deps.sketch;
                 cached = await designCacheKey(p, sk.hashKey).then((k) => sk.cacheGet!(k)).catch(() => null);
+              } else if (isExtractPlan(p) && deps.sketch.cacheGet) {
+                // Same photo's print extracted before → re-use it (no GPT call).
+                const sk: SketchDeps = deps.sketch;
+                const path: string = p.path;
+                cached = await extractCacheKey(path, sk.hashKey)
+                  .then((k: string): Promise<Uint8Array | null> => sk.cacheGet!(k))
+                  .catch((): null => null);
               }
               const capKind = capKindOf(p, cached !== null);
               if (!withinCaps(capKind, running, limits)) {
                 deps.log("info", `sketch skipped ${row.channel}: ${running ? "cap" : "count_failed"}`);
-                owedLink = true;
+                if (running && capKind === "generate") capHit = true;
+                else owedLink = true;
                 continue;
               }
               sketches.push({ plan: p, cached });
@@ -349,7 +367,13 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
           }
         }
       }
-      texts = [cleanBotReply(raw, schedule, sketches.length > 0 ? { designNotice: SKETCH_NOTICE } : undefined)];
+      texts = [cleanBotReply(
+        raw,
+        schedule,
+        sketches.length > 0
+          ? { designNotice: SKETCH_NOTICE }
+          : capHit ? { designNotice: sketchCapMessage(schedule) } : undefined,
+      )];
     }
 
     let sent = 0;
@@ -370,16 +394,22 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       if (res.messageId) await deps.markSent(recordId, res.messageId);
     }
     deps.log("info", `auto-reply sent ${row.channel}: ${kind} (${sent} message${sent === 1 ? "" : "s"})`);
+    if (capHit) {
+      await deps.insertHandoff(key, HANDOFF_REASON_SKETCH_CAP);
+      deps.log("info", `auto-reply handoff ${row.channel}: ${HANDOFF_REASON_SKETCH_CAP}`);
+    }
     if (sketches.length > 0 && deps.sketch) {
       // One image per side, in the order the bot wrote them. The link line
       // goes out at most once, after the first failure.
       let linkSent = false;
+      // Cap reached → the cap text takes the link line's place (once).
+      const followLine = capHit ? sketchCapMessage(schedule) : DESIGN_LINK_LINE;
       const sendLinkOnce = async (): Promise<void> => {
         if (linkSent) return;
         linkSent = true;
-        const id = await deps.recordSend(key, "reply", DESIGN_LINK_LINE);
+        const id = await deps.recordSend(key, "reply", followLine);
         if (id) {
-          const res = await deps.send(row.channel, row.customer_id, DESIGN_LINK_LINE);
+          const res = await deps.send(row.channel, row.customer_id, followLine);
           if (res.ok && res.messageId) await deps.markSent(id, res.messageId);
         }
       };
@@ -390,7 +420,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       for (const { plan, cached } of sketches) {
         // The budget was measured before the text went out; re-measure.
         const budgetMs = sketchBudgetMs(runStartedAt, deps.now().getTime());
-        const need = plan.kind === "generate" && !cached ? MIN_SKETCH_BUDGET_MS : MIN_SKETCH_BUDGET_MS / 3;
+        const need = capKindOf(plan, cached !== null) === "generate" ? MIN_SKETCH_BUDGET_MS : MIN_SKETCH_BUDGET_MS / 3;
         const outOfCpu = cpu.ms >= PIXEL_BUDGET_MS;
         if (budgetMs < need || outOfCpu) {
           deps.log("info", `sketch skipped ${row.channel}: ${outOfCpu ? `cpu_budget (${cpu.ms} ms spent)` : `no_time (${budgetMs} ms left)`}`);
@@ -402,17 +432,18 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
           { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
           rawDownload ? { ...deps.sketch, downloadUpload: memoDownload } : deps.sketch,
           {
-            linkOnFailure: !linkSent,
+            linkOnFailure: !linkSent && !capHit,
             onSent: (url: string, messageId: string | null): void => { sentSketches.push({ plan, url, messageId }); },
           },
         );
-        if (outcome !== "sent") linkSent = true;
+        if (outcome !== "sent" && !capHit) linkSent = true;
       }
-      if (owedLink) await sendLinkOnce();
+      if (owedLink || capHit) await sendLinkOnce();
       if (ordersOn && deps.order && sentSketches.length > 0) {
         const sk: SketchDeps = deps.sketch;
         for (const s of sentSketches) {
           if (s.plan.kind === "generate") s.cacheKey = await designCacheKey(s.plan, sk.hashKey).catch((): undefined => undefined);
+          else if (isExtractPlan(s.plan)) s.cacheKey = await extractCacheKey(s.plan.path, sk.hashKey).catch((): undefined => undefined);
         }
         const r = await recordSketches(key, row.channel, deps.now(), sentSketches, deps.order, deps.log)
           .catch((): string => "error");

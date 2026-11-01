@@ -69,7 +69,9 @@ import {
 import { FONT_SHA256, FONT_URLS, _resetSketchFont, loadSketchFont, sha256Hex } from "../../supabase/functions/meta-webhook/sketchFont";
 import {
   DESIGN_LINK_LINE,
+  HANDOFF_REASON_SKETCH_CAP,
   SKETCH_ECHO_MS,
+  sketchCapMessage,
   buildHistory,
   cleanBotReply,
   decideAutoReply,
@@ -272,11 +274,11 @@ describe("placement fit maths", () => {
 // ── caps ───────────────────────────────────────────────────────────────────
 
 describe("caps", () => {
-  it("3 generated designs and 10 text mockups per 24 h; unreadable counts fail closed", () => {
-    expect(MAX_GENERATE_SKETCHES).toBe(3);
+  it("5 paid sketches (owner 2026-11-01, was 3) and 10 text mockups per 24 h; unreadable counts fail closed", () => {
+    expect(MAX_GENERATE_SKETCHES).toBe(5);
     expect(MAX_TEXT_SKETCHES).toBe(10);
-    expect(withinCaps("generate", { generate: 2, text: 0 })).toBe(true);
-    expect(withinCaps("generate", { generate: 3, text: 0 })).toBe(false);
+    expect(withinCaps("generate", { generate: 4, text: 0 })).toBe(true);
+    expect(withinCaps("generate", { generate: 5, text: 0 })).toBe(false);
     expect(withinCaps("text", { generate: 3, text: 9 })).toBe(true);
     expect(withinCaps("text", { generate: 0, text: 10 })).toBe(false);
     expect(withinCaps("text", null)).toBe(false);
@@ -543,12 +545,23 @@ describe("runAutoReply with sketches", () => {
     expect(a.records[1].text).toBe(SKETCH_MARKER.text);
   });
 
-  it("over the cap → the link line, nothing rendered", async () => {
-    const s = sketchFakes({ countSketches: async () => ({ generate: 3, text: 0 }) });
-    const a = autoDeps(GEN({ prompt: "ლომი" }), s.deps);
+  it("over the paid cap → the cap text (not the link line) + handoff, nothing rendered", async () => {
+    const handoffs: string[] = [];
+    const s = sketchFakes({ countSketches: async () => ({ generate: MAX_GENERATE_SKETCHES, text: 0 }) });
+    const a = autoDeps(GEN({ prompt: "ლომი" }), s.deps, { insertHandoff: async (_k, r) => { handoffs.push(r); } });
     await runAutoReply(trigger, a.deps);
-    expect(a.sent).toEqual([`აი იდეა!\n${DESIGN_LINK_LINE}`]);
+    expect(a.sent).toEqual([`აი იდეა!\n${sketchCapMessage("sunday")}`]);
+    expect(handoffs).toEqual([HANDOFF_REASON_SKETCH_CAP]);
     expect(s.calls).toEqual([]);
+  });
+
+  it("over the TEXT mockup cap → still the link line, no handoff", async () => {
+    const handoffs: string[] = [];
+    const s = sketchFakes({ countSketches: async () => ({ generate: 0, text: MAX_TEXT_SKETCHES }) });
+    const a = autoDeps(MOCK({ text: "ანა" }), s.deps, { insertHandoff: async (_k, r) => { handoffs.push(r); } });
+    await runAutoReply(trigger, a.deps);
+    expect(a.sent).toEqual([`აი ასე 👇\n${DESIGN_LINK_LINE}`]);
+    expect(handoffs).toEqual([]);
   });
 
   it("count unreadable → link line (fail closed)", async () => {
@@ -855,7 +868,7 @@ describe("generated-design cache", () => {
     const pngBytes = pngOf(2, 2, 6, 8, [[255, 0, 0, 255, 0, 0, 0, 0], [0, 0, 0, 0, 255, 0, 0, 255]]);
     let generated = 0;
     const s = sketchFakes({
-      countSketches: async () => ({ generate: 3, text: 0 }),
+      countSketches: async () => ({ generate: MAX_GENERATE_SKETCHES, text: 0 }),
       generateDesign: async () => { generated++; return pngBytes; },
       hashKey: hash,
       cacheGet: async () => pngBytes,
@@ -881,11 +894,12 @@ describe("generated-design cache", () => {
 
 describe("tester caps", () => {
   beforeEach(() => _resetTokenWarning());
-  it("an allow-listed conversation gets TESTER_CAPS, others the normal 3", async () => {
-    expect(withinCaps("generate", { generate: 3, text: 0 })).toBe(false);
-    expect(withinCaps("generate", { generate: 3, text: 0 }, TESTER_CAPS)).toBe(true);
+  it("an allow-listed conversation gets TESTER_CAPS, others the normal 5", async () => {
+    expect(TESTER_CAPS).toEqual({ generate: 20, text: 50 });
+    expect(withinCaps("generate", { generate: 5, text: 0 })).toBe(false);
+    expect(withinCaps("generate", { generate: 5, text: 0 }, TESTER_CAPS)).toBe(true);
     const pngBytes = pngOf(2, 2, 6, 8, [[255, 0, 0, 255, 0, 0, 0, 0], [0, 0, 0, 0, 255, 0, 0, 255]]);
-    const s = sketchFakes({ countSketches: async () => ({ generate: 3, text: 0 }), generateDesign: async () => pngBytes });
+    const s = sketchFakes({ countSketches: async () => ({ generate: 5, text: 0 }), generateDesign: async () => pngBytes });
     const key = "messenger:159657880717306:psid1";
     const a = autoDeps(GEN({ prompt: "ლომი" }), s.deps, { loadSettings: async () => ({ enabled: true, schedule: "sunday", allowKeys: [key] }) });
     await runAutoReply(trigger, a.deps);
@@ -1191,8 +1205,10 @@ describe("DM prompt: customer photos", () => {
     expect(dm).toContain("Never say sending or uploading photos is impossible");
     expect(dm).not.toContain("an operator will send the sketch");
     // the example blocks in the prompt are themselves valid photo blocks
+    // (2026-11-01: the ready-garment extract example comes first)
     const plans = planSketches(dm, PHOTOS(2), MAX_SKETCHES_PER_REPLY);
-    expect(plans.map((p) => p.kind)).toEqual(["photo", "photo"]);
+    expect(plans.map((p) => p.kind)).toEqual(["photo", "photo", "photo"]);
+    expect(plans.map((p) => p.kind === "photo" && p.block.extract === true)).toEqual([true, false, false]);
   });
 });
 
@@ -1217,6 +1233,7 @@ describe("owner 2026-11-01: the model SEES the customer's photos", () => {
     expect(src).toContain("...imgs.map((url) => ({ type: \"image_url\", image_url: { url } })),");
     const dm = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/socialChannel.ts"), "utf8");
     expect(dm).toContain("you SEE them");
-    expect(dm).toContain("Do NOT emit a photo block for a garment photo");
+    // 2026-11-01: a garment photo now gets the extract block (socialExtractPrint.test.ts)
+    expect(dm).toContain('\\"extract\\": true');
   });
 });
