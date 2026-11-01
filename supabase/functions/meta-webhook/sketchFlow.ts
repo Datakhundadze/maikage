@@ -10,7 +10,9 @@
 //   2. render: generate → gemini-proxy generate-design-gpt (≈ $0.14), or
 //      text → Noto Sans Georgian Bold, or photo → the customer's own photo
 //      from the private social-uploads bucket (≤ PHOTO_MAX_SIDE, optional
-//      local removeWhite; no AI, $0); then the product photo, tint, fit,
+//      local removeWhite; no AI, $0), or photo + extract → gemini-proxy
+//      extract-print-gpt recreates the garment's print on magenta (≈ $0.15,
+//      keyed + trimmed here, cached); then the product photo, tint, fit,
 //      JPEG ≈ 1024 px wide, quality 85
 //   3. upload to the public "designs" bucket, social-sketches/<hash>/<ts>.jpg
 //   4. Graph Send API image attachment; the mid is written back to the row
@@ -48,6 +50,7 @@ import {
   type SketchPlan,
 } from "./sketchParse.ts";
 import { TEXT_COLORS } from "./catalogSnapshot.ts";
+import { encodePng } from "./pngEncode.ts";
 import {
   downscaleBy,
   drawContained,
@@ -69,7 +72,11 @@ export { SKETCH_NOTICE };
 export const MAX_SKETCHES_PER_REPLY = 5;
 
 export const SKETCH_CAP_WINDOW_MS = 24 * 60 * 60 * 1000;
-export const MAX_GENERATE_SKETCHES = 3;
+/**
+ * Paid sketches per conversation per 24 h: AI drawings AND print extractions
+ * (owner 2026-11-01: 3 → 5). Cache hits are mockups and never count here.
+ */
+export const MAX_GENERATE_SKETCHES = 5;
 export const MAX_TEXT_SKETCHES = 10;
 export const SKETCH_TIMEOUT_MS = 90_000;
 /** Below the Free plan's 150 s wall clock, with room for the link line. */
@@ -79,8 +86,13 @@ export const MIN_SKETCH_BUDGET_MS = 30_000;
 export const SKETCH_WIDTH = 1024;
 export const SKETCH_JPEG_QUALITY = 85;
 
-/** A customer-photo sketch has its own marker and counts as a mockup (no AI cost). */
-export const SKETCH_MARKER = { generate: "sketch:generate", text: "sketch:mockup", photo: "sketch:photo" } as const;
+/**
+ * A customer-photo sketch has its own marker and counts as a mockup (no AI
+ * cost). A FRESH print extraction (photo + extract, a paid GPT edit) has its
+ * own marker and counts as a generation; an extraction from the cache is a
+ * plain photo sketch.
+ */
+export const SKETCH_MARKER = { generate: "sketch:generate", text: "sketch:mockup", photo: "sketch:photo", extract: "sketch:extract" } as const;
 
 export type SketchKind = "generate" | "text";
 export interface SketchCounts { generate: number; text: number }
@@ -89,15 +101,23 @@ export interface SketchCounts { generate: number; text: number }
 export function countSketchRows(rows: { text: string | null }[]): SketchCounts {
   let generate = 0, text = 0;
   for (const r of rows) {
-    if (r.text === SKETCH_MARKER.generate) generate++;
+    if (r.text === SKETCH_MARKER.generate || r.text === SKETCH_MARKER.extract) generate++;
     else if (r.text === SKETCH_MARKER.text || r.text === SKETCH_MARKER.photo) text++;
   }
   return { generate, text };
 }
 
-/** Which cap a plan counts toward: only a fresh generation is "generate". */
+/** A photo plan whose print GPT recreates (block "extract": true). */
+export function isExtractPlan(plan: RenderPlan): plan is Extract<RenderPlan, { kind: "photo" }> {
+  return plan.kind === "photo" && plan.block.extract === true;
+}
+
+/**
+ * Which cap a plan counts toward: only a fresh (paid) generation is
+ * "generate" — a new design, or a new print extraction from a photo.
+ */
 export function capKindOf(plan: RenderPlan, cached: boolean): SketchKind {
-  return plan.kind === "generate" && !cached ? "generate" : "text";
+  return (plan.kind === "generate" || isExtractPlan(plan)) && !cached ? "generate" : "text";
 }
 
 /** Test conversations (social_bot_settings.allow_keys) get roomier caps. */
@@ -138,6 +158,12 @@ export interface SketchDeps {
    * path (service role). Absent → photo sketches fail to the link line.
    */
   downloadUpload?: (path: string) => Promise<Uint8Array | null>;
+  /**
+   * gemini-proxy extract-print-gpt, server to server (add-only, 2026-11-01):
+   * the photo as a data URL → the print alone on magenta, PNG bytes or null.
+   * Absent → extract plans fail to the link line.
+   */
+  extractPrint?: (channel: Channel, conversationKey: string, imageDataUrl: string, timeoutMs: number) => Promise<Uint8Array | null>;
 }
 
 /**
@@ -149,6 +175,16 @@ export async function designCacheKey(plan: Extract<SketchPlan, { kind: "generate
   const p = isFlagBlock(plan.block) ? buildFlagGenerateParams(plan.block, plan.target) : buildGenerateParams(plan.block, plan.target);
   const keyed = { c: p.character, s: p.style, t: p.text, r: p.isRealistic, b: p.transparent ?? true, col: p.color };
   return (await hash(JSON.stringify(keyed))).slice(0, 40);
+}
+
+/**
+ * The extracted print of one customer photo → one cache key (photo path +
+ * "extract"): a size / side / product / colour change, and the order's print
+ * file, re-use it instead of paying for it again. The cached PNG is the KEYED
+ * transparent print (magenta already removed, trimmed).
+ */
+export async function extractCacheKey(path: string, hash: (s: string) => Promise<string>): Promise<string> {
+  return (await hash(JSON.stringify({ extract: 1, path }))).slice(0, 40);
 }
 
 export interface SketchBaseDeps {
@@ -187,6 +223,36 @@ export const PIXEL_BUDGET_MS = 1_200;
 
 class SketchError extends Error {
   constructor(readonly reason: string) { super(reason); }
+}
+
+// ── print extracted from a garment photo (add-only, 2026-11-01) ─────────────
+
+/** A garment photo above this is not sent for extraction (gemini-proxy takes ≤ ~9 MB). */
+export const MAX_EXTRACT_INPUT_BYTES = 8_000_000;
+
+function bytesToBase64(b: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/** Long side of the extracted print layer (GPT returns 1024²; bigger is shrunk). */
+export const EXTRACT_MAX_SIDE = 1024;
+
+/**
+ * GPT's print on magenta → the transparent print layer: shrink to
+ * EXTRACT_MAX_SIDE, key out the magenta (as for flags), trim. Throws
+ * "extract_empty" when nothing but the key colour came back.
+ */
+export function keyExtractedPrint(img: RgbaImage): RgbaImage {
+  if (!(img.width > 0 && img.height > 0) || img.width * img.height > PHOTO_MAX_PIXELS) throw new SketchError("extract_too_large");
+  const small = downscaleBy(img, Math.ceil(Math.max(img.width, img.height) / EXTRACT_MAX_SIDE));
+  keyOutColor(small, KEY_COLOR_HEX);
+  const out = trimTransparent(small);
+  let opaque = false;
+  for (let i = 3; i < out.data.length; i += 4) if (out.data[i] > 8) { opaque = true; break; }
+  if (!opaque) throw new SketchError("extract_empty");
+  return out;
 }
 
 export async function decodeImage(bytes: Uint8Array, deps: Pick<SketchDeps, "decodeJpeg">): Promise<RgbaImage> {
@@ -304,6 +370,9 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
   if (!img) throw new SketchError("no_product_photo");
   // Pixel time (decode / prepare / compose / encode) → ctx.cpu, see PIXEL_BUDGET_MS.
   const spend = (since: number) => { if (ctx.cpu) ctx.cpu.ms += Math.max(0, now() - since); };
+  // The extracted print's cache write; awaited before returning, so the
+  // draft's print file can rely on it (never fails the sketch).
+  let extractPut: Promise<void> | null = null;
 
   // Start the slow part first; the photo downloads meanwhile.
   const designP: Promise<RgbaImage[]> = (async () => {
@@ -327,6 +396,37 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
         designCacheKey(plan, deps.hashKey).then((k) => deps.cachePut!(k, png)).catch(() => {});
       }
       return [await keyed(png)];
+    }
+    if (ctx.plan.kind === "photo" && ctx.plan.block.extract === true) {
+      // The cached print is already keyed + trimmed: decode and place.
+      if (ctx.cachedDesign) {
+        const t0 = now();
+        const layer = await decodeImage(ctx.cachedDesign, deps);
+        spend(t0);
+        return [layer];
+      }
+      if (!deps.extractPrint) throw new SketchError("extract_unavailable");
+      if (!deps.downloadUpload) throw new SketchError("photo_download_unavailable");
+      const bytes = await deps.downloadUpload(ctx.plan.path);
+      if (!bytes) throw new SketchError("photo_download");
+      const mime = isJpeg(bytes) ? "image/jpeg" : isPng(bytes) ? "image/png" : null;
+      if (!mime) throw new SketchError("image_format");
+      if (bytes.length > MAX_EXTRACT_INPUT_BYTES) throw new SketchError("photo_too_large");
+      const png = await deps.extractPrint(ctx.channel, ctx.conversationKey, `data:${mime};base64,${bytesToBase64(bytes)}`, left());
+      if (!png) throw new SketchError("extract_failed");
+      const t0 = now();
+      const layer = keyExtractedPrint(await decodeImage(png, deps));
+      // Cache the KEYED print (PNG): a re-send and the order's print file use it.
+      const keyedPng: Uint8Array | null = deps.cachePut ? await encodePng(layer) : null;
+      spend(t0);
+      if (deps.cachePut && keyedPng) {
+        const put = deps.cachePut;
+        const bytesToCache: Uint8Array = keyedPng;
+        extractPut = extractCacheKey(ctx.plan.path, deps.hashKey)
+          .then((k: string): Promise<void> => put(k, bytesToCache))
+          .catch((): void => {});
+      }
+      return [layer];
     }
     if (ctx.plan.kind === "photo") {
       if (!deps.downloadUpload) throw new SketchError("photo_download_unavailable");
@@ -352,6 +452,7 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
     drawContained(canvas, ctx.plan.kind === "generate" ? trimTransparent(design) : design, boxes[0]);
     const jpeg = deps.encodeJpeg(canvas, SKETCH_JPEG_QUALITY);
     spend(t0);
+    if (extractPut) await extractPut;
     return jpeg;
   } else {
     const font = await fontP;
@@ -394,7 +495,9 @@ export async function runSketch(
 
   const work = (async (): Promise<string> => {
     // A cached design costs nothing: it counts as a mockup, not a generation.
-    const marker = ctx.plan.kind === "photo"
+    const marker = isExtractPlan(ctx.plan) && !ctx.cachedDesign
+      ? SKETCH_MARKER.extract
+      : ctx.plan.kind === "photo"
       ? SKETCH_MARKER.photo
       : ctx.plan.kind === "generate" && ctx.cachedDesign ? SKETCH_MARKER.text : SKETCH_MARKER[ctx.plan.kind];
     const recordId = await base.recordSend(ctx.conversationKey, "sketch", marker);

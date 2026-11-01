@@ -186,6 +186,12 @@ export interface MockupBlock {
    * never reads it.
    */
   photo?: number;
+  /**
+   * DM only (add-only, 2026-11-01): photo N is a READY GARMENT with a print —
+   * GPT Image recreates the print alone (gemini-proxy extract-print-gpt) and
+   * THAT is placed, not the whole photo. Only meaningful with a photo.
+   */
+  extract?: boolean;
 }
 
 /** Highest „[ფოტო N]" a block may name (the history holds 8 messages). */
@@ -311,6 +317,7 @@ export function parseMockupBlock(raw: string): MockupBlock | null {
     const n = /^\d{1,2}$/.test(raw) ? Number(raw) : NaN;
     if (Number.isInteger(n) && n >= 1 && n <= MAX_PHOTO_NUMBER) out.photo = n;
   }
+  if (truthy(parsed.extract)) out.extract = true;
   return out;
 }
 
@@ -379,6 +386,11 @@ const ORDER_STATUS_RE = /```maika-order-status\b/;
  * while the burst holds exactly ONE photo means that photo (the site's habit:
  * a photo block has no text). "removeWhite" is done locally; the AI edits
  * ("removeBackground", "editPrompt") stay unsupported in v1.
+ *
+ * EXTRACT (2026-11-01): "extract": true on a photo block = photo N shows a
+ * ready garment with a print; the plan stays kind "photo" with
+ * block.extract = true and sketchFlow places the GPT-recreated print instead
+ * of the photo. "extract" on a text block (or without any photo) is ignored.
  */
 export function planSketch(raw: string, photos: boolean | SketchPhotos): SketchPlan | null {
   const s = String(raw ?? "");
@@ -399,6 +411,12 @@ export function planSketch(raw: string, photos: boolean | SketchPhotos): SketchP
     if (n > refs.paths.length) return { kind: "unsupported", reason: "photo_unknown" };
     const path = refs.paths[n - 1];
     if (!path) return { kind: "unsupported", reason: "photo_unavailable" };
+    // extract (2026-11-01): the print is recreated on a magenta key, so a
+    // white-removal pass on top of it is meaningless — dropped.
+    if (m.extract) {
+      const { removeWhite: _rw, ...rest } = m;
+      return { kind: "photo", block: { ...rest, photo: n, extract: true }, target: productChoice(m), path };
+    }
     return { kind: "photo", block: { ...m, photo: n }, target: productChoice(m), path };
   }
   if (m.editPrompt || m.removeBackground || m.removeWhite) return { kind: "unsupported", reason: "photo_edit" };

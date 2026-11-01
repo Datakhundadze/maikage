@@ -382,7 +382,7 @@ export function promptFor(item: DraftItem): string | null {
     } else if (s.kind === "generate") {
       parts.push(`${SIDE_KA[side]} (AI ნახატი):\n  ${s.prompt ?? ""}${s.style ? `\n  სტილი: ${s.style}` : ""}`);
     } else {
-      parts.push(`${SIDE_KA[side]}:\n  მომხმარებლის ფოტო ${s.photo ?? ""}${s.removeWhite ? " (თეთრი ფონი მოშორებული)" : ""}`);
+      parts.push(`${SIDE_KA[side]}:\n  მომხმარებლის ფოტო ${s.photo ?? ""}${s.removeWhite ? " (თეთრი ფონი მოშორებული)" : ""}${s.extract ? " (პრინტი ამოღებულია ფოტოდან, GPT)" : ""}`);
     }
     if (s.placement || s.size === "large") parts.push(`  განთავსება: ${[s.placement, s.size === "large" ? "დიდი" : ""].filter(Boolean).join(", ")}`);
   }

@@ -80,6 +80,16 @@ export function handoffMessage(schedule: BotSchedule): string {
   return `კარგი, ოპერატორს გადავეცი 🙌 ის გიპასუხებთ ${operatorBack(schedule)}.`;
 }
 
+/**
+ * The paid-sketch cap is reached (owner 2026-11-01): a fixed text, sent at
+ * most once per reply, and the conversation goes to the operator (handoff
+ * reason HANDOFF_REASON_SKETCH_CAP) — instead of DESIGN_LINK_LINE.
+ */
+export function sketchCapMessage(schedule: BotSchedule): string {
+  return `ესკიზების დღიური ლიმიტი ამოიწურა 🙏 ოპერატორს გადავეცი — ის მოგიმზადებთ და გიპასუხებთ ${operatorBack(schedule)}.`;
+}
+export const HANDOFF_REASON_SKETCH_CAP = "sketch_cap";
+
 export function photoMessage(schedule: BotSchedule): string {
   return `ფოტო მივიღეთ, მადლობა 📷 ოპერატორი ნახავს და გიპასუხებთ ${operatorBack(schedule)}.`;
 }

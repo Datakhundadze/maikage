@@ -8,6 +8,7 @@ import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import { resolveTrustedSocialChannel, socialSchedule, withSocialBlock, type SocialChannel } from "./socialChannel.ts";
 import { billableGateApplies, resolveTrustedSocialSketch } from "./socialChannel.ts";
+import { EXTRACT_PRINT_PROMPT, resolveTrustedSocialExtract } from "./socialChannel.ts";
 import { redactOrderBlockForLog, socialOrdersOn } from "./socialChannel.ts";
 import { buildGptGeneratePrompt, joinPromptText } from "./gptGeneratePrompt.ts";
 import { RECEIPT_MODEL, isReceiptImage, parseReceiptResponse, receiptRequestBody, resolveTrustedSocialReceipt } from "./receiptRead.ts";
@@ -2437,6 +2438,100 @@ CRITICAL:
         if (attempt < gMaxAttempts - 1) await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
       }
       return gJson(500, { error: `AI generation failed: ${gLastError}` });
+    }
+
+    // ── ADD-ONLY (2026-11-01): extract-print-gpt (DM bot) ──────────────────
+    // A customer's photo of a READY garment → GPT Image recreates the print
+    // alone, flat, on a solid magenta key (EXTRACT_PRINT_PROMPT); meta-webhook
+    // keys the magenta out itself. background "auto", NOT "transparent": GPT's
+    // transparent mode deletes white parts (white lettering on a dark hoodie —
+    // seen with flags). TRUSTED SOCIAL CALL ONLY (service-role bearer +
+    // params.channel, socialChannel.resolveTrustedSocialExtract): anything else
+    // → 403 here, before any gateway call. Not in BILLABLE_ACTIONS (the
+    // webhook caps it with its generated designs). Request, retries and
+    // ai_calls rows copy the GPT photo block above; that block is unchanged.
+    // Response { image, text }.
+    if (action === "extract-print-gpt") {
+      const xJson = (status: number, body: Record<string, unknown>): Response =>
+        new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const xChannel = resolveTrustedSocialExtract(
+        action,
+        params?.channel,
+        req.headers.get("Authorization"),
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+      );
+      if (!xChannel) return xJson(403, { error: "Forbidden", code: "FORBIDDEN" });
+      const xImage = typeof params.image === "string" ? params.image : "";
+      const xMatch = /^data:(image\/(?:png|jpeg|webp));base64,(.*)$/s.exec(xImage);
+      if (!xMatch || xImage.length > 12_000_000) {
+        return xJson(400, { error: "Image must be a PNG/JPEG/WEBP data URL under ~9 MB", code: "BAD_REQUEST" });
+      }
+      const xKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!xKey) return xJson(500, { error: "LOVABLE_API_KEY is not configured", code: "CONFIG" });
+
+      const xModel = "openai/gpt-image-2.5-sunburst";
+      const xBin = Uint8Array.from(atob(xMatch[2]), (c: string): number => c.charCodeAt(0));
+      const xExt = xMatch[1] === "image/png" ? "png" : xMatch[1] === "image/webp" ? "webp" : "jpg";
+      const xEditsUrl = GATEWAY_URL.replace("/chat/completions", "/images/edits");
+      const xMaxAttempts = 2;
+      let xLastError = "";
+      console.log(`[gemini-proxy] extract-print-gpt (${xChannel}): model=${xModel}`);
+
+      for (let attempt = 0; attempt < xMaxAttempts; attempt++) {
+        const startedAt = Date.now();
+        const xLog = (success: boolean, errorCode: string | null): void =>
+          logAiCall({
+            action, model: xModel,
+            userId: callerUserId,
+            sessionId: callerSessionId,
+            isGuest: callerIsGuest,
+            success,
+            durationMs: Date.now() - startedAt,
+            errorCode,
+          });
+        try {
+          const form = new FormData();
+          form.append("model", xModel);
+          form.append("prompt", EXTRACT_PRINT_PROMPT);
+          form.append("image", new Blob([xBin], { type: xMatch[1] }), `input.${xExt}`);
+          form.append("n", "1");
+          form.append("size", "1024x1024");
+          form.append("quality", "medium");
+          form.append("output_format", "png");
+          form.append("background", "auto");
+          const res = await fetch(xEditsUrl, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${xKey}` },
+            body: form,
+          });
+          if (!res.ok) {
+            const status = res.status;
+            const text = await res.text();
+            xLog(false, `http_${status}`);
+            console.error(`[gemini-proxy] ${action} HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 300));
+            if (status === 429) return xJson(429, { error: "Rate limit exceeded. Please wait a moment and try again.", code: "RATE_LIMITED" });
+            if (status === 402) return xJson(402, { error: "Service temporarily unavailable", code: "SERVICE_UNAVAILABLE" });
+            if (status >= 400 && status < 500) return xJson(500, { error: "AI generation failed. Please try again." });
+            xLastError = `Gateway returned ${status}`;
+          } else {
+            const data: unknown = await res.json();
+            const img = extractImage(data);
+            if (img) {
+              xLog(true, null);
+              console.log(`[gemini-proxy] Success: action=${action}, attempt=${attempt + 1}`);
+              return xJson(200, { image: img, text: "" });
+            }
+            xLog(false, "no_image");
+            xLastError = "No image in response";
+          }
+        } catch (xErr) {
+          xLog(false, "exception");
+          xLastError = xErr instanceof Error ? xErr.name : "error";
+          console.error(`[gemini-proxy] ${action} attempt ${attempt + 1} exception:`, xLastError);
+        }
+        if (attempt < xMaxAttempts - 1) await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+      }
+      return xJson(500, { error: `AI generation failed: ${xLastError}` });
     }
 
     // ── ADD-ONLY (2026-10-30): generate-design-gpt ─────────────────────────

@@ -222,6 +222,7 @@ export const AI_ACTION_LABELS: Record<string, string> = {
   "isolate-subject-gpt": "ფონის მოხსნა (ფოტო, GPT)",
   "restyle-gpt": "სტილის შეცვლა (GPT)",
   "generate-design-gpt": "დიზაინის გენერაცია (GPT)",
+  "extract-print-gpt": "პრინტის ამოღება ფოტოდან (GPT, DM)",
 };
 
 export function actionLabel(action: string | null | undefined): string {

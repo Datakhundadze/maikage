@@ -48,6 +48,13 @@ export interface DraftSide {
   photo?: number;
   photoPath?: string;
   removeWhite?: boolean;
+  /**
+   * photo + extract (2026-11-01): the print GPT recreated from a garment
+   * photo; cacheKey (sketchFlow.extractCacheKey) names the keyed transparent
+   * PNG in designs/social-sketches/cache/ — that PNG is the print file, not
+   * the photo.
+   */
+  extract?: boolean;
   /** The sketch JPEG the customer saw (public designs bucket) = the order's mockup. */
   sketchUrl: string;
   messageId?: string | null;
@@ -140,6 +147,8 @@ export function sideFromPlan(
         photo: plan.block.photo,
         photoPath: plan.path,
         ...(plan.block.removeWhite ? { removeWhite: true } : {}),
+        ...(plan.block.extract ? { extract: true } : {}),
+        ...(plan.block.extract && extra.cacheKey ? { cacheKey: extra.cacheKey } : {}),
         ...base,
       },
     };
@@ -160,7 +169,7 @@ export function sideFromPlan(
 export function sameDesign(a: DraftSide, b: DraftSide): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === "generate") return a.prompt === b.prompt && (a.style ?? "") === (b.style ?? "") && !!a.withBackground === !!b.withBackground;
-  if (a.kind === "photo") return a.photoPath === b.photoPath && !!a.removeWhite === !!b.removeWhite;
+  if (a.kind === "photo") return a.photoPath === b.photoPath && !!a.removeWhite === !!b.removeWhite && !!a.extract === !!b.extract;
   return a.text === b.text && (a.number ?? "") === (b.number ?? "") && (a.textColor ?? "") === (b.textColor ?? "");
 }
 
@@ -212,7 +221,7 @@ const SAFE = (s: string, n: number) => s.replace(/[[\]\n\r]+/g, " ").replace(/\s
 export function sideSummary(s: DraftSide): string {
   const big = s.size === "large" ? " (დიდი)" : "";
   if (s.kind === "text") return `წარწერა „${SAFE(s.text ?? "", 40)}"${s.number ? ` №${s.number}` : ""}${big}`;
-  if (s.kind === "photo") return `ფოტო ${s.photo ?? "?"}${big}`;
+  if (s.kind === "photo") return `ფოტო ${s.photo ?? "?"}${s.extract ? " (პრინტი ფოტოდან)" : ""}${big}`;
   return `ნახატი „${SAFE(s.prompt ?? "", 40)}"${big}`;
 }
 

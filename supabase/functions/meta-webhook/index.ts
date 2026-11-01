@@ -37,6 +37,11 @@
 // <cart_id>/ (outside the 90-day purge, which deletes only attachment paths),
 // recorded on the draft and noted on the orders rows. No SQL. REDEPLOY
 // gemini-proxy too (the read-receipt action).
+// PRINT FROM A GARMENT PHOTO (add-only, 2026-11-01): a photo block with
+// "extract": true → gemini-proxy extract-print-gpt (trusted social call, as
+// generate-design-gpt) recreates the print on magenta; sketchFlow keys it out
+// and caches the transparent PNG in designs/social-sketches/cache/, which is
+// also the order's print file. No SQL. REDEPLOY gemini-proxy too.
 //
 // AUTO-REPLY (add-only). After a NEW inbound customer row is stored, the bot
 // run (autoReply.ts) is scheduled in the background like the photo copy. It
@@ -688,6 +693,41 @@ async function generateSketchDesign(
   }
 }
 
+/**
+ * gemini-proxy extract-print-gpt as the trusted social call (add-only,
+ * 2026-11-01): the garment photo (data URL) → the print alone on magenta,
+ * PNG bytes. Neither the image nor its path is logged.
+ */
+async function extractSketchPrint(
+  channel: "messenger" | "instagram",
+  conversationKey: string,
+  image: string,
+  timeoutMs: number,
+): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey } }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    const data = await res.json().catch((): null => null) as { image?: unknown; code?: unknown } | null;
+    if (!res.ok) {
+      log("error", `sketch: extract-print-gpt HTTP ${res.status} code=${String(data?.code ?? "-")}`);
+      return null;
+    }
+    const out = typeof data?.image === "string" ? data.image : "";
+    const m = /^data:image\/[a-z+.-]+;base64,(.+)$/i.exec(out);
+    if (m) return base64ToBytes(m[1]);
+    if (/^https:\/\//i.test(out)) return await fetchBytes(out, 20_000);
+    log("error", "sketch: extract-print-gpt returned no image");
+    return null;
+  } catch (e) {
+    log("error", `sketch: extract-print-gpt call failed: ${e instanceof Error ? e.name : "error"}`);
+    return null;
+  }
+}
+
 function sketchDeps(admin: Admin): SketchDeps {
   return {
     countSketches: async (key, sinceIso) => {
@@ -705,6 +745,7 @@ function sketchDeps(admin: Admin): SketchDeps {
       return countSketchRows((data ?? []) as { text: string | null }[]);
     },
     generateDesign: generateSketchDesign,
+    extractPrint: extractSketchPrint,
     fetchImage: fetchBytes,
     loadFont: () =>
       loadSketchFont({

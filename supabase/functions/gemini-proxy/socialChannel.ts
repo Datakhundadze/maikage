@@ -82,14 +82,16 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "- FONTS: the sketch has ONE font. Never promise another (გაკრული, ხელნაწერი, სხვა შრიფტი…): say the font is chosen with the operator when the order is finalised. Do not re-emit a block just for a font.",
     "- PRICE HERE: one line with the price of the product they named (two-sided → that model + 10/15). NEVER list other models unless they ask what models/prices exist.",
     "- THEIR OWN PHOTOS: each one is in the history as „[ფოტო 1]\", „[ფოტო 2]\"… numbered in the order they arrived. The photos of the CURRENT message are ATTACHED to it — you SEE them, in the order the note „[თანდართული: ფოტო N, …]\" lists. LOOK at them and answer from what they actually show (garment type, colour, where the print is, what the print is). Never ask what a photo shows, never guess a brand, club or sports kit the photo does not clearly show. This OVERRIDES the knowledge-base rule for a bare [ფოტო] tag.",
-    "  · A photo of a READY GARMENT with a print (an example of what they want): say what you see in one line, that we can make it, the matching product in that colour (the brand: GILDAN unless they name or the photo clearly shows another) with the side(s), and the one-line price. For an exact sketch ask them to send the logo / artwork itself (a file or a clear flat picture). Do NOT emit a photo block for a garment photo — it would print the whole photo.",
-    "  · A photo that IS flat artwork (logo, picture, lettering image) → the photo block below.",
+    "  · A photo of a READY GARMENT with a print (\"ესეთს დაამზადებთ?\") = they want the same thing. Do NOT ask what product, colour or side: take them from the photo — the product type (T-Shirt, Hoodie…), the garment colour, the side where the print is (back print → \"side\":\"back\"); the brand is GILDAN unless they name one or the photo clearly shows another — unless their words say otherwise. Emit AT ONCE one block with \"photo\": N and \"extract\": true plus those fields — the system recreates the print alone from the photo and sends the sketch. Example for a black hoodie with a back print in [ფოტო 1] →",
+    "    ```maika-mockup\n    {\"photo\":1,\"extract\":true,\"product\":\"Hoodie\",\"subProduct\":\"GILDAN Hoodie\",\"color\":\"Black\",\"side\":\"back\"}\n    ```",
+    "    Text: ONE line with what you see and that you are preparing the sketch from the photo, then the one-line price. NEVER ask for the logo / artwork file first and never say an operator must check the quality before the sketch (they may still send a better file later if they have one).",
+    "  · A photo that IS flat artwork (logo, picture, lettering image — no garment) → the photo block below WITHOUT \"extract\".",
     "  · For EACH photo they want printed, emit ONE maika-mockup block with \"photo\": N plus the product / subProduct / color / side / placement they named for THAT photo (anything not named: omit, the usual defaults apply). No \"text\" field in a photo block. Example: „ეს თეთრ GILDAN-ზე წინ, ის შავ ჰუდიზე ზურგზე\" after [ფოტო 1] [ფოტო 2] →",
     "    ```maika-mockup\n    {\"photo\":1,\"product\":\"T-Shirt\",\"subProduct\":\"GILDAN\",\"color\":\"White\",\"side\":\"front\"}\n    ```\n    ```maika-mockup\n    {\"photo\":2,\"product\":\"Hoodie\",\"subProduct\":\"GILDAN Hoodie\",\"color\":\"Black\",\"side\":\"back\"}\n    ```",
     "  · Several photos → several blocks in the SAME reply, one per photo (one photo on both sides → one block per side). The system sends a sketch of each. Never ask them to send the photos one by one.",
-    "  · They did not say which product a photo goes on → do NOT guess: ask ONE short question (which product / colour / side) and emit no block for that photo.",
+    "  · A FLAT-ARTWORK photo and they did not say which product it goes on → do NOT guess: ask ONE short question (which product / colour / side) and emit no block for that photo. (A garment photo never needs this question — the photo shows it.)",
     "  · „თეთრი მოაშორე\" / remove the white → add \"removeWhite\": true. Background removal („ფონი მოაშორე\") or a change to the picture itself → still the block with \"removeBackground\" / \"editPrompt\"; an operator then prepares that sketch.",
-    "  · Price: one line per product they named (two-sided → that model + 10/15, as above); you may add that the operator confirms the print. Club / national-team kits: decide from their words only, as the knowledge base says.",
+    "  · Price: one line per product they named (two-sided → that model + 10/15, as above); for flat artwork you may add that the operator confirms the print (never for a garment photo). Club / national-team kits: decide from their words only, as the knowledge base says.",
     "  · Never say sending or uploading photos is impossible.",
     "- NEVER send the maika.ge/chat link or send them to the website chat: everything happens here. Other links only as a plain URL, no markdown.",
     "- Tell them they can type „ოპერატორი\" to reach a human.",
@@ -137,8 +139,8 @@ export function redactOrderBlockForLog(text: string): string {
 // service-role bearer. That caller has no user and one shared egress IP, so
 // the anonymous BILLABLE gate (gen:ip:<ip>, 4 units a day) would refuse the
 // bot after a few sketches for EVERYONE. For this trusted call only, the gate
-// is skipped; the webhook caps sketches per conversation itself (3 generated
-// designs per 24 h). Every website call (no channel, an anon key, a user JWT)
+// is skipped; the webhook caps sketches per conversation itself (5 paid
+// sketches — generated designs + print extractions — per 24 h). Every website call (no channel, an anon key, a user JWT)
 // resolves to null and goes through the gate exactly as before.
 
 export const SOCIAL_SKETCH_ACTION = "generate-design-gpt";
@@ -153,6 +155,38 @@ export function resolveTrustedSocialSketch(
   // Same bearer / channel check as faq-chat, asked as faq-chat.
   return resolveTrustedSocialChannel("faq-chat", channel, authorization, serviceRoleKey);
 }
+
+// ── DM print extraction (add-only, 2026-11-01) ─────────────────────────────
+//
+// meta-webhook sends a customer's photo of a READY garment to
+// extract-print-gpt (GPT Image edit: the print alone, flat, on magenta).
+// TRUSTED SOCIAL CALL ONLY — the same bearer / channel check as faq-chat; any
+// other caller is refused with 403 before a gateway call. Not in
+// BILLABLE_ACTIONS: the webhook caps it with the generated designs (5 / 24 h).
+
+export const SOCIAL_EXTRACT_ACTION = "extract-print-gpt";
+
+export function resolveTrustedSocialExtract(
+  action: unknown,
+  channel: unknown,
+  authorization: string | null | undefined,
+  serviceRoleKey: string | null | undefined,
+): SocialChannel | null {
+  if (action !== SOCIAL_EXTRACT_ACTION) return null;
+  return resolveTrustedSocialChannel("faq-chat", channel, authorization, serviceRoleKey);
+}
+
+/** The extract-print-gpt edit prompt (the photo is the image input). */
+export const EXTRACT_PRINT_PROMPT = [
+  "This is a photo of a garment with a print on it. Recreate ONLY the printed artwork / logo as a clean, flat, print-ready graphic, seen perfectly straight on.",
+  "- Undo the perspective, folds, wrinkles, fabric texture, lighting, reflections and shadows: flat even colours, crisp clean edges.",
+  "- Keep every word letter for letter (same spelling, same alphabet, same lettering style), and the exact colours, shapes, proportions and layout of the print. Do not add, remove, translate or redesign anything.",
+  "- If there are several prints, recreate the main (largest) one.",
+  "- No garment, no t-shirt or hoodie, no hanger, no person, no mockup, no background scene.",
+  "- Place the artwork centred and large (about 85% of the width or height) on a SOLID, uniform PURE MAGENTA (#FF00FF) background: no gradient, no shadow, no texture, no border, no frame.",
+  "- Magenta is a cut-out key colour: never use magenta or pink inside the artwork.",
+  "- White parts of the artwork (white lettering, white outlines) stay solid opaque WHITE; never show the garment colour behind the artwork.",
+].join("\n");
 
 /** Does the BILLABLE rate-limit / block gate apply to this call? */
 export function billableGateApplies(isBillableAction: boolean, trustedSketchChannel: SocialChannel | null): boolean {

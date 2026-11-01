@@ -14,6 +14,10 @@
 //             zero pixel work). removeWhite → (≤ PRINT_PHOTO_DECODE_MAX_PIXELS,
 //             read from the header) decode, key out the white, trim, PNG;
 //             a bigger photo is left to the operator ("photo_too_heavy").
+//             extract (a garment photo, 2026-11-01) → the KEYED transparent
+//             print from the cache (designs/social-sketches/cache/<key>.png,
+//             the very layer the sketch used), as it is — never the raw
+//             photo; not cached → "extract_not_cached" (operator).
 //
 // CPU. The edge limit is 2 s per request and the whole bot run is one
 // request. Pixel work (decode / key / text raster / PNG encode) is measured
@@ -156,6 +160,14 @@ async function render(item: DraftItem, side: Side, s: DraftSide, deps: PrintDeps
       keyOutColor(img, KEY_COLOR_HEX);
       return { bytes: await encode(trimTransparent(img)), ext: "png" as const, type: "image/png" };
     });
+  }
+
+  if (s.kind === "photo" && s.extract) {
+    // The print GPT recreated, already keyed + trimmed: zero pixel work.
+    if (!s.cacheKey || !deps.cacheGet) throw new PrintSkip("no_extract_source");
+    const png = await deps.cacheGet(s.cacheKey);
+    if (!png || !isPng(png)) throw new PrintSkip("extract_not_cached");
+    return { bytes: png, ext: "png", type: "image/png" };
   }
 
   if (s.kind === "photo") {
