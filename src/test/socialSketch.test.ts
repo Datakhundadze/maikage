@@ -916,7 +916,8 @@ describe("DM text fixes", () => {
     const dm = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/socialChannel.ts"), "utf8");
     expect(dm).toContain('\\"size\\":\\"large\\"');
     expect(dm).toContain("ONE font");
-    expect(dm).toContain("NEVER list other models");
+    // 2026-11-02: the price rule names the product-type case (socialPhotoNudge.test.ts)
+    expect(dm).toContain("NEVER list the models / brands one by one");
     expect(dm).toContain("Never say sending or uploading photos is impossible");
   });
 });
@@ -1205,10 +1206,12 @@ describe("DM prompt: customer photos", () => {
     expect(dm).toContain("Never say sending or uploading photos is impossible");
     expect(dm).not.toContain("an operator will send the sketch");
     // the example blocks in the prompt are themselves valid photo blocks
-    // (2026-11-01: the ready-garment extract example comes first)
+    // (2026-11-01: the ready-garment extract example comes first; 2026-11-02:
+    // the t-shirt lettering example takes photo 1 front, so the later photo-1
+    // front examples are de-duplicated)
     const plans = planSketches(dm, PHOTOS(2), MAX_SKETCHES_PER_REPLY);
     expect(plans.map((p) => p.kind)).toEqual(["photo", "photo", "photo"]);
-    expect(plans.map((p) => p.kind === "photo" && p.block.extract === true)).toEqual([true, false, false]);
+    expect(plans.map((p) => p.kind === "photo" && p.block.extract === true)).toEqual([true, true, false]);
   });
 });
 

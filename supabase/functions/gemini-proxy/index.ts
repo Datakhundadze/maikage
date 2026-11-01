@@ -8,7 +8,7 @@ import { STOCK_LIVE, wantsStock, getStockBlock } from "./stockSnapshot.ts";
 import { chargeRateLimit } from "./rateLimitCharge.ts";
 import { resolveTrustedSocialChannel, socialSchedule, withSocialBlock, type SocialChannel } from "./socialChannel.ts";
 import { billableGateApplies, resolveTrustedSocialSketch } from "./socialChannel.ts";
-import { EXTRACT_PRINT_PROMPT, resolveTrustedSocialExtract } from "./socialChannel.ts";
+import { extractPrintColor, extractPrintPrompt, resolveTrustedSocialExtract } from "./socialChannel.ts";
 import { redactOrderBlockForLog, socialOrdersOn } from "./socialChannel.ts";
 import { buildGptGeneratePrompt, joinPromptText } from "./gptGeneratePrompt.ts";
 import { RECEIPT_MODEL, isReceiptImage, parseReceiptResponse, receiptRequestBody, resolveTrustedSocialReceipt } from "./receiptRead.ts";
@@ -2475,7 +2475,11 @@ CRITICAL:
       const xEditsUrl = GATEWAY_URL.replace("/chat/completions", "/images/edits");
       const xMaxAttempts = 2;
       let xLastError = "";
-      console.log(`[gemini-proxy] extract-print-gpt (${xChannel}): model=${xModel}`);
+      // printColor (2026-11-02): only a name from the fixed EXTRACT_PRINT_COLORS
+      // list adds the recolour line; anything else is ignored.
+      const xPrompt = extractPrintPrompt(params?.printColor);
+      const xColor = extractPrintColor(params?.printColor)?.name ?? "original";
+      console.log(`[gemini-proxy] extract-print-gpt (${xChannel}): model=${xModel} printColor=${xColor}`);
 
       for (let attempt = 0; attempt < xMaxAttempts; attempt++) {
         const startedAt = Date.now();
@@ -2492,7 +2496,7 @@ CRITICAL:
         try {
           const form = new FormData();
           form.append("model", xModel);
-          form.append("prompt", EXTRACT_PRINT_PROMPT);
+          form.append("prompt", xPrompt);
           form.append("image", new Blob([xBin], { type: xMatch[1] }), `input.${xExt}`);
           form.append("n", "1");
           form.append("size", "1024x1024");
