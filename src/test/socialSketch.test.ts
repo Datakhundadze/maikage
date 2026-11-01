@@ -894,8 +894,9 @@ describe("tester caps", () => {
 });
 
 describe("DM text fixes", () => {
-  it("[maika.ge/chat](https://maika.ge/chat) → the bare URL", () => {
-    expect(cleanBotReply("ნახეთ: [maika.ge/chat](https://maika.ge/chat)")).toBe("ნახეთ: https://maika.ge/chat");
+  it("markdown links become plain URLs; maika.ge/chat lines are dropped", () => {
+    expect(cleanBotReply("საიტი: [maika.ge](https://maika.ge)\nფასი 35₾")).toBe("საიტი: https://maika.ge\nფასი 35₾");
+    expect(cleanBotReply("ფასი 35₾\nნახეთ: [maika.ge/chat](https://maika.ge/chat)")).toBe("ფასი 35₾");
   });
   it("DM prompt: size, one font, one price line, own photo wording", () => {
     const dm = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/socialChannel.ts"), "utf8");
@@ -1120,7 +1121,7 @@ describe("runAutoReply with customer photos", () => {
       log: (_l, m) => { logs.push(m); },
     });
     expect(await runAutoReply(trigger, a.deps)).toBe("reply");
-    expect(history).toEqual(["ეს თეთრ მაისურზე წინ, ის შავ ჰუდიზე ზურგზე [ფოტო 1] [ფოტო 2]"]);
+    expect(history).toEqual(["ეს თეთრ მაისურზე წინ, ის შავ ჰუდიზე ზურგზე [ფოტო 1] [ფოტო 2]\n[თანდართული: ფოტო 1, ფოტო 2]"]);
     expect(a.sent).toEqual([`აი ესკიზები.\n${SKETCH_NOTICE}`]);
     expect(downloads).toEqual(["messenger/2026-10/p1-0.jpg", "messenger/2026-10/p2-0.jpg"]);
     expect(s.calls.filter((c) => c.startsWith("image:"))).toHaveLength(2);
@@ -1192,5 +1193,30 @@ describe("DM prompt: customer photos", () => {
     // the example blocks in the prompt are themselves valid photo blocks
     const plans = planSketches(dm, PHOTOS(2), MAX_SKETCHES_PER_REPLY);
     expect(plans.map((p) => p.kind)).toEqual(["photo", "photo"]);
+  });
+});
+
+describe("owner 2026-11-01: the model SEES the customer's photos", () => {
+  it("visionImages: stored originals as data URLs, receipts skipped, max 4, numbers kept", async () => {
+    const { visionImages, withAttachedNote, MAX_VISION_IMAGES } = await import("../../supabase/functions/meta-webhook/autoReply");
+    const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const photos = { paths: ["a.jpg", "r.jpg", null, "c.jpg", "d.jpg", "e.jpg", "f.jpg"], pending: [1, 2, 3, 4, 5, 6, 7] };
+    const v = await visionImages(photos, new Set(["r.jpg"]), async () => jpg);
+    expect(v.numbers).toEqual([1, 4, 5, 6]);
+    expect(v.images).toHaveLength(MAX_VISION_IMAGES);
+    expect(v.images[0].startsWith("data:image/jpeg;base64,")).toBe(true);
+    const none = await visionImages(photos, new Set(), async () => new Uint8Array([1, 2, 3]));
+    expect(none.images).toEqual([]);
+    const h = withAttachedNote([{ role: "user", content: "ეს ჰუდი [ფოტო 1]" }, { role: "assistant", content: "x" }], [1]);
+    expect(h[0].content).toBe("ეს ჰუდი [ფოტო 1]\n[თანდართული: ფოტო 1]");
+  });
+
+  it("gemini-proxy: params.images attached only for the trusted social call (add-only)", () => {
+    const src = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/index.ts"), "utf8");
+    expect(src).toContain("if (faqSocialChannel && Array.isArray(params.images) && !isAcceptableChatImage(params.image)) {");
+    expect(src).toContain("...imgs.map((url) => ({ type: \"image_url\", image_url: { url } })),");
+    const dm = readFileSync(path.resolve(__dirname, "../../supabase/functions/gemini-proxy/socialChannel.ts"), "utf8");
+    expect(dm).toContain("you SEE them");
+    expect(dm).toContain("Do NOT emit a photo block for a garment photo");
   });
 });

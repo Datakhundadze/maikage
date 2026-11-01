@@ -52,7 +52,7 @@ import {
   type ThreadRow,
 } from "./botReply.ts";
 import { planSketches, type RenderPlan } from "./sketchParse.ts";
-import type { RgbaImage } from "./pngDecode.ts";
+import { isJpeg, isPng, type RgbaImage } from "./pngDecode.ts";
 import {
   MIN_SKETCH_BUDGET_MS,
   SKETCH_CAP_WINDOW_MS,
@@ -131,7 +131,7 @@ export interface AutoReplyDeps {
   recordSend: (conversationKey: string, kind: "reply" | "handoff" | "photo" | "sketch", text: string) => Promise<string | null>;
   markSent: (recordId: string, messageId: string) => Promise<void>;
   /** opts.orders: the DM order rules are on (the draft table is readable). */
-  askBot: (channel: Channel, conversationKey: string, history: ChatTurn[], schedule: BotSchedule, opts?: { orders?: boolean }) => Promise<string | null>;
+  askBot: (channel: Channel, conversationKey: string, history: ChatTurn[], schedule: BotSchedule, opts?: { orders?: boolean; images?: string[] }) => Promise<string | null>;
   send: (channel: Channel, recipientId: string, text: string) => Promise<SendResult>;
   log: (level: "info" | "warn" | "error", msg: string) => void;
   /** DM sketch images. Absent → design blocks get the link line, as before. */
@@ -253,11 +253,32 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       if (r.outcome !== "no_order") deps.log("info", `receipt step ${row.channel}: ${r.outcome}`);
       if (r.messages && r.messages.length > 0) receiptRun = r;
     }
+    // DM PHOTOS TO THE MODEL (owner 2026-11-01): the customer's photos of this
+    // burst go to faq-chat as images, so the answer is about what they show.
+    let images: string[] = [];
+    // One download per photo per run: the vision step and the photo sketches share it.
+    const downloaded = new Map<string, Promise<Uint8Array | null>>();
+    const rawDownload: ((path: string) => Promise<Uint8Array | null>) | undefined = deps.sketch?.downloadUpload;
+    const memoDownload = (path: string): Promise<Uint8Array | null> => {
+      if (!rawDownload) return Promise.resolve(null);
+      let p = downloaded.get(path);
+      if (!p) { p = rawDownload(path); downloaded.set(path, p); }
+      return p;
+    };
+    if (receiptRun === null && decision.action === "reply" && history.length > 0 && rawDownload) {
+      const v = await visionImages(photos, receiptPhotos, memoDownload);
+      images = v.images;
+      if (v.numbers.length > 0) askHistory = withAttachedNote(askHistory, v.numbers);
+    }
+    const askOpts: { orders?: boolean; images?: string[] } = {
+      ...(ordersOn ? { orders: true } : {}),
+      ...(images.length > 0 ? { images } : {}),
+    };
     // AI call failed while photos wait for an answer → the old fixed
     // „ფოტო მივიღეთ" (an operator will look) instead of silence.
     const raw = receiptRun === null && decision.action === "reply" && history.length > 0
-      ? await (ordersOn
-        ? deps.askBot(row.channel, key, askHistory, schedule, { orders: true })
+      ? await (Object.keys(askOpts).length > 0
+        ? deps.askBot(row.channel, key, askHistory, schedule, askOpts)
         : deps.askBot(row.channel, key, askHistory, schedule))
       : null;
     // DM orders: a maika-order block → the reply texts are written by
@@ -379,7 +400,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
         const outcome = await runSketch(
           { channel: row.channel, conversationKey: key, customerId: row.customer_id, plan, budgetMs, cachedDesign: cached, productCache, cpu },
           { now: deps.now, recordSend: deps.recordSend, markSent: deps.markSent, send: deps.send, log: deps.log },
-          deps.sketch,
+          rawDownload ? { ...deps.sketch, downloadUpload: memoDownload } : deps.sketch,
           {
             linkOnFailure: !linkSent,
             onSent: (url: string, messageId: string | null): void => { sentSketches.push({ plan, url, messageId }); },
@@ -414,4 +435,49 @@ export function scrubSecrets(s: string): string {
 /** Test hook: the "log once" flag is module state. */
 export function _resetTokenWarning(): void {
   tokenWarned = false;
+}
+
+// ── DM photos for the model (add-only, 2026-11-01) ──────────────────────────
+
+export const MAX_VISION_IMAGES = 4;
+/** Larger originals are skipped (gemini-proxy caps a data URL at 8 MB of base64). */
+export const MAX_VISION_BYTES = 4_000_000;
+
+function bytesToBase64(b: Uint8Array): string {
+  let bin = "";
+  for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode(...b.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/**
+ * The burst's photos (not receipts), as data URLs of the stored originals — no
+ * decode, so no CPU cost. numbers[i] is the „[ფოტო N]" of images[i].
+ */
+export async function visionImages(
+  photos: { paths: (string | null)[]; pending: number[] },
+  receiptPaths: Set<string>,
+  download: (path: string) => Promise<Uint8Array | null>,
+): Promise<{ images: string[]; numbers: number[] }> {
+  const images: string[] = [];
+  const numbers: number[] = [];
+  for (const n of photos.pending) {
+    if (images.length >= MAX_VISION_IMAGES) break;
+    const path = photos.paths[n - 1];
+    if (!path || receiptPaths.has(path)) continue;
+    const bytes = await download(path).catch((): null => null);
+    if (!bytes || bytes.length > MAX_VISION_BYTES) continue;
+    const mime = isJpeg(bytes) ? "image/jpeg" : isPng(bytes) ? "image/png" : null;
+    if (!mime) continue;
+    images.push(`data:${mime};base64,${bytesToBase64(bytes)}`);
+    numbers.push(n);
+  }
+  return { images, numbers };
+}
+
+/** Tell the model which „[ფოტო N]" the attached images are, on the last user turn. */
+export function withAttachedNote(history: ChatTurn[], numbers: number[]): ChatTurn[] {
+  const at = history.map((t) => t.role).lastIndexOf("user");
+  if (at === -1 || numbers.length === 0) return history;
+  const note = `[თანდართული: ${numbers.map((n) => `ფოტო ${n}`).join(", ")}]`;
+  return history.map((t, i) => (i === at ? { ...t, content: `${t.content}\n${note}` } : t));
 }

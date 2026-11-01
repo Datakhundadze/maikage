@@ -573,7 +573,7 @@ describe("runAutoReply with receipts", () => {
     await runAutoReply({ ...trigger, meta_message_id: "m2", sent_at: q.sent_at }, b.deps);
     expect(images).toEqual([]);
     // no sketch for it: the block falls back to the usual link line, nothing is downloaded or sent as an image
-    expect(b.sent).toEqual(["კარგი\nდიზაინის სანახავად: https://maika.ge/chat"]);
+    expect(b.sent).toEqual(["კარგი\nამ ესკიზს ოპერატორი მოამზადებს და აქვე გამოგიგზავნით."]);
   });
 });
 
