@@ -731,3 +731,13 @@ describe("runAutoReply with orders", () => {
     expect(db.drafts).toHaveLength(0);
   });
 });
+
+describe("owner 2026-11-01: big back lettering = big back, lead time in recap", () => {
+  it("backSizeOf: lettering small, lettering 'large' big, drawing big", async () => {
+    const { backSizeOf, LEAD_TIME_LINE } = await import("../../supabase/functions/meta-webhook/orderFlow");
+    expect(backSizeOf({ kind: "text", sketchUrl: "u", at: "t" } as never)).toBe("small");
+    expect(backSizeOf({ kind: "text", size: "large", sketchUrl: "u", at: "t" } as never)).toBe("big");
+    expect(backSizeOf({ kind: "generate", sketchUrl: "u", at: "t" } as never)).toBe("big");
+    expect(LEAD_TIME_LINE).toBe("დამზადება: 1–3 სამუშაო დღე");
+  });
+});

@@ -173,7 +173,7 @@ describe("client: USE_GPT_GENERATE + runGenerationPipeline", () => {
     expect(p).toContain("const gpt = USE_GPT_GENERATE");
     expect(p).toContain("await tryGptGenerateDesign({");
     expect(p).toContain("...adjustedDesignParams,");
-    expect(GEN).toContain('callGemini("generate-design-gpt", designParams, 0)');
+    expect(GEN).toContain('callGemini("generate-design-gpt", flag ? flagDesignParams(designParams) : designParams, 0)');
   });
 
   it("keeps the Gemini fallback: generate-design → runTransparencyPipeline", () => {
