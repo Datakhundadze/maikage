@@ -421,14 +421,15 @@ export function planSketch(raw: string, photos: boolean | SketchPhotos): SketchP
   const refs = photosOf(photos);
   const n = m.photo ?? (!m.text && refs.pending.length === 1 ? refs.pending[0] : undefined);
   if (n !== undefined) {
-    if (m.editPrompt || m.removeBackground) return { kind: "unsupported", reason: "photo_edit" };
     if (n > refs.paths.length) return { kind: "unsupported", reason: "photo_unknown" };
     const path = refs.paths[n - 1];
     if (!path) return { kind: "unsupported", reason: "photo_unavailable" };
     // extract (2026-11-01): the print is recreated on a magenta key, so a
     // white-removal pass on top of it is meaningless — dropped.
-    if (m.extract) {
-      const { removeWhite: _rw, ...rest } = m;
+    // EDITS (2026-11-01): a change to the picture („ბოლოში 12 მოაშორე") or a
+    // background removal → the GPT extraction with that edit, not the operator.
+    if (m.extract || m.editPrompt || m.removeBackground) {
+      const { removeWhite: _rw, removeBackground: _rb, ...rest } = m;
       return { kind: "photo", block: { ...rest, photo: n, extract: true }, target: productChoice(m), path };
     }
     return { kind: "photo", block: { ...m, photo: n }, target: productChoice(m), path };

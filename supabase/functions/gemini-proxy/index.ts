@@ -2477,7 +2477,7 @@ CRITICAL:
       let xLastError = "";
       // printColor (2026-11-02): only a name from the fixed EXTRACT_PRINT_COLORS
       // list adds the recolour line; anything else is ignored.
-      const xPrompt = extractPrintPrompt(params?.printColor);
+      const xPrompt = extractPrintPrompt(params?.printColor, params?.edit);
       const xColor = extractPrintColor(params?.printColor)?.name ?? "original";
       console.log(`[gemini-proxy] extract-print-gpt (${xChannel}): model=${xModel} printColor=${xColor}`);
 

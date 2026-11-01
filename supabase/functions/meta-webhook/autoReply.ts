@@ -44,6 +44,7 @@ import type { Channel } from "./handler.ts";
 import type { BotSchedule } from "./botSchedule.ts";
 import { isScheduleActive } from "./botSchedule.ts";
 import {
+  ASKS_FOR_MODELS_RE,
   DESIGN_LINK_LINE,
   HANDOFF_REASON_SKETCH_CAP,
   buildHistoryWithPhotos,
@@ -371,7 +372,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
                 // Same photo's print extracted before → re-use it (no GPT call).
                 const sk: SketchDeps = deps.sketch;
                 const path: string = p.path;
-                cached = await extractCacheKey(path, sk.hashKey, p.block.printColor)
+                cached = await extractCacheKey(path, sk.hashKey, p.block.printColor, p.block.editPrompt)
                   .then((k: string): Promise<Uint8Array | null> => sk.cacheGet!(k))
                   .catch((): null => null);
               }
@@ -391,9 +392,12 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       texts = [cleanBotReply(
         raw,
         schedule,
-        sketches.length > 0
-          ? { designNotice: SKETCH_NOTICE }
-          : capHit ? { designNotice: sketchCapMessage(schedule) } : undefined,
+        {
+          ...(sketches.length > 0
+            ? { designNotice: SKETCH_NOTICE }
+            : capHit ? { designNotice: sketchCapMessage(schedule) } : {}),
+          allowPriceList: pendingInbound(thread).some((r) => typeof r.text === "string" && ASKS_FOR_MODELS_RE.test(r.text)),
+        },
       )];
     }
 
@@ -464,7 +468,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
         const sk: SketchDeps = deps.sketch;
         for (const s of sentSketches) {
           if (s.plan.kind === "generate") s.cacheKey = await designCacheKey(s.plan, sk.hashKey).catch((): undefined => undefined);
-          else if (isExtractPlan(s.plan)) s.cacheKey = await extractCacheKey(s.plan.path, sk.hashKey, s.plan.block.printColor).catch((): undefined => undefined);
+          else if (isExtractPlan(s.plan)) s.cacheKey = await extractCacheKey(s.plan.path, sk.hashKey, s.plan.block.printColor, s.plan.block.editPrompt).catch((): undefined => undefined);
         }
         const r = await recordSketches(key, row.channel, deps.now(), sentSketches, deps.order, deps.log)
           .catch((): string => "error");

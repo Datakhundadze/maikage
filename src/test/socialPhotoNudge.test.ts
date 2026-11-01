@@ -205,7 +205,7 @@ describe("printColor: gemini-proxy prompt", () => {
     const src = read("supabase/functions/gemini-proxy/index.ts");
     const start = src.indexOf('if (action === "extract-print-gpt") {');
     const block = src.slice(start, src.indexOf("\n    }\n", start));
-    expect(block).toContain("const xPrompt = extractPrintPrompt(params?.printColor);");
+    expect(block).toContain("const xPrompt = extractPrintPrompt(params?.printColor, params?.edit);");
     expect(block).toContain('form.append("prompt", xPrompt);');
     const wh = read("supabase/functions/meta-webhook/index.ts");
     expect(wh).toContain("...(printColor ? { printColor } : {})");
@@ -450,5 +450,37 @@ describe("DM prompt 2026-11-02: new photo = new request, extract or not, print c
     const tee = plans.find((p) => p.kind === "photo" && p.block.printColor === "White");
     expect(tee && tee.kind === "photo" && tee.target).toEqual({ product: "T-Shirt", subProduct: "GILDAN", color: "Black", side: "front" });
     expect(tee && tee.kind === "photo" && tee.block.extract).toBe(true);
+  });
+});
+
+describe("owner 2026-11-01 (2): edits go to GPT, one price line", () => {
+  it("photo + editPrompt / removeBackground → extract plan carrying the edit", async () => {
+    const { planSketch } = await import("../../supabase/functions/meta-webhook/sketchParse");
+    const raw = "x\n```maika-mockup\n" + JSON.stringify({ photo: 1, editPrompt: "ბოლოში 12 მოაშორე", color: "Black" }) + "\n```";
+    const p = planSketch(raw, { paths: ["a.jpg"], pending: [1] }) as { kind: string; block: { extract?: boolean; editPrompt?: string } };
+    expect(p.kind).toBe("photo");
+    expect(p.block.extract).toBe(true);
+    expect(p.block.editPrompt).toBe("ბოლოში 12 მოაშორე");
+    const bg = planSketch("```maika-mockup\n" + JSON.stringify({ photo: 1, removeBackground: true }) + "\n```", { paths: ["a.jpg"], pending: [1] }) as { kind: string; block: { extract?: boolean } };
+    expect(bg.kind).toBe("photo");
+    expect(bg.block.extract).toBe(true);
+  });
+
+  it("extract cache key changes with the edit; prompt carries it sanitised", async () => {
+    const { extractCacheKey } = await import("../../supabase/functions/meta-webhook/sketchFlow");
+    const { extractPrintPrompt, extractPrintEdit, EXTRACT_PRINT_PROMPT } = await import("../../supabase/functions/gemini-proxy/socialChannel");
+    const h = async (s: string) => s.padEnd(64, "0");
+    expect(await extractCacheKey("a.jpg", h)).not.toBe(await extractCacheKey("a.jpg", h, undefined, "x"));
+    expect(extractPrintEdit('a\n"b"')).toBe("a b");
+    expect(extractPrintPrompt(undefined, "ბოლოში 12 მოაშორე")).toContain("„ბოლოში 12 მოაშორე\"");
+    expect(extractPrintPrompt(undefined, "  ")).toBe(EXTRACT_PRINT_PROMPT);
+  });
+
+  it("trimPriceList: a model list becomes one line + other models from X", async () => {
+    const { trimPriceList, cleanBotReply } = await import("../../supabase/functions/meta-webhook/botReply");
+    const t = "ამოვიღებთ.\n\nმაისურების ფასები (ბეჭდვით):\nGILDAN — 35₾\nTH — 45₾\nSOL'S — 50₾\nNIKE — 100₾";
+    expect(trimPriceList(t)).toBe("ამოვიღებთ.\n\nGILDAN — 35₾\nსხვა მოდელები 45₾-დან.");
+    expect(trimPriceList("GILDAN — 35₾\nTH — 45₾")).toBe("GILDAN — 35₾\nTH — 45₾");
+    expect(cleanBotReply(t, "sunday", { allowPriceList: true })).toContain("NIKE — 100₾");
   });
 });

@@ -1035,8 +1035,9 @@ describe("photo blocks: parsing and plans", () => {
     const refs = { paths: ["messenger/2026-10/p1-0.jpg", null], pending: [1, 2] };
     expect(planSketch(MOCK({ photo: 3 }), refs)).toEqual({ kind: "unsupported", reason: "photo_unknown" });
     expect(planSketch(MOCK({ photo: 2 }), refs)).toEqual({ kind: "unsupported", reason: "photo_unavailable" });
-    expect(planSketch(MOCK({ photo: 1, removeBackground: true }), refs)).toEqual({ kind: "unsupported", reason: "photo_edit" });
-    expect(planSketch(MOCK({ photo: 1, editPrompt: "სათვალე დაადე" }), refs)).toEqual({ kind: "unsupported", reason: "photo_edit" });
+    // 2026-11-01: AI edits on a photo go to the GPT extraction (owner), not the operator.
+    expect(planSketch(MOCK({ photo: 1, removeBackground: true }), refs)).toMatchObject({ kind: "photo", block: { extract: true } });
+    expect(planSketch(MOCK({ photo: 1, editPrompt: "სათვალე დაადე" }), refs)).toMatchObject({ kind: "photo", block: { extract: true, editPrompt: "სათვალე დაადე" } });
     const rw = planSketch(MOCK({ photo: 1, removeWhite: true, color: "Black" }), refs);
     expect(rw?.kind === "photo" && rw.block.removeWhite).toBe(true);
     // no photos in the window at all
