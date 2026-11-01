@@ -706,12 +706,13 @@ async function extractSketchPrint(
   image: string,
   timeoutMs: number,
   printColor?: string,
+  edit?: string,
 ): Promise<Uint8Array | null> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
       headers: { Authorization: `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey, ...(printColor ? { printColor } : {}) } }),
+      body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey, ...(printColor ? { printColor } : {}), ...(edit ? { edit } : {}) } }),
       signal: AbortSignal.timeout(timeoutMs),
     });
     const data = await res.json().catch((): null => null) as { image?: unknown; code?: unknown } | null;

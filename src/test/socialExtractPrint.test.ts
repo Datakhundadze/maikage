@@ -136,7 +136,7 @@ describe("extract: block parsing and plans", () => {
   it("extract drops removeWhite; AI edits stay unsupported; on a lettering block it is ignored", () => {
     const p = planSketch(MOCK({ ...HOODIE_BACK, removeWhite: true }), PHOTOS);
     expect(p?.kind === "photo" && p.block.removeWhite).toBeFalsy();
-    expect(planSketch(MOCK({ ...HOODIE_BACK, editPrompt: "x" }), PHOTOS)).toEqual({ kind: "unsupported", reason: "photo_edit" });
+    expect(planSketch(MOCK({ ...HOODIE_BACK, editPrompt: "x" }), PHOTOS)).toMatchObject({ kind: "photo", block: { extract: true, editPrompt: "x" } });
     const t = planSketch(MOCK({ text: "ანა", extract: true }), PHOTOS);
     expect(t?.kind).toBe("text");
     expect(t && t.kind !== "unsupported" && isExtractPlan(t)).toBe(false);
@@ -499,7 +499,7 @@ describe("gemini-proxy extract-print-gpt", () => {
 
   it("webhook calls it as the trusted social call", () => {
     const wh = read("supabase/functions/meta-webhook/index.ts");
-    expect(wh).toContain('body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey, ...(printColor ? { printColor } : {}) } }),');
+    expect(wh).toContain('body: JSON.stringify({ action: "extract-print-gpt", params: { image, channel, session_id: conversationKey, ...(printColor ? { printColor } : {}), ...(edit ? { edit } : {}) } }),');
     expect(wh).toContain("extractPrint: extractSketchPrint,");
   });
 });

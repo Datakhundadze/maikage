@@ -95,7 +95,7 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "    ```maika-mockup\n    {\"photo\":1,\"product\":\"T-Shirt\",\"subProduct\":\"GILDAN\",\"color\":\"White\",\"side\":\"front\"}\n    ```\n    ```maika-mockup\n    {\"photo\":2,\"product\":\"Hoodie\",\"subProduct\":\"GILDAN Hoodie\",\"color\":\"Black\",\"side\":\"back\"}\n    ```",
     "  · Several photos → several blocks in the SAME reply, one per photo (one photo on both sides → one block per side). The system sends a sketch of each. Never ask them to send the photos one by one.",
     "  · A photo with NO garment in it (flat artwork, lettering on paper…) and they did not say in THIS burst which product it goes on → do NOT guess: ask ONE short question (which product / colour / side) and emit no block for that photo. (A garment photo never needs this question — the photo shows it.)",
-    "  · „თეთრი მოაშორე\" / remove the white → add \"removeWhite\": true. Background removal („ფონი მოაშორე\") or a change to the picture itself → still the block with \"removeBackground\" / \"editPrompt\"; an operator then prepares that sketch.",
+    "  · „თეთრი მოაშორე\" / remove the white → add \"removeWhite\": true. A CHANGE to the picture itself („ბოლოში 12 მოაშორე\", „წარწერა შეცვალე\", „ფონი მოაშორე\") → the SAME photo block again with \"extract\": true and \"editPrompt\": their words (Georgian is fine), plus the product / colour they want now; GPT redraws the print with that change and a new sketch is sent. Example after [ფოტო 1]: „შავზე ვცადოთ, ბოლოში 12 მოაშორე\" → {\"photo\":1,\"extract\":true,\"editPrompt\":\"ბოლოში 12 წარწერა მოაშორე\",\"product\":\"T-Shirt\",\"subProduct\":\"GILDAN\",\"color\":\"Black\",\"side\":\"front\"}. Keep the side of the earlier sketch unless they change it.",
     "  · Price: one line per product they named (two-sided → that model + 10/15, as above); for flat artwork you may add that the operator confirms the print (never for a garment photo). Club / national-team kits: decide from their words only, as the knowledge base says.",
     "  · Never say sending or uploading photos is impossible.",
     "- NEVER send the maika.ge/chat link or send them to the website chat: everything happens here. Other links only as a plain URL, no markdown.",
@@ -229,10 +229,20 @@ export function extractPrintColor(v: unknown): { name: string; hex: string } | n
  * for a valid print colour. Anything else (absent, unknown, magenta, pink…) →
  * EXTRACT_PRINT_PROMPT unchanged.
  */
-export function extractPrintPrompt(printColor: unknown): string {
+export function extractPrintPrompt(printColor: unknown, edit?: unknown): string {
   const c = extractPrintColor(printColor);
-  if (!c) return EXTRACT_PRINT_PROMPT;
-  return `${EXTRACT_PRINT_PROMPT}\n- Render the whole artwork in ONE solid colour: ${c.name} (${c.hex}), keeping its shapes and lettering exactly. This replaces the original colours of the print.`;
+  const base = !c
+    ? EXTRACT_PRINT_PROMPT
+    : `${EXTRACT_PRINT_PROMPT}\n- Render the whole artwork in ONE solid colour: ${c.name} (${c.hex}), keeping its shapes and lettering exactly. This replaces the original colours of the print.`;
+  const e = extractPrintEdit(edit);
+  return e ? `${base}\n- The customer's requested change — apply exactly this and change nothing else: „${e}"` : base;
+}
+
+/** params.edit (add-only, 2026-11-01): the customer's change, one line, ≤ 300 chars, no quotes. */
+export function extractPrintEdit(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.replace(/[\r\n\t]+/g, " ").replace(/[„“"`]/g, "").trim().slice(0, 300);
+  return t || null;
 }
 
 /** Does the BILLABLE rate-limit / block gate apply to this call? */

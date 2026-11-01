@@ -338,7 +338,7 @@ const FENCE_RE = /```maika-([a-z0-9_-]+)[^\n]*\n?[\s\S]*?(```|$)/gi;
 export function cleanBotReply(
   raw: string,
   schedule: BotSchedule = "sunday",
-  opts?: { designNotice?: string },
+  opts?: { designNotice?: string; allowPriceList?: boolean },
 ): string {
   let hadDesign = false;
   let text = String(raw ?? "").replace(FENCE_RE, (_m, kind: string) => {
@@ -354,6 +354,8 @@ export function cleanBotReply(
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  // Owner 2026-11-01: one price line, not the model list (unless they asked for models).
+  if (!opts?.allowPriceList) text = trimPriceList(text);
   // Owner 2026-11-01: never the website-chat link in a DM — drop any line with it.
   text = text.split("\n").filter((l) => !/maika\.ge\/chat/i.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
@@ -436,4 +438,36 @@ export function sendImageBody(channel: Channel, recipientId: string, url: string
   const message: Record<string, unknown> = { attachment: { type: "image", payload } };
   if (channel === "messenger") message.metadata = BOT_METADATA;
   return { recipient: { id: recipientId }, messaging_type: "RESPONSE", message };
+}
+
+// ── one price line (owner 2026-11-01) ───────────────────────────────────────
+
+const PRICE_LINE_RE = /(\d+)\s*₾\s*\.?\s*$/;
+/** The customer asked which models / brands exist → the list is what they want. */
+export const ASKS_FOR_MODELS_RE = /მოდელ|ბრენდ|სახეობ|რა გაქვთ|რომელი გაქვთ|ჩამომითვალ/i;
+
+/**
+ * The model kept pasting the whole model list. A run of 3+ consecutive price
+ * lines („… — 35₾") becomes its FIRST line + „სხვა მოდელები X₾-დან" (X = the
+ * cheapest of the rest); a „…ფასები…:" heading right above the run goes too.
+ */
+export function trimPriceList(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; ) {
+    let j = i;
+    while (j < lines.length && PRICE_LINE_RE.test(lines[j].trim())) j++;
+    if (j - i >= 3) {
+      const prev = out[out.length - 1];
+      if (prev !== undefined && /ფას/.test(prev) && /:\s*$/.test(prev.trim())) out.pop();
+      const rest = lines.slice(i + 1, j).map((l) => Number(PRICE_LINE_RE.exec(l.trim())?.[1] ?? NaN)).filter((n) => Number.isFinite(n));
+      out.push(lines[i].trim());
+      if (rest.length > 0) out.push(`სხვა მოდელები ${Math.min(...rest)}₾-დან.`);
+      i = j;
+    } else {
+      out.push(lines[i]);
+      i++;
+    }
+  }
+  return out.join("\n");
 }
