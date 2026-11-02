@@ -390,12 +390,12 @@ export function promptFor(item: DraftItem): string | null {
 }
 
 export interface OrderRowContext {
-  channel: "messenger" | "instagram";
+  channel: "messenger" | "instagram" | "whatsapp";
   cartId: string;
   hash: (s: string) => Promise<string>;
 }
 
-const CHANNEL_LABEL = { messenger: "Messenger", instagram: "Instagram" } as const;
+const CHANNEL_LABEL = { messenger: "Messenger", instagram: "Instagram", whatsapp: "WhatsApp" } as const;
 
 /** The `orders` rows for a priced order (one per unit) — the site's shape. */
 export async function buildOrderRows(o: PricedOrder, ctx: OrderRowContext): Promise<Record<string, unknown>[]> {
@@ -448,7 +448,7 @@ export async function buildOrderRows(o: PricedOrder, ctx: OrderRowContext): Prom
   return rows;
 }
 
-export function attributionRows(rows: Record<string, unknown>[], channel: "messenger" | "instagram", nowIso: string): Record<string, unknown>[] {
+export function attributionRows(rows: Record<string, unknown>[], channel: "messenger" | "instagram" | "whatsapp", nowIso: string): Record<string, unknown>[] {
   return rows.map((r) => ({ order_id: r.id, cart_id: r.cart_id, manual_channel: channel, manual_note: "bot", manual_set_at: nowIso }));
 }
 
@@ -458,7 +458,7 @@ export interface OrderDeps {
   /** The open draft; null = none; "error" = unreadable (table missing → the order flow stays off). */
   loadDraft: (conversationKey: string) => Promise<OrderDraft | null | "error">;
   /** Insert a collecting draft; on the one-open-draft conflict, the existing one. */
-  createDraft: (row: { conversation_key: string; channel: "messenger" | "instagram"; items?: DraftItem[]; customer?: DraftCustomer }) => Promise<OrderDraft | null>;
+  createDraft: (row: { conversation_key: string; channel: "messenger" | "instagram" | "whatsapp"; items?: DraftItem[]; customer?: DraftCustomer }) => Promise<OrderDraft | null>;
   /**
    * UPDATE … WHERE id = $id [AND status = guard.status] [AND cart_id IS NULL];
    * true when a row changed.
@@ -481,7 +481,7 @@ export interface OrderRun {
 
 export interface OrderContext {
   conversationKey: string;
-  channel: "messenger" | "instagram";
+  channel: "messenger" | "instagram" | "whatsapp";
   now: Date;
   log: (level: "info" | "warn" | "error", msg: string) => void;
 }
@@ -562,7 +562,7 @@ function recapAgain(d: OrderDraft): OrderRun {
 }
 
 /** The open draft, or a new one; a stale collecting draft is cancelled first. */
-export async function openDraft(key: string, channel: "messenger" | "instagram", now: Date, deps: OrderDeps): Promise<OrderDraft | null> {
+export async function openDraft(key: string, channel: "messenger" | "instagram" | "whatsapp", now: Date, deps: OrderDeps): Promise<OrderDraft | null> {
   const d = await deps.loadDraft(key);
   if (d === "error") return null;
   if (d && isStale(d, now)) {
@@ -584,7 +584,7 @@ export interface SentSketch {
  * collecting draft takes new sketches: after a confirmation the order is
  * fixed, and a new order waits until the operator closes that draft.
  */
-export async function recordSketches(key: string, channel: "messenger" | "instagram", now: Date, sent: SentSketch[], deps: OrderDeps, log: OrderContext["log"]): Promise<string> {
+export async function recordSketches(key: string, channel: "messenger" | "instagram" | "whatsapp", now: Date, sent: SentSketch[], deps: OrderDeps, log: OrderContext["log"]): Promise<string> {
   if (sent.length === 0) return "none";
   const d = await openDraft(key, channel, now, deps);
   if (!d) return "draft_unavailable";
@@ -605,7 +605,7 @@ export async function recordSketches(key: string, channel: "messenger" | "instag
 }
 
 /** Phone / email captured from the raw DM → the draft's admin-only customer jsonb. */
-export async function saveContacts(key: string, channel: "messenger" | "instagram", now: Date, c: CapturedContacts, deps: OrderDeps): Promise<string> {
+export async function saveContacts(key: string, channel: "messenger" | "instagram" | "whatsapp", now: Date, c: CapturedContacts, deps: OrderDeps): Promise<string> {
   const d = await openDraft(key, channel, now, deps);
   if (!d) return "draft_unavailable";
   const ok = await deps.updateDraft(d.id, { customer: mergeContacts(d.customer ?? {}, c) });

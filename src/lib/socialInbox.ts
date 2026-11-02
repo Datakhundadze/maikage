@@ -5,7 +5,8 @@
 // function (service role). The admin reads it through the "Admins can read
 // social_messages" SELECT policy; nothing on the client ever writes to it.
 
-export type SocialChannel = "messenger" | "instagram";
+/** "whatsapp" (add-only, 2026-11-02): meta-webhook whatsapp.ts. */
+export type SocialChannel = "messenger" | "instagram" | "whatsapp";
 export type SocialDirection = "in" | "out";
 
 /** The columns the tab selects. Text is already PII-redacted at write time. */

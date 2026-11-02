@@ -50,8 +50,10 @@
 import { redactPii } from "./redactPii.ts";
 import { recordReferrals, type SocialAdReferralRow } from "./referrals.ts";
 import { extractContacts, hasContacts, type CapturedContacts } from "./orderContacts.ts";
+import { WA_OBJECT, handleWhatsAppDelivery, type WhatsAppDeps } from "./whatsapp.ts";
 
-export type Channel = "messenger" | "instagram";
+/** "whatsapp" (add-only, 2026-11-02): rows written by whatsapp.ts only; channelFor never returns it. */
+export type Channel = "messenger" | "instagram" | "whatsapp";
 export type Direction = "in" | "out";
 
 /**
@@ -103,6 +105,8 @@ export interface HandlerDeps {
   store: (rows: SocialMessageRow[], contacts?: ContactsByMid) => Promise<StoreResult>;
   /** Optional, best-effort writer for social_ad_referrals (see referrals.ts). */
   storeReferrals?: (rows: SocialAdReferralRow[]) => Promise<void>;
+  /** WhatsApp Cloud API deliveries (add-only, 2026-11-02, whatsapp.ts). Absent → ignored as before. */
+  whatsapp?: WhatsAppDeps;
   log?: (level: "info" | "warn" | "error", msg: string) => void;
 }
 
@@ -295,6 +299,9 @@ export async function handleMetaWebhook(req: Request, deps: HandlerDeps): Promis
     log("warn", "signed body is not JSON — skipped");
     return text(200, "ignored");
   }
+
+  // WhatsApp (add-only, 2026-11-02): same app, same signature, own parser and store.
+  if (deps.whatsapp && isObj(body) && body.object === WA_OBJECT) return await handleWhatsAppDelivery(body, deps.whatsapp, log);
 
   const parsed = parseDelivery(body);
   const ignoredSummary = Object.entries(parsed.ignored).map(([k, n]) => `${k}=${n}`).join(",");
