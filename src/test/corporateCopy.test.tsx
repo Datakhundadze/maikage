@@ -97,7 +97,7 @@ describe("lib/corporateCopy.ts", () => {
     expect(CORPORATE_COPY.faq?.length).toBeGreaterThanOrEqual(4);
     expect(CORPORATE_COPY.faqHeading).toBe("ხშირი კითხვები ბრენდირებაზე");
     for (const img of CORPORATE_COPY.images ?? []) {
-      expect(img.src).toMatch(/^\/(showroom|products)\/.+\.webp$/);
+      expect(img.src).toMatch(/^\/(showroom|products|services)\/.+\.webp$/);
       expect(img.alt).toMatch(/[ა-ჰ]/);
       expect(img.width).toBeGreaterThan(0);
       expect(img.height).toBeGreaterThan(0);

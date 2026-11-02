@@ -1389,6 +1389,7 @@ export const VESTS_RAINCOATS_PAGE: ServicePageCopy = {
   heroLinks: [CORPORATE_LINK, ...CONTACT_LINKS],
   images: [
     { src: "/services/vest-green.webp", alt: "მწვანე ჟილეტი ელვით, შეკერილი შეკვეთით maika.ge-ზე", width: 900, height: 1200 },
+    { src: "/services/vest-lexus.webp", alt: "შავი ჟილეტი Lexus-ის ლოგოთი — კორპორატიული შეკვეთა, შეკერილი maika.ge-ზე", width: 900, height: 1200 },
     { src: "/services/raincoat-orange.webp", alt: "ნარინჯისფერი გრძელი საწვიმარი კაპიუშონით, შეკერილი შეკვეთით maika.ge-ზე", width: 900, height: 1200 },
   ],
   sections: [
