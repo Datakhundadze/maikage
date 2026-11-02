@@ -729,7 +729,7 @@ describe("phase 3 service pages", () => {
   it("vests / raincoats: made to order, not sold online, logo methods, paperwork, corporate CTA, real photos, no invented specs", () => {
     const p = SERVICE_PAGES["zhiletebi-da-satsvimrebi"];
     const text = pageTexts(p).join("\n");
-    expect((p.images ?? []).every((i) => i.src.startsWith("/services/raincoat-"))).toBe(true);
+    expect((p.images ?? []).every((i) => /^\/services\/(raincoat|vest)-/.test(i.src))).toBe(true);
     expect(p.heroLinks[0].href).toBe("/corporate");
     expect(p.cta.links[0].href).toBe("/corporate");
     for (const w of ["ვკერავთ შეკვეთით", "საიტზე არ ვყიდით", "DTF", "შოლკოგრაფია", "ქარგვ", "ინვოისს ყოველთვის ვწერთ"]) {

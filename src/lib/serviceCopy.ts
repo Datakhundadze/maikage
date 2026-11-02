@@ -1388,8 +1388,8 @@ export const VESTS_RAINCOATS_PAGE: ServicePageCopy = {
     "ჟილეტები და საწვიმრები კომპანიის ლოგოთი — თანამშრომლების ფორმისთვის, ღონისძიებებისთვის, მოხალისეებისა და სარეკლამო კამპანიებისთვის. ამ ნივთებს საიტზე არ ვყიდით: ვკერავთ შეკვეთით, შენი კომპანიის საჭიროების მიხედვით, და ვაბრენდირებთ ლოგოთი ან წარწერით. დეტალებს ერთად შევათანხმებთ.",
   heroLinks: [CORPORATE_LINK, ...CONTACT_LINKS],
   images: [
+    { src: "/services/vest-green.webp", alt: "მწვანე ჟილეტი ელვით, შეკერილი შეკვეთით maika.ge-ზე", width: 900, height: 1200 },
     { src: "/services/raincoat-orange.webp", alt: "ნარინჯისფერი გრძელი საწვიმარი კაპიუშონით, შეკერილი შეკვეთით maika.ge-ზე", width: 900, height: 1200 },
-    { src: "/services/raincoat-yellow.webp", alt: "ყვითელი საწვიმარი კაპიუშონით — შეკერილი შეკვეთით", width: 900, height: 1200 },
   ],
   sections: [
     {
