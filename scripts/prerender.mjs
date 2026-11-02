@@ -870,7 +870,8 @@ async function writeDataPages(template, cfg, stats, app) {
     console.warn(`${LOG} WARNING: design fetch failed: ${reason(e)}. No design pages written; SPA fallback serves /design/*.`);
   }
 
-  // Blog posts
+  // Blog posts (read live at build time — a new post needs a rebuild:
+  // push a real file change, then Publish; an empty commit doesn't build)
   try {
     const posts = await fetchAll(
       cfg,
