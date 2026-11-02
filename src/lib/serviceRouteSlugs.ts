@@ -1,5 +1,5 @@
 // URL slugs and link labels of the service landing pages
-// (/maisurebze-bechdva, /sportuli-formebi).
+// (/maisurebze-bechdva, /sportuli-formebi, /fekhburtis-formebi, …).
 //
 // Kept apart from lib/serviceCopy.ts on purpose, like productRouteSlugs.ts:
 // App.tsx (routes) and LandingPage (the "სერვისები" links) need only these
@@ -8,7 +8,18 @@
 // file and SERVICE_PAGES differ.
 import { LEAD_TIME_KA } from "@/lib/leadTime";
 
-export const SERVICE_PAGE_SLUGS = ["maisurebze-bechdva", "sportuli-formebi"] as const;
+export const SERVICE_PAGE_SLUGS = [
+  "maisurebze-bechdva",
+  "sportuli-formebi",
+  "fekhburtis-formebi",
+  "kalatburtis-formebi",
+  "dtf-bechdva",
+  "shelkografia",
+  "logos-kargva",
+  "chiqaze-bechdva",
+  "korporatiuli-sachukrebi",
+  "maisurebi-kartuli-tsartserebit",
+] as const;
 
 export type ServicePageSlug = (typeof SERVICE_PAGE_SLUGS)[number];
 
@@ -16,6 +27,14 @@ export type ServicePageSlug = (typeof SERVICE_PAGE_SLUGS)[number];
 export const SERVICE_PAGE_NAMES: Readonly<Record<ServicePageSlug, string>> = {
   "maisurebze-bechdva": "მაისურებზე ბეჭდვა",
   "sportuli-formebi": "სპორტული ფორმები",
+  "fekhburtis-formebi": "ფეხბურთის ფორმები",
+  "kalatburtis-formebi": "კალათბურთის ფორმები",
+  "dtf-bechdva": "DTF ბეჭდვა",
+  shelkografia: "შელკოგრაფია",
+  "logos-kargva": "ლოგოს ქარგვა",
+  "chiqaze-bechdva": "ჭიქაზე ბეჭდვა",
+  "korporatiuli-sachukrebi": "კორპორატიული საჩუქრები",
+  "maisurebi-kartuli-tsartserebit": "მაისურები ქართული წარწერით",
 };
 
 /** One link per service page (the home footer). */
@@ -62,7 +81,111 @@ export const SERVICE_LINKS: readonly ServiceNavLink[] = [
   },
   {
     href: "/sportuli-formebi",
-    label: "ფეხბურთის და სპორტული ფორმები",
+    label: "სპორტული ფორმები გვარით და ნომრით",
     description: "ფეხბურთისა და კალათბურთის ფორმები გუნდებისთვის — ლოგოთი, გვარით და ნომრით.",
   },
 ];
+
+/**
+ * The phase-2 service pages, one link each with its exact-match anchor (the
+ * page's target query) and a one-line description. Together with
+ * SERVICE_LINKS they make ALL_SERVICE_LINKS. Facts only from the owner's list
+ * (no prices, no quantities for corporate orders).
+ */
+export const MORE_SERVICE_LINKS: readonly ServiceNavLink[] = [
+  {
+    href: "/fekhburtis-formebi",
+    label: "ფეხბურთის ფორმები",
+    description: "გუნდის ფორმების შეკერვა: მაისური, შორტი, ლოგო, გვარი და ნომერი, საბავშვო ზომებითაც.",
+  },
+  {
+    href: "/kalatburtis-formebi",
+    label: "კალათბურთის ფორმები",
+    description: "კალათბურთის მაისური და შორტი გუნდის ფერებში, ლოგოთი, გვარით და ნომრით.",
+  },
+  {
+    href: "/dtf-bechdva",
+    label: "DTF ბეჭდვა",
+    description: `ნებისმიერი ფერი და ფოტო ტანსაცმელზე, ერთი ცალიდანაც — მზადდება ${LEAD_TIME_KA}ში.`,
+  },
+  {
+    href: "/shelkografia",
+    label: "შელკოგრაფია",
+    description: "ბეჭდვა დიდი ტირაჟისთვის: რაც მეტია რაოდენობა, მით იაფია ერთი ცალი.",
+  },
+  {
+    href: "/logos-kargva",
+    label: "ლოგოს ქარგვა",
+    description: "ნაქარგი ლოგო პოლოებზე, ჰუდებზე და კეპებზე — დიდი რაოდენობისთვის.",
+  },
+  {
+    href: "/chiqaze-bechdva",
+    label: "ჭიქაზე ბეჭდვა",
+    description: "ჭიქა შენი ფოტოთი, წარწერით ან ლოგოთი — საჩუქრად ან კომპანიისთვის.",
+  },
+  {
+    href: "/korporatiuli-sachukrebi",
+    label: "კორპორატიული საჩუქრები",
+    description: "მაისურები, ჰუდები, კეპები, ჭიქები, ჩანთები და ქეისები კომპანიის ლოგოთი.",
+  },
+  {
+    href: "/maisurebi-kartuli-tsartserebit",
+    label: "მაისურები ქართული წარწერით",
+    description: "ასობით მზა დიზაინი ქართული წარწერით, ან შენი საკუთარი ტექსტი.",
+  },
+];
+
+/**
+ * Every service page link: the four main ones, then the phase-2 pages. The
+ * home top bar, the header dropdown, the mobile menu and /faq list these.
+ */
+export const ALL_SERVICE_LINKS: readonly ServiceNavLink[] = [...SERVICE_LINKS, ...MORE_SERVICE_LINKS];
+
+/** Most links the "ბეჭდვის სერვისები" block shows. */
+export const PRINT_SERVICES_MAX = 8;
+
+/**
+ * The "ბეჭდვის სერვისები" block's links per page, most relevant first. A path
+ * missing here (every /design/:slug, every product / brand landing route)
+ * gets DEFAULT_PRINT_SERVICES.
+ */
+const DEFAULT_PRINT_SERVICES = [
+  "/maisurebze-bechdva",
+  "/maisurebi-kartuli-tsartserebit",
+  "/hoodie",
+  "/dtf-bechdva",
+  "/corporate",
+  "/sportuli-formebi",
+  "/chiqaze-bechdva",
+  "/korporatiuli-sachukrebi",
+];
+const PRINT_SERVICES_BY_PATH: Readonly<Record<string, readonly string[]>> = {
+  "/maisurebze-bechdva": ["/dtf-bechdva", "/shelkografia", "/logos-kargva", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/corporate", "/sportuli-formebi", "/chiqaze-bechdva"],
+  "/sportuli-formebi": ["/fekhburtis-formebi", "/kalatburtis-formebi", "/maisurebze-bechdva", "/dtf-bechdva", "/corporate", "/logos-kargva"],
+  "/fekhburtis-formebi": ["/sportuli-formebi", "/kalatburtis-formebi", "/dtf-bechdva", "/maisurebze-bechdva", "/corporate", "/logos-kargva"],
+  "/kalatburtis-formebi": ["/sportuli-formebi", "/fekhburtis-formebi", "/dtf-bechdva", "/maisurebze-bechdva", "/corporate"],
+  "/dtf-bechdva": ["/maisurebze-bechdva", "/shelkografia", "/logos-kargva", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/chiqaze-bechdva", "/corporate", "/sportuli-formebi"],
+  "/shelkografia": ["/maisurebze-bechdva", "/dtf-bechdva", "/logos-kargva", "/corporate", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
+  "/logos-kargva": ["/maisurebze-bechdva", "/shelkografia", "/dtf-bechdva", "/corporate", "/korporatiuli-sachukrebi", "/hoodie"],
+  "/chiqaze-bechdva": ["/korporatiuli-sachukrebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva", "/corporate"],
+  "/korporatiuli-sachukrebi": ["/corporate", "/logos-kargva", "/chiqaze-bechdva", "/shelkografia", "/dtf-bechdva", "/hoodie", "/maisurebze-bechdva"],
+  "/maisurebi-kartuli-tsartserebit": ["/maisurebze-bechdva", "/dtf-bechdva", "/hoodie", "/chiqaze-bechdva", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
+  "/corporate": ["/korporatiuli-sachukrebi", "/logos-kargva", "/shelkografia", "/dtf-bechdva", "/maisurebze-bechdva", "/sportuli-formebi", "/hoodie"],
+  "/hoodie": ["/maisurebze-bechdva", "/dtf-bechdva", "/maisurebi-kartuli-tsartserebit", "/logos-kargva", "/corporate", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
+};
+
+/**
+ * The "ბეჭდვის სერვისები" links for a page (components/PrintServicesLinks
+ * and the prerender's servicesBlock): the most relevant services for that
+ * path, never the page itself, at most PRINT_SERVICES_MAX.
+ */
+export function printServiceLinksFor(path?: string): ServiceNavLink[] {
+  const own = path !== undefined && Object.prototype.hasOwnProperty.call(PRINT_SERVICES_BY_PATH, path);
+  const hrefs = own ? PRINT_SERVICES_BY_PATH[path] : DEFAULT_PRINT_SERVICES;
+  const byHref = new Map(ALL_SERVICE_LINKS.map((l) => [l.href, l]));
+  return hrefs
+    .filter((h) => h !== path)
+    .map((h) => byHref.get(h))
+    .filter((l): l is ServiceNavLink => l !== undefined)
+    .slice(0, PRINT_SERVICES_MAX);
+}

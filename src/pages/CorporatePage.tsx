@@ -4,6 +4,7 @@ import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 import LandingCopySection from "@/components/landing/LandingCopySection";
+import PrintServicesLinks from "@/components/PrintServicesLinks";
 import { CORPORATE_COPY, CORPORATE_H1, CORPORATE_SCHEMAS, CORPORATE_SEO } from "@/lib/corporateCopy";
 
 export default function CorporatePage() {
@@ -58,6 +59,9 @@ export default function CorporatePage() {
             დაგვიკავშირდი <ArrowRight className="h-4 w-4" />
           </button>
         </CorporateInquiryModal>
+
+        {/* Related services (same block in the prerendered file). */}
+        <PrintServicesLinks excludeHref="/corporate" />
       </div>
     </div>
   );

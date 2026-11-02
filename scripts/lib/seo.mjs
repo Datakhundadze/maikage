@@ -218,9 +218,10 @@ export function printServicesHtml(services, { esc, link, style }, exclude) {
  *
  * @param app   { CORPORATE_SEO, CORPORATE_COPY } from src/lib/corporateCopy.ts
  * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
+ * @param servicesHtml  the "ბეჭდვის სერვისები" block (printServicesHtml), last in <main>
  * @returns {{ title: string, description: string, jsonLd: object[], rootHtml: string }}
  */
-export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS }, { esc, link, style }) {
+export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS }, { esc, link, style }, servicesHtml = "") {
   const c = CORPORATE;
   return {
     title: CORPORATE_SEO.title,
@@ -234,8 +235,9 @@ export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS
       `<ul style="${style.ul}">${c.features.map((f) => `<li style="${style.li}">${esc(f)}</li>`).join("")}</ul>`,
       landingCopyHtml(CORPORATE_COPY, { esc, link, style }),
       `<p style="${style.footer}">${link("/contact", c.cta)}</p>`,
+      servicesHtml,
       `</main>`,
-    ].join("\n"),
+    ].filter(Boolean).join("\n"),
   };
 }
 
@@ -251,8 +253,9 @@ export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS
  *
  * @param page  a ServicePageCopy (lib/serviceCopy.ts)
  * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
+ * @param servicesHtml  the "ბეჭდვის სერვისები" block (printServicesHtml), last in <main>
  */
-export function servicePageHtml(page, { esc, link, style }) {
+export function servicePageHtml(page, { esc, link, style }, servicesHtml = "") {
   const links = (list) => `<p style="${style.p}">${list.map((l) => link(l.href, l.label)).join(" · ")}</p>`;
   return [
     `<main style="${style.main}">`,
@@ -294,6 +297,7 @@ export function servicePageHtml(page, { esc, link, style }) {
       links(page.cta.links),
       `</section>`,
     ].join("\n"),
+    servicesHtml,
     `</main>`,
   ].filter(Boolean).join("\n");
 }

@@ -2,10 +2,11 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import NotFound from "@/pages/NotFound";
+import PrintServicesLinks from "@/components/PrintServicesLinks";
 import { SERVICE_PAGES, serviceSchemas, type ServiceLink, type ServicePageCopy } from "@/lib/serviceCopy";
 import type { ServicePageSlug } from "@/lib/serviceRouteSlugs";
 
-// Service landing pages (/maisurebze-bechdva, /sportuli-formebi). Purely
+// Service landing pages (/maisurebze-bechdva, /sportuli-formebi, …). Purely
 // presentational: every string, the title / description and the JSON-LD come
 // from lib/serviceCopy.ts — the same data the static prerender writes to
 // dist/<slug>/index.html (scripts/lib/seo.mjs servicePageHtml), so the text a
@@ -137,6 +138,9 @@ function ServicePageView({ page }: { page: ServicePageCopy }) {
             <LinkRow links={page.cta.links} />
           </section>
         </div>
+
+        {/* Related services (same block in the prerendered file). */}
+        <PrintServicesLinks excludeHref={page.path} />
       </main>
     </div>
   );

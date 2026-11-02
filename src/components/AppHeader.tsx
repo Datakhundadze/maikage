@@ -15,7 +15,7 @@ const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
 const MobileNav = lazyWithRetry(() => import("@/components/MobileNav"));
 const preloadMobileNav = () => import("@/components/MobileNav");
 import { useCart } from "@/hooks/useCart";
-import { SERVICE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
+import { ALL_SERVICE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
 
 // Hover-preload map: when the customer hovers a nav button we kick off
 // the route's chunk fetch so the click-to-render gap shrinks from
@@ -113,10 +113,10 @@ export default function AppHeader() {
             negative offset), which is exactly what hid the catalog link on
             phones. Below lg the hamburger above carries these links. */}
         <div className="hidden lg:flex items-center gap-0.5 flex-1 justify-center min-w-0">
-          {/* "სერვისები" — the four service pages (lib/serviceRouteSlugs.ts).
+          {/* "სერვისები" — every service page (lib/serviceRouteSlugs.ts ALL_SERVICE_LINKS).
               A hover / focus-within panel, not a Radix menu: the links are
               real <a href> that stay in the DOM while closed, so every page
-              with this header links all four. Kept outside the tab row's
+              with this header links all of them. Kept outside the tab row's
               overflow container so the panel is not clipped. */}
           <div className="relative group shrink-0">
             <button
@@ -129,7 +129,7 @@ export default function AppHeader() {
             </button>
             <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity absolute left-0 top-full z-50 pt-1">
               <ul className="w-72 rounded-xl border border-sidebar-border bg-sidebar p-1.5 shadow-lg">
-                {SERVICE_LINKS.map((l) => (
+                {ALL_SERVICE_LINKS.map((l) => (
                   <li key={l.href}>
                     <Link
                       to={l.href}
@@ -246,7 +246,7 @@ export default function AppHeader() {
             returnFocusTo={menuButtonRef}
             lang={lang}
             items={navItems.map((item) => ({ ...item, preload: PRELOAD_BY_PATH[item.path] }))}
-            services={{ heading: lang === "en" ? "Services" : SERVICES_HEADING, links: SERVICE_LINKS }}
+            services={{ heading: lang === "en" ? "Services" : SERVICES_HEADING, links: ALL_SERVICE_LINKS }}
           />
         </Suspense>
       )}

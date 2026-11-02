@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
-import { PRINT_SERVICES_HEADING, SERVICE_LINKS } from "@/lib/serviceRouteSlugs";
+import { PRINT_SERVICES_HEADING, printServiceLinksFor } from "@/lib/serviceRouteSlugs";
 
-// "ბეჭდვის სერვისები" — the four service links (lib/serviceRouteSlugs.ts
-// SERVICE_LINKS, exact-match anchors) as plain <a href>, shown at template
-// level on every /design/:slug page and every product landing route
-// (/hoodie, /t-shirt/gildan, …). The static prerender writes the same block
-// (scripts/lib/seo.mjs printServicesHtml).
+// "ბეჭდვის სერვისები" — the most relevant service links for the current page
+// (lib/serviceRouteSlugs.ts printServiceLinksFor: exact-match anchors, at
+// most 8, never the page itself) as plain <a href>, shown at template level
+// on every /design/:slug page, every product landing route (/hoodie,
+// /t-shirt/gildan, …), every service page and /corporate. The static
+// prerender writes the same block (scripts/prerender.mjs servicesBlock →
+// scripts/lib/seo.mjs printServicesHtml).
 //
 // "sidebar": the constructor column's tokens (ProductLandingPage afterContent).
 // "page": the theme's foreground tokens (DesignDetailPage).
@@ -24,13 +26,13 @@ const TONES = {
 
 interface PrintServicesLinksProps {
   tone?: keyof typeof TONES;
-  /** The current page's path — left out of the list (no self-link on /hoodie). */
+  /** The current page's path: picks the relevant links and is left out (no self-link). */
   excludeHref?: string;
 }
 
 export default function PrintServicesLinks({ tone = "page", excludeHref }: PrintServicesLinksProps) {
   const t = TONES[tone];
-  const links = SERVICE_LINKS.filter((l) => l.href !== excludeHref);
+  const links = printServiceLinksFor(excludeHref);
   return (
     <nav aria-label={PRINT_SERVICES_HEADING} className={t.nav}>
       <h2 className={t.h2}>{PRINT_SERVICES_HEADING}</h2>

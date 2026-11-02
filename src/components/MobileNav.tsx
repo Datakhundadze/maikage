@@ -28,7 +28,7 @@ interface MobileNavProps {
    *  — Radix only does that by itself for its own Trigger, and this sheet
    *  is opened by a plain controlled button. */
   returnFocusTo: RefObject<HTMLElement>;
-  /** The "სერვისები" group (lib/serviceRouteSlugs.ts SERVICE_LINKS), listed
+  /** The "სერვისები" group (lib/serviceRouteSlugs.ts ALL_SERVICE_LINKS), listed
    *  under the destinations — the same four links the desktop dropdown has. */
   services?: { heading: string; links: readonly { href: string; label: string }[] };
 }

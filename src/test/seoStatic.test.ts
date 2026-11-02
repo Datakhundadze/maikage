@@ -67,7 +67,7 @@ describe("copied page text still matches its source", () => {
     expect(CORPORATE).not.toHaveProperty("title");
     expect(CORPORATE).not.toHaveProperty("description");
     const prerender = source("scripts/prerender.mjs");
-    expect(prerender).toContain("corporatePage(app, { esc, link, style: STYLE })");
+    expect(prerender).toContain('corporatePage(app, { esc, link, style: STYLE }, servicesBlock(app, "/corporate"))');
     expect(prerender).toContain("jsonLd: corp.jsonLd,");
     expect(source("scripts/lib/appModules.mjs")).toContain('corporateCopy: "/src/lib/corporateCopy.ts"');
   });
@@ -216,7 +216,7 @@ describe("FAQ — static page and its JSON-LD carry EVERY Q&A (prices from prici
     const pre = source("scripts/prerender.mjs");
     expect(pre).toContain("jsonLd: [app.faqPageSchema(app.FAQ_GROUPS)]");
     expect(pre).toContain(
-      "rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }, { heading: app.SERVICES_HEADING, links: app.SERVICE_LINKS })",
+      "rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }, { heading: app.SERVICES_HEADING, links: app.ALL_SERVICE_LINKS })",
     );
     expect(pre).not.toContain("priceFreeFaq");
     expect(source("src/pages/FaqPage.tsx")).toContain("const FAQ_SCHEMA = faqPageSchema(FAQ_GROUPS);");

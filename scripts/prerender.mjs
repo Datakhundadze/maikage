@@ -383,10 +383,14 @@ async function fetchAll({ url, key }, table, select, filter) {
 
 // ── Pages ───────────────────────────────────────────────────────────────────
 
-/** The "ბეჭდვის სერვისები" links (PrintServicesLinks), when the app modules loaded. */
+/**
+ * The "ბეჭდვის სერვისები" links (PrintServicesLinks), when the app modules
+ * loaded: printServiceLinksFor(path) — the services most relevant to that
+ * page, never the page itself.
+ */
 function servicesBlock(app, exclude) {
-  if (!app?.SERVICE_LINKS?.length) return "";
-  return printServicesHtml({ heading: app.PRINT_SERVICES_HEADING, links: app.SERVICE_LINKS }, { esc, link, style: STYLE }, exclude);
+  if (typeof app?.printServiceLinksFor !== "function") return "";
+  return printServicesHtml({ heading: app.PRINT_SERVICES_HEADING, links: app.printServiceLinksFor(exclude) }, { esc, link, style: STYLE }, exclude);
 }
 
 function designRoot(d, description, app) {
@@ -622,7 +626,7 @@ async function writeAppPages(template, app, stats) {
   // description and section text from lib/corporateCopy.ts (seo.mjs
   // corporatePage builds it).
   if (await page("corporate", "corporate", () => {
-    const corp = corporatePage(app, { esc, link, style: STYLE });
+    const corp = corporatePage(app, { esc, link, style: STYLE }, servicesBlock(app, "/corporate"));
     return renderPage(template, {
       title: corp.title,
       description: corp.description,
@@ -641,7 +645,7 @@ async function writeAppPages(template, app, stats) {
     canonical: `${SITE_URL}/faq`,
     image: DEFAULT_OG_IMAGE,
     jsonLd: [app.faqPageSchema(app.FAQ_GROUPS)],
-    rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }, { heading: app.SERVICES_HEADING, links: app.SERVICE_LINKS }),
+    rootHtml: faqPageHtml(app.FAQ_PAGE, app.FAQ_GROUPS, { esc, link, style: STYLE }, { heading: app.SERVICES_HEADING, links: app.ALL_SERVICE_LINKS }),
   }))) {
     const count = app.FAQ_GROUPS.reduce((n, g) => n + g.items.length, 0);
     stats.lists.push(`faq (${count} Q&As)`);
@@ -668,7 +672,7 @@ async function writeAppPages(template, app, stats) {
         canonical: `${SITE_URL}${sp.path}`,
         image: DEFAULT_OG_IMAGE,
         jsonLd: app.serviceSchemas(sp),
-        rootHtml: servicePageHtml(sp, { esc, link, style: STYLE }),
+        rootHtml: servicePageHtml(sp, { esc, link, style: STYLE }, servicesBlock(app, sp.path)),
       });
     })) stats.lists.push(route);
   }
@@ -970,8 +974,12 @@ function homeRoot(app) {
   const c = CONTACT;
   // LandingPage's "სერვისები" section (lib/serviceRouteSlugs.ts): each link
   // with its one-line description, when the app modules loaded.
+  // Then the other service pages as a compact list (MORE_SERVICE_LINKS).
+  const more = app?.MORE_SERVICE_LINKS?.length
+    ? `\n<ul style="${STYLE.ul}">${app.MORE_SERVICE_LINKS.map((l) => `<li style="${STYLE.li}">${link(l.href, l.label)}</li>`).join("")}</ul>`
+    : "";
   const services = app?.SERVICE_LINKS?.length
-    ? `<section>\n<h2 style="${STYLE.h2}">${esc(app.SERVICES_HEADING)}</h2>\n<ul style="${STYLE.ul}">${app.SERVICE_LINKS.map((l) => `<li style="${STYLE.li}">${link(l.href, l.label)}${l.description ? ` — ${esc(l.description)}` : ""}</li>`).join("")}</ul>\n</section>`
+    ? `<section>\n<h2 style="${STYLE.h2}">${esc(app.SERVICES_HEADING)}</h2>\n<ul style="${STYLE.ul}">${app.SERVICE_LINKS.map((l) => `<li style="${STYLE.li}">${link(l.href, l.label)}${l.description ? ` — ${esc(l.description)}` : ""}</li>`).join("")}</ul>${more}\n</section>`
     : "";
   const ext = (href, text) =>
     `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="${STYLE.a}">${esc(text)}</a>`;

@@ -14,7 +14,17 @@ import {
   serviceSchemas,
   type ServicePageCopy,
 } from "@/lib/serviceCopy";
-import { SERVICE_LINKS, SERVICE_PAGE_LINKS, SERVICE_PAGE_NAMES, SERVICE_PAGE_SLUGS } from "@/lib/serviceRouteSlugs";
+import {
+  ALL_SERVICE_LINKS,
+  MORE_SERVICE_LINKS,
+  PRINT_SERVICES_MAX,
+  SERVICE_LINKS,
+  SERVICE_PAGE_LINKS,
+  SERVICE_PAGE_NAMES,
+  SERVICE_PAGE_SLUGS,
+  printServiceLinksFor,
+} from "@/lib/serviceRouteSlugs";
+import { CORPORATE_COPY } from "@/lib/corporateCopy";
 import { CATALOG_SEO, HOME_SEO } from "@/lib/pageSeo";
 import { DESIGN_TITLE_MAX, designFallbackDescription, designSeoTitle, isPlaceholderDesignName } from "@/lib/designSeo";
 import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
@@ -28,7 +38,10 @@ import {
   CONTACT,
   PORTFOLIO,
   landingRoutes,
+  containsPrice,
+  corporatePage,
   mergeSitemapEntries,
+  printServicesHtml,
   serviceSitemapEntries,
   servicePageHtml,
   sitemapLocs,
@@ -79,6 +92,8 @@ const COPY_FILES = ["src/lib/serviceCopy.ts", "src/lib/serviceRouteSlugs.ts", "s
 // Georgian text is most likely transliterated Georgian.
 const LATIN_ALLOWED = new Set([
   "DTF", "FLEX", "AI", "A3", "A4", "PNG", "maika", "Maika", "ge", "Nike", "oversize", "WhatsApp", "Facebook",
+  // phone-case models (owner's list for /korporatiuli-sachukrebi)
+  "iPhone", "Xiaomi", "Samsung",
 ]);
 const FORBIDDEN_BRANDS = /adidas|under\s*armou?r|chanel|armani/i;
 
@@ -92,6 +107,10 @@ const KNOWN_PATHS = new Set([
   "/designs",
   ...landingRoutes(app).map((r) => r.path),
   ...SERVICE_PAGE_LIST.map((p) => p.path),
+  // Design pages that exist (listed in the committed sitemap).
+  ...sitemapLocs(source("public/sitemap.xml"))
+    .filter((l) => l.startsWith("https://maika.ge/design/"))
+    .map((l) => l.slice("https://maika.ge".length)),
 ]);
 
 describe("service pages — data", () => {
@@ -108,9 +127,14 @@ describe("service pages — data", () => {
       ["/maisurebze-bechdva", "მაისურებზე ბეჭდვა"],
       ["/hoodie", "ჰუდებზე ბეჭდვა"],
       ["/corporate", "მაისურების ბრენდირება კომპანიის ლოგოთი"],
-      ["/sportuli-formebi", "ფეხბურთის და სპორტული ფორმები"],
+      ["/sportuli-formebi", "სპორტული ფორმები გვარით და ნომრით"],
     ]);
-    for (const l of SERVICE_LINKS) {
+    // The phase-2 pages: one link each, the page's name as exact-match anchor.
+    expect(MORE_SERVICE_LINKS.map((l) => l.href)).toEqual(SERVICE_PAGE_LIST.slice(2).map((p) => p.path));
+    for (const l of MORE_SERVICE_LINKS) expect(l.label).toBe(SERVICE_PAGE_NAMES[l.href.slice(1) as keyof typeof SERVICE_PAGE_NAMES]);
+    expect(ALL_SERVICE_LINKS).toEqual([...SERVICE_LINKS, ...MORE_SERVICE_LINKS]);
+    expect(new Set(ALL_SERVICE_LINKS.map((l) => l.href)).size).toBe(ALL_SERVICE_LINKS.length);
+    for (const l of ALL_SERVICE_LINKS) {
       expect(l.description.length).toBeGreaterThan(20);
       expect(l.description).not.toContain("₾");
     }
@@ -168,7 +192,7 @@ describe("service pages — data", () => {
         else expect(l.href).toMatch(/^(tel:\+\d+|https:\/\/)/);
       }
     }
-    for (const l of SERVICE_LINKS) expect(KNOWN_PATHS.has(l.href)).toBe(true);
+    for (const l of ALL_SERVICE_LINKS) expect(KNOWN_PATHS.has(l.href)).toBe(true);
   });
 
   it("contact links are the /contact page's", () => {
@@ -327,15 +351,14 @@ describe("service pages — static HTML and JSON-LD", () => {
     expect(pre).toContain("title: sp.seo.title,");
     expect(pre).toContain("description: sp.seo.description,");
     expect(pre).toContain("jsonLd: app.serviceSchemas(sp),");
-    expect(pre).toContain("rootHtml: servicePageHtml(sp, { esc, link, style: STYLE }),");
+    expect(pre).toContain("rootHtml: servicePageHtml(sp, { esc, link, style: STYLE }, servicesBlock(app, sp.path)),");
     expect(source("scripts/lib/appModules.mjs")).toContain('serviceCopy: "/src/lib/serviceCopy.ts"');
   });
 
-  it("the committed sitemap gains both service pages", () => {
+  it("the committed sitemap gains every service page", () => {
     const entries = serviceSitemapEntries(SERVICE_PAGE_LIST);
     const locs = sitemapLocs(mergeSitemapEntries(source("public/sitemap.xml"), entries).xml);
-    expect(locs).toContain("https://maika.ge/maisurebze-bechdva");
-    expect(locs).toContain("https://maika.ge/sportuli-formebi");
+    for (const p of SERVICE_PAGE_LIST) expect(locs).toContain(`https://maika.ge${p.path}`);
     expect(new Set(locs).size).toBe(locs.length);
     expect(source("scripts/generate-sitemap.mjs")).toContain("serviceSitemapEntries(app.SERVICE_PAGE_LIST ?? [])");
   });
@@ -424,12 +447,22 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     expect(home).toContain('"ტანსაცმელზე ბეჭდვა "');
     expect(home).toContain('"შენი დიზაინით"');
     expect(home).not.toContain('"Create your unique design easily"');
-    expect(source("src/components/AppHeader.tsx")).toContain("SERVICE_LINKS.map((l) =>");
+    expect(source("src/components/AppHeader.tsx")).toContain("ALL_SERVICE_LINKS.map((l) =>");
+    expect(source("src/components/AppHeader.tsx")).toContain("links: ALL_SERVICE_LINKS }}");
+    // Home top bar: a <details> "სერვისები" menu with every service page; the
+    // other pages also as a compact list under the four cards.
+    expect(home).toContain("<details ref={servicesMenuRef}");
+    expect(home).toContain("{ALL_SERVICE_LINKS.map((l) => (");
+    expect(home).toContain("{MORE_SERVICE_LINKS.map((l) => (");
     expect(source("src/components/MobileNav.tsx")).toContain("services.links.map((l) =>");
     expect(source("src/pages/DesignDetailPage.tsx")).toContain("<PrintServicesLinks />");
     expect(source("src/pages/ProductLandingPage.tsx")).toContain("<PrintServicesLinks tone=\"sidebar\" excludeHref={canonicalPath} />");
-    expect(source("src/pages/FaqPage.tsx")).toContain("SERVICE_LINKS.map((l) =>");
+    expect(source("src/pages/FaqPage.tsx")).toContain("ALL_SERVICE_LINKS.map((l) =>");
     expect(source("scripts/prerender.mjs")).toContain("app.SERVICE_LINKS.map((l) =>");
+    expect(source("scripts/prerender.mjs")).toContain("app.MORE_SERVICE_LINKS.map((l) =>");
+    expect(source("src/pages/ServicePage.tsx")).toContain("<PrintServicesLinks excludeHref={page.path} />");
+    expect(source("src/pages/CorporatePage.tsx")).toContain('<PrintServicesLinks excludeHref="/corporate" />');
+    expect(source("src/components/PrintServicesLinks.tsx")).toContain("printServiceLinksFor(excludeHref)");
     expect(source("scripts/prerender.mjs")).toContain("servicesBlock(app)");
     expect(source("scripts/prerender.mjs")).toContain("services: servicesBlock(app, r.path)");
   });
@@ -475,5 +508,154 @@ describe("design titles (lib/designSeo.ts)", () => {
     expect(buildDesignMetaDescription({ title_ka: "x", meta_description_ka: "ჩემი ტექსტი", description_ka: null }, 35, null)).toBe(
       "ჩემი ტექსტი",
     );
+  });
+});
+
+// ── Phase 2: the eight new service pages ────────────────────────────────────
+
+const PHASE2: Record<string, { phrase: string; extra?: string[] }> = {
+  "/fekhburtis-formebi": { phrase: "ფეხბურთის ფორმები", extra: ["ფეხბურთის ფორმების შეკერვა", "გვარი და ნომერი ფორმაზე"] },
+  "/kalatburtis-formebi": { phrase: "კალათბურთის ფორმები" },
+  "/dtf-bechdva": { phrase: "DTF ბეჭდვა" },
+  "/shelkografia": { phrase: "შელკოგრაფია" },
+  "/logos-kargva": { phrase: "ლოგოს ქარგვა", extra: ["ქარგვა ტანსაცმელზე"] },
+  "/chiqaze-bechdva": { phrase: "ჭიქაზე ბეჭდვა" },
+  "/korporatiuli-sachukrebi": { phrase: "კორპორატიული საჩუქრები" },
+  "/maisurebi-kartuli-tsartserebit": { phrase: "მაისურები ქართული წარწერით" },
+};
+
+/** The body copy a reader sees under the H1 (no title / description / H1 / link labels). */
+function bodyText(p: ServicePageCopy): string {
+  return [
+    p.intro,
+    ...p.sections.flatMap((s) => [
+      s.h2,
+      s.body ?? "",
+      s.note ?? "",
+      ...(s.bullets ?? []).flatMap((b) => [b.term, b.text]),
+      ...(s.steps ?? []),
+    ]),
+    p.faqHeading,
+    ...p.faq.flatMap((f) => [f.q, f.a]),
+  ].join(" ");
+}
+
+const allLinks = (p: ServicePageCopy) => [...p.heroLinks, ...p.sections.flatMap((s) => s.links ?? []), ...p.cta.links];
+
+describe("phase 2 service pages", () => {
+  const pages = SERVICE_PAGE_LIST.filter((p) => p.path in PHASE2);
+
+  it("all eight are registered, in order", () => {
+    expect(pages.map((p) => p.path)).toEqual(Object.keys(PHASE2));
+  });
+
+  for (const p of pages) {
+    const { phrase, extra = [] } = PHASE2[p.path];
+
+    it(`${p.path}: target phrase in title, H1, an H2, and 2–4 times in the body`, () => {
+      expect(p.seo.title.startsWith(phrase) || p.seo.title.includes(phrase), p.seo.title).toBe(true);
+      expect(p.seo.title.length, p.seo.title).toBeLessThanOrEqual(60);
+      expect(p.h1).toContain(phrase);
+      expect(p.sections.some((s) => s.h2.includes(phrase))).toBe(true);
+      expect(p.seo.description).toContain(phrase.split(" ")[0]);
+      const n = bodyText(p).split(phrase).length - 1;
+      expect(n, `${phrase} × ${n}`).toBeGreaterThanOrEqual(2);
+      expect(n, `${phrase} × ${n}`).toBeLessThanOrEqual(4);
+      for (const x of extra) expect(`${p.h1} ${bodyText(p)}`).toContain(x);
+    });
+
+    it(`${p.path}: ~450–650 words, 5–7 FAQ, images, no price, owner's wording`, () => {
+      const words = pageTexts(p).slice(4).join(" ").split(/\s+/).filter(Boolean).length;
+      expect(words).toBeGreaterThanOrEqual(450);
+      expect(words).toBeLessThanOrEqual(700);
+      expect(p.faq.length).toBeGreaterThanOrEqual(5);
+      expect(p.faq.length).toBeLessThanOrEqual(7);
+      expect(p.images?.length).toBeGreaterThanOrEqual(1);
+      for (const img of p.images ?? []) {
+        expect(img.alt).toMatch(/[ა-ჰ]/);
+        expect(img.width).toBeGreaterThan(0);
+        expect(img.height).toBeGreaterThan(0);
+      }
+      const text = pageTexts(p).join("\n");
+      expect(text).not.toContain("₾");
+      expect(text).not.toMatch(/ლარ/);
+      expect(containsPrice(text)).toBe(false);
+      // No published quantity for corporate / discount thresholds.
+      expect(text).not.toMatch(/(?:[02-9]|\d{2,})\s*ცალიდან/);
+      // Day counts only as the owner's lead time.
+      for (const m of text.matchAll(/[\d–-]+\s*(?:სამუშაო\s*)?დღე/g)) expect(m[0]).toBe(LEAD_TIME_KA);
+      // Showroom wording, where a showroom address is given.
+      if (text.includes("შოურუმშიც შეიძლება")) expect(text).toContain("დინამო არენა, მე-10 კარი");
+    });
+  }
+
+  it("kit pages: 10–12 sets, sketch, kids, no stripes / gradients, no club kits", () => {
+    for (const path of ["/fekhburtis-formebi", "/kalatburtis-formebi"]) {
+      const text = pageTexts(SERVICE_PAGES[path.slice(1) as keyof typeof SERVICE_PAGES]).join("\n");
+      expect(text).toContain("10–12 კომპლექტიდან");
+      expect(text).toContain("ესკიზი");
+      expect(text).toContain("ბავშვებისთვის");
+      expect(text).toContain("ზოლიან");
+      expect(text).toContain("გრადიენტ");
+      expect(text).toContain("ცნობილი კლუბებისა");
+    }
+  });
+
+  it("corporate gifts: paperwork, procurement, phone-case models", () => {
+    const text = pageTexts(SERVICE_PAGES["korporatiuli-sachukrebi"]).join("\n");
+    for (const w of ["ინვოისს ყოველთვის ვწერთ", "ხელშეკრულებას", "მიღება-ჩაბარების აქტს", "ზედნადებს", "ანგარიშ-ფაქტურას", "ელექტრონული ხელმოწერით", "სახელმწიფო შესყიდვებში", "ფასების კვლევაში", "iPhone, Xiaomi და Samsung"]) {
+      expect(text).toContain(w);
+    }
+  });
+
+  it("cross-links: sport ↔ football / basketball, printing → DTF / screen / embroidery, corporate → gifts / embroidery, mug → /mug, Georgian → catalog", () => {
+    const hrefs = (slug: keyof typeof SERVICE_PAGES) => new Set(allLinks(SERVICE_PAGES[slug]).map((l) => l.href));
+    for (const h of ["/fekhburtis-formebi", "/kalatburtis-formebi"]) expect(hrefs("sportuli-formebi").has(h), h).toBe(true);
+    for (const s of ["fekhburtis-formebi", "kalatburtis-formebi"] as const) expect(hrefs(s).has("/sportuli-formebi"), s).toBe(true);
+    for (const h of ["/dtf-bechdva", "/shelkografia", "/logos-kargva"]) expect(hrefs("maisurebze-bechdva").has(h), h).toBe(true);
+    const corp = new Set(CORPORATE_COPY.sections.flatMap((s) => (s.link ? [s.link.href] : [])));
+    for (const h of ["/korporatiuli-sachukrebi", "/logos-kargva"]) expect(corp.has(h), h).toBe(true);
+    expect(hrefs("chiqaze-bechdva").has("/mug")).toBe(true);
+    expect(hrefs("korporatiuli-sachukrebi").has("/corporate")).toBe(true);
+    for (const h of ["/designs", "/design/kartuli"]) expect(hrefs("maisurebi-kartuli-tsartserebit").has(h), h).toBe(true);
+  });
+});
+
+describe("ბეჭდვის სერვისები block — printServiceLinksFor", () => {
+  const paths = [undefined, "/design/kartuli", "/t-shirt", "/hoodie", "/corporate", ...SERVICE_PAGE_LIST.map((p) => p.path)];
+
+  it("compact, no self-link, only real service pages", () => {
+    const known = new Set(ALL_SERVICE_LINKS.map((l) => l.href));
+    for (const path of paths) {
+      const links = printServiceLinksFor(path);
+      expect(links.length, String(path)).toBeGreaterThanOrEqual(4);
+      expect(links.length, String(path)).toBeLessThanOrEqual(PRINT_SERVICES_MAX);
+      expect(links.map((l) => l.href)).not.toContain(path);
+      for (const l of links) expect(known.has(l.href)).toBe(true);
+      expect(new Set(links.map((l) => l.href)).size).toBe(links.length);
+    }
+  });
+
+  it("the most relevant services per page", () => {
+    const hrefs = (p: string) => printServiceLinksFor(p).map((l) => l.href);
+    expect(hrefs("/sportuli-formebi").slice(0, 2)).toEqual(["/fekhburtis-formebi", "/kalatburtis-formebi"]);
+    expect(hrefs("/maisurebze-bechdva").slice(0, 3)).toEqual(["/dtf-bechdva", "/shelkografia", "/logos-kargva"]);
+    expect(hrefs("/corporate").slice(0, 2)).toEqual(["/korporatiuli-sachukrebi", "/logos-kargva"]);
+    expect(hrefs("/hoodie")).toContain("/maisurebze-bechdva");
+    expect(hrefs("/design/kartuli")).toContain("/maisurebi-kartuli-tsartserebit");
+  });
+
+  it("static: service pages and /corporate end with the block", () => {
+    for (const p of SERVICE_PAGE_LIST) {
+      const block = printServicesHtml({ heading: "ბეჭდვის სერვისები", links: printServiceLinksFor(p.path) }, { esc, link, style }, p.path);
+      const html = servicePageHtml(p, { esc, link, style }, block);
+      expect(html).toContain(block);
+      expect(html.endsWith(`${block}\n</main>`)).toBe(true);
+      expect(html).not.toContain(link(p.path, p.name));
+    }
+    const block = printServicesHtml({ heading: "ბეჭდვის სერვისები", links: printServiceLinksFor("/corporate") }, { esc, link, style }, "/corporate");
+    const corp = corporatePage({ CORPORATE_SEO: { title: "", description: "" }, CORPORATE_COPY, CORPORATE_SCHEMAS: [] }, { esc, link, style }, block);
+    expect(corp.rootHtml).toContain(link("/korporatiuli-sachukrebi", "კორპორატიული საჩუქრები"));
+    expect(corp.rootHtml).toContain(link("/logos-kargva", "ლოგოს ქარგვა"));
   });
 });

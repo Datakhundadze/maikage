@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
-import { Shirt, Mail, Phone, MapPin, ArrowRight, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
+import { Shirt, Mail, Phone, MapPin, ArrowRight, ChevronDown, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import FeedbackModal from "@/components/FeedbackModal";
 import PartnerLogosMarquee from "@/components/PartnerLogosMarquee";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 import { HOME_SEO } from "@/lib/pageSeo";
-import { SERVICE_LINKS, SERVICE_PAGE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
+import { ALL_SERVICE_LINKS, MORE_SERVICE_LINKS, SERVICE_LINKS, SERVICE_PAGE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
 
 const SPORT_PHOTOS = [
   "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
@@ -20,6 +20,23 @@ const SPORT_PHOTOS = [
 export default function LandingPage() {
   const { setMode, theme, toggleTheme, lang, toggleLang } = useAppState();
   const [sportPhotoIdx, setSportPhotoIdx] = useState(0);
+  // Top-bar "სერვისები" menu: a native <details>, so it opens on tap
+  // (phones) and click / keyboard (desktop) and its links stay in the DOM
+  // while closed. Closed on a click outside or Escape.
+  const servicesMenuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (e: Event) => {
+      const el = servicesMenuRef.current;
+      if (!el?.open) return;
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !el.contains(e.target as Node)) el.open = false;
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, []);
 
   const isGreen = theme === "green";
   // Colors used in green theme
@@ -77,7 +94,25 @@ export default function LandingPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Page nav — surface Catalog + Contact above the footer. */}
+          {/* Page nav — surface Services + Catalog + Contact above the footer. */}
+          <details ref={servicesMenuRef} className="relative">
+            <summary className="flex cursor-pointer list-none items-center gap-0.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors [&::-webkit-details-marker]:hidden">
+              {lang === "en" ? "Services" : SERVICES_HEADING}
+              <ChevronDown className="h-3 w-3" />
+            </summary>
+            <ul className="absolute left-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover p-1.5 shadow-lg">
+              {ALL_SERVICE_LINKS.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    to={l.href}
+                    className="block rounded-lg px-3 py-2 text-xs font-medium text-popover-foreground/80 hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </details>
           <Link to="/designs" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             {lang === "en" ? "Catalog" : "კატალოგი"}
           </Link>
@@ -330,6 +365,20 @@ export default function LandingPage() {
                   <span className="mt-1 text-sm leading-relaxed" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.6)" }}>
                     {l.description}
                   </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {/* The other service pages, compact (same list in the static home shell). */}
+          <ul className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
+            {MORE_SERVICE_LINKS.map((l) => (
+              <li key={l.href}>
+                <Link
+                  to={l.href}
+                  className="underline underline-offset-2 transition-colors hover:opacity-80"
+                  style={{ color: isGreen ? "white" : "rgba(255,255,255,0.75)" }}
+                >
+                  {l.label}
                 </Link>
               </li>
             ))}
