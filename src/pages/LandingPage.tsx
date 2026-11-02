@@ -5,6 +5,7 @@ import { Shirt, Mail, Phone, MapPin, ArrowRight, ChevronDown, Shield, Zap, Users
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import FeedbackModal from "@/components/FeedbackModal";
 import PartnerLogosMarquee from "@/components/PartnerLogosMarquee";
+import HomeShowcaseSlot from "@/components/home/HomeShowcaseSlot";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 import { HOME_SEO } from "@/lib/pageSeo";
@@ -215,6 +216,10 @@ export default function LandingPage() {
           </button>
 
         </div>
+
+        {/* Ready-made designs rail + real work photos. Lazy: code and data
+            load once the slot nears the viewport (components/home/). */}
+        <HomeShowcaseSlot />
 
         {/* Corporate Section */}
         <div className="w-full max-w-4xl mb-20 sm:mb-28">

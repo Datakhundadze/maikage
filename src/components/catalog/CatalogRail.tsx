@@ -32,7 +32,7 @@ import "./catalogRail.css";
 // `contain: layout paint`, and the stage is its own component so opening it
 // doesn't re-render the rails.
 
-interface DesignRow {
+export interface DesignRow {
   id: string;
   slug: string;
   title_ka: string;
@@ -47,7 +47,7 @@ interface DesignRow {
 
 type PrintBox = { l: number; t: number; w: number; h: number };
 
-interface ShowroomScene {
+export interface ShowroomScene {
   printBox: PrintBox;
   /** Per garment: front/side image sizes, optionally its own print box (hoodies). */
   garments: Record<string, { front: [number, number]; side: [number, number]; printBox?: PrintBox }>;
@@ -80,7 +80,7 @@ const MOCKUPS = {
   "hoodie-washed-khaki": { dot: "#8a7d62", label_ka: "ხაკი", light: true },
   "hoodie-washed-pink": { dot: "#c97b8a", label_ka: "ვარდისფერი", light: true },
 } as const;
-type MockupKey = keyof typeof MOCKUPS;
+export type MockupKey = keyof typeof MOCKUPS;
 
 const TEE_BY_COLOR: Record<string, MockupKey> = {
   white: "white",
@@ -132,7 +132,8 @@ const LIGHT_COLORS = new Set(["beige", "yellow", "light blue", "pink", "khaki", 
 const productOf = (d: DesignRow) => (Array.isArray(d.product) ? d.product[0] : d.product) ?? null;
 const isHoodie = (d: DesignRow) => productOf(d)?.type === "Hoodie";
 
-function mockupFor(d: DesignRow): MockupKey {
+// eslint-disable-next-line react-refresh/only-export-components -- also used by the home catalog showcase
+export function mockupFor(d: DesignRow): MockupKey {
   const color = (d.default_color || "").toLowerCase();
   if (isWashed(d)) return WASHED_BY_COLOR[color] ?? "hoodie-washed-black";
   if (isHoodie(d)) return HOODIE_BY_COLOR[color] ?? (LIGHT_COLORS.has(color) ? "hoodie-white" : "hoodie-black");
@@ -145,7 +146,8 @@ const garmentSrc = (m: MockupKey, part: "front" | "side" | "shade") =>
 const printRaw = (d: DesignRow) => d.thumbnail_url || d.print_file_url;
 
 let scenePromise: Promise<ShowroomScene> | null = null;
-function loadScene(): Promise<ShowroomScene> {
+// eslint-disable-next-line react-refresh/only-export-components -- also used by the home catalog showcase
+export function loadScene(): Promise<ShowroomScene> {
   scenePromise ??= fetch("/showroom/showroom.json").then((r) => {
     if (!r.ok) throw new Error(`showroom.json: HTTP ${r.status}`);
     return r.json() as Promise<ShowroomScene>;
@@ -208,7 +210,7 @@ interface FrontProps {
 }
 
 /** Garment front: blank garment + print (fades in when ready) + shade map. */
-const GarmentFront = memo(
+export const GarmentFront = memo(
   forwardRef<HTMLDivElement, FrontProps>(function GarmentFront({ design, scene, className, high }, ref) {
     const m = mockupFor(design);
     const print = usePrint(printRaw(design), high);

@@ -1,6 +1,9 @@
-// Production lead time shown on the product landing hero (LandingHero).
+// Production lead time: product landing hero (LandingHero), home "სერვისები"
+// cards and service menus (serviceRouteSlugs), service pages (serviceCopy),
+// SEO descriptions (pageSeo, designSeo), the static prerender and llms.txt.
+// Separate literal copies: FAQ (faqContent), OrderDialog, CartPage, and the
+// bots in supabase/functions.
 //
-// Used ONLY there. The existing strings elsewhere (FaqPage, OrderDialog,
-// CartPage, the chat knowledge in gemini-proxy) are separate copies and are
-// not wired to this constant.
-export const LEAD_TIME_KA = "1–2 სამუშაო დღე";
+// Business decision (2026-11): "1–3 სამუშაო დღე" everywhere — the same range
+// OrderDialog, CartPage and the bot (meta-webhook LEAD_TIME_LINE) already show.
+export const LEAD_TIME_KA = "1–3 სამუშაო დღე";
