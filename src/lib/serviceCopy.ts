@@ -999,7 +999,7 @@ export const CORPORATE_GIFTS_PAGE: ServicePageCopy = {
     "ვამზადებთ ბრენდირებულ საჩუქრებს თანამშრომლებისთვის, პარტნიორებისთვის და კლიენტებისთვის — კომპანიის ლოგოთი, ერთ სტილში. კორპორატიული საჩუქრები კარგად მუშაობს ახალ წელზე, კომპანიის იუბილეზე, კონფერენციაზე, ტრენინგზე თუ ახალი თანამშრომლის მისასალმებლად. შენ ლოგოს გვიგზავნი, მაკეტს, ბეჭდვას და შეფუთვას ჩვენ ვაკეთებთ.",
   heroLinks: [...CONTACT_LINKS, CORPORATE_LINK],
   images: [
-    { src: "/products/totebag/totebag-white-front.webp", alt: "თეთრი ნაჭრის ჩანთა — კორპორატიული საჩუქარი კომპანიის ლოგოთი", width: 476, height: 890 },
+    { src: "/services/tote-pasticceria.webp", alt: "ნაჭრის ჩანთა კომპანიის ლოგოთი — კორპორატიული საჩუქარი maika.ge-დან", width: 900, height: 1200 },
     { src: "/products/mug/mug-white-front.webp", alt: "თეთრი ჭიქა ბრენდირებისთვის, კომპანიის ლოგოთი", width: 868, height: 796 },
   ],
   sections: [
@@ -1299,8 +1299,9 @@ export const TOTE_BAGS_PAGE: ServicePageCopy = {
     "ნაჭრის ჩანთა ყოველდღიური ნივთია — მაღაზიაში, სამსახურში, უნივერსიტეტში თუ მოგზაურობისას. შენი დიზაინით, ფოტოთი ან წარწერით ის პირად აქსესუარად იქცევა, კომპანიის ლოგოთი კი — ბრენდის რეკლამად, რომელიც ქალაქში დადის. ერთ ჩანთას საიტიდან შეუკვეთავ, ღონისძიებისა თუ კომპანიისთვის კი დიდ რაოდენობასაც დაგიმზადებთ.",
   heroLinks: [TOTE_LINK, CORPORATE_LINK],
   images: [
-    { src: "/products/totebag/totebag-white-front.webp", alt: "თეთრი ნაჭრის ჩანთა — შენი დიზაინით ან კომპანიის ლოგოთი", width: 476, height: 890 },
-    { src: "/products/totebag/totebag-white-back.webp", alt: "ნაჭრის ჩანთის მეორე მხარე ბეჭდვისთვის", width: 476, height: 890 },
+    { src: "/services/tote-epam.webp", alt: "შავი ნაჭრის ჩანთა EPAM-ის ლოგოთი — maika.ge-ს კორპორატიული შეკვეთა", width: 900, height: 1200 },
+    { src: "/services/tote-red.webp", alt: "წითელი ნაჭრის ჩანთა ქართული წარწერით, დაბეჭდილი maika.ge-ზე", width: 900, height: 1200 },
+    { src: "/services/tote-pasticceria.webp", alt: "თეთრი ნაჭრის ჩანთა საკონდიტროს ლოგოთი — ბრენდირებული შეკვეთა", width: 900, height: 1200 },
   ],
   sections: [
     {
