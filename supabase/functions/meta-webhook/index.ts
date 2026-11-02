@@ -61,6 +61,16 @@
 // in supabase/config.toml — Meta cannot send a Supabase JWT; the HMAC
 // signature is the authentication.
 //
+// WHATSAPP (add-only, 2026-11-02, whatsapp.ts + whatsappSend.ts). Same Meta
+// app, same callback URL, same META_APP_SECRET signature; body.object is
+// "whatsapp_business_account". Secret WHATSAPP_TOKEN (system-user token with
+// whatsapp_business_messaging): without it messages are still stored, but
+// photos are not downloaded and nothing is sent. Run the SQL in
+// migrations/20261102120000_social_whatsapp_channel.sql BEFORE subscribing
+// the WhatsApp fields (the channel CHECK rejects 'whatsapp' until then). The
+// bot answers ONLY conversation keys listed in social_bot_settings.allow_keys
+// ("whatsapp:<phone_number_id>:<wa_id>"); an empty list answers nobody here.
+//
 // ON 500. handler.ts answers 500 only when the database write fails. Meta
 // retries a non-2xx delivery with backoff for a while, which is the only
 // replay we have for a transient outage. Meta can disable the subscription
@@ -91,6 +101,20 @@ import { OPEN_DRAFT_STATUSES, type DraftItem, type OrderDraft } from "./orderDra
 import { PRINT_BUCKET, type PrintDeps } from "./printFile.ts";
 import type { ReceiptDeps } from "./receiptFlow.ts";
 import { coerceReceiptFields, type ReceiptFields } from "./receiptCheck.ts";
+import type { Channel } from "./handler.ts";
+import { conversationKeyOf } from "./autoReply.ts";
+import { proxyChannelFor, waBotOutRow, type WaStoreExtras } from "./whatsapp.ts";
+import {
+  downloadWaMedia,
+  postWhatsApp,
+  scrubWaLog,
+  strictAllowKeys,
+  waImageBody,
+  waMayMarkRead,
+  waReadBody,
+  waTextBody,
+  withinReplyWindow,
+} from "./whatsappSend.ts";
 import jpeg from "npm:jpeg-js@0.4.4";
 import opentype from "npm:opentype.js@1.3.4";
 
@@ -301,7 +325,7 @@ async function pageToken(): Promise<string> {
  * The token goes in the Authorization header, never the URL, so no error
  * message or log line can carry it.
  */
-async function graphSend(channel: "messenger" | "instagram", recipientId: string, text: string): Promise<SendResult> {
+async function graphSend(channel: Channel, recipientId: string, text: string): Promise<SendResult> {
   return await postGraph(sendBody(channel, recipientId, text));
 }
 
@@ -330,13 +354,13 @@ async function postGraph(body: Record<string, unknown>): Promise<SendResult> {
 }
 
 /** A sketch image by its public URL. */
-async function graphSendImage(channel: "messenger" | "instagram", recipientId: string, url: string): Promise<SendResult> {
+async function graphSendImage(channel: Channel, recipientId: string, url: string): Promise<SendResult> {
   return await postGraph(sendImageBody(channel, recipientId, url));
 }
 
 /** gemini-proxy faq-chat, server to server, as the trusted social channel. */
 async function askBot(
-  channel: "messenger" | "instagram",
+  channel: Channel,
   conversationKey: string,
   history: { role: "user" | "assistant"; content: string }[],
   schedule: string,
@@ -464,7 +488,7 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
 // amount, name, IBAN or path is logged.
 
 /** gemini-proxy read-receipt as the trusted social call. */
-async function readReceipt(channel: "messenger" | "instagram", conversationKey: string, image: string): Promise<ReceiptFields | null> {
+async function readReceipt(channel: Channel, conversationKey: string, image: string): Promise<ReceiptFields | null> {
   try {
     const res = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
@@ -664,7 +688,7 @@ function base64ToBytes(b64: string): Uint8Array {
 
 /** gemini-proxy generate-design-gpt as the trusted social call; the PNG bytes. */
 async function generateSketchDesign(
-  channel: "messenger" | "instagram",
+  channel: Channel,
   conversationKey: string,
   params: Record<string, unknown>,
   timeoutMs: number,
@@ -701,7 +725,7 @@ async function generateSketchDesign(
  * proxy validates it again against its own fixed list).
  */
 async function extractSketchPrint(
-  channel: "messenger" | "instagram",
+  channel: Channel,
   conversationKey: string,
   image: string,
   timeoutMs: number,
@@ -828,11 +852,209 @@ async function storeReferrals(rows: SocialAdReferralRow[]): Promise<void> {
   if (error) log("warn", `referral insert failed (ignored, ${error.code ?? "?"}): ${error.message}`);
 }
 
+// ── WhatsApp Cloud API (add-only, 2026-11-02) ─────────────────────────────
+//
+// Everything below runs only for body.object "whatsapp_business_account"
+// (handler.ts → whatsapp.ts → storeWhatsApp). The Messenger / Instagram
+// functions above are reused unchanged; where they speak to Meta or to
+// gemini-proxy, the WhatsApp deps put a WhatsApp sender in front of them.
+
+const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") ?? "";
+
+/** Log lines of the WhatsApp path: no full phone number, no full wamid. */
+const waLog = (level: "info" | "warn" | "error", msg: string): void => log(level, scrubWaLog(msg));
+
+let waTokenWarned = false;
+/** WHATSAPP_TOKEN present? If not, say so ONCE per isolate (name only, never a value). */
+function waTokenSet(what: string): boolean {
+  if (WHATSAPP_TOKEN) return true;
+  if (!waTokenWarned) {
+    waTokenWarned = true;
+    log("warn", `whatsapp: WHATSAPP_TOKEN not set — ${what} skipped (messages are still stored)`);
+  }
+  return false;
+}
+
+/**
+ * The image fetch of the WhatsApp mirror. A Graph media endpoint (inbound
+ * photo) → two-step download WITH the Bearer; anything else (the bot's own
+ * sketch, a public designs URL) → the plain fetchImage, WITHOUT the token.
+ */
+async function waFetchImage(url: string): Promise<FetchedImage | null> {
+  if (url.startsWith("https://graph.facebook.com/")) {
+    if (!waTokenSet("media download")) return null;
+    return await downloadWaMedia(fetch, url, WHATSAPP_TOKEN, MAX_IMAGE_BYTES);
+  }
+  return await fetchImage(url);
+}
+
+/** Same ON CONFLICT (meta_message_id) DO NOTHING upsert as store(), batch then row by row. */
+async function waUpsert(admin: Admin, rows: SocialMessageRow[]): Promise<{ inserted: number; newIds: string[]; error: string | null }> {
+  const table = () => admin.from("social_messages");
+  const batch = await table().upsert(rows, { onConflict: "meta_message_id", ignoreDuplicates: true }).select("meta_message_id");
+  if (!batch.error) {
+    const ids = (batch.data ?? []).map((r: { meta_message_id: string }): string => r.meta_message_id);
+    return { inserted: ids.length, newIds: ids, error: null };
+  }
+  waLog("warn", `whatsapp: batch insert failed (${batch.error.code ?? "?"}), retrying row by row: ${batch.error.message}`);
+  let failed = 0;
+  let lastError = "";
+  const newIds: string[] = [];
+  for (const row of rows) {
+    const one = await table().upsert(row, { onConflict: "meta_message_id", ignoreDuplicates: true }).select("meta_message_id");
+    if (one.error) {
+      failed += 1;
+      lastError = `${one.error.code ?? "?"}: ${one.error.message}`;
+    } else {
+      for (const r of one.data ?? []) newIds.push((r as { meta_message_id: string }).meta_message_id);
+    }
+  }
+  if (failed > 0) {
+    waLog("error", `whatsapp: ${failed} row(s) could not be stored (last: ${lastError})`);
+    return { inserted: newIds.length, newIds, error: `${failed} row(s) failed` };
+  }
+  return { inserted: newIds.length, newIds, error: null };
+}
+
+/** HandlerDeps.whatsapp.store — inbound messages and the operator's phone-app echoes. */
+async function storeWhatsApp(rows: SocialMessageRow[], extras: WaStoreExtras): Promise<StoreResult> {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) return { inserted: 0, error: "service role not configured" };
+  const admin = makeAdmin();
+  const r = await waUpsert(admin, rows);
+  afterStoreWhatsApp(admin, rows, r.newIds, extras);
+  return { inserted: r.inserted, error: r.error };
+}
+
+/** Photos, purge, mark-read and the bot — for rows inserted just now. Background only. */
+function afterStoreWhatsApp(admin: Admin, rows: SocialMessageRow[], newIds: string[], extras: WaStoreExtras): void {
+  const fresh = new Set(newIds);
+  const d = { ...deps(admin), fetchImage: waFetchImage, log: waLog };
+  const withPhotos = rows.filter((r: SocialMessageRow): boolean => fresh.has(r.meta_message_id) && mirrorTargets(r.attachments).length > 0);
+  if (withPhotos.length > 0) {
+    runInBackground(
+      (async (): Promise<void> => {
+        let n = 0;
+        for (const r of withPhotos) n += await mirrorRowImages(r, d);
+        waLog("info", `whatsapp: photos stored: ${n}`);
+      })(),
+      "whatsapp photo copy",
+    );
+  }
+  const now = Date.now();
+  if (now - lastPurgeAt > PURGE_EVERY_MS) {
+    lastPurgeAt = now;
+    runInBackground(purgeExpired(new Date(now), d), "photo purge");
+  }
+
+  const inbound = rows.filter((r: SocialMessageRow): boolean => fresh.has(r.meta_message_id) && r.direction === "in");
+  if (inbound.length === 0) return;
+  if (!waTokenSet("mark-read and auto-reply")) return;
+
+  // Blue ticks only where the bot is in charge (enabled + explicitly allow-listed):
+  // marking every customer's message read would hide unread chats on the operator's phone.
+  runInBackground(
+    (async (): Promise<void> => {
+      const settings = await autoReplyDeps(admin).loadSettings();
+      for (const r of inbound) {
+        if (!waMayMarkRead(settings, conversationKeyOf(r), new Date())) continue;
+        const res = await postWhatsApp(fetch, r.page_id, WHATSAPP_TOKEN, waReadBody(r.meta_message_id), 10_000);
+        if (!res.ok) waLog("warn", `whatsapp: mark-read failed status=${res.status} code=${res.code}`);
+      }
+    })(),
+    "whatsapp mark-read",
+  );
+
+  // The bot: customer words or a photo (no placeholder types), inside the 24 h window.
+  const nowDate = new Date(now);
+  const candidates = inbound.filter((r: SocialMessageRow): boolean =>
+    isBotCandidate(r) && extras.botEligible.has(r.meta_message_id) && withinReplyWindow(r.sent_at, nowDate)
+  );
+  for (const r of candidates) {
+    runInBackground(runAutoReply(r, waAutoReplyDeps(admin, r.page_id), { contacts: extras.contacts.get(r.meta_message_id) }), "whatsapp auto-reply");
+  }
+}
+
+/**
+ * Send through the Cloud API and, on success, store the message as an out row.
+ * Meta does NOT echo Cloud API sends back (smb_message_echoes carries only the
+ * phone app's messages), so without this row the inbox would miss the bot's
+ * answers and the next run would see no "our side" in the thread.
+ */
+async function waSendAndStore(
+  admin: Admin,
+  phoneNumberId: string,
+  to: string,
+  body: Record<string, unknown>,
+  text: string | null,
+  attachments: SocialAttachment[],
+): Promise<SendResult> {
+  if (!waTokenSet("send")) return { ok: false, status: 0, code: "no_token" };
+  const res = await postWhatsApp(fetch, phoneNumberId, WHATSAPP_TOKEN, body);
+  if (!res.ok) return res;
+  const mid = res.messageId ?? `wa-out:${crypto.randomUUID()}`;
+  const row = waBotOutRow(phoneNumberId, to, mid, text, attachments, new Date());
+  const stored = await waUpsert(admin, [row]).catch((): null => null);
+  if (!stored || stored.error) waLog("warn", "whatsapp: bot message sent but its row was not stored");
+  else afterStoreWhatsApp(admin, [row], stored.newIds, { contacts: new Map(), botEligible: new Set<string>() });
+  return res;
+}
+
+/**
+ * The Messenger auto-reply deps with WhatsApp in front: Cloud API sends, a
+ * strict allow-list, and gemini-proxy asked as a trusted DM channel
+ * (proxyChannelFor — the proxy accepts only messenger / instagram, so it is
+ * not touched). Drafts, handoffs, caps, sketches and orders are keyed by the
+ * conversation key "whatsapp:<phone_number_id>:<wa_id>" exactly as for Messenger.
+ */
+function waAutoReplyDeps(admin: Admin, phoneNumberId: string): AutoReplyDeps {
+  const base = autoReplyDeps(admin);
+  const sendText = (_channel: Channel, to: string, text: string): Promise<SendResult> =>
+    waSendAndStore(admin, phoneNumberId, to, waTextBody(to, text), text, []);
+  const sendImage = (_channel: Channel, to: string, url: string): Promise<SendResult> =>
+    waSendAndStore(admin, phoneNumberId, to, waImageBody(to, url), null, [{ type: "image", url }]);
+  const sketch: SketchDeps | undefined = base.sketch
+    ? {
+      ...base.sketch,
+      sendImage,
+      generateDesign: (channel: Channel, key: string, params: Record<string, unknown>, timeoutMs: number): Promise<Uint8Array | null> =>
+        generateSketchDesign(proxyChannelFor(channel), key, params, timeoutMs),
+      extractPrint: (channel: Channel, key: string, image: string, timeoutMs: number, printColor?: string, edit?: string): Promise<Uint8Array | null> =>
+        extractSketchPrint(proxyChannelFor(channel), key, image, timeoutMs, printColor, edit),
+    }
+    : undefined;
+  const receipt: ReceiptDeps | undefined = base.receipt
+    ? {
+      ...base.receipt,
+      readReceipt: (channel: Channel, key: string, image: string): Promise<ReceiptFields | null> => readReceipt(proxyChannelFor(channel), key, image),
+    }
+    : undefined;
+  return {
+    ...base,
+    tokenSet: WHATSAPP_TOKEN.length > 0,
+    loadSettings: async (): Promise<{ enabled: boolean; schedule: string; allowKeys?: string[] } | null> => {
+      const s = await base.loadSettings();
+      return s ? { ...s, allowKeys: strictAllowKeys(s.allowKeys) } : null;
+    },
+    askBot: (
+      channel: Channel,
+      key: string,
+      history: { role: "user" | "assistant"; content: string }[],
+      schedule: string,
+      opts?: { orders?: boolean; images?: string[] },
+    ): Promise<string | null> => askBot(proxyChannelFor(channel), key, history, schedule, opts),
+    send: sendText,
+    log: waLog,
+    sketch,
+    receipt,
+  };
+}
+
 serve((req) =>
   handleMetaWebhook(req, {
     appSecret: META_APP_SECRET,
     verifyToken: META_VERIFY_TOKEN,
     store,
     storeReferrals,
+    whatsapp: { store: storeWhatsApp },
   })
 );

@@ -59,9 +59,18 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "ყველა" },
   { id: "messenger", label: "Messenger" },
   { id: "instagram", label: "Instagram" },
+  { id: "whatsapp", label: "WhatsApp" },
 ];
 
 function ChannelBadge({ channel }: { channel: SocialChannel }) {
+  // WhatsApp (add-only, 2026-11-02); Messenger / Instagram below unchanged.
+  if (channel === "whatsapp") {
+    return (
+      <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-green-500/15 text-green-700 dark:text-green-400">
+        WhatsApp
+      </span>
+    );
+  }
   const isIg = channel === "instagram";
   return (
     <span
@@ -516,7 +525,7 @@ export default function AdminSocialInbox() {
         <div className={`min-w-0 ${selected ? "" : "hidden lg:block"}`}>{threadPane}</div>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        ნაჩვენებია ბოლო {LIST_LIMIT} შეტყობინება{filter === "all" ? "" : ` (${filter === "messenger" ? "Messenger" : "Instagram"})`}.
+        ნაჩვენებია ბოლო {LIST_LIMIT} შეტყობინება{filter === "all" ? "" : ` (${filter === "whatsapp" ? "WhatsApp" : filter === "messenger" ? "Messenger" : "Instagram"})`}.
       </p>
     </div>
   );
