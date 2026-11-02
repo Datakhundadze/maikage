@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+import { PORTFOLIO_CATEGORY_ORDER } from "@/lib/portfolioCategories";
 
 interface PortfolioItem {
   id: string;
@@ -171,6 +172,11 @@ export default function AdminPortfolio() {
         </div>
       </div>
 
+      {/* Category suggestions — the /portfolio chip labels (lib/portfolioCategories.ts). */}
+      <datalist id="portfolio-category-options">
+        {PORTFOLIO_CATEGORY_ORDER.map((c) => <option key={c} value={c} />)}
+      </datalist>
+
       <p className="text-xs text-muted-foreground">
         აირჩიე ერთი ან რამდენიმე ფაილი ერთდროულად (JPEG/PNG/WEBP, მაქს. 10MB). სათაური ფაილის სახელით ივსება — შემდეგ შეავსე კატეგორია და alt-ტექსტი (SEO). პორტფოლიოს გვერდზე მხოლოდ აქტიური ფოტოები ჩანს.
       </p>
@@ -202,6 +208,7 @@ export default function AdminPortfolio() {
                 onBlur={(e) => { const v = e.target.value.trim(); if (v !== (p.category || "")) patch(p.id, { category: v }); }}
                 className="h-8 text-sm"
                 placeholder="კატეგორია (მაგ. მაისური)"
+                list="portfolio-category-options"
               />
               <Input
                 defaultValue={p.alt_text || ""}

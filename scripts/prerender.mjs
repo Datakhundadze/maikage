@@ -509,24 +509,25 @@ function contactRoot() {
 }
 
 /**
- * /portfolio — PortfolioPage's heading, its category chips (as text) and the
- * gallery: same images (400w/800w), same alt (alt_text, else title, else the
- * fallback). With no items it is the page's own empty state: heading and
- * intro only, no catalog link.
+ * /portfolio — PortfolioPage's heading, intro, item count, its category chips
+ * (as text, in the page's fixed order with counts: lib/portfolioCategories.ts)
+ * and the gallery: same images (400w/800w), same alt (alt_text, else title,
+ * else the fallback). The live page shows the first 24 behind a "მეტის ნახვა"
+ * button; the static page lists them all. The closing CTA (constructor at "/",
+ * /corporate) is always there. With no items: heading, intro and CTA only.
  */
-function portfolioRoot(items) {
+function portfolioRoot(app, items) {
   const p = PORTFOLIO;
-  const categories = [];
-  for (const it of items) {
-    const c = String(it.category ?? "").trim();
-    if (c && !categories.includes(c)) categories.push(c);
-  }
+  const categories = app.orderPortfolioCategories(items);
   return [
     `<main style="${STYLE.main}">`,
     `<nav style="${STYLE.nav}">${link("/", p.backLabel)}</nav>`,
     `<h1 style="${STYLE.h1}">${esc(p.h1)}</h1>`,
     `<p style="${STYLE.p}">${esc(p.intro)}</p>`,
-    categories.length > 0 ? `<p style="${STYLE.meta}">${[p.allLabel, ...categories].map(esc).join(" · ")}</p>` : "",
+    items.length > 0 ? `<p style="${STYLE.meta}">${esc(app.portfolioCountLabel(items.length))}</p>` : "",
+    categories.length > 0
+      ? `<p style="${STYLE.meta}">${[`${p.allLabel} ${items.length}`, ...categories.map((c) => `${c.label} ${c.count}`)].map(esc).join(" · ")}</p>`
+      : "",
     items.length > 0
       ? `<ul style="${STYLE.gallery}">\n` +
         items
@@ -537,7 +538,8 @@ function portfolioRoot(items) {
           .join("\n") +
         `\n</ul>`
       : "",
-    items.length > 0 ? `<p style="${STYLE.footer}">${link("/designs", p.catalogCta)}</p>` : "",
+    `<h2 style="${STYLE.h2}">${esc(p.ctaHeading)}</h2>`,
+    `<p style="${STYLE.footer}">${link("/", p.createCta)} · ${link("/corporate", p.corporateCta)}</p>`,
     `</main>`,
   ].filter(Boolean).join("\n");
 }
@@ -740,7 +742,7 @@ async function writePortfolio(template, app, cfg, stats) {
       description: PORTFOLIO.description,
       canonical: `${SITE_URL}/portfolio`,
       image: DEFAULT_OG_IMAGE,
-      rootHtml: portfolioRoot(items),
+      rootHtml: portfolioRoot(app, items),
     }));
     stats.lists.push(`portfolio (${items.length} images)`);
   } catch (e) {
