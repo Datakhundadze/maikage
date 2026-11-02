@@ -446,7 +446,7 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     expect(home).toContain("SERVICE_PAGE_LINKS.map((l) =>");
     expect(home).toContain('to="/sportuli-formebi"');
     expect(home).not.toContain('setMode("sport")');
-    expect(home).toContain('"ტანსაცმელზე ბეჭდვა "');
+    expect(home).toContain('"მაისურებზე და ჰუდებზე ბეჭდვა "');
     expect(home).toContain('"შენი დიზაინით"');
     expect(home).not.toContain('"Create your unique design easily"');
     expect(source("src/components/AppHeader.tsx")).toContain("ALL_SERVICE_LINKS.map((l) =>");

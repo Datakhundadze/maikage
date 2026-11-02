@@ -982,7 +982,7 @@ async function writeDataPages(template, cfg, stats, app) {
 // Every string is copied verbatim from the codebase (sources noted). No
 // prices, no production times.
 const HOME = {
-  h1: "ტანსაცმელზე ბეჭდვა შენი დიზაინით",      // LandingPage.tsx hero h1 ("ტანსაცმელზე ბეჭდვა " + "შენი დიზაინით")
+  h1: "მაისურებზე და ჰუდებზე ბეჭდვა შენი დიზაინით",      // LandingPage.tsx hero h1 ("მაისურებზე და ჰუდებზე ბეჭდვა " + "შენი დიზაინით")
   tagline: "შექმენი უნიკალური დიზაინი მარტივად", // LandingPage.tsx hero subtitle (the non-"en" branch)
   links: [
     { href: "/designs", text: "კატალოგი" },                     // i18n.ts:228 nav.catalog
