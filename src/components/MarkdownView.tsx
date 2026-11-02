@@ -70,7 +70,9 @@ export default function MarkdownView({ markdown }: { markdown: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: ({ children }) => <h1 className="text-2xl font-bold mt-6 mb-3">{children}</h1>,
+          // The page owns the single <h1> (the post title): a markdown "# "
+          // renders as <h2>, as the prerender's markdownHtml does.
+          h1: ({ children }) => <h2 className="text-2xl font-bold mt-6 mb-3">{children}</h2>,
           h2: ({ children }) => <h2 className="text-xl font-bold mt-6 mb-2">{children}</h2>,
           h3: ({ children }) => <h3 className="text-lg font-semibold mt-5 mb-2">{children}</h3>,
           p: ({ node, children }) => {

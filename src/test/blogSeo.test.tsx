@@ -21,10 +21,10 @@ const h = { esc, link, style };
 
 const POST = {
   slug: "dtf-tu-shelkografia",
-  title_ka: "DTF თუ შელკოგრაფია",
+  title_ka: "DTF თუ შოლკოგრაფია",
   body_md:
     "შესავალი [DTF ბეჭდვა](/dtf-bechdva) და **მეტი**.\n\n## რა არის DTF\nტექსტი [გარე](https://example.com)\n\n### დეტალები\n\n- [ქარგვა](/logos-kargva)\n- [ცუდი](javascript:alert(1))\n- ![](https://x/y.png) <script>x</script>",
-  meta_description_ka: "DTF და შელკოგრაფიის შედარება.",
+  meta_description_ka: "DTF და შოლკოგრაფიის შედარება.",
   published_at: "2026-11-01T10:00:00+00:00",
   created_at: "2026-10-31T10:00:00+00:00",
   updated_at: "2026-11-02T09:00:00+00:00",

@@ -18,9 +18,9 @@ const h = { esc, link, style };
 
 const POST = {
   slug: "dtf-tu-shelkografia",
-  title_ka: "DTF თუ შელკოგრაფია",
+  title_ka: "DTF თუ შოლკოგრაფია",
   body_md: "შესავალი [DTF ბეჭდვა](/dtf-bechdva).\n\n## რა არის DTF\nტექსტი",
-  meta_description_ka: "DTF და შელკოგრაფიის შედარება.",
+  meta_description_ka: "DTF და შოლკოგრაფიის შედარება.",
   published_at: "2026-11-01T10:00:00+00:00",
   created_at: "2026-10-31T10:00:00+00:00",
   updated_at: "2026-11-02T09:00:00+00:00",
@@ -41,7 +41,7 @@ describe("blogPostPage (prerender) uses lib/blogSeo.ts", () => {
       `/blog/${POST.slug}`,
     );
     const page = blogPostPage(POST, null, app!, h, { servicesHtml: services, others });
-    expect(page.title).toBe("DTF თუ შელკოგრაფია | maika.ge");
+    expect(page.title).toBe("DTF თუ შოლკოგრაფია | maika.ge");
     expect(page.description).toBe(POST.meta_description_ka);
     expect(page.jsonLd.map((s: { "@type"?: string }) => s["@type"])).toEqual(["BlogPosting", "BreadcrumbList"]);
     expect(page.rootHtml).toContain(`<h1 style="">${POST.title_ka}</h1>`);

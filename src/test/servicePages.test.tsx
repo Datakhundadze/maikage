@@ -316,7 +316,9 @@ describe("service pages — static HTML and JSON-LD", () => {
       }
       expect(text).toContain(p.intro);
       expect(text).toContain(p.cta.body);
-      expect(p.images?.length).toBeGreaterThanOrEqual(1);
+      // Vests / raincoats: no photo exists — no image rather than a wrong one.
+      if (p.slug === "zhiletebi-da-satsvimrebi") expect(p.images ?? []).toHaveLength(0);
+      else expect(p.images?.length).toBeGreaterThanOrEqual(1);
       for (const img of p.images ?? []) {
         expect(img.src).toMatch(/^\/(showroom|products)\/.+\.webp$/);
         expect(html).toContain(`src="${img.src}" alt="${esc(img.alt)}" width="${img.width}" height="${img.height}" loading="lazy"`);
@@ -517,7 +519,7 @@ const PHASE2: Record<string, { phrase: string; extra?: string[] }> = {
   "/fekhburtis-formebi": { phrase: "ფეხბურთის ფორმები", extra: ["ფეხბურთის ფორმების შეკერვა", "გვარი და ნომერი ფორმაზე"] },
   "/kalatburtis-formebi": { phrase: "კალათბურთის ფორმები" },
   "/dtf-bechdva": { phrase: "DTF ბეჭდვა" },
-  "/shelkografia": { phrase: "შელკოგრაფია" },
+  "/shelkografia": { phrase: "შოლკოგრაფია" },
   "/logos-kargva": { phrase: "ლოგოს ქარგვა", extra: ["ქარგვა ტანსაცმელზე"] },
   "/chiqaze-bechdva": { phrase: "ჭიქაზე ბეჭდვა" },
   "/korporatiuli-sachukrebi": { phrase: "კორპორატიული საჩუქრები" },
@@ -657,5 +659,119 @@ describe("ბეჭდვის სერვისები block — printServi
     const corp = corporatePage({ CORPORATE_SEO: { title: "", description: "" }, CORPORATE_COPY, CORPORATE_SCHEMAS: [] }, { esc, link, style }, block);
     expect(corp.rootHtml).toContain(link("/korporatiuli-sachukrebi", "კორპორატიული საჩუქრები"));
     expect(corp.rootHtml).toContain(link("/logos-kargva", "ლოგოს ქარგვა"));
+  });
+});
+
+// ── Phase 3: phone cases, tote bags, vests / raincoats ──────────────────────
+
+const PHASE3: Record<string, { h1: string; stem: string; order: string }> = {
+  "/telefonis-qeisebi": { h1: "ტელეფონის ქეისები შენი დიზაინით", stem: "ტელეფონის ქეის", order: "/phone-case" },
+  "/natsris-chantebi": { h1: "ნაჭრის ჩანთები ლოგოთი და დიზაინით", stem: "ნაჭრის ჩანთ", order: "/tote-bag" },
+  "/zhiletebi-da-satsvimrebi": { h1: "ჟილეტები და საწვიმრები ლოგოთი", stem: "ჟილეტ", order: "/corporate" },
+};
+
+describe("phase 3 service pages", () => {
+  const pages = SERVICE_PAGE_LIST.filter((p) => p.path in PHASE3);
+
+  it("all three are registered last, in order, with a menu link each", () => {
+    expect(pages.map((p) => p.path)).toEqual(Object.keys(PHASE3));
+    expect(SERVICE_PAGE_LIST.slice(-3).map((p) => p.path)).toEqual(Object.keys(PHASE3));
+    for (const path of Object.keys(PHASE3)) expect(ALL_SERVICE_LINKS.some((l) => l.href === path), path).toBe(true);
+  });
+
+  for (const p of pages) {
+    const { h1, stem, order } = PHASE3[p.path];
+
+    it(`${p.path}: H1, ~350–500 words, 4–6 FAQ, no price, owner's wording, links`, () => {
+      expect(p.h1).toBe(h1);
+      expect(p.seo.title.startsWith(h1.split(" ").slice(0, 2).join(" "))).toBe(true);
+      expect(bodyText(p).split(stem).length - 1).toBeGreaterThanOrEqual(2);
+      const words = pageTexts(p).slice(4).join(" ").split(/\s+/).filter(Boolean).length;
+      expect(words, `${p.path}: ${words} words`).toBeGreaterThanOrEqual(350);
+      expect(words, `${p.path}: ${words} words`).toBeLessThanOrEqual(520);
+      expect(p.faq.length).toBeGreaterThanOrEqual(4);
+      expect(p.faq.length).toBeLessThanOrEqual(6);
+      const text = pageTexts(p).join("\n");
+      expect(text).not.toContain("₾");
+      expect(text).not.toMatch(/ლარ/);
+      expect(containsPrice(text)).toBe(false);
+      expect(text).not.toMatch(/\d+\s*ცალ/);
+      for (const m of text.matchAll(/[\d–-]+\s*(?:სამუშაო\s*)?დღე/g)) expect(m[0]).toBe(LEAD_TIME_KA);
+      if (text.includes("შოურუმშიც შეიძლება")) expect(text).toContain("დინამო არენა, მე-10 კარი");
+      expect(allLinks(p).map((l) => l.href)).toContain(order);
+      for (const img of p.images ?? []) {
+        expect(img.alt).toMatch(/[ა-ჰ]/);
+        expect(img.src).toMatch(/^\/products\/.+\.webp$/);
+        expect(readFileSync(path.join(ROOT, "public", img.src)).length).toBeGreaterThan(0);
+      }
+      // Related-links mesh: the page has its own list, and other pages link to it.
+      expect(printServiceLinksFor(p.path).length).toBeGreaterThanOrEqual(4);
+      const linkedFrom = [...SERVICE_PAGE_LIST.map((x) => x.path), "/corporate"].filter((x) =>
+        printServiceLinksFor(x).some((l) => l.href === p.path),
+      );
+      expect(linkedFrom.length, p.path).toBeGreaterThanOrEqual(2);
+    });
+  }
+
+  it("phone cases: iPhone, Xiaomi and Samsung; ordering route /phone-case", () => {
+    const text = pageTexts(SERVICE_PAGES["telefonis-qeisebi"]).join("\n");
+    expect(text).toContain("iPhone, Xiaomi და Samsung");
+    expect(SERVICE_PAGES["telefonis-qeisebi"].heroLinks[0].href).toBe("/phone-case");
+  });
+
+  it("tote bags: personal and corporate / event use; ordering route /tote-bag", () => {
+    const p = SERVICE_PAGES["natsris-chantebi"];
+    const text = pageTexts(p).join("\n");
+    expect(p.heroLinks[0].href).toBe("/tote-bag");
+    for (const w of ["კომპანი", "ღონისძიებ", "შენი დიზაინით"]) expect(text).toContain(w);
+  });
+
+  it("vests / raincoats: made to order, not sold online, logo methods, paperwork, corporate CTA, no image, no invented specs", () => {
+    const p = SERVICE_PAGES["zhiletebi-da-satsvimrebi"];
+    const text = pageTexts(p).join("\n");
+    expect(p.images ?? []).toHaveLength(0);
+    expect(p.heroLinks[0].href).toBe("/corporate");
+    expect(p.cta.links[0].href).toBe("/corporate");
+    for (const w of ["ვკერავთ შეკვეთით", "საიტზე არ ვყიდით", "DTF", "შოლკოგრაფია", "ქარგვ", "ინვოისს ყოველთვის ვწერთ"]) {
+      expect(text).toContain(w);
+    }
+    // No materials, colours, sizes or the lead time of the online orders.
+    expect(text).not.toMatch(/ნეილონ|პოლიესტერ|ბამბ|წყალგაუმტარ|ამრეკლ|ფერებ|ზომებ|XL|\bS\b|\bM\b/);
+    expect(text).not.toContain(LEAD_TIME_KA);
+  });
+});
+
+describe("spelling: შოლკოგრაფია (the owner's term)", () => {
+  const OLD = "შელკოგრაფ";
+  const NEW = "შოლკოგრაფ";
+
+  it("the old spelling is gone from every copy module, menu, llms.txt and JSON-LD", () => {
+    for (const f of ["src/lib/serviceRouteSlugs.ts", "src/lib/corporateCopy.ts", "src/lib/landingCopy.ts", "src/lib/faqContent.ts", "public/llms.txt"]) {
+      expect(source(f), f).not.toContain(OLD);
+    }
+    for (const l of ALL_SERVICE_LINKS) expect(`${l.label} ${l.description}`).not.toContain(OLD);
+    for (const p of SERVICE_PAGE_LIST) {
+      const visible = pageTexts(p).filter((t) => t !== p.intro).join("\n");
+      expect(visible, p.path).not.toContain(OLD);
+      expect(JSON.stringify(serviceSchemas(p)), p.path).not.toContain(OLD);
+    }
+  });
+
+  it("/shelkografia: the owner's term in title, H1, menu, JSON-LD; the old spelling once, in the intro", () => {
+    const p = SERVICE_PAGES.shelkografia;
+    expect(p.path).toBe("/shelkografia");
+    expect(p.name).toBe("შოლკოგრაფია");
+    expect(p.h1).toBe("შოლკოგრაფია მაისურებზე");
+    expect(p.seo.title.startsWith("შოლკოგრაფია")).toBe(true);
+    expect(p.serviceType).toBe("შოლკოგრაფია");
+    expect(MORE_SERVICE_LINKS.find((l) => l.href === "/shelkografia")!.label).toBe("შოლკოგრაფია");
+    const all = pageTexts(p).join("\n");
+    expect(all.split(OLD).length - 1).toBe(1);
+    expect(p.intro).toContain("შოლკოგრაფია (ასევე ცნობილია როგორც შელკოგრაფია ან ტრაფარეტული ბეჭდვა)");
+    expect(all.split(NEW).length - 1).toBeGreaterThan(5);
+    // Every other page: zero.
+    for (const q of SERVICE_PAGE_LIST.filter((x) => x.slug !== "shelkografia")) {
+      expect(pageTexts(q).join("\n"), q.path).not.toContain(OLD);
+    }
   });
 });

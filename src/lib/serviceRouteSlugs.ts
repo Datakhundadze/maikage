@@ -19,6 +19,9 @@ export const SERVICE_PAGE_SLUGS = [
   "chiqaze-bechdva",
   "korporatiuli-sachukrebi",
   "maisurebi-kartuli-tsartserebit",
+  "telefonis-qeisebi",
+  "natsris-chantebi",
+  "zhiletebi-da-satsvimrebi",
 ] as const;
 
 export type ServicePageSlug = (typeof SERVICE_PAGE_SLUGS)[number];
@@ -30,11 +33,14 @@ export const SERVICE_PAGE_NAMES: Readonly<Record<ServicePageSlug, string>> = {
   "fekhburtis-formebi": "ფეხბურთის ფორმები",
   "kalatburtis-formebi": "კალათბურთის ფორმები",
   "dtf-bechdva": "DTF ბეჭდვა",
-  shelkografia: "შელკოგრაფია",
+  shelkografia: "შოლკოგრაფია",
   "logos-kargva": "ლოგოს ქარგვა",
   "chiqaze-bechdva": "ჭიქაზე ბეჭდვა",
   "korporatiuli-sachukrebi": "კორპორატიული საჩუქრები",
   "maisurebi-kartuli-tsartserebit": "მაისურები ქართული წარწერით",
+  "telefonis-qeisebi": "ტელეფონის ქეისები",
+  "natsris-chantebi": "ნაჭრის ჩანთები",
+  "zhiletebi-da-satsvimrebi": "ჟილეტები და საწვიმრები",
 };
 
 /** One link per service page (the home footer). */
@@ -67,7 +73,7 @@ export const SERVICE_LINKS: readonly ServiceNavLink[] = [
   {
     href: "/maisurebze-bechdva",
     label: "მაისურებზე ბეჭდვა",
-    description: `შენი ფოტოთი, ლოგოთი ან წარწერით, ერთი ცალიდანაც — DTF, შელკოგრაფია, FLEX და ქარგვა. მზადდება ${LEAD_TIME_KA}ში.`,
+    description: `შენი ფოტოთი, ლოგოთი ან წარწერით, ერთი ცალიდანაც — DTF, შოლკოგრაფია, FLEX და ქარგვა. მზადდება ${LEAD_TIME_KA}ში.`,
   },
   {
     href: "/hoodie",
@@ -110,7 +116,7 @@ export const MORE_SERVICE_LINKS: readonly ServiceNavLink[] = [
   },
   {
     href: "/shelkografia",
-    label: "შელკოგრაფია",
+    label: "შოლკოგრაფია",
     description: "ბეჭდვა დიდი ტირაჟისთვის: რაც მეტია რაოდენობა, მით იაფია ერთი ცალი.",
   },
   {
@@ -132,6 +138,21 @@ export const MORE_SERVICE_LINKS: readonly ServiceNavLink[] = [
     href: "/maisurebi-kartuli-tsartserebit",
     label: "მაისურები ქართული წარწერით",
     description: "ასობით მზა დიზაინი ქართული წარწერით, ან შენი საკუთარი ტექსტი.",
+  },
+  {
+    href: "/telefonis-qeisebi",
+    label: "ტელეფონის ქეისები",
+    description: "ქეისი შენი ფოტოთი, წარწერით ან დიზაინით — ძირითადად iPhone, Xiaomi და Samsung მოდელებზე.",
+  },
+  {
+    href: "/natsris-chantebi",
+    label: "ნაჭრის ჩანთები",
+    description: "ნაჭრის ჩანთა შენი დიზაინით, ან კომპანიის ლოგოთი ღონისძიებისა და ბიზნესისთვის.",
+  },
+  {
+    href: "/zhiletebi-da-satsvimrebi",
+    label: "ჟილეტები და საწვიმრები",
+    description: "შეკვეთით შეკერილი ჟილეტები და საწვიმრები კომპანიის ლოგოთი — თანამშრომლებისა და ღონისძიებებისთვის.",
   },
 ];
 
@@ -165,12 +186,15 @@ const PRINT_SERVICES_BY_PATH: Readonly<Record<string, readonly string[]>> = {
   "/fekhburtis-formebi": ["/sportuli-formebi", "/kalatburtis-formebi", "/dtf-bechdva", "/maisurebze-bechdva", "/corporate", "/logos-kargva"],
   "/kalatburtis-formebi": ["/sportuli-formebi", "/fekhburtis-formebi", "/dtf-bechdva", "/maisurebze-bechdva", "/corporate"],
   "/dtf-bechdva": ["/maisurebze-bechdva", "/shelkografia", "/logos-kargva", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/chiqaze-bechdva", "/corporate", "/sportuli-formebi"],
-  "/shelkografia": ["/maisurebze-bechdva", "/dtf-bechdva", "/logos-kargva", "/corporate", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
-  "/logos-kargva": ["/maisurebze-bechdva", "/shelkografia", "/dtf-bechdva", "/corporate", "/korporatiuli-sachukrebi", "/hoodie"],
-  "/chiqaze-bechdva": ["/korporatiuli-sachukrebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva", "/corporate"],
-  "/korporatiuli-sachukrebi": ["/corporate", "/logos-kargva", "/chiqaze-bechdva", "/shelkografia", "/dtf-bechdva", "/hoodie", "/maisurebze-bechdva"],
+  "/shelkografia": ["/maisurebze-bechdva", "/dtf-bechdva", "/logos-kargva", "/corporate", "/korporatiuli-sachukrebi", "/natsris-chantebi", "/zhiletebi-da-satsvimrebi", "/sportuli-formebi"],
+  "/logos-kargva": ["/maisurebze-bechdva", "/shelkografia", "/dtf-bechdva", "/corporate", "/korporatiuli-sachukrebi", "/zhiletebi-da-satsvimrebi", "/hoodie"],
+  "/chiqaze-bechdva": ["/korporatiuli-sachukrebi", "/telefonis-qeisebi", "/natsris-chantebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva", "/corporate"],
+  "/korporatiuli-sachukrebi": ["/corporate", "/zhiletebi-da-satsvimrebi", "/natsris-chantebi", "/telefonis-qeisebi", "/logos-kargva", "/chiqaze-bechdva", "/shelkografia", "/dtf-bechdva"],
   "/maisurebi-kartuli-tsartserebit": ["/maisurebze-bechdva", "/dtf-bechdva", "/hoodie", "/chiqaze-bechdva", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
-  "/corporate": ["/korporatiuli-sachukrebi", "/logos-kargva", "/shelkografia", "/dtf-bechdva", "/maisurebze-bechdva", "/sportuli-formebi", "/hoodie"],
+  "/corporate": ["/korporatiuli-sachukrebi", "/logos-kargva", "/zhiletebi-da-satsvimrebi", "/natsris-chantebi", "/shelkografia", "/dtf-bechdva", "/maisurebze-bechdva", "/sportuli-formebi"],
+  "/telefonis-qeisebi": ["/chiqaze-bechdva", "/natsris-chantebi", "/korporatiuli-sachukrebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva"],
+  "/natsris-chantebi": ["/korporatiuli-sachukrebi", "/dtf-bechdva", "/shelkografia", "/corporate", "/telefonis-qeisebi", "/chiqaze-bechdva", "/maisurebze-bechdva"],
+  "/zhiletebi-da-satsvimrebi": ["/corporate", "/korporatiuli-sachukrebi", "/logos-kargva", "/shelkografia", "/dtf-bechdva", "/sportuli-formebi"],
   "/hoodie": ["/maisurebze-bechdva", "/dtf-bechdva", "/maisurebi-kartuli-tsartserebit", "/logos-kargva", "/corporate", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
 };
 

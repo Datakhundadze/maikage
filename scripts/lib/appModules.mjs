@@ -91,6 +91,11 @@ const MODULES = {
  *   otherBlogPosts: (posts: object[], currentSlug: string, max?: number) => object[],
  *   sortPostsNewestFirst: (posts: object[]) => object[],
  *   isInternalHref: (href: unknown) => boolean,
+ *   BLOG_INDEX_H1: string,
+ *   BLOG_INDEX_INTRO: string,
+ *   BLOG_CARD_COVER: { width: number, height: number },
+ *   blogIndexSections: (posts: object[]) => { key: string, heading: string, posts: object[] }[],
+ *   blogCover: (coverPath: string | null, storageUrl: (key: string) => string) => null | { src: string, absolute: string, kind: string },
  * }>}
  */
 export async function loadAppModules(log) {
@@ -150,6 +155,11 @@ export async function loadAppModules(log) {
       otherBlogPosts: m.blogSeo.otherBlogPosts,
       sortPostsNewestFirst: m.blogSeo.sortPostsNewestFirst,
       isInternalHref: m.blogSeo.isInternalHref,
+      BLOG_INDEX_H1: m.blogSeo.BLOG_INDEX_H1,
+      BLOG_INDEX_INTRO: m.blogSeo.BLOG_INDEX_INTRO,
+      BLOG_CARD_COVER: m.blogSeo.BLOG_CARD_COVER,
+      blogIndexSections: m.blogSeo.blogIndexSections,
+      blogCover: m.blogSeo.blogCover,
     };
   } catch (e) {
     console.warn(`${log} WARNING: could not load app modules from src/: ${e?.message ?? e}`);

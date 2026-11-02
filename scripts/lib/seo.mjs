@@ -101,7 +101,11 @@ export const LANDING_LABELS = {
 /** CatalogGrid / BlogPage heading + subtitle — the same strings the /designs and /blog prerender use. */
 export const LIST_PAGES = {
   catalog: { h1: "კატალოგი", intro: "მზა დიზაინები — აირჩიე და დაიბეჭდე ნებისმიერ პროდუქტზე" },
-  blog: { h1: "ბლოგი", intro: "სიახლეები, ივენთები და კოლაბორაციები" },
+  // lib/blogSeo.ts BLOG_INDEX_H1 / BLOG_INDEX_INTRO (src/test/blogIndex.test.tsx checks they match).
+  blog: {
+    h1: "maika.ge ბლოგი",
+    intro: "რჩევები ტანსაცმელზე ბეჭდვაზე, დიზაინსა და შეკვეთაზე — და ჩვენი პარტნიორობები, კოლაბორაციები და ივენთები.",
+  },
 };
 
 // ── Landing routes ──────────────────────────────────────────────────────────
@@ -298,6 +302,44 @@ export function markdownHtml(md, h) {
   return html.join("\n");
 }
 
+/**
+ * /blog as static HTML, in BlogPage's order: h1, intro, then each section
+ * (lib/blogSeo.ts blogIndexSections — "სტატიები და რჩევები" first, then
+ * "პარტნიორობები და კოლაბორაციები") as <h2> + one card per post: cover
+ * (lazy, explicit size, alt = title) linked to the post, title link, excerpt,
+ * date. Every link is a crawlable <a href>.
+ *
+ * @param sections  [{ heading, posts }] — blogIndexSections(...)
+ * @param h         prerender.mjs's helpers: esc, link, style
+ * @param opts      { h1, intro, coverFor(post) → src | null, cover: {width,height}, dateOf(post) → { iso, text }, excerptOf(post) → string }
+ */
+export function blogIndexHtml(sections, { esc, link, style }, { h1, intro, coverFor, cover, dateOf, excerptOf }) {
+  const card = (p) => {
+    const href = `/blog/${p.slug}`;
+    const src = coverFor(p);
+    const date = dateOf(p);
+    const summary = excerptOf(p);
+    return [
+      `<article style="${style.card ?? ""}">`,
+      src
+        ? `<a href="${esc(href)}"><img src="${esc(src)}" alt="${esc(p.title_ka)}" width="${esc(cover.width)}" height="${esc(cover.height)}" loading="lazy" decoding="async" style="${style.cardImg ?? style.img ?? ""}"></a>`
+        : "",
+      `<h3 style="${style.h3}">${link(href, p.title_ka)}</h3>`,
+      summary ? `<p style="${style.p}">${esc(summary)}</p>` : "",
+      date?.text ? `<p style="${style.meta ?? ""}"><time datetime="${esc(date.iso)}">${esc(date.text)}</time></p>` : "",
+      `</article>`,
+    ].filter(Boolean).join("\n");
+  };
+  return [
+    `<main style="${style.main}">`,
+    `<nav style="${style.nav}">${link("/", "მთავარი")}</nav>`,
+    `<h1 style="${style.h1}">${esc(h1)}</h1>`,
+    `<p style="${style.p}">${esc(intro)}</p>`,
+    ...sections.map((s) => [`<section>`, `<h2 style="${style.h2}">${esc(s.heading)}</h2>`, ...s.posts.map(card), `</section>`].join("\n")),
+    `</main>`,
+  ].join("\n");
+}
+
 /** "სხვა სტატიები" — up to 3 other posts as plain links (BlogPostPage). */
 export function otherPostsHtml(heading, posts, { esc, link, style }) {
   if (!posts?.length) return "";
@@ -307,8 +349,8 @@ export function otherPostsHtml(heading, posts, { esc, link, style }) {
 }
 
 /**
- * /blog/:slug as static HTML, in BlogPostPage's order: breadcrumb nav, h1,
- * date, cover, body, "ბეჭდვის სერვისები", "სხვა სტატიები". Head values and
+ * /blog/:slug as static HTML, in BlogPostPage's order: breadcrumb nav, cover,
+ * h1, date, body, "ბეჭდვის სერვისები", "სხვა სტატიები". Head values and
  * JSON-LD come from lib/blogSeo.ts (the same builders the live page uses).
  *
  * @param p          the blog_posts row
@@ -329,9 +371,9 @@ export function blogPostPage(p, coverUrl, app, h, { servicesHtml = "", others = 
       `<main style="${style.main}">`,
       `<nav style="${style.nav}">${link("/", "მთავარი")} › ${link("/blog", "ბლოგი")}</nav>`,
       `<article>`,
+      coverUrl ? `<img src="${esc(coverUrl)}" alt="${esc(p.title_ka)}" style="${style.img}">` : "",
       `<h1 style="${style.h1}">${esc(p.title_ka)}</h1>`,
       date ? `<p style="${style.meta}"><time datetime="${esc(date)}">${esc(date)}</time></p>` : "",
-      coverUrl ? `<img src="${esc(coverUrl)}" alt="${esc(p.title_ka)}" style="${style.img}">` : "",
       markdownHtml(p.body_md, h),
       `</article>`,
       servicesHtml,

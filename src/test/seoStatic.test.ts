@@ -45,7 +45,9 @@ describe("copied page text still matches its source", () => {
     ["src/pages/ShowroomPage.tsx", [SHOWROOM.title, SHOWROOM.description, SHOWROOM.h1]],
     ["src/components/landing/LandingHero.tsx", [LANDING_HERO.h1Suffix.trim(), LANDING_HERO.leadTimePrefix, LANDING_HERO.uploadCta, LANDING_HERO.chatCta, `to="${LANDING_HERO.chatHref}"`]],
     ["src/components/catalog/CatalogGrid.tsx", [LIST_PAGES.catalog.h1, LIST_PAGES.catalog.intro]],
-    ["src/pages/BlogPage.tsx", [LIST_PAGES.blog.h1, LIST_PAGES.blog.intro]],
+    // BlogPage renders BLOG_INDEX_H1 / BLOG_INDEX_INTRO from lib/blogSeo.ts.
+    ["src/lib/blogSeo.ts", [LIST_PAGES.blog.h1, LIST_PAGES.blog.intro]],
+    ["src/pages/BlogPage.tsx", ["{BLOG_INDEX_H1}", "{BLOG_INDEX_INTRO}"]],
     ["src/pages/ContactPage.tsx", [CONTACT.h1, CONTACT.addressLabel, CONTACT.address, CONTACT.hoursLabel, ...CONTACT.hours, CONTACT.phoneLabel, ...CONTACT.phones.map((p) => p.display), CONTACT.emailLabel, CONTACT.email, CONTACT.mapLabel, CONTACT.mapLinkText, CONTACT.mapUrl, CONTACT.homeLinkText]],
   ];
   for (const [file, strings] of cases) {

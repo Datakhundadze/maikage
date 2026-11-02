@@ -116,6 +116,9 @@ export default function LandingPage() {
           <Link to="/designs" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             {lang === "en" ? "Catalog" : "კატალოგი"}
           </Link>
+          <Link to="/blog" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+            {lang === "en" ? "Blog" : "ბლოგი"}
+          </Link>
           <Link to="/contact" className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             {lang === "en" ? "Contact" : "კონტაქტი"}
           </Link>

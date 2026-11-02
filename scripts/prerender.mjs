@@ -95,6 +95,7 @@ import {
   corporatePage,
   faqPageHtml,
   blogPostPage,
+  blogIndexHtml,
   jsonLdText,
   markdownHtml,
   printServicesHtml,
@@ -266,6 +267,7 @@ const STYLE = {
   ul: "margin:0 0 16px;padding-left:20px;list-style:disc",
   li: "margin:0 0 6px",
   card: "margin:0 0 24px",
+  cardImg: "display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;border-radius:12px;margin:0 0 12px",
   gallery: "display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0 0 24px;padding:0;list-style:none",
   galleryImg: "display:block;width:100%;height:auto;border-radius:12px",
   inlineImg: "display:inline-block;width:48%;max-width:320px;height:auto;margin:0 1% 12px 0;border-radius:12px;vertical-align:top",
@@ -880,9 +882,22 @@ async function writeDataPages(template, cfg, stats, app) {
     const linkable = posts.filter((p) => !unsafeSlugReason(p?.slug));
     const blogApp = typeof app?.blogPostSchemas === "function" ? app : null;
     if (!blogApp) console.warn(`${LOG} lib/blogSeo.ts not loaded — blog pages written without JSON-LD / related links.`);
+    // Same URL supabase.storage.from("blog").getPublicUrl(cover_path) builds.
+    const storageUrl = (key) => `${cfg.publicUrl}/storage/v1/object/public/blog/${key}`;
+    // cover_path: a storage key, a site path ("/blog/x.webp") or an https URL
+    // (lib/blogSeo.ts blogCover — the live page resolves it the same way).
+    const coverOf = (p) => {
+      if (blogApp) return blogApp.blogCover(p.cover_path, storageUrl);
+      const raw = String(p.cover_path ?? "").trim();
+      if (!raw) return null;
+      if (raw.startsWith("/")) return raw.startsWith("//") ? null : { src: raw, absolute: `${SITE_URL}${raw}`, kind: "site" };
+      if (/^https:\/\//i.test(raw)) return { src: raw, absolute: raw, kind: "url" };
+      if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return null;
+      return { src: storageUrl(raw), absolute: storageUrl(raw), kind: "storage" };
+    };
     await emit("blog", posts, (p) => {
-      // Same URL supabase.storage.from("blog").getPublicUrl(cover_path) builds.
-      const coverUrl = p.cover_path ? `${cfg.publicUrl}/storage/v1/object/public/blog/${p.cover_path}` : null;
+      // Absolute: the same URL goes to og:image, the JSON-LD image and the <img>.
+      const coverUrl = coverOf(p)?.absolute ?? null;
       const canonical = `${SITE_URL}/blog/${p.slug}`;
       if (!blogApp) {
         return renderPage(template, {
@@ -923,7 +938,24 @@ async function writeDataPages(template, cfg, stats, app) {
             : "Maika.ge-ის სიახლეები: პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",
           canonical: `${SITE_URL}/blog`,
           image: DEFAULT_OG_IMAGE,
-          rootHtml: blogIndexRoot(listed),
+          rootHtml: blogApp
+            ? blogIndexHtml(blogApp.blogIndexSections(listed), { esc, link, style: STYLE }, {
+                h1: blogApp.BLOG_INDEX_H1,
+                intro: blogApp.BLOG_INDEX_INTRO,
+                cover: blogApp.BLOG_CARD_COVER,
+                // BlogPage's card src: storage covers downscaled, site / https covers as they are.
+                coverFor: (p) => {
+                  const c = coverOf(p);
+                  if (!c) return null;
+                  return c.kind === "storage" ? blogApp.transformedDisplayUrl(c.src, { width: 800 }) : c.src;
+                },
+                dateOf: (p) => ({
+                  iso: String(p.published_at ?? p.created_at ?? "").slice(0, 10),
+                  text: formatDateKa(p.published_at ?? p.created_at),
+                }),
+                excerptOf: (p) => p.meta_description_ka || excerpt(p.body_md),
+              })
+            : blogIndexRoot(listed),
         }));
         stats.lists.push(`blog (${listed.length} posts)`);
       } catch (e) {

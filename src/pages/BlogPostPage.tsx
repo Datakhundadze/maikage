@@ -8,6 +8,7 @@ import PrintServicesLinks from "@/components/PrintServicesLinks";
 import {
   BLOG_OTHER_POSTS_HEADING,
   BLOG_OTHER_POSTS_MAX,
+  blogCover,
   blogPostDate,
   blogPostDescription,
   blogPostPath,
@@ -173,9 +174,11 @@ export default function BlogPostPage() {
   }
 
   const canonical = `${SITE_URL}/blog/${post.slug}`;
-  const coverOriginal = post.cover_path
-    ? supabase.storage.from("blog").getPublicUrl(post.cover_path).data.publicUrl
-    : null;
+  // cover_path: a storage key, a site path ("/blog/x.webp") or an https URL.
+  // `absolute` goes to og:image and the JSON-LD (the prerender's same URL).
+  const cover = blogCover(post.cover_path, (key) => supabase.storage.from("blog").getPublicUrl(key).data.publicUrl);
+  const coverOriginal = cover?.absolute ?? null;
+  const coverSrc = cover ? (cover.kind === "storage" ? transformedDisplayUrl(cover.src, { width: 1200 }) : cover.src) : null;
   const description = blogPostDescription(post);
   const dateISO = blogPostDate(post) ?? post.created_at;
   return (
@@ -198,18 +201,19 @@ export default function BlogPostPage() {
             <ArrowLeft className="h-4 w-4" /> ბლოგი
           </button>
 
+          {coverSrc && (
+            <img
+              src={coverSrc}
+              alt={post.title_ka}
+              decoding="async"
+              className="mb-5 w-full max-h-[480px] object-cover rounded-2xl border border-border"
+            />
+          )}
+
           <h1 className="text-3xl font-bold text-foreground">{post.title_ka}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {format(new Date(dateISO), "dd.MM.yyyy")}
           </p>
-
-          {coverOriginal && (
-            <img
-              src={transformedDisplayUrl(coverOriginal, { width: 800 })}
-              alt={post.title_ka}
-              className="mt-5 w-full rounded-2xl border border-border"
-            />
-          )}
 
           <div className="mt-6">
             <MarkdownView markdown={post.body_md} />

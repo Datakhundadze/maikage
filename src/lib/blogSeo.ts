@@ -16,8 +16,77 @@ export const BLOG_OTHER_POSTS_MAX = 3;
 /** /blog — BlogPage's SeoHead (also the prerendered /blog head). */
 export const BLOG_INDEX_SEO = {
   title: "ბლოგი — Maika.ge სიახლეები და ივენთები",
-  description: "Maika.ge-ის სიახლეები: პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",
+  description: "Maika.ge-ის ბლოგი: რჩევები ბეჭდვასა და დიზაინზე, პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",
 } as const;
+
+/** /blog heading, intro and the two sections (BlogPage + the /blog prerender). */
+export const BLOG_INDEX_H1 = "maika.ge ბლოგი";
+export const BLOG_INDEX_INTRO =
+  "რჩევები ტანსაცმელზე ბეჭდვაზე, დიზაინსა და შეკვეთაზე — და ჩვენი პარტნიორობები, კოლაბორაციები და ივენთები.";
+export const BLOG_ARTICLES_HEADING = "სტატიები და რჩევები";
+export const BLOG_PARTNERS_HEADING = "პარტნიორობები და კოლაბორაციები";
+/** Posts whose slug starts with this are partnership / collab posts. */
+export const BLOG_PARTNER_SLUG_PREFIX = "maikage-x-";
+/** Card cover box (16:10) — the width / height attributes of a /blog card image. */
+export const BLOG_CARD_COVER = { width: 800, height: 500 } as const;
+
+export const isPartnershipPost = (slug: string | null | undefined) =>
+  String(slug ?? "").startsWith(BLOG_PARTNER_SLUG_PREFIX);
+
+export interface BlogIndexSection<T> {
+  key: "articles" | "partners";
+  heading: string;
+  posts: T[];
+}
+
+/**
+ * /blog sections: "სტატიები და რჩევები" (every slug NOT starting with
+ * "maikage-x-") first, then "პარტნიორობები და კოლაბორაციები". Each newest
+ * first; an empty section is left out.
+ */
+export function blogIndexSections<T extends Pick<BlogPostSeoInput, "slug" | "published_at" | "created_at">>(
+  posts: T[],
+): BlogIndexSection<T>[] {
+  const sorted = sortPostsNewestFirst(posts);
+  const sections: BlogIndexSection<T>[] = [
+    { key: "articles", heading: BLOG_ARTICLES_HEADING, posts: sorted.filter((p) => !isPartnershipPost(p.slug)) },
+    { key: "partners", heading: BLOG_PARTNERS_HEADING, posts: sorted.filter((p) => isPartnershipPost(p.slug)) },
+  ];
+  return sections.filter((s) => s.posts.length > 0);
+}
+
+/** A cover: what an <img src> uses (`src`) and the absolute URL for og:image / JSON-LD (`absolute`). */
+export interface BlogCover {
+  src: string;
+  absolute: string;
+  /** Where it lives: the site's own public/ folder, an https URL, or the "blog" storage bucket. */
+  kind: "site" | "url" | "storage";
+}
+
+/**
+ * blog_posts.cover_path → the cover's URLs. Three forms:
+ *   "/blog/storefront.webp"      a file under public/ (site-relative)
+ *   "https://…/x.jpg"            an absolute https URL, used as is
+ *   "covers/x.jpg"               a key in the public storage bucket "blog"
+ * `storageUrl(key)` builds the bucket URL (supabase getPublicUrl on the live
+ * page, the same URL by hand in the prerender). Anything else — empty, a
+ * protocol-relative "//host", http: or another scheme — is no cover.
+ */
+export function blogCover(
+  coverPath: string | null | undefined,
+  storageUrl: (key: string) => string,
+): BlogCover | null {
+  const raw = String(coverPath ?? "").trim();
+  if (!raw) return null;
+  if (raw.startsWith("/")) {
+    if (!isInternalHref(raw) || /\s/.test(raw)) return null;
+    return { src: raw, absolute: `${SITE_URL}${raw}`, kind: "site" };
+  }
+  if (/^https:\/\/[^/\s]+/i.test(raw)) return { src: raw, absolute: raw, kind: "url" };
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return null;
+  const url = storageUrl(raw);
+  return url ? { src: url, absolute: url, kind: "storage" } : null;
+}
 
 export interface BlogPostSeoInput {
   slug: string;
