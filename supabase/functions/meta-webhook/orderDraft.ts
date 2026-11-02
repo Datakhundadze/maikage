@@ -91,7 +91,7 @@ export interface DraftLine {
 export interface OrderDraft {
   id: string;
   conversation_key: string;
-  channel: "messenger" | "instagram";
+  channel: "messenger" | "instagram" | "whatsapp";
   status: DraftStatus;
   items: DraftItem[];
   lines: DraftLine[] | null;
