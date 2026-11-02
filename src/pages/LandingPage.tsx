@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
-import { Shirt, Mail, Phone, MapPin, ArrowRight, ChevronDown, Shield, Zap, Users, BadgeDollarSign } from "lucide-react";
+import { Shirt, Mail, Phone, MapPin, ArrowRight, ChevronDown, Shield, Zap, Users, BadgeDollarSign, LayoutGrid } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import FeedbackModal from "@/components/FeedbackModal";
 import PartnerLogosMarquee from "@/components/PartnerLogosMarquee";
+import HomeShowcaseSlot from "@/components/home/HomeShowcaseSlot";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 import { HOME_SEO } from "@/lib/pageSeo";
@@ -166,7 +167,7 @@ export default function LandingPage() {
         {/* Hero */}
         <div className="text-center mb-16 sm:mb-20 max-w-3xl">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.2] mb-3 text-foreground">
-            {lang === "en" ? "Clothing printing " : "ტანსაცმელზე ბეჭდვა "}
+            {lang === "en" ? "T-shirt & hoodie printing " : "მაისურებზე და ჰუდებზე ბეჭდვა "}
             <span className="text-primary">
               {lang === "en" ? "with your design" : "შენი დიზაინით"}
             </span>
@@ -178,7 +179,7 @@ export default function LandingPage() {
 
         {/* Single creation entry → Simple (which now carries the full AI
             generation tool; the separate AI Studio card was retired). */}
-        <div className="grid w-full max-w-md gap-5 mx-auto mb-16 sm:mb-20">
+        <div className="grid w-full max-w-md sm:max-w-3xl sm:grid-cols-2 gap-5 mx-auto mb-16 sm:mb-20">
 
           {/* Card 1 — Simple Mode */}
           <button
@@ -214,7 +215,46 @@ export default function LandingPage() {
             </div>
           </button>
 
+          {/* Card 2 — ready-made catalog (/designs). Same visual language as
+              Card 1; a plain link, no mode switch. */}
+          <Link
+            to="/designs"
+            className={`group relative flex flex-col rounded-2xl border p-8 sm:p-10 text-left transition-all duration-300 hover:scale-[1.02] overflow-hidden ${
+              isGreen
+                ? "bg-white border-white/80 shadow-lg hover:shadow-xl"
+                : "border-white/[0.08] bg-card hover:border-white/[0.15] hover:shadow-xl hover:shadow-black/40"
+            }`}
+          >
+            <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.15] to-transparent pointer-events-none" />
+            <div className="relative z-10 flex flex-col h-full">
+              <div className={`flex h-14 w-14 items-center justify-center rounded-2xl mb-6 transition-colors ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20" : "bg-[#2a2a2a] border border-white/[0.06] group-hover:bg-[#333]"}`}>
+                <LayoutGrid className="h-6 w-6" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.8)" }} />
+              </div>
+              <h2 className="text-2xl font-bold mb-3" style={{ color: isGreen ? GREEN : undefined }}>
+                {lang === "en" ? "Pick a ready design" : "აირჩიე მზა დიზაინი"}
+              </h2>
+              <p className="text-sm leading-relaxed mb-6 flex-1" style={{ color: isGreen ? GREEN_DARK : undefined }}>
+                {lang === "en"
+                  ? "Georgian, humor, travel, sports and more — pick one and order in a minute."
+                  : "ქართული, იუმორი, მოგზაურობა, სპორტი და სხვა — აირჩიე და შეუკვეთე ერთ წუთში."}
+              </p>
+              <div className="flex items-center justify-between w-full">
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${isGreen ? "bg-[#25B988]/10 border border-[#25B988]/20 text-[#25B988]" : "bg-white/[0.06] border border-white/[0.08] text-white/50"}`}>
+                  {lang === "en" ? "270+ designs" : "270+ დიზაინი"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold transition-colors" style={{ color: isGreen ? GREEN : "rgba(255,255,255,0.5)" }}>
+                  {lang === "en" ? "Catalog" : "კატალოგი"} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </div>
+          </Link>
+
         </div>
+
+        {/* Ready-made designs rail + real work photos. Lazy: code and data
+            load once the slot nears the viewport (components/home/). */}
+        <HomeShowcaseSlot />
 
         {/* Corporate Section */}
         <div className="w-full max-w-4xl mb-20 sm:mb-28">

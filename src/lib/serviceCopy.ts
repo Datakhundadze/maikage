@@ -138,7 +138,7 @@ export const PRINTING_PAGE: ServicePageCopy = {
   slug: "maisurebze-bechdva",
   path: "/maisurebze-bechdva",
   seo: {
-    title: "მაისურებზე ბეჭდვა თბილისში — 1–2 დღეში | maika.ge",
+    title: "მაისურებზე ბეჭდვა თბილისში — 1–3 დღეში | maika.ge",
     description: `მაისურებზე და ჰუდებზე ბეჭდვა 1 ცალიდან — DTF, შოლკოგრაფია, FLEX და ქარგვა. ატვირთე ფოტო ან ლოგო და შეუკვეთე ონლაინ, მზადდება ${LEAD_TIME_KA}ში.`,
   },
   name: SERVICE_PAGE_NAMES["maisurebze-bechdva"],
