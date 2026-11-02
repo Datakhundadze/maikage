@@ -58,6 +58,8 @@ import {
 } from "../../supabase/functions/meta-webhook/sketchFlow";
 import { decodePng } from "../../supabase/functions/meta-webhook/pngDecode";
 import {
+  PRINT_REALISM,
+  compositePrint,
   createImage,
   drawContained,
   renderTextImage,
@@ -435,6 +437,109 @@ describe("raster", () => {
     expect(fit).toEqual({ x: 25, y: 0, w: 50, h: 50 });
     expect(dst.data[(10 * 100 + 50) * 4 + 3]).toBe(255);
     expect(dst.data[(10 * 100 + 10) * 4 + 3]).toBe(0);
+  });
+});
+
+describe("print on fabric (compositePrint)", () => {
+  type Img = ReturnType<typeof createImage>;
+  /** Opaque garment; luminance by pixel. */
+  const garment = (w: number, h: number, lum: (x: number, y: number) => number): Img => {
+    const g = createImage(w, h);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, v = lum(x, y);
+      g.data[i] = v; g.data[i + 1] = v; g.data[i + 2] = v; g.data[i + 3] = 255;
+    }
+    return g;
+  };
+  const solid = (w: number, h: number, rgba: number[]): Img => {
+    const l = createImage(w, h);
+    for (let i = 0; i < l.data.length; i += 4) l.data.set(rgba, i);
+    return l;
+  };
+  const luma = (d: Uint8ClampedArray, i: number) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  /** A folded garment: brightness waves across x. */
+  const folds = (base: number, amp: number) => (x: number, y: number) => Math.round(base + amp * Math.sin(x / 9) + (y % 3));
+  const box = { x: 20, y: 20, w: 80, h: 60 };
+
+  it("is on by default; the kill switch gives drawContained's output byte for byte", () => {
+    expect(PRINT_REALISM).toBe(true);
+    const layer = renderTextImage(boxFont, "ab", "#FF8800", 80, 60)!;
+    const a = garment(120, 100, folds(140, 60)), b = garment(120, 100, folds(140, 60));
+    expect(compositePrint(a, layer, box, { realism: false })).toEqual(drawContained(b, layer, box));
+    expect(Array.from(a.data)).toEqual(Array.from(b.data));
+    const c = garment(120, 100, folds(140, 60));
+    compositePrint(c, layer, box);
+    expect(Array.from(c.data)).not.toEqual(Array.from(b.data));
+  });
+
+  it("fully transparent layer pixels leave the garment untouched", () => {
+    const g = garment(120, 100, folds(120, 80)), before = Array.from(g.data);
+    compositePrint(g, createImage(40, 30), box);
+    expect(Array.from(g.data)).toEqual(before);
+    // a layer with a transparent half: that half of the garment is unchanged
+    const half = solid(40, 30, [255, 0, 0, 255]);
+    for (let y = 0; y < 30; y++) for (let x = 20; x < 40; x++) half.data[(y * 40 + x) * 4 + 3] = 0;
+    const g2 = garment(120, 100, folds(120, 80));
+    const fit = compositePrint(g2, half, box);
+    const midX = Math.round(fit.x + fit.w * 0.75), midY = Math.round(fit.y + fit.h / 2);
+    const i = (midY * 120 + midX) * 4;
+    expect(Array.from(g2.data.slice(i, i + 4))).toEqual(before.slice(i, i + 4));
+  });
+
+  it("flat garment: the print's interior is exactly the flat result (multiplier 1, no texture)", () => {
+    const layer = solid(40, 30, [30, 160, 90, 255]);
+    const a = garment(120, 100, () => 200), b = garment(120, 100, () => 200);
+    const fit = compositePrint(a, layer, box);
+    drawContained(b, layer, box);
+    const i = (Math.round(fit.y + fit.h / 2) * 120 + Math.round(fit.x + fit.w / 2)) * 4;
+    expect(Array.from(a.data.slice(i, i + 4))).toEqual([30, 160, 90, 255]);
+    expect(Array.from(a.data.slice(i, i + 4))).toEqual(Array.from(b.data.slice(i, i + 4)));
+  });
+
+  it("white print on a black garment stays bright (flat ≥ 230 mean, folded never below 180)", () => {
+    const white = solid(40, 30, [255, 255, 255, 255]);
+    /** Mean and min luminance of the print's interior (1 px in from the feathered edge). */
+    const stats = (lum: (x: number, y: number) => number) => {
+      const g = garment(120, 100, lum);
+      const fit = compositePrint(g, white, box);
+      let sum = 0, n = 0, min = 255;
+      for (let y = Math.ceil(fit.y) + 1; y < fit.y + fit.h - 1; y++) for (let x = Math.ceil(fit.x) + 1; x < fit.x + fit.w - 1; x++) {
+        const v = luma(g.data, (y * 120 + x) * 4);
+        sum += v; n++; min = Math.min(min, v);
+      }
+      return { mean: sum / n, min };
+    };
+    expect(stats(() => 26).mean).toBeGreaterThanOrEqual(230);
+    const folded = stats(folds(30, 20));
+    expect(folded.mean).toBeGreaterThanOrEqual(215);
+    expect(folded.min).toBeGreaterThanOrEqual(180);
+  });
+
+  it("shading follows the garment: darker fabric → darker print, within the clamp", () => {
+    // light garment, a dark fold band in the middle columns
+    const lum = (x: number) => (x >= 55 && x < 65 ? 150 : 235);
+    const g = garment(120, 100, lum);
+    compositePrint(g, solid(40, 30, [200, 200, 200, 255]), box);
+    const at = (x: number) => luma(g.data, (50 * 120 + x) * 4);
+    expect(at(60)).toBeLessThan(at(40) - 25); // in the fold
+    expect(at(40)).toBeCloseTo(200, 0); // flat part = the median level → unchanged
+    expect(at(60)).toBeGreaterThanOrEqual(200 * 0.55 - 1); // never below the floor
+    // a brighter-than-median highlight brightens a little, capped
+    const h = garment(120, 100, (x: number) => (x >= 55 && x < 65 ? 255 : 180));
+    compositePrint(h, solid(40, 30, [200, 200, 200, 255]), box);
+    const hv = luma(h.data, (50 * 120 + 60) * 4);
+    expect(hv).toBeGreaterThan(200);
+    expect(hv).toBeLessThanOrEqual(Math.ceil(200 * 1.08) + 1);
+  });
+
+  it("edges are feathered: the outer row of an opaque layer is softened, the interior opaque", () => {
+    const g = garment(120, 100, () => 0);
+    const fit = compositePrint(g, solid(40, 30, [255, 255, 255, 255]), box);
+    const x0 = Math.round(fit.x), y = Math.round(fit.y + fit.h / 2);
+    const edge = g.data[(y * 120 + x0) * 4], inner = g.data[(y * 120 + x0 + 3) * 4];
+    expect(edge).toBeLessThan(255);
+    expect(edge).toBeGreaterThan(100);
+    expect(inner).toBe(255);
   });
 });
 

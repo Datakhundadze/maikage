@@ -7,7 +7,7 @@
 // FLOW (the text reply, ending in SKETCH_NOTICE, has already been sent):
 //   1. record a 'sketch' row (text = SKETCH_MARKER[kind]) — counts toward the
 //      caps from this moment, even if the render fails later (cost bound)
-//   2. render: generate → gemini-proxy generate-design-gpt (≈ $0.14), or
+//   2. render (layers printed with sketchRaster.compositePrint): generate → gemini-proxy generate-design-gpt (≈ $0.14), or
 //      text → Noto Sans Georgian Bold, or photo → the customer's own photo
 //      from the private social-uploads bucket (≤ PHOTO_MAX_SIDE, optional
 //      local removeWhite; no AI, $0), or photo + extract → gemini-proxy
@@ -52,8 +52,8 @@ import {
 import { TEXT_COLORS } from "./catalogSnapshot.ts";
 import { encodePng } from "./pngEncode.ts";
 import {
+  compositePrint,
   downscaleBy,
-  drawContained,
   flattenOnWhite,
   renderTextImage,
   resample,
@@ -457,7 +457,9 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
   if (ctx.plan.kind === "generate" || ctx.plan.kind === "photo") {
     const [design] = await designP;
     const t0 = now();
-    drawContained(canvas, ctx.plan.kind === "generate" ? trimTransparent(design) : design, boxes[0]);
+    // Print on fabric (2026-11-02): garment shading / texture / soft edge;
+    // sketchRaster.PRINT_REALISM = false → the old flat drawContained.
+    compositePrint(canvas, ctx.plan.kind === "generate" ? trimTransparent(design) : design, boxes[0]);
     const jpeg = deps.encodeJpeg(canvas, SKETCH_JPEG_QUALITY);
     spend(t0);
     if (extractPut) await extractPut;
@@ -474,7 +476,7 @@ export async function renderSketch(ctx: SketchContext, deps: SketchDeps, deadlin
       if (!t || !boxes[i]) return;
       const glyphs = renderTextImage(font, t, hex, boxes[i].w, boxes[i].h);
       if (!glyphs) throw new SketchError("text_render");
-      drawContained(canvas, glyphs, boxes[i]);
+      compositePrint(canvas, glyphs, boxes[i]);
     });
     const jpeg = deps.encodeJpeg(canvas, SKETCH_JPEG_QUALITY);
     spend(t0);
