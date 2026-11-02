@@ -39,6 +39,7 @@ const MODULES = {
   designSeo: "/src/lib/designSeo.ts",
   serviceRouteSlugs: "/src/lib/serviceRouteSlugs.ts",
   blogSeo: "/src/lib/blogSeo.ts",
+  portfolioCategories: "/src/lib/portfolioCategories.ts",
 };
 
 /**
@@ -91,6 +92,8 @@ const MODULES = {
  *   otherBlogPosts: (posts: object[], currentSlug: string, max?: number) => object[],
  *   sortPostsNewestFirst: (posts: object[]) => object[],
  *   isInternalHref: (href: unknown) => boolean,
+ *   orderPortfolioCategories: (items: { category?: string | null }[]) => { label: string, count: number }[],
+ *   portfolioCountLabel: (n: number) => string,
  * }>}
  */
 export async function loadAppModules(log) {
@@ -150,6 +153,8 @@ export async function loadAppModules(log) {
       otherBlogPosts: m.blogSeo.otherBlogPosts,
       sortPostsNewestFirst: m.blogSeo.sortPostsNewestFirst,
       isInternalHref: m.blogSeo.isInternalHref,
+      orderPortfolioCategories: m.portfolioCategories.orderPortfolioCategories,
+      portfolioCountLabel: m.portfolioCategories.portfolioCountLabel,
     };
   } catch (e) {
     console.warn(`${log} WARNING: could not load app modules from src/: ${e?.message ?? e}`);

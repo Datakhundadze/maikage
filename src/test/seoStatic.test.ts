@@ -41,7 +41,7 @@ describe("copied page text still matches its source", () => {
     ["src/pages/CorporatePage.tsx", [CORPORATE.backLabel, CORPORATE.intro, ...CORPORATE.features, CORPORATE.cta]],
     // The H1 lives in lib/corporateCopy.ts (CORPORATE_H1); CorporatePage renders it.
     ["src/lib/corporateCopy.ts", [`export const CORPORATE_H1 = "${CORPORATE.h1}";`]],
-    ["src/pages/PortfolioPage.tsx", [PORTFOLIO.title, PORTFOLIO.description, PORTFOLIO.backLabel, PORTFOLIO.h1, PORTFOLIO.intro, PORTFOLIO.allLabel, PORTFOLIO.altFallback, PORTFOLIO.catalogCta]],
+    ["src/pages/PortfolioPage.tsx", [PORTFOLIO.title, PORTFOLIO.description, PORTFOLIO.backLabel, PORTFOLIO.h1, PORTFOLIO.intro, PORTFOLIO.allLabel, PORTFOLIO.altFallback, PORTFOLIO.ctaHeading, PORTFOLIO.createCta, PORTFOLIO.corporateCta, 'to="/corporate"']],
     ["src/pages/ShowroomPage.tsx", [SHOWROOM.title, SHOWROOM.description, SHOWROOM.h1]],
     ["src/components/landing/LandingHero.tsx", [LANDING_HERO.h1Suffix.trim(), LANDING_HERO.leadTimePrefix, LANDING_HERO.uploadCta, LANDING_HERO.chatCta, `to="${LANDING_HERO.chatHref}"`]],
     ["src/components/catalog/CatalogGrid.tsx", [LIST_PAGES.catalog.h1, LIST_PAGES.catalog.intro]],
