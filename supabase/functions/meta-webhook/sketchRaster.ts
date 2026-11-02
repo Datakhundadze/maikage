@@ -6,6 +6,7 @@
 //                    premultiplied so transparent edges do not fringe
 //   drawOver         source-over alpha compositing at a pixel offset
 //   flattenOnWhite   product photos have a transparent background; JPEG has none
+//   compositePrint   drawContained + garment shading / texture / soft edge
 //   renderTextLines  glyph outlines (opentype.js-shaped font) → coverage mask
 //                    → colour, contain-fitted into a box
 
@@ -257,6 +258,167 @@ export function drawContained(dst: RgbaImage, design: RgbaImage, box: Box): Box 
   const scaled = resample(design, fit.w, fit.h);
   drawOver(dst, scaled, fit.x, fit.y);
   return fit;
+}
+
+// ── print on fabric (2026-11-02) ───────────────────────────────────────────
+//
+// The sketch layer used to sit on the garment like a flat sticker. compositePrint
+// places it with drawContained's geometry, then, before the source-over:
+//   1. shading   the garment's luminance under the layer (blurred, radius ~2 px
+//                at 1024 px) relative to its own median → a multiplier on the
+//                layer's RGB, so folds and shadows show through the print.
+//                Relative to the garment's own brightness, with less strength
+//                and a higher floor on dark garments, so a white print on a
+//                black hoodie stays white.
+//   2. texture   a very light opacity loss where the fabric has fine detail
+//                (|luminance − blurred| relative to the local level).
+//   3. feather   alpha := min(alpha, 3×3 [1 2 1] blur of alpha): edges lose
+//                their razor-sharp step; fully transparent pixels stay 0.
+// A flat garment gives a multiplier of exactly 1 and no texture. Integer LUTs
+// and typed arrays, three passes over the layer's rectangle.
+
+/** Kill switch: false → compositePrint is exactly drawContained (the old flat look). */
+export const PRINT_REALISM = true;
+
+export interface PrintOptions {
+  /** Defaults to PRINT_REALISM. */
+  realism?: boolean;
+  /** Darkest / brightest shading multiplier (on a light garment). */
+  shadeMin?: number;
+  shadeMax?: number;
+  /** Max opacity lost to the fabric texture (0 = off). */
+  texture?: number;
+  feather?: boolean;
+}
+
+export const PRINT_SHADE_MIN = 0.55;
+export const PRINT_SHADE_MAX = 1.08;
+export const PRINT_TEXTURE = 0.1;
+
+/** Resize `design` to contain-fit `box` and print it onto the garment in `dst`. */
+export function compositePrint(dst: RgbaImage, design: RgbaImage, box: Box, opts: PrintOptions = {}): Box {
+  if (!(opts.realism ?? PRINT_REALISM)) return drawContained(dst, design, box);
+  const fit = containFit(box, design.width, design.height);
+  if (fit.w < 1 || fit.h < 1) return fit;
+  const scaled = resample(design, fit.w, fit.h);
+  shadeOnFabric(dst, scaled, Math.round(fit.x), Math.round(fit.y), opts);
+  drawOver(dst, scaled, fit.x, fit.y);
+  return fit;
+}
+
+/** Blur radius of the shading at this canvas width (2 px at 1024). */
+function shadeRadius(canvasWidth: number): number {
+  return Math.max(1, Math.round(canvasWidth / 512));
+}
+
+/**
+ * In place on `layer` (to be drawn at dx, dy on `garment`): RGB × fabric
+ * shading, alpha × texture, alpha feathered. Pixels with alpha 0 untouched.
+ */
+export function shadeOnFabric(garment: RgbaImage, layer: RgbaImage, dx: number, dy: number, opts: PrintOptions = {}): void {
+  const w = layer.width, h = layer.height, n = w * h;
+  if (n === 0) return;
+  const gw = garment.width, gh = garment.height, g = garment.data, s = layer.data;
+
+  // Garment luminance under the layer (coordinates clamped to the canvas).
+  const lum = new Uint8Array(n);
+  const hist = new Uint32Array(256);
+  for (let y = 0; y < h; y++) {
+    const gy = Math.min(gh - 1, Math.max(0, y + dy));
+    const rowG = gy * gw;
+    for (let x = 0; x < w; x++) {
+      const gx = Math.min(gw - 1, Math.max(0, x + dx));
+      const j = (rowG + gx) * 4;
+      const v = (77 * g[j] + 150 * g[j + 1] + 29 * g[j + 2] + 128) >> 8;
+      lum[y * w + x] = v;
+      hist[v]++;
+    }
+  }
+  let ref = 0;
+  for (let acc = 0, half = n / 2; ref < 255; ref++) { acc += hist[ref]; if (acc >= half) break; }
+
+  // Separable box blur (edge-replicated running sums) → the smooth shading level.
+  const r = shadeRadius(gw), win = 2 * r + 1;
+  const tmp = new Uint16Array(n);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    let sum = 0;
+    for (let k = -r; k <= r; k++) sum += lum[row + Math.min(w - 1, Math.max(0, k))];
+    for (let x = 0; x < w; x++) {
+      tmp[row + x] = sum;
+      sum += lum[row + Math.min(w - 1, x + r + 1)] - lum[row + Math.max(0, x - r)];
+    }
+  }
+  const blur = new Uint8Array(n);
+  const div = win * win;
+  for (let x = 0; x < w; x++) {
+    let sum = 0;
+    for (let k = -r; k <= r; k++) sum += tmp[Math.min(h - 1, Math.max(0, k)) * w + x];
+    for (let y = 0; y < h; y++) {
+      blur[y * w + x] = (sum + (div >> 1)) / div | 0;
+      sum += tmp[Math.min(h - 1, y + r + 1) * w + x] - tmp[Math.max(0, y - r) * w + x];
+    }
+  }
+
+  // Shading LUT (×256 fixed point) by blurred level: 1 + strength·(v/ref − 1),
+  // clamped. Dark garments: less strength, higher floor (white stays white).
+  const dark = 1 - ref / 255;
+  const strength = 0.9 - 0.45 * dark;
+  const lo = (opts.shadeMin ?? PRINT_SHADE_MIN) + 0.22 * dark;
+  const hi = opts.shadeMax ?? PRINT_SHADE_MAX;
+  const shade = new Uint16Array(256);
+  for (let v = 0; v < 256; v++) {
+    const f = v === ref ? 1 : 1 + strength * ((v + 2) / (ref + 2) - 1);
+    shade[v] = Math.round(Math.min(hi, Math.max(lo, f)) * 256);
+  }
+  // Texture LUT: opacity kept (×256) per unit of |lum − blur|, by blurred level.
+  const texture = opts.texture ?? PRINT_TEXTURE;
+  // Dark fabric photos are noisy relative to their level → half the texture there.
+  const texGain = new Float32Array(256);
+  for (let v = 0; v < 256; v++) texGain[v] = (0.5 / (v + 32)) * 256;
+  const texMax = texture * (1 - 0.5 * dark) * 256;
+
+  // Feather: horizontal [1 2 1] of alpha (outside the layer = 0).
+  const feather = opts.feather !== false;
+  const ah = feather ? new Uint16Array(n) : null;
+  if (ah) {
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) {
+        const a = s[(row + x) * 4 + 3];
+        const l = x > 0 ? s[(row + x - 1) * 4 + 3] : 0;
+        const rr = x < w - 1 ? s[(row + x + 1) * 4 + 3] : 0;
+        ah[row + x] = l + 2 * a + rr;
+      }
+    }
+  }
+
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      const p = row + x, i = p * 4;
+      let a = s[i + 3];
+      if (a === 0) continue;
+      const bl = blur[p];
+      const f = shade[bl];
+      if (f !== 256) {
+        s[i] = (s[i] * f + 128) >> 8;
+        s[i + 1] = (s[i + 1] * f + 128) >> 8;
+        s[i + 2] = (s[i + 2] * f + 128) >> 8;
+      }
+      if (ah) {
+        const up = y > 0 ? ah[p - w] : 0, down = y < h - 1 ? ah[p + w] : 0;
+        const fa = (up + 2 * ah[p] + down + 8) >> 4;
+        if (fa < a) a = fa;
+      }
+      if (texMax > 0) {
+        const d = lum[p] - bl;
+        const loss = Math.min(texMax, (d < 0 ? -d : d) * texGain[bl]);
+        a = (a * (256 - loss) + 128) / 256 | 0;
+      }
+      s[i + 3] = a;
+    }
+  }
 }
 
 // ── text ───────────────────────────────────────────────────────────────────
