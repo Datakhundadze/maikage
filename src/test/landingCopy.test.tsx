@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import LandingCopySection from "@/components/landing/LandingCopySection";
-import { LANDING_COPY, landingCopyFor } from "@/lib/landingCopy";
+import { LANDING_COPY, landingCopyFor, landingCopySchemas } from "@/lib/landingCopy";
 import { LEAD_TIME_KA } from "@/lib/leadTime";
 import { fromPrice } from "@/lib/landingPrice";
 import { containsPrice, landingCopyHtml } from "../../scripts/lib/seo.mjs";
@@ -62,11 +62,68 @@ describe("lib/landingCopy.ts", () => {
     expect(SRC).not.toMatch(/\d+\s*(?:ლარ|GEL|-დან)/);
   });
 
-  it("only the bare /t-shirt route gets copy", () => {
+  it("only the bare /t-shirt and /hoodie routes get copy", () => {
     expect(landingCopyFor("t-shirt", null)).toBe(COPY);
     expect(landingCopyFor("t-shirt", "gildan")).toBeNull();
-    expect(landingCopyFor("hoodie", null)).toBeNull();
+    expect(landingCopyFor("hoodie", null)).toBe(LANDING_COPY.hoodie);
+    expect(landingCopyFor("hoodie", "gildan")).toBeNull();
     expect(landingCopyFor("constructor", null)).toBeNull();
+    // /t-shirt keeps exactly its old shape: no photos, FAQ or JSON-LD.
+    expect(COPY.images).toBeUndefined();
+    expect(COPY.faq).toBeUndefined();
+    expect(landingCopySchemas(COPY)).toBeNull();
+  });
+});
+
+describe("/hoodie copy", () => {
+  const HOODIE = LANDING_COPY.hoodie;
+  const words = [
+    HOODIE.h2,
+    HOODIE.intro,
+    ...HOODIE.sections.flatMap((s) => [s.h3, s.body ?? "", ...(s.bullets ?? []).flatMap((b) => [b.term, b.text])]),
+    HOODIE.faqHeading ?? "",
+    ...(HOODIE.faq ?? []).flatMap((f) => [f.q, f.a]),
+  ].join(" ");
+
+  it("leads with ჰუდებზე ბეჭდვა, ~300 words, no price, the owner's lead time and showroom wording", () => {
+    expect(HOODIE.h2).toContain("ჰუდებზე ბეჭდვა");
+    expect(words.split(/\s+/).filter(Boolean).length).toBeGreaterThanOrEqual(280);
+    expect(words).not.toContain("₾");
+    expect(containsPrice(words)).toBe(false);
+    expect(words).toContain(LEAD_TIME_KA);
+    expect(words).toContain("დინამო არენა, მე-10 კარი");
+    expect(words).not.toMatch(/[Ѐ-ӿ]/);
+    // Natural use of the target phrase: 2–4 times in the visible copy.
+    const n = words.split("ჰუდებზე ბეჭდვა").length - 1;
+    expect(n).toBeGreaterThanOrEqual(2);
+    expect(n).toBeLessThanOrEqual(4);
+  });
+
+  it("photos: webp from public/, Georgian alt, explicit size", () => {
+    expect(HOODIE.images?.length).toBeGreaterThanOrEqual(1);
+    for (const img of HOODIE.images ?? []) {
+      expect(img.src).toMatch(/^\/(showroom|products)\/.+\.webp$/);
+      expect(img.alt).toMatch(/[ა-ჰ]/);
+      expect(img.width).toBeGreaterThan(0);
+      expect(img.height).toBeGreaterThan(0);
+    }
+  });
+
+  it("Service + FAQPage + BreadcrumbList JSON-LD", () => {
+    const schemas = landingCopySchemas(HOODIE) as Record<string, unknown>[];
+    expect(schemas.map((x) => x["@type"])).toEqual(["Service", "FAQPage", "BreadcrumbList"]);
+    expect(schemas[0].url).toBe("https://maika.ge/hoodie");
+    expect((schemas[1].mainEntity as { name: string }[]).map((q) => q.name)).toEqual(HOODIE.faq?.map((f) => f.q));
+  });
+
+  it("the static section carries the photos and every Q&A", () => {
+    const ESCAPE: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+    const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ESCAPE[c]);
+    const link = (href: string, text: string) => `<a href="${esc(href)}">${esc(text)}</a>`;
+    const html = landingCopyHtml(HOODIE, { esc, link, style: { h2: "", h3: "", p: "", ul: "", li: "" } });
+    for (const img of HOODIE.images ?? []) expect(html).toContain(`src="${img.src}"`);
+    for (const f of HOODIE.faq ?? []) expect(html).toContain(`>${esc(f.q)}</h3>`);
+    expect(html).toContain('loading="lazy"');
   });
 });
 

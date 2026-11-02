@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import LandingCopySection from "@/components/landing/LandingCopySection";
-import { CORPORATE_COPY, CORPORATE_SEO } from "@/lib/corporateCopy";
+import { CORPORATE_COPY, CORPORATE_H1, CORPORATE_SCHEMAS, CORPORATE_SEO } from "@/lib/corporateCopy";
 import { LANDING_COPY } from "@/lib/landingCopy";
-import { containsPrice, corporatePage, landingCopyHtml } from "../../scripts/lib/seo.mjs";
+import { CORPORATE, containsPrice, corporatePage, landingCopyHtml } from "../../scripts/lib/seo.mjs";
 
 // The /corporate SEO section and title (lib/corporateCopy.ts) on the live page
 // (CorporatePage → LandingCopySection tone="page") and in the static prerender
@@ -20,7 +20,8 @@ const APPROVED = {
   title: "მაისურების ბრენდირება კომპანიის ლოგოთი — კორპორატიული შეკვეთები | Maika.ge",
   description:
     "ბრენდირებული მაისურები, ჰუდები, ჩანთები და კეპები კომპანიებისა და გუნდებისთვის. DTF ბეჭდვა, შელკოგრაფია, ქარგვა და FLEX. 10 ცალიდან ფასდაკლება. თბილისი, დინამოს სტადიონი.",
-  h2: "მაისურების ბრენდირება კომპანიის ლოგოთი",
+  h1: "მაისურების ბრენდირება კომპანიის ლოგოთი",
+  h2: "ბრენდირებული პროდუქცია კომპანიებისა და გუნდებისთვის",
   intro:
     "ვამზადებთ ბრენდირებულ მაისურებს, ჰუდებს, ჩანთებს, კეპებს და წინსაფრებს კომპანიებისთვის, ღონისძიებებისა და გუნდებისთვის. შენ ლოგოს გვიგზავნი, მაკეტს, ბეჭდვას და შეფუთვას ჩვენ ვაკეთებთ.",
   methodsH3: "ბრენდირების მეთოდები",
@@ -30,11 +31,32 @@ const APPROVED = {
     "ქარგვა — დიდი რაოდენობისთვის. პრემიუმ იერი პოლოებზე, ჰუდებზე და კეპებზე.",
     "თერმული ბეჭდვა (FLEX) — გვარები, ნომრები და ერთფეროვანი ლოგოები, განსაკუთრებით სპორტული ფორმებისთვის.",
   ],
+  // [h3, body] of every section without bullets, in order (the methods list is section 2).
   sections: [
+    [
+      "რას ვაბრენდირებთ",
+      "მაისურებს (მათ შორის პოლოებს, oversize და საბავშვო მოდელებს), ჰუდებს, ელვიან ჰუდებს და ბომბერებს, კეპებს, ნაჭრის ჩანთებს, წინსაფრებს და ჭიქებს. მაისურების ბრენდირება კომპანიის ლოგოთი შეიძლება წინა მხარეს, ზურგზე ან ორივე მხარეს.",
+    ],
+    [
+      "როგორ ვმუშაობთ",
+      "გვიგზავნი ლოგოს და გვეუბნები, რა ნივთი, რა რაოდენობა და რა ზომები გჭირდება. ერთად ვათანხმებთ ბრენდირების მეთოდს და მაკეტს, შემდეგ ვბეჭდავთ და ვფუთავთ.",
+    ],
+    [
+      "ლოგოს ფაილი",
+      "საუკეთესო შედეგისთვის გამოგვიგზავნე ლოგო მაღალი გარჩევადობით, სასურველია გამჭვირვალე ფონით (PNG). თუ ლოგო მხოლოდ დაბალი ხარისხით გაქვს ან ფაილი არ გაქვს საერთოდ, მოგვწერე და მაკეტის მომზადებაში დაგეხმარებით.",
+    ],
     ["სპორტული ფორმები გუნდებისთვის", "ფორმებს ვკერავთ ინდივიდუალურად, თითოეულ გუნდზე. ვბეჭდავთ გვარს და ნომერს."],
     [
       "ფასი და ვადა",
       "10 ცალიდან ფასდაკლებაა. ვადა დამოკიდებულია ბრენდირების მეთოდსა და რაოდენობაზე. ზუსტ ფასს და ვადას შეკვეთისას შეგითანხმებთ.",
+    ],
+    [
+      "მიწოდება და შოურუმი",
+      "კურიერით ვაწვდით მთელ საქართველოში. შეკვეთის აღება შოურუმშიც შეიძლება: დინამო არენა, მე-10 კარი.",
+    ],
+    [
+      "ვისთვის ვამზადებთ",
+      "ბრენდირებულ მაისურებს, ჰუდებს და კეპებს ვამზადებთ კომპანიის თანამშრომლებისთვის, ღონისძიებებისთვის და გუნდებისთვის. Maika.ge საქართველოს ცნობილი ბრენდია 15 წლის გამოცდილებით კერვაში, ბეჭდვაში და კასტომ აპარელის წარმოებაში.",
     ],
     [
       "ვისთან ვთანამშრომლობთ",
@@ -50,20 +72,58 @@ describe("lib/corporateCopy.ts", () => {
   });
 
   it("holds the approved section text, verbatim", () => {
+    expect(CORPORATE_H1).toBe(APPROVED.h1);
+    expect(CORPORATE.h1).toBe(CORPORATE_H1); // seo.mjs copy (llms.txt)
     expect(CORPORATE_COPY.h2).toBe(APPROVED.h2);
+    expect(CORPORATE_COPY.h2).not.toBe(CORPORATE_H1);
     expect(CORPORATE_COPY.intro).toBe(APPROVED.intro);
-    const [methods, ...rest] = CORPORATE_COPY.sections;
+    const methods = CORPORATE_COPY.sections[1];
+    const rest = CORPORATE_COPY.sections.filter((s) => s !== methods);
     expect(methods.h3).toBe(APPROVED.methodsH3);
     expect(methods.body).toBeUndefined();
     expect(methods.bullets?.map((b) => `${b.term} — ${b.text}`)).toEqual(APPROVED.methods);
     expect(rest.map((s) => [s.h3, s.body])).toEqual(APPROVED.sections);
-    expect(rest.slice(0, 2).every((s) => s.bullets === undefined)).toBe(true);
+    expect(rest.every((s) => s.bullets === undefined)).toBe(true);
     // Cross-links to the service pages (lib/serviceCopy.ts).
+    const linkOf = (h3: string) => CORPORATE_COPY.sections.find((s) => s.h3 === h3)?.link;
     expect(methods.link).toEqual({ href: "/maisurebze-bechdva", label: "მაისურებზე ბეჭდვა" });
-    expect(rest[0].link).toEqual({ href: "/sportuli-formebi", label: "სპორტული ფორმები გვარით და ნომრით" });
-    expect(rest[1].link).toBeUndefined();
-    expect(rest[2].link).toEqual({ href: "/portfolio", label: "პორტფოლიო" });
+    expect(linkOf("სპორტული ფორმები გუნდებისთვის")).toEqual({ href: "/sportuli-formebi", label: "სპორტული ფორმები გვარით და ნომრით" });
+    expect(linkOf("ფასი და ვადა")).toBeUndefined();
+    expect(linkOf("ვისთან ვთანამშრომლობთ")).toEqual({ href: "/portfolio", label: "პორტფოლიო" });
     expect(CORPORATE_COPY.sections.some((s) => s.priceLead)).toBe(false);
+  });
+
+  it("has a FAQ, photos with Georgian alt and explicit size, and ~350+ words", () => {
+    expect(CORPORATE_COPY.faq?.length).toBeGreaterThanOrEqual(4);
+    expect(CORPORATE_COPY.faqHeading).toBe("ხშირი კითხვები ბრენდირებაზე");
+    for (const img of CORPORATE_COPY.images ?? []) {
+      expect(img.src).toMatch(/^\/(showroom|products)\/.+\.webp$/);
+      expect(img.alt).toMatch(/[ა-ჰ]/);
+      expect(img.width).toBeGreaterThan(0);
+      expect(img.height).toBeGreaterThan(0);
+    }
+    expect(CORPORATE_COPY.images?.length).toBeGreaterThanOrEqual(1);
+    const words = [
+      APPROVED.h1,
+      CORPORATE_COPY.h2,
+      CORPORATE_COPY.intro,
+      ...CORPORATE_COPY.sections.flatMap((s) => [s.h3, s.body ?? "", ...(s.bullets ?? []).flatMap((b) => [b.term, b.text])]),
+      ...(CORPORATE_COPY.faq ?? []).flatMap((f) => [f.q, f.a]),
+    ]
+      .join(" ")
+      .split(/\s+/)
+      .filter(Boolean).length;
+    expect(words).toBeGreaterThanOrEqual(350);
+  });
+
+  it("Service + FAQPage + BreadcrumbList JSON-LD", () => {
+    const [service, faq, crumbs] = CORPORATE_SCHEMAS as Record<string, unknown>[];
+    expect(service["@type"]).toBe("Service");
+    expect(service.name).toBe(CORPORATE_H1);
+    expect(service.url).toBe("https://maika.ge/corporate");
+    expect(faq["@type"]).toBe("FAQPage");
+    expect((faq.mainEntity as { name: string }[]).map((q) => q.name)).toEqual(CORPORATE_COPY.faq?.map((f) => f.q));
+    expect(crumbs["@type"]).toBe("BreadcrumbList");
   });
 
   it("carries no price and no lead time: no ₾, no number + currency, no number of days", () => {
@@ -76,6 +136,11 @@ describe("lib/corporateCopy.ts", () => {
 });
 
 describe("CorporatePage wiring", () => {
+  it("H1 and JSON-LD come from lib/corporateCopy.ts", () => {
+    expect(PAGE_SRC).toContain("{CORPORATE_H1}</h1>");
+    expect(PAGE_SRC).toContain("schemas={[LOCAL_BUSINESS_SCHEMA, ...CORPORATE_SCHEMAS]}");
+  });
+
   it("renders the section after the feature cards and before the enquiry CTA", () => {
     const cards = PAGE_SRC.indexOf('label: "კონკურენტული ფასები"');
     const section = PAGE_SRC.indexOf('<LandingCopySection copy={CORPORATE_COPY} price={null} tone="page" />');
@@ -101,8 +166,17 @@ describe("LandingCopySection with CORPORATE_COPY", () => {
     expect(screen.getByRole("heading", { level: 3, name: APPROVED.methodsH3 })).toBeInTheDocument();
     const items = [...container.querySelectorAll("li")];
     expect(items.map((li) => li.textContent)).toEqual(APPROVED.methods);
+    for (const f of CORPORATE_COPY.faq ?? []) {
+      expect(screen.getByRole("heading", { level: 3, name: f.q })).toBeInTheDocument();
+      expect(screen.getByText(f.a)).toBeInTheDocument();
+    }
+    for (const img of CORPORATE_COPY.images ?? []) {
+      const el = screen.getByAltText(img.alt);
+      expect(el).toHaveAttribute("loading", "lazy");
+      expect(el).toHaveAttribute("width", String(img.width));
+    }
     expect(items.map((li) => li.querySelector("strong")?.textContent)).toEqual(
-      CORPORATE_COPY.sections[0].bullets?.map((b) => b.term),
+      CORPORATE_COPY.sections[1].bullets?.map((b) => b.term),
     );
     for (const [h3, body] of APPROVED.sections) {
       expect(screen.getByRole("heading", { level: 3, name: h3 })).toBeInTheDocument();
@@ -135,12 +209,16 @@ describe("prerendered /corporate (seo.mjs corporatePage)", () => {
   const esc = (v: unknown) => String(v ?? "").replace(/[&<>"']/g, (c) => ESCAPE[c]);
   const link = (href: string, text: string) => `<a href="${esc(href)}">${esc(text)}</a>`;
   const style = { main: "", nav: "", h1: "", h2: "", h3: "", p: "", ul: "", li: "", footer: "" };
-  const page = corporatePage({ CORPORATE_SEO, CORPORATE_COPY }, { esc, link, style });
+  const page = corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS }, { esc, link, style });
   const text = page.rootHtml.replace(/<[^>]+>/g, "");
 
-  it("has the new title and description", () => {
+  it("has the new title, description, H1 and JSON-LD", () => {
     expect(page.title).toBe(APPROVED.title);
     expect(page.description).toBe(APPROVED.description);
+    expect(page.rootHtml).toContain(`<h1 style="">${APPROVED.h1}</h1>`);
+    expect(page.jsonLd).toBe(CORPORATE_SCHEMAS);
+    for (const f of CORPORATE_COPY.faq ?? []) expect(page.rootHtml).toContain(`>${f.q}</h3>`);
+    for (const img of CORPORATE_COPY.images ?? []) expect(page.rootHtml).toContain(`src="${img.src}"`);
   });
 
   it("contains the H2 and every section, after the feature list and before the CTA, and no ₾", () => {

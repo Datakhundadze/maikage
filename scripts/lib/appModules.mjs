@@ -3,7 +3,8 @@
 // the landing slugs App.tsx registers, the FAQ text (and its FAQPage JSON-LD
 // builder) FaqPage shows, the lead
 // time LandingHero prints, the landing <title>s SeoHead sets, the /corporate
-// title and text section, the service pages (lib/serviceCopy.ts), the
+// title, H1, text section and JSON-LD, the service pages (lib/serviceCopy.ts)
+// and their links (lib/serviceRouteSlugs.ts), the
 // /designs title and the /design/:slug title / fallback description.
 //
 // How: a bare Vite dev server in middleware mode (no config file, no plugins,
@@ -35,6 +36,7 @@ const MODULES = {
   serviceCopy: "/src/lib/serviceCopy.ts",
   pageSeo: "/src/lib/pageSeo.ts",
   designSeo: "/src/lib/designSeo.ts",
+  serviceRouteSlugs: "/src/lib/serviceRouteSlugs.ts",
 };
 
 /**
@@ -58,7 +60,10 @@ const MODULES = {
  *     h2: string, intro: string,
  *     sections: { h3: string, body: string, priceLead?: Function, link?: { href: string, label: string } }[],
  *   },
+ *   landingCopySchemas: (copy: object | null) => object[] | null,
  *   CORPORATE_SEO: { title: string, description: string },
+ *   CORPORATE_H1: string,
+ *   CORPORATE_SCHEMAS: object[],
  *   CORPORATE_COPY: {
  *     h2: string, intro: string,
  *     sections: { h3: string, body?: string, bullets?: { term: string, text: string }[], link?: { href: string, label: string } }[],
@@ -68,6 +73,7 @@ const MODULES = {
  *   serviceSchemas: (page: object) => object[],
  *   SERVICE_LINKS: { href: string, label: string }[],
  *   SERVICES_HEADING: string,
+ *   PRINT_SERVICES_HEADING: string,
  *   CATALOG_SEO: { title: string, description: string },
  *   designSeoTitle: (name: string, categoryLabel: string | null) => string,
  *   designFallbackDescription: (name: string, categoryLabel: string | null, priceGEL: number | null) => string,
@@ -104,13 +110,17 @@ export async function loadAppModules(log) {
       faqPageSchema: m.faq.faqPageSchema,
       SHOWROOM_INDEXABLE: m.showroom.SHOWROOM_INDEXABLE,
       landingCopyFor: m.landingCopy.landingCopyFor,
+      landingCopySchemas: m.landingCopy.landingCopySchemas,
       CORPORATE_SEO: m.corporateCopy.CORPORATE_SEO,
+      CORPORATE_H1: m.corporateCopy.CORPORATE_H1,
+      CORPORATE_SCHEMAS: m.corporateCopy.CORPORATE_SCHEMAS,
       CORPORATE_COPY: m.corporateCopy.CORPORATE_COPY,
       transformedDisplayUrl: m.imageTransform.transformedDisplayUrl,
       SERVICE_PAGE_LIST: m.serviceCopy.SERVICE_PAGE_LIST,
       serviceSchemas: m.serviceCopy.serviceSchemas,
       SERVICE_LINKS: m.serviceCopy.SERVICE_LINKS,
       SERVICES_HEADING: m.serviceCopy.SERVICES_HEADING,
+      PRINT_SERVICES_HEADING: m.serviceRouteSlugs.PRINT_SERVICES_HEADING,
       CATALOG_SEO: m.pageSeo.CATALOG_SEO,
       designSeoTitle: m.designSeo.designSeoTitle,
       designFallbackDescription: m.designSeo.designFallbackDescription,

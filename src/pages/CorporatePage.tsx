@@ -4,7 +4,7 @@ import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 import LandingCopySection from "@/components/landing/LandingCopySection";
-import { CORPORATE_COPY, CORPORATE_SEO } from "@/lib/corporateCopy";
+import { CORPORATE_COPY, CORPORATE_H1, CORPORATE_SCHEMAS, CORPORATE_SEO } from "@/lib/corporateCopy";
 
 export default function CorporatePage() {
   const { setMode } = useAppState();
@@ -15,7 +15,7 @@ export default function CorporatePage() {
         title={CORPORATE_SEO.title}
         description={CORPORATE_SEO.description}
         url={`${SITE_URL}/corporate`}
-        schemas={[LOCAL_BUSINESS_SCHEMA]}
+        schemas={[LOCAL_BUSINESS_SCHEMA, ...CORPORATE_SCHEMAS]}
       />
       <div className="max-w-3xl mx-auto px-4 py-12">
         <button
@@ -26,7 +26,7 @@ export default function CorporatePage() {
           მთავარი გვერდი
         </button>
 
-        <h1 className="text-3xl font-bold mb-4">კორპორატიული განყოფილება</h1>
+        <h1 className="text-3xl font-bold mb-4">{CORPORATE_H1}</h1>
         <p className="text-gray-500 dark:text-white/50 leading-relaxed mb-8">
           გთავაზობთ კორპორატიულ მომსახურებას — ბრენდირებული ტანსაცმელი, აქსესუარები და სარეკლამო პროდუქცია თქვენი კომპანიისთვის. ინდივიდუალური მიდგომა ყველა პროექტისთვის.
         </p>

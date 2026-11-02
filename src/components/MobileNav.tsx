@@ -28,6 +28,9 @@ interface MobileNavProps {
    *  — Radix only does that by itself for its own Trigger, and this sheet
    *  is opened by a plain controlled button. */
   returnFocusTo: RefObject<HTMLElement>;
+  /** The "სერვისები" group (lib/serviceRouteSlugs.ts SERVICE_LINKS), listed
+   *  under the destinations — the same four links the desktop dropdown has. */
+  services?: { heading: string; links: readonly { href: string; label: string }[] };
 }
 
 // The phone-width navigation: a slide-in sheet listing every destination
@@ -38,7 +41,7 @@ interface MobileNavProps {
 //
 // Loaded lazily by AppHeader on first open, the same way LoginModal is,
 // so the header on every page stays as cheap as it was.
-export default function MobileNav({ open, onOpenChange, items, lang, returnFocusTo }: MobileNavProps) {
+export default function MobileNav({ open, onOpenChange, items, lang, returnFocusTo, services }: MobileNavProps) {
   const location = useLocation();
 
   // Close on navigation. The link's own onClick already does this for
@@ -96,6 +99,31 @@ export default function MobileNav({ open, onOpenChange, items, lang, returnFocus
             );
           })}
         </nav>
+        {services && services.links.length > 0 && (
+          <nav className="flex flex-col gap-1 px-2 pb-4 border-t border-sidebar-border pt-3" aria-label={services.heading}>
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
+              {services.heading}
+            </p>
+            {services.links.map((l) => {
+              const active = location.pathname === l.href;
+              return (
+                <Link
+                  key={l.href}
+                  to={l.href}
+                  onClick={() => onOpenChange(false)}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex items-center min-h-11 px-3 rounded-lg text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
       </SheetContent>
     </Sheet>
   );

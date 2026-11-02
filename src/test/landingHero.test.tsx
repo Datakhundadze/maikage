@@ -94,6 +94,10 @@ describe("heroTitle", () => {
     expect(heroTitle("ჰუდი", "Premium Washed Hoodie")).toBe("Premium Washed Hoodie");
     expect(heroTitle("ჰუდი", null)).toBe("ჰუდი");
     expect(heroTitle("ჭიქა", null)).toBe("ჭიქა");
+    // /hoodie leads with its search phrase; its brand routes keep the brand.
+    expect(heroTitle("ჰუდი", null, "Hoodie")).toBe("ჰუდებზე ბეჭდვა");
+    expect(heroTitle("ჰუდი", "GILDAN Hoodie", "Hoodie")).toBe("GILDAN Hoodie");
+    expect(heroTitle("მაისური", null, "T-Shirt")).toBe("მაისური");
   });
 });
 

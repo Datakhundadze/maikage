@@ -78,6 +78,23 @@ function ServicePageView({ page }: { page: ServicePageCopy }) {
           ))}
         </div>
 
+        {page.images && page.images.length > 0 && (
+          <div className="mb-10 grid grid-cols-2 gap-4">
+            {page.images.map((img) => (
+              <img
+                key={img.src}
+                src={img.src}
+                alt={img.alt}
+                width={img.width}
+                height={img.height}
+                loading="lazy"
+                decoding="async"
+                className="w-full h-auto rounded-2xl bg-gray-100 dark:bg-white/5 object-contain"
+              />
+            ))}
+          </div>
+        )}
+
         <div className="space-y-8 text-sm leading-relaxed text-gray-600 dark:text-white/60">
           {page.sections.map((s) => (
             <section key={s.h2} className="space-y-3">

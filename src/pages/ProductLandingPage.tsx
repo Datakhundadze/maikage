@@ -1,14 +1,16 @@
 import { useRef } from "react";
 import { Navigate, useLocation, useNavigationType, useParams } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import SimplePage from "@/pages/SimplePage";
 import NotFound from "@/pages/NotFound";
 import LandingHero from "@/components/landing/LandingHero";
 import LandingCopySection from "@/components/landing/LandingCopySection";
+import PrintServicesLinks from "@/components/PrintServicesLinks";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { productTypeKa } from "@/lib/i18n";
 import { heroTitle } from "@/lib/heroTitle";
 import { landingSeo } from "@/lib/landingSeo";
-import { landingCopyFor } from "@/lib/landingCopy";
+import { landingCopyFor, landingCopySchemas } from "@/lib/landingCopy";
 import { fromPrice } from "@/lib/landingPrice";
 import { BRAND_SLUGS, defaultBrandFor, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
 
@@ -130,17 +132,39 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
   // Text section under the constructor — the bare product route only
   // (/t-shirt, never /t-shirt/<brand>); lib/landingCopy.ts.
   const copy = landingCopyFor(productSlug, brandPart);
+  // Service + FAQPage + BreadcrumbList when the copy carries them (/hoodie);
+  // the prerender writes the same three (lib/landingCopy.ts landingCopySchemas).
+  // A separate Helmet so SimplePage's own SeoHead stays exactly as it is.
+  const schemas = landingCopySchemas(copy);
   // The hero and a collapsed product picker exist only on these routes; "/"
   // renders SimplePage with neither.
   return (
-    <SimplePage
-      seoTitle={seo.title}
-      seoDescription={seo.description}
-      productPickerInitiallyOpen={false}
-      afterContent={copy ? <LandingCopySection copy={copy} price={copyPrice(product)} /> : undefined}
-      hero={({ onUploadClick }) => (
-        <LandingHero product={product} brand={brand} title={heroTitle(productKa, brand)} onUploadClick={onUploadClick} />
+    <>
+      {schemas && (
+        <Helmet>
+          {schemas.map((schema, i) => (
+            <script key={i} type="application/ld+json">
+              {JSON.stringify(schema)}
+            </script>
+          ))}
+        </Helmet>
       )}
-    />
+      <SimplePage
+        seoTitle={seo.title}
+        seoDescription={seo.description}
+        productPickerInitiallyOpen={false}
+        afterContent={
+          <>
+            {copy && <LandingCopySection copy={copy} price={copyPrice(product)} />}
+            {/* Template-level links to the service pages, on every product
+                and brand route (same block in the prerendered file). */}
+            <PrintServicesLinks tone="sidebar" excludeHref={canonicalPath} />
+          </>
+        }
+        hero={({ onUploadClick }) => (
+          <LandingHero product={product} brand={brand} title={heroTitle(productKa, brand, product)} onUploadClick={onUploadClick} />
+        )}
+      />
+    </>
   );
 }

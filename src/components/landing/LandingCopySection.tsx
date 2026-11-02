@@ -15,6 +15,9 @@ import type { LandingCopy } from "@/lib/landingCopy";
 // lib/corporateCopy.ts, price always null, tone "page"). A section may carry
 // `bullets` (bold term — text) instead of, or after, its body. /t-shirt has no
 // bullets and uses the default tone, so its markup is unchanged.
+//
+// Optional `images` (after the intro) and FAQ (`faqHeading` + `faq`, after the
+// sections): /hoodie and /corporate. /t-shirt has neither.
 
 // "sidebar" (default): the constructor column's theme tokens — the exact
 // classes /t-shirt always had. "page": CorporatePage's own palette; that page
@@ -27,6 +30,7 @@ const TONES = {
     h3: "text-sm font-semibold text-sidebar-foreground",
     strong: "font-semibold text-sidebar-foreground",
     link: "font-medium text-sidebar-foreground underline underline-offset-2 hover:text-primary",
+    img: "w-full h-auto rounded-xl bg-muted object-contain",
   },
   page: {
     section:
@@ -35,6 +39,7 @@ const TONES = {
     h3: "text-sm font-semibold text-gray-900 dark:text-white",
     strong: "font-semibold text-gray-900 dark:text-white",
     link: "font-medium text-gray-900 dark:text-white underline underline-offset-2 hover:text-amber-500",
+    img: "w-full h-auto rounded-xl bg-gray-100 dark:bg-white/5 object-contain",
   },
 } as const;
 
@@ -56,6 +61,22 @@ export default function LandingCopySection({ copy, price, tone = "sidebar" }: La
         {copy.h2}
       </h2>
       <p>{copy.intro}</p>
+      {copy.images && copy.images.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {copy.images.map((img) => (
+            <img
+              key={img.src}
+              src={img.src}
+              alt={img.alt}
+              width={img.width}
+              height={img.height}
+              loading="lazy"
+              decoding="async"
+              className={t.img}
+            />
+          ))}
+        </div>
+      )}
       {copy.sections.map((s) => (
         <div key={s.h3} className="space-y-1">
           <h3 className={t.h3}>{s.h3}</h3>
@@ -80,6 +101,17 @@ export default function LandingCopySection({ copy, price, tone = "sidebar" }: La
           )}
         </div>
       ))}
+      {copy.faq && copy.faq.length > 0 && (
+        <div className="space-y-3">
+          {copy.faqHeading && <h2 className={t.h2}>{copy.faqHeading}</h2>}
+          {copy.faq.map((item) => (
+            <div key={item.q} className="space-y-1">
+              <h3 className={t.h3}>{item.q}</h3>
+              <p>{item.a}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

@@ -4,7 +4,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper, Menu } from "lucide-react";
+import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper, Menu, ChevronDown } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
@@ -15,6 +15,7 @@ const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
 const MobileNav = lazyWithRetry(() => import("@/components/MobileNav"));
 const preloadMobileNav = () => import("@/components/MobileNav");
 import { useCart } from "@/hooks/useCart";
+import { SERVICE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
 
 // Hover-preload map: when the customer hovers a nav button we kick off
 // the route's chunk fetch so the click-to-render gap shrinks from
@@ -111,39 +112,74 @@ export default function AppHeader() {
             on its left half (a scroll container cannot scroll to a
             negative offset), which is exactly what hid the catalog link on
             phones. Below lg the hamburger above carries these links. */}
-        <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center overflow-x-auto">
-          {navItems.map(({ path, label, icon: Icon }) => {
-            const active = location.pathname === path;
-            const preload = PRELOAD_BY_PATH[path];
-            return (
-              // Real <a href> rather than a button, so the header gives every
-              // page a crawlable link to /designs, /portfolio, /blog and
-              // /contact. As buttons these were invisible to Googlebot, which
-              // left the catalog itself with no inbound link anywhere on the
-              // site.
-              //
-              // Every nav target is a non-root path, which always renders
-              // through <Routes> regardless of mode (the mode short-circuit in
-              // App.tsx only applies at "/"), so the <Link> alone is enough —
-              // no setMode needed, exactly as the old navigate() call.
-              <Link
-                key={path}
-                to={path}
-                onMouseEnter={preload}
-                onFocus={preload}
-                onTouchStart={preload}
-                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap ${
-                  active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                }`}
-              >
-                <Icon className="h-3 w-3" />
-                <span>{label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="hidden lg:flex items-center gap-0.5 flex-1 justify-center min-w-0">
+          {/* "სერვისები" — the four service pages (lib/serviceRouteSlugs.ts).
+              A hover / focus-within panel, not a Radix menu: the links are
+              real <a href> that stay in the DOM while closed, so every page
+              with this header links all four. Kept outside the tab row's
+              overflow container so the panel is not clipped. */}
+          <div className="relative group shrink-0">
+            <button
+              type="button"
+              aria-haspopup="true"
+              className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent group-focus-within:text-sidebar-foreground"
+            >
+              <span>{lang === "en" ? "Services" : SERVICES_HEADING}</span>
+              <ChevronDown className="h-3 w-3" />
+            </button>
+            <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity absolute left-0 top-full z-50 pt-1">
+              <ul className="w-72 rounded-xl border border-sidebar-border bg-sidebar p-1.5 shadow-lg">
+                {SERVICE_LINKS.map((l) => (
+                  <li key={l.href}>
+                    <Link
+                      to={l.href}
+                      className={`block rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                        location.pathname === l.href
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                      }`}
+                    >
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <nav className="flex items-center gap-0.5 overflow-x-auto">
+            {navItems.map(({ path, label, icon: Icon }) => {
+              const active = location.pathname === path;
+              const preload = PRELOAD_BY_PATH[path];
+              return (
+                // Real <a href> rather than a button, so the header gives every
+                // page a crawlable link to /designs, /portfolio, /blog and
+                // /contact. As buttons these were invisible to Googlebot, which
+                // left the catalog itself with no inbound link anywhere on the
+                // site.
+                //
+                // Every nav target is a non-root path, which always renders
+                // through <Routes> regardless of mode (the mode short-circuit in
+                // App.tsx only applies at "/"), so the <Link> alone is enough —
+                // no setMode needed, exactly as the old navigate() call.
+                <Link
+                  key={path}
+                  to={path}
+                  onMouseEnter={preload}
+                  onFocus={preload}
+                  onTouchStart={preload}
+                  className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap ${
+                    active
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                  }`}
+                >
+                  <Icon className="h-3 w-3" />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
         {/* Below lg the nav row is gone, so this takes its flex-1 slot and
             keeps the cart / language / sign-in group pinned to the right. */}
         <div className="flex-1 lg:hidden" aria-hidden="true" />
@@ -210,6 +246,7 @@ export default function AppHeader() {
             returnFocusTo={menuButtonRef}
             lang={lang}
             items={navItems.map((item) => ({ ...item, preload: PRELOAD_BY_PATH[item.path] }))}
+            services={{ heading: lang === "en" ? "Services" : SERVICES_HEADING, links: SERVICE_LINKS }}
           />
         </Suspense>
       )}

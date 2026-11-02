@@ -23,6 +23,9 @@
 //                             whole text, FAQ and Service / FAQPage /
 //                             BreadcrumbList JSON-LD; its prices are read from
 //                             pricing.ts there, as on /faq
+//   (/corporate, /hoodie, the service pages: Service / FAQPage /
+//   BreadcrumbList JSON-LD and photos; /design/* and every product landing
+//   route: the "ბეჭდვის სერვისები" links block)
 //   dist/<product>[/<brand>]/index.html
 //                             every product landing route App.tsx registers
 //                             (/t-shirt, /hoodie/premium-washed, …): hero
@@ -88,6 +91,7 @@ import {
   corporatePage,
   faqPageHtml,
   jsonLdText,
+  printServicesHtml,
   servicePageHtml,
   landingCopyHtml,
   landingRoutes,
@@ -258,6 +262,7 @@ const STYLE = {
   card: "margin:0 0 24px",
   gallery: "display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0 0 24px;padding:0;list-style:none",
   galleryImg: "display:block;width:100%;height:auto;border-radius:12px",
+  inlineImg: "display:inline-block;width:48%;max-width:320px;height:auto;margin:0 1% 12px 0;border-radius:12px;vertical-align:top",
 };
 const link = (href, text) => `<a href="${esc(href)}" style="${STYLE.a}">${esc(text)}</a>`;
 
@@ -378,7 +383,13 @@ async function fetchAll({ url, key }, table, select, filter) {
 
 // ── Pages ───────────────────────────────────────────────────────────────────
 
-function designRoot(d, description) {
+/** The "ბეჭდვის სერვისები" links (PrintServicesLinks), when the app modules loaded. */
+function servicesBlock(app, exclude) {
+  if (!app?.SERVICE_LINKS?.length) return "";
+  return printServicesHtml({ heading: app.PRINT_SERVICES_HEADING, links: app.SERVICE_LINKS }, { esc, link, style: STYLE }, exclude);
+}
+
+function designRoot(d, description, app) {
   const image = d.thumbnail_url || d.print_file_url;
   const label = d.category ? CATEGORY_LABEL[d.category] ?? d.category : null;
   const body = d.description_ka?.trim() || description;
@@ -388,6 +399,7 @@ function designRoot(d, description) {
     `<h1 style="${STYLE.h1}">${esc(d.title_ka)}</h1>`,
     image ? `<img src="${esc(image)}" alt="${esc(d.title_ka)}" width="800" height="800" style="${STYLE.img}">` : "",
     `<p style="${STYLE.p}">${esc(body)}</p>`,
+    servicesBlock(app),
     `<p style="${STYLE.footer}">${link("/designs", "ყველა დიზაინი კატალოგში")} · ${link("/", "Maika.ge მთავარი")}</p>`,
     `</main>`,
   ].filter(Boolean).join("\n");
@@ -569,7 +581,7 @@ function showroomRoot() {
  * "ატვირთე ფოტო" links to the route itself. No price (LandingHero's
  * "… ₾-დან" comes from pricing.ts at runtime).
  */
-function landingRoot(route, { productKa, title, leadTime, brands, copy }) {
+function landingRoot(route, { productKa, title, leadTime, brands, copy, services }) {
   const h = LANDING_HERO;
   const crumbs = [link("/", LANDING_LABELS.home)];
   if (route.brandSlug) crumbs.push(link(`/${route.productSlug}`, productKa));
@@ -584,6 +596,7 @@ function landingRoot(route, { productKa, title, leadTime, brands, copy }) {
         `<ul style="${STYLE.ul}">${brands.map((b) => `<li style="${STYLE.li}">${link(b.path, b.brand)}</li>`).join("")}</ul>`
       : "",
     copy ? landingCopyHtml(copy, { esc, link, style: STYLE }) : "",
+    services ?? "",
     `</main>`,
   ].filter(Boolean).join("\n");
 }
@@ -615,6 +628,7 @@ async function writeAppPages(template, app, stats) {
       description: corp.description,
       canonical: `${SITE_URL}/corporate`,
       image: DEFAULT_OG_IMAGE,
+      jsonLd: corp.jsonLd,
       rootHtml: corp.rootHtml,
     });
   })) stats.lists.push("corporate");
@@ -671,17 +685,21 @@ async function writeAppPages(template, app, stats) {
       allowLandingRoute(route);
       const productKa = app.productTypeKa(r.product);
       const seo = app.landingSeo(r.product, productKa, r.brand);
+      const copy = app.landingCopyFor(r.productSlug, r.brandSlug);
       return renderPage(template, {
         title: seo.title,
         description: seo.description,
         canonical: `${SITE_URL}${r.path}`,
         image: DEFAULT_OG_IMAGE,
+        // Service / FAQPage / BreadcrumbList when the copy carries them (/hoodie).
+        jsonLd: app.landingCopySchemas(copy) ?? undefined,
         rootHtml: landingRoot(r, {
           productKa,
-          title: app.heroTitle(productKa, r.brand),
+          title: app.heroTitle(productKa, r.brand, r.product),
           leadTime: app.LEAD_TIME_KA,
           brands: r.brandSlug ? [] : routes.filter((b) => b.brandSlug && b.productSlug === r.productSlug),
-          copy: app.landingCopyFor(r.productSlug, r.brandSlug),
+          copy,
+          services: servicesBlock(app, r.path),
         }),
       });
     });
@@ -847,7 +865,7 @@ async function writeDataPages(template, cfg, stats, app) {
         description,
         canonical: `${SITE_URL}/design/${d.slug}`,
         image: d.thumbnail_url || d.print_file_url,
-        rootHtml: designRoot(d, description),
+        rootHtml: designRoot(d, description, app),
       });
     }, stats);
 
@@ -930,8 +948,8 @@ async function writeDataPages(template, cfg, stats, app) {
 // Every string is copied verbatim from the codebase (sources noted). No
 // prices, no production times.
 const HOME = {
-  h1: "შექმენი შენი სტილი მარტივად",        // LandingPage.tsx:129 + :131 ("შექმენი შენი სტილი " + "მარტივად")
-  tagline: "Create your unique design easily", // LandingPage.tsx:135 (the non-"en" branch; it is English in the source)
+  h1: "ტანსაცმელზე ბეჭდვა შენი დიზაინით",      // LandingPage.tsx hero h1 ("ტანსაცმელზე ბეჭდვა " + "შენი დიზაინით")
+  tagline: "შექმენი უნიკალური დიზაინი მარტივად", // LandingPage.tsx hero subtitle (the non-"en" branch)
   links: [
     { href: "/designs", text: "კატალოგი" },                     // i18n.ts:228 nav.catalog
     { href: "/blog", text: "ბლოგი" },                           // BlogPage.tsx:58
@@ -950,10 +968,10 @@ const HOME_GUARD =
 
 function homeRoot(app) {
   const c = CONTACT;
-  // LandingPage's "სერვისები" links (lib/serviceRouteSlugs.ts), when the app
-  // modules loaded.
+  // LandingPage's "სერვისები" section (lib/serviceRouteSlugs.ts): each link
+  // with its one-line description, when the app modules loaded.
   const services = app?.SERVICE_LINKS?.length
-    ? `<h2 style="${STYLE.h3}">${esc(app.SERVICES_HEADING)}</h2>\n<ul style="${STYLE.ul}">${app.SERVICE_LINKS.map((l) => `<li style="${STYLE.li}">${link(l.href, l.label)}</li>`).join("")}</ul>`
+    ? `<section>\n<h2 style="${STYLE.h2}">${esc(app.SERVICES_HEADING)}</h2>\n<ul style="${STYLE.ul}">${app.SERVICE_LINKS.map((l) => `<li style="${STYLE.li}">${link(l.href, l.label)}${l.description ? ` — ${esc(l.description)}` : ""}</li>`).join("")}</ul>\n</section>`
     : "";
   const ext = (href, text) =>
     `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="${STYLE.a}">${esc(text)}</a>`;

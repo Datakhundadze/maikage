@@ -48,14 +48,15 @@ export const CONTACT = {
 // Verbatim; seoStatic.test.ts checks each string against its source file.
 
 /**
- * src/pages/CorporatePage.tsx. Its <title> / description and the SEO text
+ * src/pages/CorporatePage.tsx. Its <title> / description, H1 and the SEO text
  * section are NOT copied here: they live in src/lib/corporateCopy.ts
- * (CORPORATE_SEO, CORPORATE_COPY), which prerender.mjs loads through
- * appModules.mjs.
+ * (CORPORATE_SEO, CORPORATE_H1, CORPORATE_COPY), which prerender.mjs loads
+ * through appModules.mjs. `h1` below is a copy for public/llms.txt only
+ * (seoStatic.test.ts checks it equals CORPORATE_H1).
  */
 export const CORPORATE = {
   backLabel: "მთავარი გვერდი",
-  h1: "კორპორატიული განყოფილება",
+  h1: "მაისურების ბრენდირება კომპანიის ლოგოთი", // corporateCopy.ts CORPORATE_H1
   intro:
     "გთავაზობთ კორპორატიულ მომსახურებას — ბრენდირებული ტანსაცმელი, აქსესუარები და სარეკლამო პროდუქცია თქვენი კომპანიისთვის. ინდივიდუალური მიდგომა ყველა პროექტისთვის.",
   features: ["ხარისხი", "სისწრაფე", "ინდივიდუალური მიდგომა", "კონკურენტული ფასები"],
@@ -153,6 +154,7 @@ export function landingCopyHtml(copy, { esc, link, style }) {
     `<section>`,
     `<h2 style="${style.h2}">${esc(copy.h2)}</h2>`,
     `<p style="${style.p}">${esc(copy.intro)}</p>`,
+    ...(copy.images?.length ? [imagesHtml(copy.images, { esc, style })] : []),
     ...copy.sections.map((s) =>
       [
         `<h3 style="${style.h3}">${esc(s.h3)}</h3>`,
@@ -165,25 +167,65 @@ export function landingCopyHtml(copy, { esc, link, style }) {
         s.link ? `<p style="${style.p}">${link(s.link.href, s.link.label)}</p>` : "",
       ].filter(Boolean).join("\n"),
     ),
+    ...(copy.faq?.length
+      ? [
+          [
+            copy.faqHeading ? `<h2 style="${style.h2}">${esc(copy.faqHeading)}</h2>` : "",
+            ...copy.faq.map((item) => `<h3 style="${style.h3}">${esc(item.q)}</h3>\n<p style="${style.p}">${esc(item.a)}</p>`),
+          ].filter(Boolean).join("\n"),
+        ]
+      : []),
     `</section>`,
   ].join("\n");
 }
 
 /**
- * /corporate as static HTML: <title> / description from CORPORATE_SEO and a
+ * Photos (lib/landingCopy.ts / lib/serviceCopy.ts `images`): same src, alt
+ * and pixel size as the live page, lazy-loaded.
+ */
+export function imagesHtml(images, { esc, style }) {
+  return `<p style="${style.p}">${images
+    .map(
+      (img) =>
+        `<img src="${esc(img.src)}" alt="${esc(img.alt)}" width="${esc(img.width)}" height="${esc(img.height)}" loading="lazy" decoding="async" style="${style.inlineImg ?? ""}">`,
+    )
+    .join(" ")}</p>`;
+}
+
+/**
+ * The "ბეჭდვის სერვისები" block (components/PrintServicesLinks.tsx) as static
+ * HTML: heading + the service links (lib/serviceRouteSlugs.ts SERVICE_LINKS),
+ * minus the page's own URL.
+ *
+ * @param services  { heading, links } — PRINT_SERVICES_HEADING / SERVICE_LINKS
+ * @param h         prerender.mjs's own helpers: esc, link, style (its STYLE)
+ * @param exclude   the current page's path, left out
+ */
+export function printServicesHtml(services, { esc, link, style }, exclude) {
+  const links = (services?.links ?? []).filter((l) => l.href !== exclude);
+  if (links.length === 0) return "";
+  return `<nav>\n<h2 style="${style.h3}">${esc(services.heading)}</h2>\n<ul style="${style.ul}">${links
+    .map((l) => `<li style="${style.li}">${link(l.href, l.label)}</li>`)
+    .join("")}</ul>\n</nav>`;
+}
+
+/**
+ * /corporate as static HTML: <title> / description from CORPORATE_SEO, the
+ * Service / FAQPage / BreadcrumbList JSON-LD (CORPORATE_SCHEMAS), and a
  * #root that follows CorporatePage's order — back link, h1, intro, the four
  * feature labels, the SEO text section (CORPORATE_COPY), then the CTA. The
  * CTA opens an inquiry form on the live page; here it links to /contact.
  *
  * @param app   { CORPORATE_SEO, CORPORATE_COPY } from src/lib/corporateCopy.ts
  * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
- * @returns {{ title: string, description: string, rootHtml: string }}
+ * @returns {{ title: string, description: string, jsonLd: object[], rootHtml: string }}
  */
-export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY }, { esc, link, style }) {
+export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS }, { esc, link, style }) {
   const c = CORPORATE;
   return {
     title: CORPORATE_SEO.title,
     description: CORPORATE_SEO.description,
+    jsonLd: CORPORATE_SCHEMAS ?? [],
     rootHtml: [
       `<main style="${style.main}">`,
       `<nav style="${style.nav}">${link("/", c.backLabel)}</nav>`,
@@ -218,6 +260,7 @@ export function servicePageHtml(page, { esc, link, style }) {
     `<h1 style="${style.h1}">${esc(page.h1)}</h1>`,
     `<p style="${style.p}">${esc(page.intro)}</p>`,
     page.heroLinks?.length ? links(page.heroLinks) : "",
+    page.images?.length ? imagesHtml(page.images, { esc, style }) : "",
     ...page.sections.map((s) =>
       [
         `<section>`,

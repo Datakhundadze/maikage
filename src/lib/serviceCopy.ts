@@ -20,8 +20,8 @@
 import type { ProductType } from "@/lib/catalog";
 import { fromPrice } from "@/lib/landingPrice";
 import { LEAD_TIME_KA } from "@/lib/leadTime";
-import { FAQ_DELIVERY_PRICES, faqPageSchema, type FaqItem } from "@/lib/faqContent";
-import { buildBreadcrumbList, SITE_URL } from "@/lib/seoSchemas";
+import { FAQ_DELIVERY_PRICES, type FaqItem } from "@/lib/faqContent";
+import { buildServiceSchemas, SERVICE_CONTACT } from "@/lib/serviceSchema";
 import {
   SERVICE_LINKS,
   SERVICE_PAGE_NAMES,
@@ -30,11 +30,19 @@ import {
   type ServicePageSlug,
 } from "@/lib/serviceRouteSlugs";
 
-export { SERVICE_LINKS, SERVICES_HEADING };
+export { SERVICE_CONTACT, SERVICE_LINKS, SERVICES_HEADING };
 
 export interface ServiceLink {
   href: string;
   label: string;
+}
+
+/** A photo on the page: a file under public/, its Georgian alt text and its pixel size. */
+export interface ServiceImage {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
 }
 
 /** A bold term, " — ", then the text (same shape as LandingCopyBullet). */
@@ -65,6 +73,8 @@ export interface ServicePageCopy {
   intro: string;
   /** Call-to-action row right under the intro. */
   heroLinks: ServiceLink[];
+  /** Photos shown after the hero links (lazy-loaded, explicit size). */
+  images?: ServiceImage[];
   sections: ServiceSection[];
   faqHeading: string;
   faq: FaqItem[];
@@ -74,16 +84,6 @@ export interface ServicePageCopy {
 }
 
 // ── Shared facts ────────────────────────────────────────────────────────────
-
-/**
- * Contact links — the same values as the /contact page and SeoHead
- * (scripts/lib/seo.mjs CONTACT; src/test/servicePages.test.ts checks them).
- */
-export const SERVICE_CONTACT = {
-  phone: { display: "+995 599 05 08 07", tel: "+995599050807" },
-  whatsapp: "https://wa.me/995599050807",
-  facebook: "https://www.facebook.com/maika.ge",
-} as const;
 
 /** Showroom line — the address /contact shows, in the wording the owner uses. */
 const SHOWROOM_KA = "დინამო არენა, მე-10 კარი (ა. წერეთლის #2, თბილისი)";
@@ -143,6 +143,10 @@ export const PRINTING_PAGE: ServicePageCopy = {
   h1: "მაისურებზე ბეჭდვა თბილისში",
   intro: `maika.ge-ზე მაისურის დაბეჭდვა ერთი ცალიდანაც შეგიძლია — შენი ფოტოთი, ლოგოთი, წარწერით ან ხელოვნური ინტელექტით შექმნილი დიზაინით. 15 წელია ვკერავთ და ვბეჭდავთ თბილისში. შეკვეთა მზადდება ${LEAD_TIME_KA}ში, მიწოდება მთელ საქართველოშია.`,
   heroLinks: [DESIGNER_LINK, CORPORATE_LINK],
+  images: [
+    { src: "/showroom/tee-white-front.webp", alt: "თეთრი მაისური — მასზე შენს ფოტოს, ლოგოს ან წარწერას დავბეჭდავთ", width: 646, height: 948 },
+    { src: "/showroom/tee-black-front.webp", alt: "შავი მაისური ბეჭდვისთვის — DTF ბეჭდვა ერთი ცალიდან", width: 660, height: 942 },
+  ],
   sections: [
     {
       h2: "ბეჭდვის მეთოდები",
@@ -280,6 +284,10 @@ export const SPORT_KITS_PAGE: ServicePageCopy = {
   intro:
     "ვკერავთ სპორტულ ფორმებს გუნდებისთვის — ფეხბურთისა და კალათბურთისთვის. კომპლექტში შედის მაისური და შორტი, გუნდის ლოგო, მოთამაშის გვარი და ნომერი. ვამზადებთ ზრდასრულებისთვისაც და ნებისმიერი ასაკის ბავშვებისთვისაც.",
   heroLinks: CONTACT_LINKS,
+  images: [
+    { src: "/products/sport/jersey-3.webp", alt: "ფეხბურთის ფორმის მაისური გუნდის ლოგოთი, ფერადი არშიით", width: 832, height: 1248 },
+    { src: "/products/sport/jersey-2.webp", alt: "კალათბურთის მაისური გუნდის ფერებში, წარწერით", width: 832, height: 1248 },
+  ],
   sections: [
     {
       h2: "რა შედის ფორმაში",
@@ -367,39 +375,15 @@ export const SERVICE_PAGE_LIST: readonly ServicePageCopy[] = SERVICE_PAGE_SLUGS.
 
 // ── JSON-LD ─────────────────────────────────────────────────────────────────
 
-const PROVIDER = {
-  "@type": "LocalBusiness",
-  name: "Maika.ge",
-  url: SITE_URL,
-  image: `${SITE_URL}/maika-logo.png`,
-  telephone: SERVICE_CONTACT.phone.tel,
-  email: "maika@maika.ge",
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: "ა. წერეთლის #2, დინამოს სტადიონი, კარი #10",
-    addressLocality: "Tbilisi",
-    addressCountry: "GE",
-  },
-};
-
 /** Service + FAQPage + BreadcrumbList — the same three on the live page and in the static file. */
 export function serviceSchemas(page: ServicePageCopy): object[] {
-  const url = `${SITE_URL}${page.path}`;
-  return [
-    {
-      "@context": "https://schema.org",
-      "@type": "Service",
-      name: page.h1,
-      serviceType: page.serviceType,
-      description: page.seo.description,
-      url,
-      provider: PROVIDER,
-      areaServed: [
-        { "@type": "Country", name: "Georgia" },
-        { "@type": "City", name: "Tbilisi" },
-      ],
-    },
-    faqPageSchema([{ heading: page.faqHeading, items: page.faq }]),
-    buildBreadcrumbList([{ name: "მთავარი", url: SITE_URL }, { name: page.name }]),
-  ];
+  return buildServiceSchemas({
+    path: page.path,
+    h1: page.h1,
+    name: page.name,
+    serviceType: page.serviceType,
+    description: page.seo.description,
+    faqHeading: page.faqHeading,
+    faq: page.faq,
+  });
 }

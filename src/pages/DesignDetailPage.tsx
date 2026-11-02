@@ -9,6 +9,7 @@ import { useCart } from "@/hooks/useCart";
 import AppHeader from "@/components/AppHeader";
 import CatalogDesignCard from "@/components/CatalogDesignCard";
 import DesignDescription from "@/components/catalog/DesignDescription";
+import PrintServicesLinks from "@/components/PrintServicesLinks";
 const OrderDialog = lazy(() => import("@/components/OrderDialog"));
 import { Button } from "@/components/ui/button";
 import {
@@ -888,6 +889,10 @@ export default function DesignDetailPage() {
               </div>
             </section>
           )}
+
+          {/* Template-level links to the service pages (same block in the
+              prerendered dist/design/<slug>/index.html). */}
+          <PrintServicesLinks />
         </div>
       </div>
 

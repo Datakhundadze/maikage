@@ -103,7 +103,17 @@ describe("service pages — data", () => {
       expect(p.name).toBe(SERVICE_PAGE_NAMES[p.slug]);
     }
     expect(SERVICE_PAGE_LINKS.map((l) => l.href)).toEqual(SERVICE_PAGE_LIST.map((p) => p.path));
-    expect(SERVICE_LINKS.map((l) => l.href)).toEqual([...SERVICE_PAGE_LIST.map((p) => p.path), "/corporate"]);
+    // The four service links, exact-match anchors (home, header, /faq, design + landing pages).
+    expect(SERVICE_LINKS.map((l) => [l.href, l.label])).toEqual([
+      ["/maisurebze-bechdva", "მაისურებზე ბეჭდვა"],
+      ["/hoodie", "ჰუდებზე ბეჭდვა"],
+      ["/corporate", "მაისურების ბრენდირება კომპანიის ლოგოთი"],
+      ["/sportuli-formebi", "ფეხბურთის და სპორტული ფორმები"],
+    ]);
+    for (const l of SERVICE_LINKS) {
+      expect(l.description.length).toBeGreaterThan(20);
+      expect(l.description).not.toContain("₾");
+    }
   });
 
   it("App.tsx registers every slug, lazily, before the 404 route", () => {
@@ -221,7 +231,7 @@ describe("service pages — prices come from pricing.ts only", () => {
 describe("service pages — language and brands", () => {
   const texts = [
     ...SERVICE_PAGE_LIST.flatMap(pageTexts),
-    ...SERVICE_LINKS.map((l) => l.label),
+    ...SERVICE_LINKS.flatMap((l) => [l.label, l.description]),
     HOME_SEO.title,
     HOME_SEO.description,
     CATALOG_SEO.title,
@@ -282,6 +292,11 @@ describe("service pages — static HTML and JSON-LD", () => {
       }
       expect(text).toContain(p.intro);
       expect(text).toContain(p.cta.body);
+      expect(p.images?.length).toBeGreaterThanOrEqual(1);
+      for (const img of p.images ?? []) {
+        expect(img.src).toMatch(/^\/(showroom|products)\/.+\.webp$/);
+        expect(html).toContain(`src="${img.src}" alt="${esc(img.alt)}" width="${img.width}" height="${img.height}" loading="lazy"`);
+      }
     });
 
     it(`${p.path}: Service + FAQPage + BreadcrumbList`, () => {
@@ -372,6 +387,9 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     expect(FAQ_PAGE.title).toContain("მაისურების ბეჭდვა — ხშირი კითხვები");
     expect(PORTFOLIO.description).toContain("ჩვენი ნამუშევრები");
     expect(HOME_SEO.title.startsWith("Maika.ge")).toBe(true);
+    // No cannibalisation: the exact phrase belongs to /maisurebze-bechdva.
+    expect(HOME_SEO.title).not.toContain("მაისურებზე ბეჭდვა");
+    expect(HOME_SEO.title).toContain("ტანსაცმელზე ბეჭდვა");
     expect(`${HOME_SEO.title} ${HOME_SEO.description}`).toMatch(/მაისურებზე ბეჭდვა|მაისურების ბეჭდვა/);
     expect(HOME_SEO.description).toContain("საქართველოს ცნობილი მაისურების ბრენდი");
   });
@@ -401,8 +419,19 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     const home = source("src/pages/LandingPage.tsx");
     expect(home).toContain("SERVICE_LINKS.map((l) =>");
     expect(home).toContain("SERVICE_PAGE_LINKS.map((l) =>");
+    expect(home).toContain('to="/sportuli-formebi"');
+    expect(home).not.toContain('setMode("sport")');
+    expect(home).toContain('"ტანსაცმელზე ბეჭდვა "');
+    expect(home).toContain('"შენი დიზაინით"');
+    expect(home).not.toContain('"Create your unique design easily"');
+    expect(source("src/components/AppHeader.tsx")).toContain("SERVICE_LINKS.map((l) =>");
+    expect(source("src/components/MobileNav.tsx")).toContain("services.links.map((l) =>");
+    expect(source("src/pages/DesignDetailPage.tsx")).toContain("<PrintServicesLinks />");
+    expect(source("src/pages/ProductLandingPage.tsx")).toContain("<PrintServicesLinks tone=\"sidebar\" excludeHref={canonicalPath} />");
     expect(source("src/pages/FaqPage.tsx")).toContain("SERVICE_LINKS.map((l) =>");
     expect(source("scripts/prerender.mjs")).toContain("app.SERVICE_LINKS.map((l) =>");
+    expect(source("scripts/prerender.mjs")).toContain("servicesBlock(app)");
+    expect(source("scripts/prerender.mjs")).toContain("services: servicesBlock(app, r.path)");
   });
 });
 

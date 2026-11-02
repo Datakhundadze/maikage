@@ -128,13 +128,13 @@ export default function LandingPage() {
         {/* Hero */}
         <div className="text-center mb-16 sm:mb-20 max-w-3xl">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.2] mb-3 text-foreground">
-            {lang === "en" ? "Create your style " : "შექმენი შენი სტილი "}
+            {lang === "en" ? "Clothing printing " : "ტანსაცმელზე ბეჭდვა "}
             <span className="text-primary">
-              {lang === "en" ? "easily" : "მარტივად"}
+              {lang === "en" ? "with your design" : "შენი დიზაინით"}
             </span>
           </h1>
           <p className="text-lg sm:text-xl text-[#2a2a2a] dark:text-muted-foreground font-light tracking-wide">
-            {lang === "en" ? "Design your unique products with ease" : "Create your unique design easily"}
+            {lang === "en" ? "Design your unique products with ease" : "შექმენი უნიკალური დიზაინი მარტივად"}
           </p>
         </div>
 
@@ -261,12 +261,14 @@ export default function LandingPage() {
                     ? "Professional sport uniforms with custom branding — team logo, number, name. Name & number printing from 1 piece, custom team kits from 10–12 sets."
                     : "პროფესიონალური სპორტული ფორმები ინდივიდუალური ბრენდინგით — გუნდის ლოგო, ნომერი, გვარი. გვარის და ნომრის ბეჭდვა 1 ცალიდან, შეკერვა 10–12 კომპლექტიდან."}
                 </p>
-                <button
-                  onClick={() => setMode("sport")}
+                {/* A real link to the team-kits service page (it was a
+                    mode-switch button, invisible to crawlers). */}
+                <Link
+                  to="/sportuli-formebi"
                   className="inline-flex items-center gap-2 rounded-xl bg-[#25B988] hover:bg-[#1ea876] text-white font-semibold px-6 py-3 text-sm transition-colors"
                 >
                   {lang === "en" ? "Details" : "დეტალები"} <ArrowRight className="h-4 w-4" />
-                </button>
+                </Link>
               </div>
 
               {/* Auto-rotating photo slideshow. Below the fold, but the
@@ -303,16 +305,36 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Services — plain crawlable links to the service pages
-            (lib/serviceRouteSlugs.ts; same links in the static home shell). */}
-        <nav aria-label={SERVICES_HEADING} className="mb-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs">
-          <span className="font-semibold text-muted-foreground">{lang === "en" ? "Services" : SERVICES_HEADING}:</span>
-          {SERVICE_LINKS.map((l) => (
-            <Link key={l.href} to={l.href} className="text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
-              {l.label}
-            </Link>
-          ))}
-        </nav>
+        {/* Services — crawlable links to the four service pages with
+            exact-match anchors and a one-line description each
+            (lib/serviceRouteSlugs.ts; the same list in the static home
+            shell, scripts/prerender.mjs homeRoot). */}
+        <section aria-labelledby="home-services-title" className="w-full max-w-4xl mb-12 sm:mb-16">
+          <h2 id="home-services-title" className="text-2xl sm:text-3xl font-bold mb-6 text-center" style={{ color: isGreen ? "white" : undefined }}>
+            {lang === "en" ? "Services" : SERVICES_HEADING}
+          </h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SERVICE_LINKS.map((l) => (
+              <li key={l.href}>
+                <Link
+                  to={l.href}
+                  className={`group flex h-full flex-col rounded-2xl border p-5 transition-colors ${
+                    isGreen
+                      ? "bg-white border-white/80 shadow-lg hover:shadow-xl"
+                      : "border-white/[0.08] bg-card hover:border-white/[0.15]"
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-1.5 text-base font-semibold" style={{ color: isGreen ? GREEN : undefined }}>
+                    {l.label} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                  <span className="mt-1 text-sm leading-relaxed" style={{ color: isGreen ? GREEN_DARK : "rgba(255,255,255,0.6)" }}>
+                    {l.description}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
 
         {/* Footer */}
         <div className="mt-auto flex flex-col items-center gap-3 text-sm">
