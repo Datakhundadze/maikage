@@ -251,6 +251,7 @@ describe("public/blog covers", () => {
     "hoodies.webp",
     "racks-typewriter.webp",
     "racks.webp",
+    "showroom-wall.webp",
     "showroom.webp",
     "storefront.webp",
     "tshirts-colors.webp",
@@ -258,7 +259,7 @@ describe("public/blog covers", () => {
     "white-tees.webp",
   ];
 
-  it("the eight covers exist as WebP, at most 1600 px wide", () => {
+  it("the blog covers exist as WebP, at most 1600 px wide", () => {
     expect(readdirSync(path.join(ROOT, "public/blog")).sort()).toEqual(EXPECTED);
     for (const f of EXPECTED) {
       const buf = readFileSync(path.join(ROOT, "public/blog", f));

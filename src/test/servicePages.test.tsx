@@ -316,11 +316,11 @@ describe("service pages — static HTML and JSON-LD", () => {
       }
       expect(text).toContain(p.intro);
       expect(text).toContain(p.cta.body);
-      // Vests / raincoats: no photo exists — no image rather than a wrong one.
-      if (p.slug === "zhiletebi-da-satsvimrebi") expect(p.images ?? []).toHaveLength(0);
+      // Vests / raincoats: real raincoat photos from the showroom (2026-11-02).
+      if (p.slug === "zhiletebi-da-satsvimrebi") expect((p.images ?? []).length).toBeGreaterThan(0);
       else expect(p.images?.length).toBeGreaterThanOrEqual(1);
       for (const img of p.images ?? []) {
-        expect(img.src).toMatch(/^\/(showroom|products)\/.+\.webp$/);
+        expect(img.src).toMatch(/^\/(showroom|products|services)\/.+\.webp$/);
         expect(html).toContain(`src="${img.src}" alt="${esc(img.alt)}" width="${img.width}" height="${img.height}" loading="lazy"`);
       }
     });
@@ -701,7 +701,7 @@ describe("phase 3 service pages", () => {
       expect(allLinks(p).map((l) => l.href)).toContain(order);
       for (const img of p.images ?? []) {
         expect(img.alt).toMatch(/[ა-ჰ]/);
-        expect(img.src).toMatch(/^\/products\/.+\.webp$/);
+        expect(img.src).toMatch(/^\/(products|services)\/.+\.webp$/);
         expect(readFileSync(path.join(ROOT, "public", img.src)).length).toBeGreaterThan(0);
       }
       // Related-links mesh: the page has its own list, and other pages link to it.
@@ -726,10 +726,10 @@ describe("phase 3 service pages", () => {
     for (const w of ["კომპანი", "ღონისძიებ", "შენი დიზაინით"]) expect(text).toContain(w);
   });
 
-  it("vests / raincoats: made to order, not sold online, logo methods, paperwork, corporate CTA, no image, no invented specs", () => {
+  it("vests / raincoats: made to order, not sold online, logo methods, paperwork, corporate CTA, real photos, no invented specs", () => {
     const p = SERVICE_PAGES["zhiletebi-da-satsvimrebi"];
     const text = pageTexts(p).join("\n");
-    expect(p.images ?? []).toHaveLength(0);
+    expect((p.images ?? []).every((i) => i.src.startsWith("/services/raincoat-"))).toBe(true);
     expect(p.heroLinks[0].href).toBe("/corporate");
     expect(p.cta.links[0].href).toBe("/corporate");
     for (const w of ["ვკერავთ შეკვეთით", "საიტზე არ ვყიდით", "DTF", "შოლკოგრაფია", "ქარგვ", "ინვოისს ყოველთვის ვწერთ"]) {

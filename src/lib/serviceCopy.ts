@@ -1221,7 +1221,8 @@ export const PHONE_CASES_PAGE: ServicePageCopy = {
   intro: `ტელეფონის ქეისი შენი ფოტოთი, წარწერით ან დიზაინით — ნივთი, რომელიც ყოველდღე ხელში გიჭირავს და მხოლოდ შენ გაქვს. maika.ge-ზე ქეისის დიზაინს თავად აწყობ ონლაინ: ატვირთავ ფოტოს, დაწერ ტექსტს ან იდეას აღწერ და AI დიზაინს შეგიქმნის. როგორ გამოჩნდება, ეკრანზევე ხედავ, შეკვეთა კი მზადდება ${LEAD_TIME_KA}ში.`,
   heroLinks: [PHONE_CASE_LINK, ...CONTACT_LINKS.slice(1, 2)],
   images: [
-    { src: "/products/phone-case/phone-case-front.webp", alt: "თეთრი ტელეფონის ქეისი — მასზე შენს ფოტოს, წარწერას ან დიზაინს დავბეჭდავთ", width: 552, height: 1098 },
+    { src: "/services/phone-case-line-art.webp", alt: "თეთრი ტელეფონის ქეისი ხაზოვანი ნახატით, დაბეჭდილი maika.ge-ზე, შოურუმის ძველი ტელეფონის გვერდით", width: 900, height: 1200 },
+    { src: "/services/phone-case-black.webp", alt: "შავი ტელეფონის ქეისი თეთრი ნახატით — დაბეჭდილი შეკვეთით", width: 900, height: 1200 },
   ],
   sections: [
     {
@@ -1386,6 +1387,10 @@ export const VESTS_RAINCOATS_PAGE: ServicePageCopy = {
   intro:
     "ჟილეტები და საწვიმრები კომპანიის ლოგოთი — თანამშრომლების ფორმისთვის, ღონისძიებებისთვის, მოხალისეებისა და სარეკლამო კამპანიებისთვის. ამ ნივთებს საიტზე არ ვყიდით: ვკერავთ შეკვეთით, შენი კომპანიის საჭიროების მიხედვით, და ვაბრენდირებთ ლოგოთი ან წარწერით. დეტალებს ერთად შევათანხმებთ.",
   heroLinks: [CORPORATE_LINK, ...CONTACT_LINKS],
+  images: [
+    { src: "/services/raincoat-orange.webp", alt: "ნარინჯისფერი გრძელი საწვიმარი კაპიუშონით, შეკერილი შეკვეთით maika.ge-ზე", width: 900, height: 1200 },
+    { src: "/services/raincoat-yellow.webp", alt: "ყვითელი საწვიმარი კაპიუშონით — შეკერილი შეკვეთით", width: 900, height: 1200 },
+  ],
   sections: [
     {
       h2: "ჟილეტები და საწვიმრები შეკვეთით",
