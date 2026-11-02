@@ -8,6 +8,10 @@
 //
 //   dist/designs/index.html   every published design, linked, by category
 //   dist/blog/index.html      every published post (title, date, summary)
+//   (/blog/*: BlogPosting + BreadcrumbList JSON-LD, "<title> | maika.ge"
+//   title, markdown body with crawlable internal links, the
+//   "ბეჭდვის სერვისები" block and "სხვა სტატიები" — lib/blogSeo.ts +
+//   scripts/lib/seo.mjs blogPostPage)
 //   dist/contact/index.html   business facts copied verbatim from the app
 //   dist/faq/index.html       the whole FAQ (lib/faqContent.ts), every Q&A,
 //                             with its FAQPage JSON-LD (same builder as the
@@ -90,7 +94,9 @@ import {
   SHOWROOM,
   corporatePage,
   faqPageHtml,
+  blogPostPage,
   jsonLdText,
+  markdownHtml,
   printServicesHtml,
   servicePageHtml,
   landingCopyHtml,
@@ -225,7 +231,7 @@ function designDescription(d, app) {
     : `${d.title_ka} — უნიკალური დიზაინი მაისურზე. DTF ბეჭდვა მაღალი ხარისხით. შეუკვეთე ონლაინ Maika.ge-ზე.`;
 }
 
-// Same rough markdown → plain text as BlogPostPage's excerpt().
+// Rough markdown → plain text (lib/blogSeo.ts blogExcerpt minus the zero-width strip); /blog summaries + no-app fallback.
 function excerpt(md, max = 155) {
   const text = String(md ?? "")
     .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
@@ -278,46 +284,10 @@ const HIDE_STATIC =
 const wrapStatic = (html) => `<div id="seo-static">${html}</div>${HIDE_STATIC}`;
 
 /**
- * Markdown → minimal escaped HTML for crawlers: headings and paragraphs only.
- * Images are dropped, links keep their text, inline markers are stripped.
- * Every text node is escaped; no markup from the source passes through.
- */
-function markdownToHtml(md) {
-  const inline = (s) =>
-    esc(
-      s
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-        .replace(/[*_`~]+/g, "")
-        .trim(),
-    );
-  return String(md ?? "")
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => {
-      const h = /^(#{1,6})\s+(.*)$/s.exec(block);
-      if (h) {
-        const level = Math.min(Math.max(h[1].length, 2), 6); // the page owns the single <h1>
-        const text = inline(h[2].replace(/\s+/g, " "));
-        return text ? `<h${level} style="${level === 2 ? STYLE.h2 : STYLE.h3}">${text}</h${level}>` : "";
-      }
-      const text = block
-        .split("\n")
-        .map((line) => inline(line.replace(/^\s*(?:[-*+]|\d+\.|>)\s+/, "")))
-        .filter(Boolean)
-        .join("<br>");
-      return text ? `<p style="${STYLE.p}">${text}</p>` : "";
-    })
-    .filter(Boolean)
-    .join("\n");
-}
-
-/**
  * Shell + per-page head tags + root content. `robots` and `jsonLd` are the
  * SeoHead noindex tag and `schemas` scripts, emitted only when given.
  */
-function renderPage(template, { title, description, canonical, image, rootHtml, robots, jsonLd }) {
+function renderPage(template, { title, description, canonical, image, rootHtml, robots, jsonLd, ogType }) {
   const tags = [
     `<meta data-rh="true" name="description" content="${esc(description)}" />`,
     `<link data-rh="true" rel="canonical" href="${esc(canonical)}" />`,
@@ -325,6 +295,7 @@ function renderPage(template, { title, description, canonical, image, rootHtml, 
     `<meta data-rh="true" property="og:title" content="${esc(title)}" />`,
     `<meta data-rh="true" property="og:description" content="${esc(description)}" />`,
     `<meta data-rh="true" property="og:url" content="${esc(canonical)}" />`,
+    ...(ogType ? [`<meta data-rh="true" property="og:type" content="${esc(ogType)}" />`] : []),
     ...(image ? [`<meta data-rh="true" property="og:image" content="${esc(image)}" />`] : []),
     ...(jsonLd ?? []).map((schema) => `<script data-rh="true" type="application/ld+json">${jsonLdText(schema)}</script>`),
   ].join("\n    ");
@@ -409,6 +380,7 @@ function designRoot(d, description, app) {
   ].filter(Boolean).join("\n");
 }
 
+/** /blog/:slug without the app modules (fallback only — blogPostPage is the normal path). */
 function blogRoot(p, coverUrl) {
   const date = String(p.published_at ?? p.created_at ?? "").slice(0, 10);
   return [
@@ -418,7 +390,7 @@ function blogRoot(p, coverUrl) {
     `<h1 style="${STYLE.h1}">${esc(p.title_ka)}</h1>`,
     date ? `<p style="${STYLE.meta}"><time datetime="${esc(date)}">${esc(date)}</time></p>` : "",
     coverUrl ? `<img src="${esc(coverUrl)}" alt="${esc(p.title_ka)}" style="${STYLE.img}">` : "",
-    markdownToHtml(p.body_md),
+    markdownHtml(p.body_md, { esc, link, style: STYLE }),
     `</article>`,
     `<p style="${STYLE.footer}">${link("/blog", "ყველა სტატია")} · ${link("/", "Maika.ge მთავარი")}</p>`,
     `</main>`,
@@ -901,19 +873,39 @@ async function writeDataPages(template, cfg, stats, app) {
     const posts = await fetchAll(
       cfg,
       "blog_posts",
-      "slug,title_ka,body_md,cover_path,meta_description_ka,published_at,created_at",
+      "slug,title_ka,body_md,cover_path,meta_description_ka,published_at,created_at,updated_at",
       "published=eq.true",
     );
     if (posts.length === 0) console.warn(`${LOG} blog_posts returned 0 published rows — no blog pages written.`);
+    const linkable = posts.filter((p) => !unsafeSlugReason(p?.slug));
+    const blogApp = typeof app?.blogPostSchemas === "function" ? app : null;
+    if (!blogApp) console.warn(`${LOG} lib/blogSeo.ts not loaded — blog pages written without JSON-LD / related links.`);
     await emit("blog", posts, (p) => {
       // Same URL supabase.storage.from("blog").getPublicUrl(cover_path) builds.
       const coverUrl = p.cover_path ? `${cfg.publicUrl}/storage/v1/object/public/blog/${p.cover_path}` : null;
+      const canonical = `${SITE_URL}/blog/${p.slug}`;
+      if (!blogApp) {
+        return renderPage(template, {
+          title: `${p.title_ka} — Maika.ge ბლოგი`,
+          description: p.meta_description_ka || excerpt(p.body_md),
+          canonical,
+          image: coverUrl,
+          ogType: "article",
+          rootHtml: blogRoot(p, coverUrl),
+        });
+      }
+      const page = blogPostPage(p, coverUrl, blogApp, { esc, link, style: STYLE }, {
+        servicesHtml: servicesBlock(blogApp, `/blog/${p.slug}`),
+        others: blogApp.otherBlogPosts(linkable, p.slug),
+      });
       return renderPage(template, {
-        title: `${p.title_ka} — Maika.ge ბლოგი`,
-        description: p.meta_description_ka || excerpt(p.body_md),
-        canonical: `${SITE_URL}/blog/${p.slug}`,
-        image: coverUrl,
-        rootHtml: blogRoot(p, coverUrl),
+        title: page.title,
+        description: page.description,
+        canonical,
+        image: coverUrl ?? DEFAULT_OG_IMAGE,
+        ogType: "article",
+        jsonLd: page.jsonLd,
+        rootHtml: page.rootHtml,
       });
     }, stats);
     // /blog — the list page. dist/blog/ is a real directory once any post
@@ -922,10 +914,13 @@ async function writeDataPages(template, cfg, stats, app) {
     // as before this list existed.
     if (stats.blog > 0) {
       try {
-        const listed = posts.filter((p) => !unsafeSlugReason(p?.slug));
+        const listed = linkable;
         await writeStatic("blog", renderPage(template, {
-          title: "ბლოგი — Maika.ge სიახლეები და ივენთები",
-          description: "Maika.ge-ის სიახლეები: პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",
+          // lib/blogSeo.ts — BlogPage's SeoHead.
+          title: blogApp ? blogApp.BLOG_INDEX_SEO.title : "ბლოგი — Maika.ge სიახლეები და ივენთები",
+          description: blogApp
+            ? blogApp.BLOG_INDEX_SEO.description
+            : "Maika.ge-ის სიახლეები: პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",
           canonical: `${SITE_URL}/blog`,
           image: DEFAULT_OG_IMAGE,
           rootHtml: blogIndexRoot(listed),

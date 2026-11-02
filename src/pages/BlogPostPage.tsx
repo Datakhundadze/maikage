@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import MarkdownView from "@/components/MarkdownView";
-import { buildBreadcrumbList } from "@/lib/seoSchemas";
+import PrintServicesLinks from "@/components/PrintServicesLinks";
+import {
+  BLOG_OTHER_POSTS_HEADING,
+  BLOG_OTHER_POSTS_MAX,
+  blogPostDate,
+  blogPostDescription,
+  blogPostPath,
+  blogPostSchemas,
+  blogPostTitle,
+  otherBlogPosts,
+} from "@/lib/blogSeo";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
 import { format } from "date-fns";
 import { ArrowLeft, Newspaper } from "lucide-react";
@@ -12,8 +22,10 @@ import { Button } from "@/components/ui/button";
 
 // Public article page (/blog/:slug). SEO: per-post meta description (authored,
 // with a body-derived fallback), og:image from the cover, canonical URL,
-// BlogPosting + BreadcrumbList JSON-LD. Body is markdown rendered by the
-// shared MarkdownView (raw HTML disabled — no XSS surface).
+// BlogPosting + BreadcrumbList JSON-LD (lib/blogSeo.ts — the prerender uses
+// the same builders). Body is markdown rendered by the shared MarkdownView
+// (raw HTML disabled — no XSS surface). After the body: the
+// "ბეჭდვის სერვისები" links and "სხვა სტატიები" (up to 3 other posts).
 
 // One automatic retry for a failed post query before the error state shows.
 const POST_RETRY_DELAY_MS = 1500;
@@ -29,16 +41,11 @@ interface Post {
   updated_at: string;
 }
 
-// Rough markdown → plain-text excerpt for the meta-description fallback.
-function excerpt(md: string, max = 155): string {
-  const text = md
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/[#*_>`~-]/g, " ")
-    .replace(/https?:\/\/\S+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+interface OtherPost {
+  slug: string;
+  title_ka: string;
+  published_at: string | null;
+  created_at: string;
 }
 
 export default function BlogPostPage() {
@@ -51,6 +58,27 @@ export default function BlogPostPage() {
   // failure never renders the noindex not-found state. Mirrors DesignDetailPage.
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [others, setOthers] = useState<OtherPost[]>([]);
+
+  // "სხვა სტატიები" — best effort: a failed query just leaves the list out.
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
+        .from("blog_posts")
+        .select("slug, title_ka, published_at, created_at")
+        .eq("published", true)
+        .neq("slug", slug)
+        .order("published_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
+        .limit(BLOG_OTHER_POSTS_MAX);
+      if (cancelled) return;
+      setOthers(otherBlogPosts((data as OtherPost[] | null) ?? [], slug));
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
 
   useEffect(() => {
     if (!slug) { setNotFound(true); setLoading(false); return; }
@@ -148,39 +176,17 @@ export default function BlogPostPage() {
   const coverOriginal = post.cover_path
     ? supabase.storage.from("blog").getPublicUrl(post.cover_path).data.publicUrl
     : null;
-  const description = post.meta_description_ka || excerpt(post.body_md);
-  const dateISO = post.published_at ?? post.created_at;
-
-  const blogPostingJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title_ka,
-    description,
-    url: canonical,
-    ...(coverOriginal ? { image: coverOriginal } : {}),
-    datePublished: dateISO,
-    dateModified: post.updated_at,
-    inLanguage: "ka",
-    author: { "@type": "Organization", name: "Maika.ge", url: SITE_URL },
-    publisher: { "@type": "Organization", name: "Maika.ge", url: SITE_URL },
-    mainEntityOfPage: canonical,
-  };
-
-  const breadcrumbJsonLd = buildBreadcrumbList([
-    { name: "მთავარი", url: SITE_URL },
-    { name: "ბლოგი", url: `${SITE_URL}/blog` },
-    { name: post.title_ka },
-  ]);
-
+  const description = blogPostDescription(post);
+  const dateISO = blogPostDate(post) ?? post.created_at;
   return (
     <div className="flex flex-col h-screen">
       <SeoHead
-        title={`${post.title_ka} — Maika.ge ბლოგი`}
+        title={blogPostTitle(post.title_ka)}
         description={description}
         image={coverOriginal ?? undefined}
         url={canonical}
         type="article"
-        schemas={[blogPostingJsonLd, breadcrumbJsonLd]}
+        schemas={blogPostSchemas(post, coverOriginal)}
       />
       <AppHeader />
       <div className="flex-1 overflow-y-auto">
@@ -208,6 +214,26 @@ export default function BlogPostPage() {
           <div className="mt-6">
             <MarkdownView markdown={post.body_md} />
           </div>
+
+          <PrintServicesLinks excludeHref={blogPostPath(post.slug)} />
+
+          {others.length > 0 && (
+            <nav aria-label={BLOG_OTHER_POSTS_HEADING} className="mt-8 border-t border-border pt-6 text-sm">
+              <h2 className="text-lg font-bold text-foreground mb-2">{BLOG_OTHER_POSTS_HEADING}</h2>
+              <ul className="space-y-1">
+                {others.map((o) => (
+                  <li key={o.slug}>
+                    <Link
+                      to={blogPostPath(o.slug)}
+                      className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+                    >
+                      {o.title_ka}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
         </article>
       </div>
     </div>

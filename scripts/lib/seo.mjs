@@ -209,6 +209,139 @@ export function printServicesHtml(services, { esc, link, style }, exclude) {
     .join("")}</ul>\n</nav>`;
 }
 
+// ── Blog ────────────────────────────────────────────────────────────────────
+
+const INTERNAL_HREF = (href) => typeof href === "string" && href.startsWith("/") && !href.startsWith("//") && !href.startsWith("/\\");
+const EXTERNAL_HREF = (href) => typeof href === "string" && /^https?:\/\//i.test(href);
+const ZERO_WIDTH = /\u200b|\u200c|\u200d|\ufeff/g;
+
+/**
+ * One line of markdown inline text → escaped HTML. Links: an internal href
+ * ("/dtf-bechdva") becomes a crawlable <a href> through `link` (as the live
+ * MarkdownView's react-router <Link>); an http(s) href becomes an external
+ * <a> (new tab, as MarkdownView); any other scheme keeps only its text.
+ * Images are dropped; emphasis / code markers are stripped. Every text node
+ * and attribute is escaped — no markup from the source passes through.
+ */
+export function markdownInlineHtml(text, { esc, link, style }) {
+  const clean = (t) => esc(String(t).replace(/[*_`~]+/g, "").replace(ZERO_WIDTH, ""));
+  const out = [];
+  const re = /(!?)\[([^\]]*)\]\(\s*<?([^)\s>]*)>?(?:\s+"[^"]*")?\s*\)/g;
+  const src = String(text ?? "");
+  let last = 0;
+  let m;
+  while ((m = re.exec(src))) {
+    out.push(clean(src.slice(last, m.index)));
+    last = m.index + m[0].length;
+    if (m[1]) continue; // image
+    const label = String(m[2]).replace(/[*_`~]+/g, "").replace(ZERO_WIDTH, "").trim();
+    const href = m[3];
+    if (INTERNAL_HREF(href) && label) out.push(link(href, label));
+    else if (EXTERNAL_HREF(href) && label)
+      out.push(`<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="${style.a}">${esc(label)}</a>`);
+    else out.push(esc(label));
+  }
+  out.push(clean(src.slice(last)));
+  return out.join("").trim();
+}
+
+/**
+ * Blog markdown → static HTML for crawlers: headings (an "#" becomes <h2> —
+ * the page owns the single <h1>), paragraphs, bullet / numbered lists, links
+ * (markdownInlineHtml). Images, embeds and tables are left out.
+ */
+export function markdownHtml(md, h) {
+  const { style } = h;
+  const inline = (s) => markdownInlineHtml(s, h);
+  const html = [];
+  let para = [];
+  let list = null; // { tag, items }
+  const flushPara = () => {
+    const lines = para.map(inline).filter(Boolean);
+    if (lines.length) html.push(`<p style="${style.p}">${lines.join("<br>")}</p>`);
+    para = [];
+  };
+  const flushList = () => {
+    if (list?.items.length) {
+      const ulStyle = list.tag === "ol" ? style.ul.replace("list-style:disc", "list-style:decimal") : style.ul;
+      html.push(`<${list.tag} style="${ulStyle}">${list.items.map((i) => `<li style="${style.li}">${i}</li>`).join("")}</${list.tag}>`);
+    }
+    list = null;
+  };
+  for (const raw of String(md ?? "").replace(/\r\n?/g, "\n").split("\n")) {
+    const line = raw.replace(ZERO_WIDTH, "").trimEnd();
+    if (line.trim() === "") { flushPara(); flushList(); continue; }
+    const heading = /^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/.exec(line);
+    if (heading) {
+      flushPara(); flushList();
+      const level = Math.min(Math.max(heading[1].length, 2), 6);
+      const text = inline(heading[2]);
+      if (text) html.push(`<h${level} style="${level === 2 ? style.h2 : style.h3}">${text}</h${level}>`);
+      continue;
+    }
+    if (/^\s{0,3}(?:[-*_]\s*){3,}$/.test(line)) { flushPara(); flushList(); continue; } // hr
+    const item = /^\s*(?:([-*+])|(\d+)[.)])\s+(.*)$/.exec(line);
+    if (item) {
+      flushPara();
+      const tag = item[1] ? "ul" : "ol";
+      if (list && list.tag !== tag) flushList();
+      if (!list) list = { tag, items: [] };
+      const text = inline(item[3]);
+      if (text) list.items.push(text);
+      continue;
+    }
+    if (/^\s*\|.*\|\s*$/.test(line)) continue; // table row
+    flushList();
+    para.push(line.replace(/^\s*>\s?/, ""));
+  }
+  flushPara(); flushList();
+  return html.join("\n");
+}
+
+/** "სხვა სტატიები" — up to 3 other posts as plain links (BlogPostPage). */
+export function otherPostsHtml(heading, posts, { esc, link, style }) {
+  if (!posts?.length) return "";
+  return `<nav>\n<h2 style="${style.h3}">${esc(heading)}</h2>\n<ul style="${style.ul}">${posts
+    .map((p) => `<li style="${style.li}">${link(`/blog/${p.slug}`, p.title_ka)}</li>`)
+    .join("")}</ul>\n</nav>`;
+}
+
+/**
+ * /blog/:slug as static HTML, in BlogPostPage's order: breadcrumb nav, h1,
+ * date, cover, body, "ბეჭდვის სერვისები", "სხვა სტატიები". Head values and
+ * JSON-LD come from lib/blogSeo.ts (the same builders the live page uses).
+ *
+ * @param p          the blog_posts row
+ * @param coverUrl   public cover URL or null
+ * @param app        loadAppModules() result (blogPostTitle, blogPostSchemas, …)
+ * @param h          prerender.mjs's helpers: esc, link, style
+ * @param extra      { servicesHtml, others } — others: rows for "სხვა სტატიები"
+ * @returns {{ title: string, description: string, jsonLd: object[], rootHtml: string }}
+ */
+export function blogPostPage(p, coverUrl, app, h, { servicesHtml = "", others = [] } = {}) {
+  const { esc, link, style } = h;
+  const date = String(app.blogPostDate(p) ?? "").slice(0, 10);
+  return {
+    title: app.blogPostTitle(p.title_ka),
+    description: app.blogPostDescription(p),
+    jsonLd: app.blogPostSchemas(p, coverUrl),
+    rootHtml: [
+      `<main style="${style.main}">`,
+      `<nav style="${style.nav}">${link("/", "მთავარი")} › ${link("/blog", "ბლოგი")}</nav>`,
+      `<article>`,
+      `<h1 style="${style.h1}">${esc(p.title_ka)}</h1>`,
+      date ? `<p style="${style.meta}"><time datetime="${esc(date)}">${esc(date)}</time></p>` : "",
+      coverUrl ? `<img src="${esc(coverUrl)}" alt="${esc(p.title_ka)}" style="${style.img}">` : "",
+      markdownHtml(p.body_md, h),
+      `</article>`,
+      servicesHtml,
+      otherPostsHtml(app.BLOG_OTHER_POSTS_HEADING, others, h),
+      `<p style="${style.footer}">${link("/blog", "ყველა სტატია")} · ${link("/", "Maika.ge მთავარი")}</p>`,
+      `</main>`,
+    ].filter(Boolean).join("\n"),
+  };
+}
+
 /**
  * /corporate as static HTML: <title> / description from CORPORATE_SEO, the
  * Service / FAQPage / BreadcrumbList JSON-LD (CORPORATE_SCHEMAS), and a

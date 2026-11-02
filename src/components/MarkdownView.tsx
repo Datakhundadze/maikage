@@ -1,6 +1,8 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Link } from "react-router-dom";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+import { isInternalHref } from "@/lib/blogSeo";
 
 // Shared markdown renderer for blog posts (public article page + admin live
 // preview, so both always match).
@@ -12,6 +14,11 @@ import { transformedDisplayUrl } from "@/lib/imageTransform";
 // YouTube embeds: a paragraph whose ONLY content is a YouTube URL (bare or
 // autolinked by remark-gfm) renders as a responsive <iframe> embed instead
 // of a link. Authors just paste the video URL on its own line.
+//
+// Internal links: an href starting with "/" ([DTF ბეჭდვა](/dtf-bechdva))
+// renders as a react-router <Link> — a real <a href="/dtf-bechdva"> in the
+// DOM, same tab, client-side navigation. Everything else opens in a new tab.
+// The prerender writes the same <a href> (scripts/lib/seo.mjs markdownHtml).
 
 const YT_RE =
   /^https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})(?:[?&][^\s]*)?$/;
@@ -71,7 +78,12 @@ export default function MarkdownView({ markdown }: { markdown: string }) {
             if (ytId) return <YouTubeEmbed id={ytId} />;
             return <p className="my-3">{children}</p>;
           },
-          a: ({ href, children }) => (
+          a: ({ href, children }) =>
+            isInternalHref(href) ? (
+              <Link to={href} className="text-primary underline underline-offset-2 hover:opacity-80">
+                {children}
+              </Link>
+            ) : (
             <a
               href={href}
               target="_blank"
@@ -80,7 +92,7 @@ export default function MarkdownView({ markdown }: { markdown: string }) {
             >
               {children}
             </a>
-          ),
+            ),
           ul: ({ children }) => <ul className="list-disc pl-6 my-3 space-y-1">{children}</ul>,
           ol: ({ children }) => <ol className="list-decimal pl-6 my-3 space-y-1">{children}</ol>,
           li: ({ children }) => <li>{children}</li>,

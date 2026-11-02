@@ -5,7 +5,8 @@
 // time LandingHero prints, the landing <title>s SeoHead sets, the /corporate
 // title, H1, text section and JSON-LD, the service pages (lib/serviceCopy.ts)
 // and their links (lib/serviceRouteSlugs.ts), the
-// /designs title and the /design/:slug title / fallback description.
+// /designs title and the /design/:slug title / fallback description, and the
+// blog post title / description / JSON-LD / "სხვა სტატიები" (lib/blogSeo.ts).
 //
 // How: a bare Vite dev server in middleware mode (no config file, no plugins,
 // no dependency scan, no file watcher) and ssrLoadModule — esbuild strips the
@@ -37,6 +38,7 @@ const MODULES = {
   pageSeo: "/src/lib/pageSeo.ts",
   designSeo: "/src/lib/designSeo.ts",
   serviceRouteSlugs: "/src/lib/serviceRouteSlugs.ts",
+  blogSeo: "/src/lib/blogSeo.ts",
 };
 
 /**
@@ -80,6 +82,15 @@ const MODULES = {
  *   CATALOG_SEO: { title: string, description: string },
  *   designSeoTitle: (name: string, categoryLabel: string | null) => string,
  *   designFallbackDescription: (name: string, categoryLabel: string | null, priceGEL: number | null) => string,
+ *   BLOG_INDEX_SEO: { title: string, description: string },
+ *   BLOG_OTHER_POSTS_HEADING: string,
+ *   blogPostTitle: (titleKa: string) => string,
+ *   blogPostDescription: (post: object) => string,
+ *   blogPostSchemas: (post: object, coverUrl: string | null) => object[],
+ *   blogPostDate: (post: object) => string | null,
+ *   otherBlogPosts: (posts: object[], currentSlug: string, max?: number) => object[],
+ *   sortPostsNewestFirst: (posts: object[]) => object[],
+ *   isInternalHref: (href: unknown) => boolean,
  * }>}
  */
 export async function loadAppModules(log) {
@@ -130,6 +141,15 @@ export async function loadAppModules(log) {
       CATALOG_SEO: m.pageSeo.CATALOG_SEO,
       designSeoTitle: m.designSeo.designSeoTitle,
       designFallbackDescription: m.designSeo.designFallbackDescription,
+      BLOG_INDEX_SEO: m.blogSeo.BLOG_INDEX_SEO,
+      BLOG_OTHER_POSTS_HEADING: m.blogSeo.BLOG_OTHER_POSTS_HEADING,
+      blogPostTitle: m.blogSeo.blogPostTitle,
+      blogPostDescription: m.blogSeo.blogPostDescription,
+      blogPostSchemas: m.blogSeo.blogPostSchemas,
+      blogPostDate: m.blogSeo.blogPostDate,
+      otherBlogPosts: m.blogSeo.otherBlogPosts,
+      sortPostsNewestFirst: m.blogSeo.sortPostsNewestFirst,
+      isInternalHref: m.blogSeo.isInternalHref,
     };
   } catch (e) {
     console.warn(`${log} WARNING: could not load app modules from src/: ${e?.message ?? e}`);

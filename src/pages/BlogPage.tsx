@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppHeader from "@/components/AppHeader";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+import { BLOG_INDEX_SEO } from "@/lib/blogSeo";
 import { format } from "date-fns";
 import { Newspaper } from "lucide-react";
 
@@ -47,8 +48,8 @@ export default function BlogPage() {
   return (
     <div className="flex flex-col h-screen">
       <SeoHead
-        title="ბლოგი — Maika.ge სიახლეები და ივენთები"
-        description="Maika.ge-ის სიახლეები: პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი."
+        title={BLOG_INDEX_SEO.title}
+        description={BLOG_INDEX_SEO.description}
         url={`${SITE_URL}/blog`}
       />
       <AppHeader />
