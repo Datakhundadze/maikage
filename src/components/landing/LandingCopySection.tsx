@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { LandingCopy } from "@/lib/landingCopy";
 
@@ -48,9 +49,11 @@ interface LandingCopySectionProps {
   /** Whole lari, or null while unknown. */
   price: number | null;
   tone?: keyof typeof TONES;
+  /** Rendered after the sections, before the FAQ (/corporate: CorporateWorkGallery). */
+  beforeFaq?: ReactNode;
 }
 
-export default function LandingCopySection({ copy, price, tone = "sidebar" }: LandingCopySectionProps) {
+export default function LandingCopySection({ copy, price, tone = "sidebar", beforeFaq }: LandingCopySectionProps) {
   // Same format as LandingHero's "{price} ₾-დან".
   const priceText = price != null && Number.isFinite(price) && price > 0 ? `${price} ₾` : null;
   const t = TONES[tone];
@@ -101,6 +104,7 @@ export default function LandingCopySection({ copy, price, tone = "sidebar" }: La
           )}
         </div>
       ))}
+      {beforeFaq}
       {copy.faq && copy.faq.length > 0 && (
         <div className="space-y-3">
           {copy.faqHeading && <h2 className={t.h2}>{copy.faqHeading}</h2>}

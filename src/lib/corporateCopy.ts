@@ -37,6 +37,13 @@ export const CORPORATE_COPY: LandingCopy = {
       height: 1000,
     },
     {
+      // Same photo and alt as /zhiletebi-da-satsvimrebi (lib/serviceCopy.ts).
+      src: "/services/vest-lexus.webp",
+      alt: "შავი ჟილეტი Lexus-ის ლოგოთი — კორპორატიული შეკვეთა, შეკერილი maika.ge-ზე",
+      width: 900,
+      height: 1200,
+    },
+    {
       src: "/showroom/hoodie-white-front.webp",
       alt: "თეთრი ჰუდი კომპანიის ლოგოთი ბრენდირებისთვის",
       width: 808,

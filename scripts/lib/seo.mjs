@@ -156,7 +156,7 @@ export function landingRoutes({ LANDING_PRODUCT_SLUGS, BRAND_SLUGS, resolveProdu
  * @param copy  landingCopyFor(...) result, or CORPORATE_COPY
  * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
  */
-export function landingCopyHtml(copy, { esc, link, style }) {
+export function landingCopyHtml(copy, { esc, link, style }, beforeFaqHtml = "") {
   return [
     `<section>`,
     `<h2 style="${style.h2}">${esc(copy.h2)}</h2>`,
@@ -174,6 +174,7 @@ export function landingCopyHtml(copy, { esc, link, style }) {
         s.link ? `<p style="${style.p}">${link(s.link.href, s.link.label)}</p>` : "",
       ].filter(Boolean).join("\n"),
     ),
+    ...(beforeFaqHtml ? [beforeFaqHtml] : []),
     ...(copy.faq?.length
       ? [
           [
@@ -397,9 +398,10 @@ export function blogPostPage(p, coverUrl, app, h, { servicesHtml = "", others = 
  * @param app   { CORPORATE_SEO, CORPORATE_COPY } from src/lib/corporateCopy.ts
  * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
  * @param servicesHtml  the "ბეჭდვის სერვისები" block (printServicesHtml), last in <main>
+ * @param corporateWork corporateWorkHtml(...) — partner names + work gallery, before the FAQ
  * @returns {{ title: string, description: string, jsonLd: object[], rootHtml: string }}
  */
-export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS }, { esc, link, style }, servicesHtml = "") {
+export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS }, { esc, link, style }, servicesHtml = "", corporateWork = "") {
   const c = CORPORATE;
   return {
     title: CORPORATE_SEO.title,
@@ -411,12 +413,54 @@ export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS
       `<h1 style="${style.h1}">${esc(c.h1)}</h1>`,
       `<p style="${style.p}">${esc(c.intro)}</p>`,
       `<ul style="${style.ul}">${c.features.map((f) => `<li style="${style.li}">${esc(f)}</li>`).join("")}</ul>`,
-      landingCopyHtml(CORPORATE_COPY, { esc, link, style }),
+      landingCopyHtml(CORPORATE_COPY, { esc, link, style }, corporateWork),
       `<p style="${style.footer}">${link("/contact", c.cta)}</p>`,
       servicesHtml,
       `</main>`,
     ].filter(Boolean).join("\n"),
   };
+}
+
+// ── Corporate work gallery + partners ───────────────────────────────────────
+
+/**
+ * components/CorporateWorkGallery.tsx as static HTML, for /corporate and
+ * /korporatiuli-sachukrebi (before the FAQ): the partner names
+ * (lib/corporateWork.ts CORPORATE_PARTNERS, a list labelled
+ * "ვისთან ვთანამშრომლობთ"), then — when there are photos — the h2, the intro,
+ * the square photo grid (lazy, explicit 400×400) and the crawlable link to
+ * /portfolio. No photos (fetch failed / none match): the partner list only,
+ * as on the live page.
+ *
+ * @param w      { CORPORATE_WORK_COPY, CORPORATE_PARTNERS, CORPORATE_PARTNERS_HEADING,
+ *                 CORPORATE_WORK_TILE, CORPORATE_WORK_SIZES } from lib/corporateWork.ts
+ * @param images corporateWorkImage(...) results, in order ({ src, srcSet, alt })
+ * @param h      prerender.mjs's own helpers: esc, link, style (its STYLE)
+ */
+export function corporateWorkHtml(w, images, { esc, link, style }) {
+  const tile = w.CORPORATE_WORK_TILE;
+  const partners =
+    `<ul aria-label="${esc(w.CORPORATE_PARTNERS_HEADING)}" style="${style.chips ?? style.ul}">` +
+    w.CORPORATE_PARTNERS.map((name) => `<li style="${style.chip ?? style.li}">${esc(name)}</li>`).join("") +
+    `</ul>`;
+  const gallery = images?.length
+    ? [
+        `<section data-corporate-work="">`,
+        `<h2 style="${style.h2}">${esc(w.CORPORATE_WORK_COPY.heading)}</h2>`,
+        `<p style="${style.p}">${esc(w.CORPORATE_WORK_COPY.intro)}</p>`,
+        `<ul style="${style.gallery ?? style.ul}">\n` +
+          images
+            .map(
+              (img) =>
+                `<li><img src="${esc(img.src)}" srcset="${esc(img.srcSet)}" sizes="${esc(w.CORPORATE_WORK_SIZES)}" alt="${esc(img.alt)}" width="${tile}" height="${tile}" loading="lazy" decoding="async" style="${style.squareImg ?? ""}"></li>`,
+            )
+            .join("\n") +
+          `\n</ul>`,
+        `<p style="${style.p}">${link(w.CORPORATE_WORK_COPY.allLink.href, w.CORPORATE_WORK_COPY.allLink.label)}</p>`,
+        `</section>`,
+      ].join("\n")
+    : "";
+  return [partners, gallery].filter(Boolean).join("\n");
 }
 
 // ── Service pages ───────────────────────────────────────────────────────────
@@ -432,8 +476,9 @@ export function corporatePage({ CORPORATE_SEO, CORPORATE_COPY, CORPORATE_SCHEMAS
  * @param page  a ServicePageCopy (lib/serviceCopy.ts)
  * @param h     prerender.mjs's own helpers: esc, link, style (its STYLE)
  * @param servicesHtml  the "ბეჭდვის სერვისები" block (printServicesHtml), last in <main>
+ * @param corporateWork corporateWorkHtml(...) on /korporatiuli-sachukrebi, before the FAQ
  */
-export function servicePageHtml(page, { esc, link, style }, servicesHtml = "") {
+export function servicePageHtml(page, { esc, link, style }, servicesHtml = "", corporateWork = "") {
   const links = (list) => `<p style="${style.p}">${list.map((l) => link(l.href, l.label)).join(" · ")}</p>`;
   return [
     `<main style="${style.main}">`,
@@ -462,6 +507,7 @@ export function servicePageHtml(page, { esc, link, style }, servicesHtml = "") {
         `</section>`,
       ].filter(Boolean).join("\n"),
     ),
+    corporateWork,
     [
       `<section>`,
       `<h2 style="${style.h2}">${esc(page.faqHeading)}</h2>`,

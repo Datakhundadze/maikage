@@ -5,8 +5,10 @@
 // time LandingHero prints, the landing <title>s SeoHead sets, the /corporate
 // title, H1, text section and JSON-LD, the service pages (lib/serviceCopy.ts)
 // and their links (lib/serviceRouteSlugs.ts), the
-// /designs title and the /design/:slug title / fallback description, and the
-// blog post title / description / JSON-LD / "სხვა სტატიები" (lib/blogSeo.ts).
+// /designs title and the /design/:slug title / fallback description, the
+// blog post title / description / JSON-LD / "სხვა სტატიები" (lib/blogSeo.ts),
+// and the corporate work gallery's copy, partners and photo selection
+// (lib/corporateWork.ts).
 //
 // How: a bare Vite dev server in middleware mode (no config file, no plugins,
 // no dependency scan, no file watcher) and ssrLoadModule — esbuild strips the
@@ -40,6 +42,7 @@ const MODULES = {
   serviceRouteSlugs: "/src/lib/serviceRouteSlugs.ts",
   blogSeo: "/src/lib/blogSeo.ts",
   portfolioCategories: "/src/lib/portfolioCategories.ts",
+  corporateWork: "/src/lib/corporateWork.ts",
 };
 
 /**
@@ -99,6 +102,16 @@ const MODULES = {
  *   blogCover: (coverPath: string | null, storageUrl: (key: string) => string) => null | { src: string, absolute: string, kind: string },
  *   orderPortfolioCategories: (items: { category?: string | null }[]) => { label: string, count: number }[],
  *   portfolioCountLabel: (n: number) => string,
+ *   CORPORATE_WORK_PATHS: readonly string[],
+ *   CORPORATE_WORK_COPY: { heading: string, intro: string, allLink: { href: string, label: string } },
+ *   CORPORATE_PARTNERS: readonly string[],
+ *   CORPORATE_PARTNERS_HEADING: string,
+ *   CORPORATE_WORK_COLUMNS: string,
+ *   CORPORATE_WORK_TILE: number,
+ *   CORPORATE_WORK_SIZES: string,
+ *   selectCorporateWork: (rows: object[], limit?: number) => object[],
+ *   corporateWorkImage: (row: object, publicUrl: string) => { id: string, src: string, srcSet: string, alt: string },
+ *   corporateBrand: (alt: string | null) => string | null,
  * }>}
  */
 export async function loadAppModules(log) {
@@ -165,6 +178,16 @@ export async function loadAppModules(log) {
       blogCover: m.blogSeo.blogCover,
       orderPortfolioCategories: m.portfolioCategories.orderPortfolioCategories,
       portfolioCountLabel: m.portfolioCategories.portfolioCountLabel,
+      CORPORATE_WORK_PATHS: m.corporateWork.CORPORATE_WORK_PATHS,
+      CORPORATE_WORK_COPY: m.corporateWork.CORPORATE_WORK_COPY,
+      CORPORATE_PARTNERS: m.corporateWork.CORPORATE_PARTNERS,
+      CORPORATE_PARTNERS_HEADING: m.corporateWork.CORPORATE_PARTNERS_HEADING,
+      CORPORATE_WORK_COLUMNS: m.corporateWork.CORPORATE_WORK_COLUMNS,
+      CORPORATE_WORK_TILE: m.corporateWork.CORPORATE_WORK_TILE,
+      CORPORATE_WORK_SIZES: m.corporateWork.CORPORATE_WORK_SIZES,
+      selectCorporateWork: m.corporateWork.selectCorporateWork,
+      corporateWorkImage: m.corporateWork.corporateWorkImage,
+      corporateBrand: m.corporateWork.corporateBrand,
     };
   } catch (e) {
     console.warn(`${log} WARNING: could not load app modules from src/: ${e?.message ?? e}`);

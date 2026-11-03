@@ -17,7 +17,10 @@
 //                             with its FAQPage JSON-LD (same builder as the
 //                             live page)
 //   dist/corporate/index.html CorporatePage's text and its SEO section
-//                             (title + text from lib/corporateCopy.ts)
+//                             (title + text from lib/corporateCopy.ts), with
+//                             the partner names and the 12-photo corporate
+//                             work gallery before its FAQ (lib/corporateWork.ts;
+//                             also on /korporatiuli-sachukrebi)
 //   dist/portfolio/index.html active portfolio_items: images (alt = title),
 //                             categories
 //   dist/showroom/index.html  ShowroomPage's heading; noindex while the page
@@ -93,6 +96,7 @@ import {
   PORTFOLIO,
   SHOWROOM,
   corporatePage,
+  corporateWorkHtml,
   faqPageHtml,
   blogPostPage,
   blogIndexHtml,
@@ -271,6 +275,11 @@ const STYLE = {
   gallery: "display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:0 0 24px;padding:0;list-style:none",
   galleryImg: "display:block;width:100%;height:auto;border-radius:12px",
   inlineImg: "display:inline-block;width:48%;max-width:320px;height:auto;margin:0 1% 12px 0;border-radius:12px;vertical-align:top",
+  // Corporate work gallery (seo.mjs corporateWorkHtml): square tiles, 4 across
+  // in the 720px column, 2 on a phone (same auto-fill grid as /portfolio).
+  squareImg: "display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border-radius:12px",
+  chips: "display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px;padding:0;list-style:none;font-size:14px",
+  chip: "margin:0;padding:2px 12px;border:1px solid currentColor;border-radius:999px;opacity:.8",
 };
 const link = (href, text) => `<a href="${esc(href)}" style="${STYLE.a}">${esc(text)}</a>`;
 
@@ -585,7 +594,7 @@ function landingRoot(route, { productKa, title, leadTime, brands, copy, services
  * Pages built from src/ modules only — no Supabase: /faq, /corporate,
  * /showroom and every landing route. Each page fails on its own.
  */
-async function writeAppPages(template, app, stats) {
+async function writeAppPages(template, app, stats, corporateWork = "") {
   const page = async (name, route, build) => {
     try {
       await writeStatic(route, build());
@@ -602,7 +611,7 @@ async function writeAppPages(template, app, stats) {
   // description and section text from lib/corporateCopy.ts (seo.mjs
   // corporatePage builds it).
   if (await page("corporate", "corporate", () => {
-    const corp = corporatePage(app, { esc, link, style: STYLE }, servicesBlock(app, "/corporate"));
+    const corp = corporatePage(app, { esc, link, style: STYLE }, servicesBlock(app, "/corporate"), corporateWork);
     return renderPage(template, {
       title: corp.title,
       description: corp.description,
@@ -648,7 +657,12 @@ async function writeAppPages(template, app, stats) {
         canonical: `${SITE_URL}${sp.path}`,
         image: DEFAULT_OG_IMAGE,
         jsonLd: app.serviceSchemas(sp),
-        rootHtml: servicePageHtml(sp, { esc, link, style: STYLE }, servicesBlock(app, sp.path)),
+        rootHtml: servicePageHtml(
+          sp,
+          { esc, link, style: STYLE },
+          servicesBlock(app, sp.path),
+          app.CORPORATE_WORK_PATHS?.includes(sp.path) ? corporateWork : "",
+        ),
       });
     })) stats.lists.push(route);
   }
@@ -687,10 +701,14 @@ async function writeAppPages(template, app, stats) {
   }
 }
 
-/** portfolio_items as PortfolioPage queries them: active, pinned first, then newest. */
+/**
+ * portfolio_items as PortfolioPage queries them: active, pinned first, then
+ * newest. id / sort_order / created_at are for the corporate work gallery's
+ * selection (lib/corporateWork.ts); /portfolio ignores them.
+ */
 async function fetchPortfolio({ url, key }) {
   const qs =
-    "select=title,image_path,category,alt_text&active=eq.true" +
+    "select=id,title,image_path,category,alt_text,sort_order,created_at&active=eq.true" +
     `&order=sort_order.asc.nullslast,created_at.desc&limit=${PAGE_SIZE}`;
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
@@ -709,21 +727,40 @@ async function fetchPortfolio({ url, key }) {
   return rows;
 }
 
+/** = supabase.storage.from("portfolio").getPublicUrl(image_path) */
+const portfolioPublicUrl = (cfg, imagePath) =>
+  encodeURI(`${cfg.publicUrl}/storage/v1/object/public/portfolio/${imagePath.replace(/^\/+/, "")}`);
+
+/**
+ * The corporate work block for /corporate and /korporatiuli-sachukrebi
+ * (seo.mjs corporateWorkHtml, lib/corporateWork.ts selection — the live
+ * CorporateWorkGallery picks the same rows). No rows (no config / failed
+ * fetch): partner names only, no gallery.
+ */
+function corporateWorkBlock(app, cfg, rows, stats) {
+  if (typeof app?.selectCorporateWork !== "function") return "";
+  let images = [];
+  if (cfg && rows) {
+    images = app.selectCorporateWork(rows).map((r) => app.corporateWorkImage(r, portfolioPublicUrl(cfg, r.image_path)));
+  }
+  stats.notes.push(`corporate work gallery: ${images.length} images`);
+  return corporateWorkHtml(app, images, { esc, link, style: STYLE });
+}
+
 /**
  * /portfolio. Needs the app modules (image transform). Without data — no
  * Supabase config, a failed fetch, zero rows — it is the page's empty state.
+ * `rows`: fetchPortfolio's result, or null when it failed.
  */
-async function writePortfolio(template, app, cfg, stats) {
+async function writePortfolio(template, app, cfg, rows, stats) {
   if (!app) return;
   let items = [];
-  if (cfg) {
+  if (cfg && rows) {
     try {
-      const rows = await fetchPortfolio(cfg);
       items = rows
         .filter((r) => typeof r?.image_path === "string" && r.image_path)
         .map((r) => {
-          // = supabase.storage.from("portfolio").getPublicUrl(image_path)
-          const publicUrl = encodeURI(`${cfg.publicUrl}/storage/v1/object/public/portfolio/${r.image_path.replace(/^\/+/, "")}`);
+          const publicUrl = portfolioPublicUrl(cfg, r.image_path);
           const w400 = app.transformedDisplayUrl(publicUrl, { width: 400 });
           return {
             category: r.category,
@@ -733,7 +770,8 @@ async function writePortfolio(template, app, cfg, stats) {
           };
         });
     } catch (e) {
-      console.warn(`${LOG} WARNING: portfolio fetch failed: ${reason(e)}. /portfolio written without images.`);
+      console.warn(`${LOG} WARNING: portfolio rows unusable: ${reason(e)}. /portfolio written without images.`);
+      items = [];
     }
   }
   try {
@@ -801,7 +839,6 @@ async function writePages() {
   // /faq, /corporate, /showroom, landing routes — src/ modules only.
   const app = await loadAppModules(LOG);
   if (!app) console.warn(`${LOG} /faq, /corporate, /portfolio, /showroom and the landing routes skipped; SPA fallback serves them.`);
-  await writeAppPages(template, app, stats);
 
   let cfg = null;
   try {
@@ -810,7 +847,31 @@ async function writePages() {
     console.warn(`${LOG} ${e.message}. Skipping data-driven pages; SPA fallback serves them.`);
   }
 
-  await writePortfolio(template, app, cfg, stats);
+  // portfolio_items, fetched once: /portfolio and the corporate work gallery
+  // on /corporate + /korporatiuli-sachukrebi. null = failed (both degrade).
+  let portfolioRows = null;
+  if (app && cfg) {
+    try {
+      portfolioRows = await fetchPortfolio(cfg);
+    } catch (e) {
+      console.warn(`${LOG} WARNING: portfolio fetch failed: ${reason(e)}. /portfolio written without images; corporate pages without the work gallery.`);
+    }
+  }
+
+  let corporateWork = "";
+  try {
+    corporateWork = corporateWorkBlock(app, cfg, portfolioRows, stats);
+  } catch (e) {
+    stats.failed.push(`corporate work gallery: ${e?.message ?? e} — pages written with the partner names only`);
+    try {
+      corporateWork = corporateWorkHtml(app, [], { esc, link, style: STYLE });
+    } catch {
+      corporateWork = "";
+    }
+  }
+  await writeAppPages(template, app, stats, corporateWork);
+
+  await writePortfolio(template, app, cfg, portfolioRows, stats);
 
   if (cfg) await writeDataPages(template, cfg, stats, app);
 

@@ -3,6 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import NotFound from "@/pages/NotFound";
 import PrintServicesLinks from "@/components/PrintServicesLinks";
+import CorporateWorkGallery from "@/components/CorporateWorkGallery";
+import { CORPORATE_WORK_PATHS } from "@/lib/corporateWork";
 import { SERVICE_PAGES, serviceSchemas, type ServiceLink, type ServicePageCopy } from "@/lib/serviceCopy";
 import type { ServicePageSlug } from "@/lib/serviceRouteSlugs";
 
@@ -121,6 +123,10 @@ function ServicePageView({ page }: { page: ServicePageCopy }) {
               {s.links && s.links.length > 0 && <LinkRow links={s.links} />}
             </section>
           ))}
+
+          {/* /korporatiuli-sachukrebi: partner names + corporate work gallery
+              before the FAQ (same block in the prerendered file). */}
+          {CORPORATE_WORK_PATHS.includes(page.path) && <CorporateWorkGallery />}
 
           <section className="space-y-4">
             <h2 className="text-xl font-bold leading-snug text-gray-900 dark:text-white">{page.faqHeading}</h2>

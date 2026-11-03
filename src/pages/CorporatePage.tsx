@@ -5,6 +5,7 @@ import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 import LandingCopySection from "@/components/landing/LandingCopySection";
 import PrintServicesLinks from "@/components/PrintServicesLinks";
+import CorporateWorkGallery from "@/components/CorporateWorkGallery";
 import { CORPORATE_COPY, CORPORATE_H1, CORPORATE_SCHEMAS, CORPORATE_SEO } from "@/lib/corporateCopy";
 
 export default function CorporatePage() {
@@ -49,9 +50,16 @@ export default function CorporatePage() {
         </div>
 
         {/* SEO text section (lib/corporateCopy.ts) — same text in the
-            prerendered dist/corporate/index.html. */}
+            prerendered dist/corporate/index.html. Partner names + the
+            corporate work gallery (lib/corporateWork.ts) sit between its
+            sections and its FAQ, in the static file too. */}
         <div className="mb-8">
-          <LandingCopySection copy={CORPORATE_COPY} price={null} tone="page" />
+          <LandingCopySection
+            copy={CORPORATE_COPY}
+            price={null}
+            tone="page"
+            beforeFaq={<CorporateWorkGallery tone="copy" />}
+          />
         </div>
 
         <CorporateInquiryModal>

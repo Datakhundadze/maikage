@@ -1,10 +1,19 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import ServicePage from "@/pages/ServicePage";
+
+// /korporatiuli-sachukrebi renders CorporateWorkGallery, which reads
+// portfolio_items — no network in tests (an empty result hides the gallery).
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    from: () => ({ select: () => ({ eq: async () => ({ data: [], error: null }) }) }),
+    storage: { from: () => ({ getPublicUrl: (p: string) => ({ data: { publicUrl: p } }) }) },
+  },
+}));
 import {
   PRINTING_PAGE,
   SERVICE_CONTACT,
@@ -353,7 +362,7 @@ describe("service pages — static HTML and JSON-LD", () => {
     expect(pre).toContain("title: sp.seo.title,");
     expect(pre).toContain("description: sp.seo.description,");
     expect(pre).toContain("jsonLd: app.serviceSchemas(sp),");
-    expect(pre).toContain("rootHtml: servicePageHtml(sp, { esc, link, style: STYLE }, servicesBlock(app, sp.path)),");
+    expect(pre).toContain("rootHtml: servicePageHtml(\n          sp,\n          { esc, link, style: STYLE },\n          servicesBlock(app, sp.path),");
     expect(source("scripts/lib/appModules.mjs")).toContain('serviceCopy: "/src/lib/serviceCopy.ts"');
   });
 

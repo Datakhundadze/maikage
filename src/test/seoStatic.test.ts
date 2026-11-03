@@ -69,7 +69,7 @@ describe("copied page text still matches its source", () => {
     expect(CORPORATE).not.toHaveProperty("title");
     expect(CORPORATE).not.toHaveProperty("description");
     const prerender = source("scripts/prerender.mjs");
-    expect(prerender).toContain('corporatePage(app, { esc, link, style: STYLE }, servicesBlock(app, "/corporate"))');
+    expect(prerender).toContain('corporatePage(app, { esc, link, style: STYLE }, servicesBlock(app, "/corporate"), corporateWork)');
     expect(prerender).toContain("jsonLd: corp.jsonLd,");
     expect(source("scripts/lib/appModules.mjs")).toContain('corporateCopy: "/src/lib/corporateCopy.ts"');
   });

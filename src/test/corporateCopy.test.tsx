@@ -143,7 +143,7 @@ describe("CorporatePage wiring", () => {
 
   it("renders the section after the feature cards and before the enquiry CTA", () => {
     const cards = PAGE_SRC.indexOf('label: "კონკურენტული ფასები"');
-    const section = PAGE_SRC.indexOf('<LandingCopySection copy={CORPORATE_COPY} price={null} tone="page" />');
+    const section = PAGE_SRC.indexOf("<LandingCopySection\n            copy={CORPORATE_COPY}\n            price={null}\n            tone=\"page\"");
     const cta = PAGE_SRC.indexOf("<CorporateInquiryModal>");
     expect(cards).toBeGreaterThan(-1);
     expect(section).toBeGreaterThan(cards);
