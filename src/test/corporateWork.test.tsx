@@ -141,7 +141,7 @@ describe("lib/corporateWork.ts selection", () => {
 
   it("partner list: Dinamo Tbilisi and Nike first, then the owner-approved partners (no duplicates)", () => {
     expect(CORPORATE_PARTNERS.slice(0, 2)).toEqual(["Dinamo Tbilisi", "Nike"]);
-    expect(CORPORATE_PARTNERS).toEqual(expect.arrayContaining(["Lexus Tbilisi", "iStyle", "World Class", "British School", "EPAM", "elf"]));
+    expect(CORPORATE_PARTNERS).toEqual(expect.arrayContaining(["Lexus Tbilisi", "iStyle", "World Class", "British International School of Tbilisi", "British-Georgian Academy", "EPAM", "elf"]));
     expect(new Set(CORPORATE_PARTNERS).size).toBe(CORPORATE_PARTNERS.length);
     expect(CORPORATE_WORK_PATHS).toEqual(["/corporate", "/korporatiuli-sachukrebi"]);
     expect(`${CORPORATE_WORK_COPY.heading} ${CORPORATE_WORK_COPY.intro}`).not.toMatch(/₾|[а-яё]/i);
