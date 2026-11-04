@@ -13,11 +13,14 @@ export const WALK_TRACK_DATA = {
   ],
   fps: 29.97,
   stepSec: 0.2,
-  start: 1.0,
+  // the camera stood at the door for the first 4 s
+  start: 4.4,
   // the take ends away from the entrance: forward past the end continues at
-  // a spot passed earlier; backward past the entrance continues on the pass
-  // that walks back to it later (both joins: rotation-only fit < 0.7°)
-  loop: { from: 255.8, to: 74.4, revFrom: 1.4, revTo: 208.6 },
+  // a spot passed earlier (rotation-only fit 0.67°); backward the start is
+  // the shop door — a dead end
+  loop: { from: 255.8, to: 74.4, revFrom: -1, revTo: 0 },
+  // the camera stood still here (floor flow ~0): walked straight across
+  skips: [[208.2, 212.0]] as [number, number][],
   // places passed twice (camera within a few cm: rotation-only fit of SIFT
   // matches, median residual < 0.6°); yawDeg = frame at b vs frame at a
   links: [

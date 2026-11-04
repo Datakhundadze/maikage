@@ -92,9 +92,16 @@ export interface WalkTrack {
    * from/to: going forward past `from` continues at `to`. Going backward the
    * walk jumps at revFrom to revTo (default: past `to` back to `from`, for a
    * walk that ends where it started). A single take that doesn't end at its
-   * start needs the two ends joined to different places.
+   * start needs the two ends joined to different places. revFrom < 0: no
+   * jump going backward (the start is a dead end, e.g. the shop door).
    */
   loop: { from: number; to: number; revFrom?: number; revTo?: number };
+  /**
+   * Stretches where the camera stood still (from, to): walking through one
+   * the walk jumps straight across (the frames at both ends are the same
+   * spot), so pushing never plays seconds of a frozen picture.
+   */
+  skips?: [number, number][];
   headingDeg: number[];
   /**
    * Distance walked from the start of the video (m), one value per stepSec,
@@ -291,7 +298,16 @@ export function loopJump(t: number, dir: WalkDir, track: WalkTrack = WALK_TRACK)
   const fromAt = Math.min(from, track.duration - LOOP_SLACK);
   const revAt = Math.max(revFrom, LOOP_SLACK);
   if (dir === "fwd" && t >= fromAt) return to + Math.max(0, t - from);
-  if (dir === "rev" && t <= revAt) return revTo - Math.max(0, revFrom - t);
+  if (dir === "rev" && revFrom >= 0 && t <= revAt) return revTo - Math.max(0, revFrom - t);
+  return null;
+}
+
+/** Across a standing-still stretch (track.skips): where to continue when moving in `dir` has entered one, else null. */
+export function skipJump(t: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number | null {
+  for (const [a, b] of track.skips ?? []) {
+    if (dir === "fwd" && t >= a && t < b - 0.05) return b;
+    if (dir === "rev" && t <= b && t > a + 0.05) return a;
+  }
   return null;
 }
 

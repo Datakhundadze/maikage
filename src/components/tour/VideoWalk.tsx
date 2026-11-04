@@ -38,6 +38,7 @@ import {
   localTime,
   partIndexAt,
   loopJump,
+  skipJump,
   vfovFor,
   walkFromStick,
   hopChoice,
@@ -1183,10 +1184,10 @@ export default function VideoWalk() {
           }
           if (now - lastPark > F.parkEveryMs) parkIdle();
           const ps = track.parts;
-          const next = loopJump(t, dir, track);
+          const next = loopJump(t, dir, track) ?? skipJump(t, dir, track);
           lastT = t;
           if (next !== null) {
-            // the loop point
+            // the loop point, or across a stretch where the camera stood still
             void jumpTo(next);
           } else if (dir === "fwd" && part < ps.length - 1 && t >= ps[part].to - 0.02) {
             // into the next part's file

@@ -21,6 +21,7 @@ import {
   planWalk,
   headingAt,
   loopJump,
+  skipJump,
   vfovFor,
   walkFromStick,
   WALK_FEEL,
@@ -130,12 +131,20 @@ describe("loopJump", () => {
     expect(loopJump(2.1, "rev", T)).toBeNull();
     expect(loopJump(1.8, "rev", T)).toBeCloseTo(8.8);
   });
-  it("backward from the very start goes round the loop the other way", () => {
+  it("backward from the very start: round the loop, or a dead end at the door", () => {
     const at = WALK_TRACK.loop.revFrom ?? WALK_TRACK.loop.to;
-    const j = loopJump(at, "rev");
-    expect(j).not.toBeNull();
-    expect(j!).toBeGreaterThan(at);
-    expect(j!).toBeLessThanOrEqual(WALK_TRACK.duration);
+    const j = loopJump(Math.max(0, at), "rev");
+    if (at < 0) expect(j).toBeNull();
+    else {
+      expect(j).not.toBeNull();
+      expect(j!).toBeGreaterThan(at);
+      expect(j!).toBeLessThanOrEqual(WALK_TRACK.duration);
+    }
+  });
+  it("revFrom < 0: walking backward past the start is a dead end", () => {
+    const D: WalkTrack = { ...T, loop: { from: 9, to: 4, revFrom: -1, revTo: 0 } };
+    expect(loopJump(0, "rev", D)).toBeNull();
+    expect(loopJump(0.1, "rev", D)).toBeNull();
   });
   it("the two ends can join different places (a take that doesn't end at its start)", () => {
     const Y: WalkTrack = { ...T, loop: { from: 9, to: 4, revFrom: 1, revTo: 6 } };
@@ -208,12 +217,15 @@ describe("turning round", () => {
     expect(planWalk("back", "along")).toBe("rev");
     expect(planWalk("back", "against")).toBe("fwd");
   });
-  it("turned round at the start, pushing up goes round the loop the other way", () => {
+  it("turned round at the start, pushing up walks back toward the door", () => {
     const t = WALK_TRACK.start + 0.5;
     const facing = facingFromView(headingAt(t) + 180, t);
-    const dir = planWalk("ahead", facing);
-    expect(dir).toBe("rev");
-    expect(loopJump((WALK_TRACK.loop.revFrom ?? WALK_TRACK.loop.to) - 0.1, dir)).not.toBeNull();
+    expect(planWalk("ahead", facing)).toBe("rev");
+  });
+  it("the visit starts where the camera is already walking (not frozen at the door)", () => {
+    const d = WALK_TRACK.distM!;
+    const i = Math.round(WALK_TRACK.start / WALK_TRACK.stepSec);
+    expect(d[i + 5] - d[i]).toBeGreaterThan(0.3);
   });
 });
 
@@ -367,6 +379,26 @@ describe("seekJunction", () => {
     expect(seekJunction(1, 0, 0, S, { maxDistM: 1.5, minMatch: 0.6, minGain: 0.3 })).toBeNull();
     // the other pass doesn't go that way either
     expect(seekJunction(1, 270, 0, S)).toBeNull();
+  });
+});
+
+describe("skipJump", () => {
+  const K: WalkTrack = { ...T, skips: [[4, 6]] };
+  it("walks straight across a standing-still stretch, both ways", () => {
+    expect(skipJump(4.1, "fwd", K)).toBe(6);
+    expect(skipJump(5.9, "rev", K)).toBe(4);
+  });
+  it("outside it (or just landed on its end) nothing happens", () => {
+    expect(skipJump(3.9, "fwd", K)).toBeNull();
+    expect(skipJump(6, "fwd", K)).toBeNull();
+    expect(skipJump(4, "rev", K)).toBeNull();
+    expect(skipJump(5, "fwd", T)).toBeNull();
+  });
+  it("the real skips are standing still in the video", () => {
+    for (const [a, b] of WALK_TRACK.skips ?? []) {
+      expect(b).toBeGreaterThan(a);
+      expect(distanceAt(b) - distanceAt(a)).toBeLessThan(0.3);
+    }
   });
 });
 
