@@ -3,15 +3,16 @@
 // joystick. Pure logic here (no DOM, no three.js) so it can be unit-tested;
 // the viewer is components/tour/VideoWalk.tsx.
 //
-// FILES (Supabase Storage, public bucket "showroom", walk/; the site host
-// serves files only up to ~25 MB): the walk is cut in parts (WalkPart), each
-// a pair `${base}-fwd.mp4` / `${base}-rev.mp4`, 3840×1920 equirectangular,
-// H.264 High, 30 fps, 4.3 Mbit/s two-pass, faststart; the -rev file holds
-// the same frames reversed (its time r shows forward time from + revEnd − r,
-// measured frame by frame by PSNR), so walking backward is plain playback
-// too (seeking backward frame by frame stutters on phones).
-//   walk-*.mp4    0 – 81 s   (source 5 – 86 s: the first loop)
-//   walk-b-*.mp4  81 – 156.4 s (source 86 – 161.4 s: the second loop)
+// FILES (Supabase Storage, public bucket "showroom", walk3/ and walk3m/;
+// the bucket takes files up to 100 MB): the walk is cut in parts (WalkPart),
+// each a pair `${base}-fwd.mp4` / `${base}-rev.mp4`, 3840×1920
+// equirectangular (walk3m: 2560×1280 for phones), H.264 High, 30 fps, a
+// keyframe every 10 frames, capped CRF (desktop ≤ 11 Mbit/s, phones
+// ≤ 5 Mbit/s), faststart; the -rev file holds the same frames reversed
+// (frame for frame, checked by PSNR), so walking backward is plain playback
+// too (seeking backward frame by frame stutters on phones). Four parts of
+// 65 s (1948 frames each):
+//   p0 0–65 s · p1 65–130 s · p2 130–195 s · p3 195–260 s
 //   (the track itself is bundled: walkTrackData.ts)
 //
 // JUNCTIONS (links): spots the walk passes twice. Walking face-first
@@ -24,27 +25,32 @@
 //
 // TIMES are seconds on the forward video ("forward time").
 //   start         where a visit begins (standing at the entrance, facing in)
-//   loop.from/to  the walk returns near its start: passing `from` going
-//                 forward continues at `to` (and the other way round going
-//                 backward), with a short cross-fade over the jump
+//   loop          passing `from` going forward continues at `to`; going
+//                 backward, passing revFrom continues at revTo (default:
+//                 the same join the other way round), with a short
+//                 cross-fade over the jump
 //   headingDeg    yaw of the direction of travel IN THE VIDEO FRAME, one
 //                 sample per stepSec, smoothed. Yaw 0 = centre of the video
 //                 frame, + = right. (Measured in the frame, not in the world,
-//                 so a slow drift of the camera's heading — ~4° over this
-//                 loop — doesn't put the view off the path.)
-// HOW THE TRACK WAS MADE (2026-10-19 shoot, camera on a stick above the
-// head): frames every 0.2 s, SIFT matches between frames 0.4 s apart (above
-// −35° pitch; below is the person holding the camera, covered on screen by
-// the nadir disc), essential matrix on the sphere → direction of travel;
-// circular median of 5 + Gaussian σ 0.5 s. Loop points: the frame pair with
-// the most matches and least parallax between the end and the start.
-// Source: export_video.MP4, 3840×1920, 161.8 s, two loops, 5.0–161.4 s used.
+//                 so a slow drift of the camera's heading — ~3° over this
+//                 take — doesn't put the view off the path.)
+// HOW THE TRACK WAS MADE (2026-11-03 shoot, one take, camera on a stick
+// above the head, heading locked): frames every 0.2 s, SIFT matches between
+// consecutive frames (pitch −14..70°), essential matrix on the sphere →
+// direction of travel; circular median of 5 + Gaussian σ 0.5 s, held while
+// standing still. Floor flow (pitch −20..−40°) → speed in camera heights,
+// 1.36 m per height from fitting the walked path onto the scan's floor.
+// Links: frame pairs ≥ 8 s apart close on the walked map, rotation-only fit,
+// refined to 0.2 s; posM = walked path with all 80 crossings (< 0.9°)
+// pulled together (least squares). Picture: denoise, exposure curve (the
+// day was overcast), slight warmth; the viewer's grade does the rest.
+// Source: export_video.MP4 (Insta360 app), 3840×1920, 263.2 s, 3.0–263.0 s used.
 
 import { WALK_TRACK_DATA } from "./walkTrackData";
 import { angleDiff, normDeg } from "./tourMath";
 
 /**
- * One file pair of the walk (the host takes files up to ~50 MB, the walk is
+ * One file pair of the walk (the bucket takes files up to 100 MB, the walk is
  * cut in parts). Times are forward times on the whole walk; the part's
  * videos play from `from` to `to`: `${base}-fwd.mp4` at local time
  * t − from, `${base}-rev.mp4` (the same frames reversed) at local time
