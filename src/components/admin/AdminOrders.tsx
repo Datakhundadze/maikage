@@ -30,6 +30,9 @@ import {
   type OrderAttributionRow,
 } from "@/hooks/useOrderAttribution";
 import OrderReceipt from "@/components/admin/OrderReceipt";
+// Print package (PDF job sheet + print PNGs) — add-only, browser-side.
+import PrintPackageDialog from "@/components/admin/PrintPackageDialog";
+import type { PackageUnit } from "@/lib/printPackage/buildPrintPackage";
 
 // Display widths. Generous on purpose — a soft thumbnail is a worse bug than
 // one that loads in 40ms instead of 20: the 40px summary chip gets 128
@@ -529,6 +532,7 @@ export default function AdminOrders() {
 
   const [checkingPayment, setCheckingPayment] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [printPackageUnits, setPrintPackageUnits] = useState<PackageUnit[] | null>(null);
 
   async function regeneratePrintFile(order: Order, side: "front" | "back") {
     if (!isDesignState(order.design_state)) {
@@ -784,7 +788,16 @@ export default function AdminOrders() {
                     const multi = units.length > 1;
                     return (
                       <div>
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">ნივთები</h4>
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase">ნივთები</h4>
+                          <Button
+                            size="sm"
+                            className="h-8 text-xs gap-1.5"
+                            onClick={() => setPrintPackageUnits(units.map(({ rep, count }) => ({ row: rep, count })))}
+                          >
+                            <Download className="h-3 w-3" /> საბეჭდი პაკეტი
+                          </Button>
+                        </div>
                         <div className="space-y-4">
                           {units.map(({ rep: unit, count }, ui) => (
                             <div key={unit.id} className={multi ? "pt-3 border-t border-border first:border-t-0 first:pt-0" : ""}>
@@ -1132,6 +1145,12 @@ export default function AdminOrders() {
           შეკვეთები არ მოიძებნა
         </div>
       )}
+
+      <PrintPackageDialog
+        open={printPackageUnits !== null}
+        onOpenChange={(o) => { if (!o) setPrintPackageUnits(null); }}
+        units={printPackageUnits ?? []}
+      />
     </div>
   );
 }
