@@ -12,8 +12,8 @@
 // fills the zone prints at A3: 28 cm wide, or — when it is portrait — up to
 // 40 cm tall. Width is capped at 28 cm and height at 40 cm (max print is A3).
 //
-// Non-garment products (cap, mug, phone case) have no such rule — they return
-// null and the caller keeps the file at its rendered resolution.
+// Kids garments: 85 % of that. Cap: fixed ~7.5 cm (physicalSizeForItem).
+// Mug and phone case have no rule — null, the file keeps its rendered pixels.
 
 export const MAX_WIDTH_CM = 28;
 export const MAX_HEIGHT_CM = 40;
@@ -22,8 +22,50 @@ export const PRINT_DPI = 300;
 /** Products where the zone → centimetre rule applies. */
 const GARMENT_PRODUCTS = new Set(["T-Shirt", "Hoodie", "Tote Bag", "Apron", "Sport"]);
 
+/** Cap: the shop prints ~7–8 cm wide whatever the site placement (David 2026-11-04). */
+export const CAP_PRINT_CM = 7.5;
+
+/** Kids garments print "slightly smaller" (David 2026-11-04): 85 % of the adult size. */
+export const KIDS_SCALE = 0.85;
+
+export function isKidsGarment(subProduct: string | null | undefined): boolean {
+  return !!subProduct && /kids/i.test(subProduct);
+}
+
 export function hasPhysicalSizeRule(product: string | null | undefined): boolean {
-  return !!product && GARMENT_PRODUCTS.has(product);
+  return !!product && (GARMENT_PRODUCTS.has(product) || product === "Cap");
+}
+
+function toSize(w: number, h: number): PhysicalSize {
+  return {
+    widthCm: Math.max(0.5, round05(w)),
+    heightCm: Math.max(0.5, round05(h)),
+    widthPx: Math.round((w / 2.54) * PRINT_DPI),
+    heightPx: Math.round((h / 2.54) * PRINT_DPI),
+  };
+}
+
+/**
+ * Size for an order item: product-aware wrapper around the zone rule.
+ * Cap → the longer side is CAP_PRINT_CM. Kids garment → adult size × KIDS_SCALE.
+ */
+export function physicalSizeForItem(
+  product: string | null | undefined,
+  subProduct: string | null | undefined,
+  fw: number,
+  fh: number,
+): PhysicalSize | null {
+  if (!(fw > 0) || !(fh > 0) || !Number.isFinite(fw) || !Number.isFinite(fh)) return null;
+  if (product === "Cap") {
+    const k = CAP_PRINT_CM / Math.max(fw, fh);
+    return toSize(fw * k, fh * k);
+  }
+  if (!product || !GARMENT_PRODUCTS.has(product)) return null;
+  const adult = physicalSizeFromZoneFraction(fw, fh);
+  if (!adult || !isKidsGarment(subProduct)) return adult;
+  const wCm = (adult.widthPx / PRINT_DPI) * 2.54 * KIDS_SCALE;
+  const hCm = (adult.heightPx / PRINT_DPI) * 2.54 * KIDS_SCALE;
+  return toSize(wCm, hCm);
 }
 
 /** [fraction of the zone, centimetres] for the design's WIDTH (landscape / square). */
@@ -79,12 +121,5 @@ export function physicalSizeFromZoneFraction(fw: number, fh: number): PhysicalSi
   let h = fh * cmPerZone;
   if (w > MAX_WIDTH_CM) { h *= MAX_WIDTH_CM / w; w = MAX_WIDTH_CM; }
   if (h > MAX_HEIGHT_CM) { w *= MAX_HEIGHT_CM / h; h = MAX_HEIGHT_CM; }
-  const widthCm = Math.max(0.5, round05(w));
-  const heightCm = Math.max(0.5, round05(h));
-  return {
-    widthCm,
-    heightCm,
-    widthPx: Math.round((w / 2.54) * PRINT_DPI),
-    heightPx: Math.round((h / 2.54) * PRINT_DPI),
-  };
+  return toSize(w, h);
 }

@@ -16,7 +16,7 @@ import { compositePrintFileFromDesignState } from "@/lib/designCompositor";
 import { supabase } from "@/integrations/supabase/client";
 import { COLORS } from "@/lib/catalog";
 import { removeSolidBackground } from "./solidBackground";
-import { hasPhysicalSizeRule, physicalSizeFromZoneFraction, PRINT_DPI, type PhysicalSize } from "./printSize";
+import { hasPhysicalSizeRule, isKidsGarment, physicalSizeForItem, PRINT_DPI, type PhysicalSize } from "./printSize";
 import { setPngDpi } from "./pngDpi";
 import { buildJpegPdf, type PdfJpegPage } from "./simplePdf";
 
@@ -221,8 +221,9 @@ async function renderFromDesignState(
   const zoneW = BASE_CANVAS * side.zone.width;
   const zoneH = BASE_CANVAS * side.zone.height;
   const size = hasPhysicalSizeRule(row.product)
-    ? physicalSizeFromZoneFraction(bbox.w / zoneW, bbox.h / zoneH)
+    ? physicalSizeForItem(row.product, row.sub_product, bbox.w / zoneW, bbox.h / zoneH)
     : null;
+  if (size && isKidsGarment(row.sub_product)) notes.push("საბავშვო — ზომა 85%-ზეა შემცირებული");
 
   const targetW = size ? size.widthPx : bbox.w;
   const targetH = size ? size.heightPx : bbox.h;

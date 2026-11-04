@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { physicalSizeFromZoneFraction, hasPhysicalSizeRule, MAX_WIDTH_CM, MAX_HEIGHT_CM } from "@/lib/printPackage/printSize";
+import { physicalSizeFromZoneFraction, physicalSizeForItem, hasPhysicalSizeRule, MAX_WIDTH_CM, MAX_HEIGHT_CM } from "@/lib/printPackage/printSize";
 import { setPngDpi, readPngDpi, crc32 } from "@/lib/printPackage/pngDpi";
 import { removeSolidBackground } from "@/lib/printPackage/solidBackground";
 import { buildJpegPdf } from "@/lib/printPackage/simplePdf";
@@ -44,6 +44,7 @@ describe("print size rule (David 2026-11-04)", () => {
     expect(hasPhysicalSizeRule("T-Shirt")).toBe(true);
     expect(hasPhysicalSizeRule("Hoodie")).toBe(true);
     expect(hasPhysicalSizeRule("Mug")).toBe(false);
+    expect(hasPhysicalSizeRule("Cap")).toBe(true);
     expect(hasPhysicalSizeRule("Phone Case")).toBe(false);
   });
 });
@@ -155,5 +156,24 @@ describe("auto background default is garment-aware", () => {
     expect(backgroundMatchesGarment("#ffffff", ["White", "Black"])).toBe(false);
     expect(backgroundMatchesGarment("#ffffff", ["Mystery"])).toBe(false);
     expect(backgroundMatchesGarment(null, ["White"])).toBe(false);
+  });
+});
+
+describe("kids and cap sizes (David 2026-11-04)", () => {
+  it("kids garment prints slightly smaller than adult", () => {
+    const adult = physicalSizeForItem("T-Shirt", "GILDAN", 1, 1)!;
+    const kids = physicalSizeForItem("T-Shirt", "GILDAN KIDS", 1, 1)!;
+    expect(adult.widthCm).toBe(28);
+    expect(kids.widthCm).toBe(24);
+    expect(kids.widthPx).toBeLessThan(adult.widthPx);
+  });
+  it("cap is ~7.5 cm on the longer side regardless of placement", () => {
+    expect(physicalSizeForItem("Cap", null, 1, 0.5)!.widthCm).toBe(7.5);
+    expect(physicalSizeForItem("Cap", null, 0.3, 0.15)!.widthCm).toBe(7.5);
+    expect(physicalSizeForItem("Cap", null, 0.4, 0.8)!.heightCm).toBe(7.5);
+  });
+  it("mug and phone case have no rule", () => {
+    expect(physicalSizeForItem("Mug", null, 1, 1)).toBeNull();
+    expect(physicalSizeForItem("Phone Case", null, 1, 1)).toBeNull();
   });
 });
