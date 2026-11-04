@@ -22,6 +22,9 @@
 // before (junctionsAhead). Found by comparing frames far apart in time but
 // close on the walked map: rotation-only fit of SIFT matches, the residual
 // is the parallax (< 0.9° = the camera stood within a few cm).
+// Looking down a way the current pass doesn't go, with a crossing that
+// does within a few metres (seekJunction), the walk heads to that crossing
+// with the view kept where the visitor looks, and steps across there.
 //
 // TIMES are seconds on the forward video ("forward time").
 //   start         where a visit begins (standing at the entrance, facing in)
@@ -554,6 +557,47 @@ export function hopChoice(
   }
   return best;
 }
+
+/**
+ * Heading for a turn: the visitor pushes toward desiredDeg, which the current
+ * pass doesn't go (currentMatch low), but a crossing within maxDistM along the
+ * pass (either way) leads there. Returns which way along the current pass to
+ * walk to reach it (the nearest good one; hopChoice then steps across when it
+ * is reached), or null. Without this the visitor could only turn when standing
+ * exactly on a crossing — every other spot just follows the filmed way.
+ */
+export function seekJunction(
+  t: number,
+  desiredDeg: number,
+  currentMatch: number,
+  track: WalkTrack = WALK_TRACK,
+  cfg: { maxDistM: number; minMatch: number; minGain: number } = SEEK_CFG,
+): { dir: WalkDir; at: number; distM: number } | null {
+  const d0 = distanceAt(t, track);
+  let best: { dir: WalkDir; at: number; distM: number } | null = null;
+  let bestScore = -Infinity;
+  for (const e of linkEnds(track)) {
+    if (Math.abs(e.at - t) < 0.05) continue; // on it: hopChoice's job
+    const distM = Math.abs(distanceAt(e.at, track) - d0);
+    if (distM > cfg.maxDistM) continue;
+    let c = -Infinity;
+    for (const d of ["fwd", "rev"] as WalkDir[]) {
+      const h = headingAt(e.other, track) + (d === "fwd" ? 0 : 180) - e.shift;
+      c = Math.max(c, Math.cos(((desiredDeg - h) * Math.PI) / 180));
+    }
+    if (c < cfg.minMatch || c - currentMatch < cfg.minGain) continue;
+    // nearer wins; a much better match may be a little further
+    const score = c - distM / cfg.maxDistM;
+    if (score > bestScore) {
+      bestScore = score;
+      best = { dir: e.at > t ? "fwd" : "rev", at: e.at, distM };
+    }
+  }
+  return best;
+}
+
+/** Seek a crossing this far along the pass (m), when the current pass matches the wanted way below seekBelow. */
+export const SEEK_CFG = { maxDistM: 5, minMatch: 0.6, minGain: 0.3, seekBelow: 0.5 } as const;
 
 /** Looser limits than the real choice: for getting a branch ready and showing its arrows. */
 export const LEAN_CFG = { minGainDeg: 10, maxOffDeg: 110 } as const;

@@ -5,6 +5,7 @@ import {
   globalTime,
   junctionChoice,
   hopChoice,
+  seekJunction,
   slideAlong,
   slideSpeed,
   playbackStep,
@@ -351,3 +352,21 @@ describe("sliding along a pass and stepping across", () => {
     expect(hopChoice(3, 0, 0, J)).toBeNull(); // too far from the link
   });
 });
+
+describe("seekJunction", () => {
+  // a pass heading 90° the whole way (t 0–6), then 0° (t 7–10); at t=3 it crosses the spot of t=8
+  const S: WalkTrack = { ...T, headingDeg: [90, 90, 90, 90, 90, 90, 90, 0, 0, 0, 0], links: [{ a: 3, b: 8, yawDeg: 0 }] };
+  it("looking down a way the pass doesn't go walks on to the crossing that does", () => {
+    expect(seekJunction(1, 0, 0, S)).toEqual({ dir: "fwd", at: 3, distM: 2 });
+  });
+  it("…or back to it when it is behind", () => {
+    expect(seekJunction(5, 0, 0, S)).toEqual({ dir: "rev", at: 3, distM: 2 });
+  });
+  it("nothing to seek when the pass already goes that way, or the crossing is too far", () => {
+    expect(seekJunction(1, 0, 0.9, S)).toBeNull();
+    expect(seekJunction(1, 0, 0, S, { maxDistM: 1.5, minMatch: 0.6, minGain: 0.3 })).toBeNull();
+    // the other pass doesn't go that way either
+    expect(seekJunction(1, 270, 0, S)).toBeNull();
+  });
+});
+

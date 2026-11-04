@@ -41,6 +41,8 @@ import {
   vfovFor,
   walkFromStick,
   hopChoice,
+  seekJunction,
+  SEEK_CFG,
   playbackStep,
   slideAlong,
   slideSpeed,
@@ -625,6 +627,7 @@ export default function VideoWalk() {
     let facing: Facing = "along";
     let lastJunctionAt = -1e9;
     let activeIntent: WalkIntent | null = null;
+    let seeking = false; // walking to a crossing the view points past: the view stays put
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
     const active = () => clip(part, dir).video;
@@ -1099,17 +1102,28 @@ export default function VideoWalk() {
         // heads clearly closer to where the visitor wants to go
         const want = walkFromStick(stick.y);
         activeIntent = want ? want.intent : null;
+        seeking = false;
         let target = 0;
         if (want && !switching) {
           const t = fwdTime();
           const desired = normDeg(yawDeg + (want.intent === "back" ? 180 : 0));
           const slide = slideAlong(t, dir, desired, track);
+          let seek: ReturnType<typeof seekJunction> = null;
           const hop = now - lastJunctionAt > F.junctionCooldownMs ? hopChoice(t, desired, slide.match, track) : null;
           if (hop) {
             lastJunctionAt = now;
             printDir = hop.dir;
             facing = (want.intent === "ahead") === (hop.dir === "fwd") ? "along" : "against";
             void jumpTo(hop.t, hop.dir, hop.yawShift);
+          } else if (slide.match < SEEK_CFG.seekBelow && (seek = seekJunction(t, desired, slide.match, track))) {
+            // looking down a way this pass doesn't go, with a crossing that
+            // does a few metres along: walk to it (the view stays where the
+            // visitor looks) and step across there
+            seeking = true;
+            printDir = seek.dir;
+            facing = (want.intent === "ahead") === (seek.dir === "fwd") ? "along" : "against";
+            if (seek.dir !== dir) void switchDir(seek.dir);
+            else target = want.rate;
           } else {
             printDir = slide.dir;
             facing = (want.intent === "ahead") === (slide.dir === "fwd") ? "along" : "against";
@@ -1157,7 +1171,7 @@ export default function VideoWalk() {
           }
           stepPhase = walked / F.steps.strideM;
           const busyLooking = pointers.size > 0 || now - Math.max(lastDragAt, lastTurnAt) < F.followDelayMs;
-          if (!busyLooking) {
+          if (!busyLooking && !seeking) {
             const scaled = { followMaxDegPerSec: F.followMaxDegPerSec * Math.min(1.2, r), followEaseMs: F.followEaseMs };
             yawDeg = followStep(yawDeg, followTarget(t, dir, facing), dt, scaled);
             pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
