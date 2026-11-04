@@ -79,7 +79,13 @@ export interface WalkTrack {
   fps: number;
   stepSec: number;
   start: number;
-  loop: { from: number; to: number };
+  /**
+   * from/to: going forward past `from` continues at `to`. Going backward the
+   * walk jumps at revFrom to revTo (default: past `to` back to `from`, for a
+   * walk that ends where it started). A single take that doesn't end at its
+   * start needs the two ends joined to different places.
+   */
+  loop: { from: number; to: number; revFrom?: number; revTo?: number };
   headingDeg: number[];
   /**
    * Distance walked from the start of the video (m), one value per stepSec,
@@ -269,12 +275,14 @@ export function globalTime(v: number, p: number, dir: WalkDir, track: WalkTrack 
  */
 export function loopJump(t: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number | null {
   const { from, to } = track.loop;
+  const revFrom = track.loop.revFrom ?? to;
+  const revTo = track.loop.revTo ?? from;
   // a loop point at the very end of the video can't be reached exactly (the
   // reversed copy stops a frame or two short of 0): count it LOOP_SLACK early
   const fromAt = Math.min(from, track.duration - LOOP_SLACK);
-  const toAt = Math.max(to, LOOP_SLACK);
+  const revAt = Math.max(revFrom, LOOP_SLACK);
   if (dir === "fwd" && t >= fromAt) return to + Math.max(0, t - from);
-  if (dir === "rev" && t <= toAt) return from - Math.max(0, to - t);
+  if (dir === "rev" && t <= revAt) return revTo - Math.max(0, revFrom - t);
   return null;
 }
 

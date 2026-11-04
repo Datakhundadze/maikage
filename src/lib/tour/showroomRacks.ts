@@ -3,13 +3,15 @@
 // frame (WALK_TRACK.posM: metres, video-frame yaw), what hangs there, and
 // whether it opens a set of products or the whole catalog.
 //
-// HOW THE RACKS WERE PLACED (2026-10-21): David numbered the racks on a top-
-// down plan of the shop (made from the Scaniverse scan, 2026-10-20) and named
-// them. The walk's floor path (distM + headingDeg, junction links pulled
-// together) was fitted onto the scan's free floor (rotation 107°, scale 0.85,
-// best overlap of the path with the floor), and the rack ends taken across.
-// Checked against video frames: bearings within ~10–20°. Good enough to point
-// at a rack; the "nearby" chip uses distance, which is more forgiving.
+// HOW THE RACKS WERE PLACED (2026-10-21, moved onto the new walk 2026-11-04):
+// David numbered the racks on a top-down plan of the shop (made from the
+// Scaniverse scan, 2026-10-20) and named them. Each walk's floor path
+// (posM) was fitted onto the scan's free floor (best overlap of the path
+// with the floor; for the 2026-11-03 take: rotation 85°, 1.36 m per camera
+// height of floor flow), and the rack ends taken across from the scan.
+// Checked against video frames (the yellow catalog rack, the polo rack).
+// Good enough to point at a rack; the "nearby" chip uses distance, which is
+// more forgiving.
 
 import type { ProductType } from "@/lib/catalog";
 import { WALK_TRACK, type WalkTrack } from "./walkTrack";
@@ -32,13 +34,13 @@ export interface ShowroomRack {
 }
 
 export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
-  { id: "nike", title: "NIKE", a: [-12.63, 3.96], b: [-10.15, 3.2], items: [{ product: "T-Shirt", brand: "NIKE" }] },
-  { id: "khundadze", title: "Khundadze", a: [-9.82, 3.1], b: [-7.57, 2.41], items: [{ product: "T-Shirt", brand: "Khundadze" }] },
+  { id: "nike", title: "NIKE", a: [-10.75, 0.37], b: [-8.55, 0.56], items: [{ product: "T-Shirt", brand: "NIKE" }] },
+  { id: "khundadze", title: "Khundadze", a: [-8.26, 0.59], b: [-6.27, 0.76], items: [{ product: "T-Shirt", brand: "Khundadze" }] },
   {
     id: "hummer-giordano",
     title: "GILDAN HUMMER · GIORDANO",
-    a: [-6.67, 2.13],
-    b: [-4.53, 1.48],
+    a: [-5.47, 0.82],
+    b: [-3.58, 0.99],
     items: [
       { product: "T-Shirt", brand: "GILDAN HUMMER" },
       { product: "T-Shirt", brand: "GIORDANO" },
@@ -47,8 +49,8 @@ export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
   {
     id: "washed-oversize",
     title: "Washed · Oversize",
-    a: [-3.85, 1.27],
-    b: [-1.83, 0.66],
+    a: [-2.97, 1.04],
+    b: [-1.19, 1.21],
     items: [
       { product: "T-Shirt", brand: "JEL T-Shirt" },
       { product: "T-Shirt", brand: "Oversize" },
@@ -57,8 +59,8 @@ export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
   {
     id: "hoodies",
     title: "ჰუდები · Zipper · Bomber",
-    a: [-8.83, 1.08],
-    b: [-10.55, -4.55],
+    a: [-6.84, -0.69],
+    b: [-6.4, -5.68],
     items: [
       { product: "Hoodie", brand: "GILDAN Hoodie" },
       { product: "Hoodie", brand: "Premium Washed Hoodie" },
@@ -67,13 +69,13 @@ export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
       { product: "Hoodie", brand: "GILDAN Bomber" },
     ],
   },
-  { id: "catalog", title: "მთელი კატალოგი", a: [-7.83, -0.46], b: [-8.83, -3.72], items: "catalog" },
-  { id: "sport", title: "ფეხბურთის ფორმები", a: [-5.52, -1.17], b: [-6.38, -3.98], items: [{ product: "Sport", brand: "Sport Set" }] },
+  { id: "catalog", title: "მთელი კატალოგი", a: [-5.56, -1.59], b: [-5.31, -4.47], items: "catalog" },
+  { id: "sport", title: "ფეხბურთის ფორმები", a: [-3.51, -1.41], b: [-3.3, -3.9], items: [{ product: "Sport", brand: "Sport Set" }] },
   {
     id: "gildan-polo-th-sols",
     title: "GILDAN · Polo · TH · Sol's",
-    a: [-3.32, -0.61],
-    b: [-4.42, -4.21],
+    a: [-1.96, -0.27],
+    b: [-1.68, -3.46],
     items: [
       { product: "T-Shirt", brand: "GILDAN" },
       { product: "T-Shirt", brand: "Polo" },

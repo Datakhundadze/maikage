@@ -130,10 +130,19 @@ describe("loopJump", () => {
     expect(loopJump(1.8, "rev", T)).toBeCloseTo(8.8);
   });
   it("backward from the very start goes round the loop the other way", () => {
-    const j = loopJump(WALK_TRACK.loop.to, "rev");
+    const at = WALK_TRACK.loop.revFrom ?? WALK_TRACK.loop.to;
+    const j = loopJump(at, "rev");
     expect(j).not.toBeNull();
-    expect(j!).toBeGreaterThan(WALK_TRACK.loop.to);
-    expect(j!).toBeLessThanOrEqual(WALK_TRACK.loop.from);
+    expect(j!).toBeGreaterThan(at);
+    expect(j!).toBeLessThanOrEqual(WALK_TRACK.duration);
+  });
+  it("the two ends can join different places (a take that doesn't end at its start)", () => {
+    const Y: WalkTrack = { ...T, loop: { from: 9, to: 4, revFrom: 1, revTo: 6 } };
+    expect(loopJump(9.2, "fwd", Y)).toBeCloseTo(4.2);
+    expect(loopJump(2, "rev", Y)).toBeNull();
+    expect(loopJump(0.8, "rev", Y)).toBeCloseTo(5.8);
+    // backward past `to` is no jump any more
+    expect(loopJump(3.9, "rev", Y)).toBeNull();
   });
   it("a jump never lands on another jump", () => {
     for (let t = 0; t <= WALK_TRACK.duration; t += 0.5) {
@@ -203,7 +212,7 @@ describe("turning round", () => {
     const facing = facingFromView(headingAt(t) + 180, t);
     const dir = planWalk("ahead", facing);
     expect(dir).toBe("rev");
-    expect(loopJump(WALK_TRACK.loop.to - 0.1, dir)).not.toBeNull();
+    expect(loopJump((WALK_TRACK.loop.revFrom ?? WALK_TRACK.loop.to) - 0.1, dir)).not.toBeNull();
   });
 });
 
