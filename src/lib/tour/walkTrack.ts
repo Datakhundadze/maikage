@@ -109,7 +109,7 @@ export interface WalkTrack {
    * still in the video is 0 m/s). Missing in test tracks: then 1 m/s.
    */
   distM?: number[];
-  /** Camera floor position (x, z) per stepSec as flat pairs, links pulled together — racks are placed in this frame. */
+  /** Camera floor position (x, z) per stepSec as flat pairs, links pulled together (the walk as seen from above). */
   posM?: number[];
 }
 

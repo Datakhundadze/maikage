@@ -21,8 +21,14 @@ const BRAND_LABEL: Record<string, string> = {
   "JEL T-Shirt": "JEL Washed",
   "GILDAN Hoodie": "GILDAN",
   "Premium Washed Hoodie": "Premium Washed",
-  "Sport Set": "ფეხბურთის ფორმა",
+  "JEL Zipper": "JEL Washed Zipper",
 };
+
+/** "GILDAN მაისური"; a product without brands (the tote bag: brand = product) is just its name. */
+function itemName(it: RackItem): string {
+  if (it.brand === it.product) return productTypeKa(it.product);
+  return `${BRAND_LABEL[it.brand] ?? it.brand} ${productTypeKa(it.product)}`;
+}
 
 function itemImage(it: RackItem): string | null {
   const colors = catalog.getAvailableColors(it.product, it.brand);
@@ -44,7 +50,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
         ? []
         : rack.items.map((it) => ({
             ...it,
-            name: `${BRAND_LABEL[it.brand] ?? it.brand} ${it.product === "Sport" ? "" : productTypeKa(it.product)}`.trim(),
+            name: itemName(it),
             price: fromPrice(it.product, it.brand),
             image: itemImage(it),
           })),
@@ -112,7 +118,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
           <div className="relative mt-2">
             {/* the rail the garments hang from */}
             <div className="mx-4 h-1.5 rounded-full bg-gradient-to-b from-zinc-300 to-zinc-500" aria-hidden />
-            <ul className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <ul className={`flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-1 ${items.length === 1 ? "justify-center" : ""} [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
               {items.map((it, i) => (
                 <li key={`${it.product}|${it.brand}`} className="w-40 shrink-0 snap-center">
                   <div

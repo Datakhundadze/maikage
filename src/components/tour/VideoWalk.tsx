@@ -51,12 +51,14 @@ interface WalkDest {
   title: string;
   t: number;
   yawDeg: number;
+  /** Where the view tilts on arrival (a rack right beside the walk is low in the picture); default: the walking tilt. */
+  pitchDeg?: number;
   rack?: ShowroomRack;
 }
 
-/** Every rack with a stop, then the entrance. */
+/** Every rack (one per brand), then the entrance. */
 const dests: WalkDest[] = [
-  ...SHOWROOM_RACKS.filter((r) => r.stop).map((r) => ({ id: r.id, title: r.title, t: r.stop!.t, yawDeg: r.stop!.yawDeg, rack: r })),
+  ...SHOWROOM_RACKS.map((r) => ({ id: r.id, title: r.title, t: r.stop.t, yawDeg: r.stop.yawDeg, pitchDeg: r.stop.pitchDeg, rack: r })),
   { id: "entrance", title: "შესასვლელი", t: WALK_TRACK.start, yawDeg: headingAt(WALK_TRACK.start) },
 ];
 
@@ -588,7 +590,7 @@ export default function VideoWalk() {
     let routeIdx = 0;
     let routeDest: WalkDest | null = null;
     // arrived: the view turns to the rack, then its sheet opens
-    let arriving: { yaw: number; since: number; dest: WalkDest } | null = null;
+    let arriving: { yaw: number; pitch: number; since: number; dest: WalkDest } | null = null;
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
     const active = () => clip(part, dir).video;
@@ -988,7 +990,7 @@ export default function VideoWalk() {
       playing = false;
       rate = 0;
       lastStepNo = null;
-      if (routeDest) arriving = { yaw: routeDest.yawDeg, since: performance.now(), dest: routeDest };
+      if (routeDest) arriving = { yaw: routeDest.yawDeg, pitch: routeDest.pitchDeg ?? F.walkPitchDeg, since: performance.now(), dest: routeDest };
       route = null;
       routeDest = null;
       parkIdle();
@@ -1058,9 +1060,9 @@ export default function VideoWalk() {
           const busy = pointers.size > 0 || now - lastDragAt < 400;
           if (!busy) {
             yawDeg = followStep(yawDeg, arriving.yaw, dt, { followMaxDegPerSec: 120, followEaseMs: 350 });
-            pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
+            pitchDeg = easeToward(pitchDeg, arriving.pitch, dt, F.pitchEaseMs);
           }
-          const off = Math.abs(angleDiff(arriving.yaw, yawDeg));
+          const off = Math.max(Math.abs(angleDiff(arriving.yaw, yawDeg)), Math.abs(arriving.pitch - pitchDeg));
           if (off < 4 || busy || now - arriving.since > 2500) {
             const d = arriving.dest;
             arriving = null;

@@ -1,135 +1,68 @@
-// The racks of the shop, for the rack markers in /showroom (VideoWalk +
-// RackSheet). Each rack is a straight segment on the floor in the walk's own
-// frame (WALK_TRACK.posM: metres, video-frame yaw), what hangs there, and
-// whether it opens a set of products or the whole catalog.
+// The racks of the shop for /showroom: one button per brand at the bottom of
+// the walk ("სად წავიდეთ?"). Tapping one walks there by itself (autoWalk.ts),
+// turns the view to the rack and opens its sheet (RackSheet: that brand's
+// garment, its "from" price, "არჩევა" → the constructor).
 //
-// HOW THE RACKS WERE PLACED (2026-10-21, moved onto the new walk 2026-11-04):
-// David numbered the racks on a top-down plan of the shop (made from the
-// Scaniverse scan, 2026-10-20) and named them. Each walk's floor path
-// (posM) was fitted onto the scan's free floor (best overlap of the path
-// with the floor; for the 2026-11-03 take: rotation 85°, 1.36 m per camera
-// height of floor flow), and the rack ends taken across from the scan.
-// Checked against video frames (the yellow catalog rack, the polo rack).
-// Good enough to point at a rack; the "nearby" chip uses distance, which is
-// more forgiving.
+// HOW THE STOPS WERE PICKED (2026-11-05): David photographed every rack from
+// where the tour should stop and named it. Each was found on the walk's video
+// frames: the window line, the display table, the hooks and the coat stand by
+// eye, with David's notes ("TH = back of the Sol's rack", "the washed hoodies
+// hang under the GILDAN hoodies", …); the five racks in the middle by matching
+// the photo's background to the video and solving where the phone stood
+// (feature matching + PnP), then checked on the frames. stop.t = forward time
+// on the walk where the camera passes closest; yawDeg/pitchDeg = where the view
+// turns to see it. No football kits (official logos; old models) — 2026-11-05.
 
 import type { ProductType } from "@/lib/catalog";
-import { WALK_TRACK, type WalkTrack } from "./walkTrack";
 
 export interface RackItem {
   product: ProductType;
-  /** Exact SUB_PRODUCTS string (catalog.ts). */
+  /** Exact SUB_PRODUCTS string (catalog.ts); for a product without brands (Tote Bag) the product itself. */
   brand: string;
 }
 
 export interface ShowroomRack {
   id: string;
-  /** Short label shown on the marker and the sheet. */
+  /** Button label and sheet title. */
   title: string;
-  /** Rack ends on the floor (walk frame, m). */
-  a: readonly [number, number];
-  b: readonly [number, number];
   /** What hangs there; "catalog" = the yellow rack: the whole design catalog. */
   items: readonly RackItem[] | "catalog";
   /**
-   * Where the walk stops for this rack (forward time on the walk) and where
-   * the view then looks (video-frame yaw): tapping the rack's button walks
-   * there by itself (autoWalk.ts). Picked on the video frames.
+   * Where the walk stops (forward time), where the view then looks (video-frame
+   * yaw) and how far down (pitch; a rack right beside the walk hangs low in the picture).
    */
-  stop?: { t: number; yawDeg: number };
+  stop: { t: number; yawDeg: number; pitchDeg?: number };
 }
+
+const one = (id: string, title: string, product: ProductType, brand: string, t: number, yawDeg: number, pitchDeg?: number): ShowroomRack => ({
+  id,
+  title,
+  items: [{ product, brand }],
+  stop: { t, yawDeg, pitchDeg },
+});
 
 export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
-  { id: "nike", title: "NIKE", a: [-10.75, 0.37], b: [-8.55, 0.56], items: [{ product: "T-Shirt", brand: "NIKE" }] },
-  { id: "khundadze", title: "Khundadze", a: [-8.26, 0.59], b: [-6.27, 0.76], items: [{ product: "T-Shirt", brand: "Khundadze" }] },
-  {
-    id: "hummer-giordano",
-    title: "GILDAN HUMMER · GIORDANO",
-    a: [-5.47, 0.82],
-    b: [-3.58, 0.99],
-    items: [
-      { product: "T-Shirt", brand: "GILDAN HUMMER" },
-      { product: "T-Shirt", brand: "GIORDANO" },
-    ],
-  },
-  {
-    id: "washed-oversize",
-    title: "Washed · Oversize",
-    a: [-2.97, 1.04],
-    b: [-1.19, 1.21],
-    items: [
-      { product: "T-Shirt", brand: "JEL T-Shirt" },
-      { product: "T-Shirt", brand: "Oversize" },
-    ],
-  },
-  {
-    id: "hoodies",
-    title: "ჰუდები · Zipper · Bomber",
-    a: [-6.84, -0.69],
-    b: [-6.4, -5.68],
-    items: [
-      { product: "Hoodie", brand: "GILDAN Hoodie" },
-      { product: "Hoodie", brand: "Premium Washed Hoodie" },
-      { product: "Hoodie", brand: "JEL Zipper" },
-      { product: "Hoodie", brand: "JEL Standard Zipper" },
-      { product: "Hoodie", brand: "GILDAN Bomber" },
-    ],
-  },
-  { id: "catalog", title: "მთელი კატალოგი", a: [-5.56, -1.59], b: [-5.31, -4.47], items: "catalog" },
-  { id: "sport", title: "ფეხბურთის ფორმები", a: [-3.51, -1.41], b: [-3.3, -3.9], items: [{ product: "Sport", brand: "Sport Set" }] },
-  {
-    id: "gildan-polo-th-sols",
-    title: "GILDAN · Polo · TH · Sol's",
-    a: [-1.96, -0.27],
-    b: [-1.68, -3.46],
-    items: [
-      { product: "T-Shirt", brand: "GILDAN" },
-      { product: "T-Shirt", brand: "Polo" },
-      { product: "T-Shirt", brand: "TH" },
-      { product: "T-Shirt", brand: "Sol's" },
-    ],
-  },
+  // the middle racks (T-shirts)
+  one("gildan", "GILDAN", "T-Shirt", "GILDAN", 158.8, -95, -22),
+  one("gildan-kids", "GILDAN KIDS", "T-Shirt", "GILDAN KIDS", 160, -90, -22),
+  one("polo", "Polo", "T-Shirt", "Polo", 189.4, 90, -28),
+  one("sols", "Sol's", "T-Shirt", "Sol's", 161.6, -90, -22),
+  one("th", "TH", "T-Shirt", "TH", 169.6, 95, -28),
+  // the window line, from the entrance door to the maika.ge sign
+  one("gildan-hoodie", "GILDAN ჰუდი", "Hoodie", "GILDAN Hoodie", 172, 138, -12),
+  one("washed-hoodie", "Washed ჰუდი", "Hoodie", "Premium Washed Hoodie", 172, 146, -22),
+  one("washed-tee", "Washed მაისური", "T-Shirt", "JEL T-Shirt", 172, 158, -15),
+  one("oversize", "Oversize", "T-Shirt", "Oversize", 173, 172, -15),
+  one("giordano", "GIORDANO", "T-Shirt", "GIORDANO", 174, -160, -25),
+  one("hummer", "GILDAN HUMMER", "T-Shirt", "GILDAN HUMMER", 176, -125, -25),
+  // the window display table at the far end
+  one("nike", "NIKE", "T-Shirt", "NIKE", 40, 165, -25),
+  one("khundadze", "Khundadze", "T-Shirt", "Khundadze", 38, -170, -15),
+  // the wall hooks beside the skeleton, the yellow rack, the hooks under the jerseys
+  one("jel-zipper", "JEL Washed Zipper", "Hoodie", "JEL Zipper", 52, -40, -15),
+  one("jel-standard-zipper", "JEL Standard Zipper", "Hoodie", "JEL Standard Zipper", 54, -28, -15),
+  { id: "catalog", title: "მთელი კატალოგი", items: "catalog", stop: { t: 56, yawDeg: -12, pitchDeg: -10 } },
+  one("bomber", "GILDAN Bomber", "Hoodie", "GILDAN Bomber", 226, -62, -10),
+  // the yellow coat stand beside the blue door
+  one("tote", "ნაჭრის ჩანთები", "Tote Bag", "Tote Bag", 148, 48, -5),
 ];
-
-/** Camera floor position at forward time t (walk frame), or null without posM. */
-export function positionAt(t: number, track: WalkTrack = WALK_TRACK): { x: number; z: number } | null {
-  const p = track.posM;
-  if (!p || p.length < 4) return null;
-  const n = p.length / 2;
-  const f = Math.max(0, Math.min(n - 1, t / track.stepSec));
-  const i = Math.min(n - 2, Math.floor(f));
-  const k = f - i;
-  return { x: p[2 * i] + (p[2 * i + 2] - p[2 * i]) * k, z: p[2 * i + 1] + (p[2 * i + 3] - p[2 * i + 1]) * k };
-}
-
-/** Nearest point of the rack to `p`, kept off the very ends (markers sit on the rack, not past it). */
-export function nearestOnRack(p: { x: number; z: number }, r: ShowroomRack): { x: number; z: number; dist: number } {
-  const ax = r.a[0];
-  const az = r.a[1];
-  const dx = r.b[0] - ax;
-  const dz = r.b[1] - az;
-  const len2 = dx * dx + dz * dz || 1;
-  const u = Math.max(0.15, Math.min(0.85, ((p.x - ax) * dx + (p.z - az) * dz) / len2));
-  const x = ax + dx * u;
-  const z = az + dz * u;
-  return { x, z, dist: Math.hypot(x - p.x, z - p.z) };
-}
-
-/** Yaw (video frame, 0 = toward −z, + = right) from p toward q. */
-export function bearingDeg(p: { x: number; z: number }, q: { x: number; z: number }): number {
-  return (Math.atan2(q.x - p.x, -(q.z - p.z)) * 180) / Math.PI;
-}
-
-/** The rack closest to p within maxM (distance to the rack), else null. */
-export function nearestRack(p: { x: number; z: number }, maxM: number, racks: readonly ShowroomRack[] = SHOWROOM_RACKS): ShowroomRack | null {
-  let best: ShowroomRack | null = null;
-  let bestD = maxM;
-  for (const r of racks) {
-    const d = nearestOnRack(p, r).dist;
-    if (d <= bestD) {
-      bestD = d;
-      best = r;
-    }
-  }
-  return best;
-}
