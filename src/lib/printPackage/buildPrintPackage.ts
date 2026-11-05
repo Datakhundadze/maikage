@@ -253,7 +253,7 @@ async function renderFromDesignState(
   octx.imageSmoothingQuality = "high";
   octx.drawImage(src, bbox.x * k, bbox.y * k, bbox.w * k, bbox.h * k, 0, 0, targetW, targetH);
   const blob = await canvasToBlob(out, "image/png");
-  let png = new Uint8Array(await blob.arrayBuffer());
+  let png: Uint8Array = new Uint8Array(await blob.arrayBuffer());
   if (size) png = setPngDpi(png, PRINT_DPI);
   else notes.push("ზომა სმ-ში ამ პროდუქტზე ავტომატურად არ ითვლება — შეამოწმეთ ხელით");
   return { side: side.side, png, widthPx: targetW, heightPx: targetH, size, notes };
@@ -592,7 +592,7 @@ export async function buildPrintPackage(
     zip(files, (err, data) => (err ? reject(err) : resolve(data))),
   );
   const fileName = `${baseName}.zip`;
-  const blob = new Blob([zipped], { type: "application/zip" });
+  const blob = new Blob([zipped as unknown as BlobPart], { type: "application/zip" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = fileName;
