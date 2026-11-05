@@ -230,6 +230,25 @@ serve(async (req) => {
     const accountant = Deno.env.get("ACCOUNTANT_EMAIL"); // no hardcoded fallback
     let emailSent = false;
 
+    // Extra CC recipients (2026-11-05): kept in public.report_recipients
+    // (admin/service-role only) instead of code, because the repo is public.
+    // Best-effort: a failed read just sends to the usual recipients.
+    const cc = ["maika@maika.ge"];
+    try {
+      const { data: extra, error: extraErr } = await supabase
+        .from("report_recipients")
+        .select("email")
+        .eq("report", "sales")
+        .eq("active", true);
+      if (extraErr) console.warn("[weekly-sales-report] report_recipients read failed:", extraErr.message);
+      for (const r of (extra ?? []) as { email: string }[]) {
+        const e = r.email?.trim();
+        if (e && e !== accountant && !cc.includes(e)) cc.push(e);
+      }
+    } catch (rcErr) {
+      console.warn("[weekly-sales-report] report_recipients read threw:", rcErr);
+    }
+
     if (!resendKey) {
       console.error("[weekly-sales-report] RESEND_API_KEY not set — email NOT sent");
     } else if (!accountant) {
@@ -242,7 +261,7 @@ serve(async (req) => {
           body: JSON.stringify({
             from: resendFrom,
             to: [accountant],
-            cc: ["maika@maika.ge"],
+            cc,
             subject: `maika.ge — ${titlePrefix} (${periodValue})`,
             html,
           }),
