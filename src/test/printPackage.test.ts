@@ -3,7 +3,7 @@ import { physicalSizeFromZoneFraction, physicalSizeForItem, hasPhysicalSizeRule,
 import { setPngDpi, readPngDpi, crc32 } from "@/lib/printPackage/pngDpi";
 import { removeSolidBackground } from "@/lib/printPackage/solidBackground";
 import { buildJpegPdf } from "@/lib/printPackage/simplePdf";
-import { backgroundMatchesGarment, sheetContact, type PackageOrderRow } from "@/lib/printPackage/buildPrintPackage";
+import { backgroundMatchesGarment, sheetContact, packageBaseName, type PackageOrderRow } from "@/lib/printPackage/buildPrintPackage";
 
 describe("print size rule (David 2026-11-04)", () => {
   it("full zone → 28 cm wide, height proportional", () => {
@@ -186,5 +186,17 @@ describe("job sheet contact", () => {
   });
   it("returns nulls when nothing is set", () => {
     expect(sheetContact([row({})])).toEqual({ phone: null, address: null });
+  });
+});
+
+describe("download file name", () => {
+  it("is the customer's first and last name", () => {
+    expect(packageBaseName({ first_name: "ლაშა", last_name: "ოსეფაიშვილი" }, "8C65DCB5")).toBe("ლაშა ოსეფაიშვილი");
+  });
+  it("drops characters illegal in file names and extra spaces", () => {
+    expect(packageBaseName({ first_name: ' Ana/  "K" ', last_name: "Beridze:" }, "X")).toBe("Ana K Beridze");
+  });
+  it("falls back to the order number when the name is empty", () => {
+    expect(packageBaseName({ first_name: " ", last_name: "" }, "AB12CD34")).toBe("maika-AB12CD34");
   });
 });

@@ -531,6 +531,21 @@ async function drawSheetPage(head: PackageOrderRow, contact: SheetContact, su: S
   return { jpeg: new Uint8Array(await jpegBlob.arrayBuffer()), width: PAGE_W, height: PAGE_H };
 }
 
+/**
+ * Download name = the customer's first + last name (David 2026-11-05).
+ * Characters that are illegal in file names are dropped; an empty name falls
+ * back to the order number. Same name twice → the browser adds " (1)".
+ */
+export function packageBaseName(head: Pick<PackageOrderRow, "first_name" | "last_name">, orderNum: string): string {
+  const name = `${head.first_name ?? ""} ${head.last_name ?? ""}`
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  return name || `maika-${orderNum}`;
+}
+
 export function printFileName(index: number, total: number, side: Side): string {
   return `${total > 1 ? `item${index + 1}-` : ""}${side}.png`;
 }
@@ -571,11 +586,12 @@ export async function buildPrintPackage(
     pages.push(await drawSheetPage(head, contact, { unit: u, index: i, total: units.length, prints }));
   }
 
-  files[`maika-${num}.pdf`] = [buildJpegPdf(pages), { level: 6 }];
+  const baseName = packageBaseName(head, num);
+  files[`${baseName}.pdf`] = [buildJpegPdf(pages), { level: 6 }];
   const zipped = await new Promise<Uint8Array>((resolve, reject) =>
     zip(files, (err, data) => (err ? reject(err) : resolve(data))),
   );
-  const fileName = `maika-${num}-print.zip`;
+  const fileName = `${baseName}.zip`;
   const blob = new Blob([zipped], { type: "application/zip" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
