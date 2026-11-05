@@ -1070,7 +1070,7 @@ export default function AdminOrders() {
 
                   {/* Payment provider & ID */}
                   <div className="text-xs text-muted-foreground flex items-center gap-3">
-                    <span className="font-semibold uppercase">{order.payment_provider === "tbc" ? "TBC" : order.payment_provider === "tbc_credit" ? "TBC Credit" : order.payment_provider === "bank_transfer" ? "საბანკო გადარიცხვა" : "BOG"}</span>
+                    <span className="font-semibold uppercase">{order.payment_provider === "tbc" ? "TBC" : order.payment_provider === "tbc_credit" ? "TBC Credit" : order.payment_provider === "bank_transfer" ? "საბანკო გადარიცხვა" : order.payment_provider === "showroom" ? "მაღაზია" : "BOG"}</span>
                     {order.bog_order_id && (
                       <span>Order ID: <span className="font-mono">{order.bog_order_id}</span></span>
                     )}

@@ -15,6 +15,10 @@ import { BAG_FEE, BAG_FEE_LABEL_KA } from "@/lib/fees";
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import SeoHead from "@/components/SeoHead";
 import { submitOrder } from "@/lib/orderSubmission";
+// Showroom order (admin only, no card payment) — add-only, see showroomOrder.ts.
+import { saveShowroomOrder, showroomSubmitLabel, type ShowroomMode } from "@/lib/showroomOrder";
+import ShowroomOrderChoice from "@/components/ShowroomOrderChoice";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { trackEvent } from "@/lib/gtag";
 
 // Mirror a cart item's originals into order-originals/{orderId}/ so the
@@ -143,6 +147,9 @@ export default function CartPage() {
   // TBC/Flitt is the only offered method (BOG removed from checkout); the
   // "bog" type value survives for historical orders only.
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("tbc");
+  const { isAdmin } = useAdminCheck();
+  const [showroomMode, setShowroomMode] = useState<ShowroomMode>("unpaid");
+  const isShowroom = isAdmin && showroomMode !== "card";
 
   const deliveryPrice = DELIVERY_PRICES[delivery];
   const totalWithDelivery = totalPrice + deliveryPrice;
@@ -172,7 +179,7 @@ export default function CartPage() {
     // GA4 + Meta funnel: begin_checkout for the cart path (OrderDialog fires
     // its own for direct orders). Valid form, before anything is submitted;
     // value is the same orderTotal shown as "სულ". trackEvent never throws.
-    trackEvent("begin_checkout", {
+    if (!isShowroom) trackEvent("begin_checkout", {
       currency: "GEL",
       value: orderTotal,
       items: items.map((item) => ({
@@ -240,6 +247,25 @@ export default function CartPage() {
           orderIds: rows.filter((r) => r.front_mockup_url === item.frontMockupUrl).map((r) => r.id),
           url: item.backTransparentImageUrl as string,
         }));
+
+      if (isShowroom) {
+        const res = await saveShowroomOrder({
+          rows,
+          paid: showroomMode === "paid",
+          backTransparentBackfill,
+          adminUserId: user?.id ?? null,
+        });
+        void mirrorCartItemOriginals(res.orderIds);
+        clearCart();
+        setShowCheckout(false);
+        setSubmitting(false);
+        toast({
+          title: showroomMode === "paid" ? "შეკვეთა შენახულია — გადახდილი ✓" : "შეკვეთა შენახულია — გადაუხდელი",
+          description: res.warnings.length ? res.warnings.join(" · ") : "ადმინკაში შეკვეთებში ჩანს",
+          variant: res.warnings.length ? "destructive" : undefined,
+        });
+        return;
+      }
 
       const redirectUrl = await submitOrder({
         rows,
@@ -381,7 +407,8 @@ export default function CartPage() {
                 </div>
               )}
 
-              <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />
+              {isAdmin && <ShowroomOrderChoice value={showroomMode} onChange={setShowroomMode} />}
+              {!isShowroom && <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />}
 
               <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-1.5">
                 <div className="flex justify-between text-sm text-muted-foreground">
@@ -403,7 +430,7 @@ export default function CartPage() {
               </div>
 
               <Button type="submit" disabled={submitting} className="w-full h-12 font-semibold text-base">
-                {submitting ? "იგზავნება..." : "გადახდა და შეკვეთა"}
+                {(isShowroom && showroomSubmitLabel(showroomMode, submitting)) || (submitting ? "იგზავნება..." : "გადახდა და შეკვეთა")}
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2">
                 წარმოების ვადა: 1-3 სამუშაო დღე

@@ -32,7 +32,9 @@ export default function AdminAnalytics() {
       supabase.from("analytics_events").select("event_type, event_data, created_at"),
       supabase.from("generations").select("id", { count: "exact", head: true }),
     ]);
-    setOrders((ordersRes.data as Order[]) || []);
+    // Site stats only: showroom orders (payment_provider "showroom", saved by
+    // an admin without card payment) are not site sales / conversions.
+    setOrders(((ordersRes.data as Order[]) || []).filter((o) => (o as { payment_provider?: string }).payment_provider !== "showroom"));
     setEvents(eventsRes.data || []);
     setGenerationsCount(generationsRes.count || 0);
     setLoading(false);
