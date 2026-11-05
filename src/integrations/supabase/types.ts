@@ -1183,6 +1183,27 @@ export type Database = {
         }
         Relationships: []
       }
+      report_recipients: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          report: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          report?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          report?: string
+        }
+        Relationships: []
+      }
       showroom_photos: {
         Row: {
           active: boolean | null
