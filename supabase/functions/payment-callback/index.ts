@@ -135,52 +135,64 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Resolve order: by external_order_id (our id) first, then by bog_order_id
-    let orderId = externalOrderId;
+    // SECURITY (2026-11-05): this endpoint is public (verify_jwt = false) and
+    // BOG callbacks are unsigned here, so NOTHING in the request is trusted for
+    // the outcome. The request only names an order; the status comes solely
+    // from BOG's API, looked up with the bog_order_id WE stored for that order
+    // (set server-side by create-payment). Before this fix a forged POST
+    // {"external_order_id": <id>, "order_status": "completed"} marked any order
+    // paid whenever the API lookup was skipped (no stored id) or failed, and a
+    // body-supplied "id" could point the lookup at someone else's BOG payment.
+    let orderId: string | null = null;
     let cartId: string | null = null;
-    let bogOrderIdForLookup: string | null = bogPayId || null;
-    if (!orderId && bogPayId) {
+    let storedBogId: string | null = null;
+    let provider: string | null = null;
+    if (externalOrderId) {
       const { data } = await supabase
         .from("orders")
-        .select("id, cart_id, bog_order_id")
+        .select("id, cart_id, bog_order_id, payment_provider")
+        .eq("id", externalOrderId)
+        .maybeSingle();
+      if (data) {
+        orderId = data.id;
+        cartId = data.cart_id ?? null;
+        storedBogId = data.bog_order_id ?? null;
+        provider = data.payment_provider ?? null;
+      }
+    } else if (bogPayId) {
+      const { data } = await supabase
+        .from("orders")
+        .select("id, cart_id, bog_order_id, payment_provider")
         .eq("bog_order_id", bogPayId)
         .limit(1)
         .maybeSingle();
       if (data) {
         orderId = data.id;
-        cartId = data.cart_id;
-        bogOrderIdForLookup = data.bog_order_id;
-      }
-    } else if (orderId) {
-      const { data } = await supabase
-        .from("orders")
-        .select("cart_id, bog_order_id")
-        .eq("id", orderId)
-        .maybeSingle();
-      if (data) {
         cartId = data.cart_id ?? null;
-        bogOrderIdForLookup = data.bog_order_id || bogOrderIdForLookup;
+        storedBogId = data.bog_order_id ?? null;
+        provider = data.payment_provider ?? null;
       }
     }
 
-    if (!orderId) {
-      console.error("[payment-callback] Could not resolve order. Merged payload:", JSON.stringify(merged));
-      return new Response(JSON.stringify({ error: "Cannot resolve order" }), {
-        status: 400,
+    const ignore = (reason: string) => {
+      console.warn("[payment-callback] ignored:", reason, "order:", orderId ?? externalOrderId ?? bogPayId ?? "-");
+      // 200 so BOG does not retry forever; nothing is changed.
+      return new Response(JSON.stringify({ status: "ignored" }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
+    };
 
-    // Source of truth: query BOG API directly using bog_order_id. The webhook
-    // payload is sometimes incomplete or sent before the transfer is finalized.
-    let finalStatus = callbackStatus;
-    let finalTransfer = callbackTransfer;
-    if (bogOrderIdForLookup) {
-      const fresh = await fetchBogStatus(bogOrderIdForLookup);
-      if (fresh) {
-        finalStatus = fresh.status || finalStatus;
-        finalTransfer = fresh.transfer || finalTransfer;
-      }
+    if (!orderId) return ignore("order not found");
+    if (provider !== "bog") return ignore(`provider is ${provider}, not bog`);
+    if (!storedBogId) return ignore("no stored bog_order_id");
+
+    const fresh = await fetchBogStatus(storedBogId);
+    if (!fresh) return ignore("BOG API status unavailable — nothing changed (check-payment can re-sync)");
+    const finalStatus = (fresh.status || "").toLowerCase();
+    const finalTransfer = (fresh.transfer || "").toLowerCase();
+    if (callbackStatus && callbackStatus !== finalStatus) {
+      console.log("[payment-callback] body status", callbackStatus, "≠ BOG API", finalStatus, "— using BOG API");
     }
 
     // BOG's only canonical "paid" signal is order_status.key === "completed".
