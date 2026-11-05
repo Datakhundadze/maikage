@@ -2,6 +2,12 @@
 -- OVERWRITE. The bucket STAYS public; every URL already stored in orders keeps
 -- working. Making the bucket private is a later, separate project.
 --
+-- ✅ APPLIED on prod 2026-11-05 by Claude (security review, David's GO) — it had
+-- never been applied; all three preconditions below were met. Verified: the three
+-- holes gone, three admin policies present, 0 anon non-INSERT policies on
+-- 'designs', bucket still public; anon list of order-mockups → []; direct
+-- public URLs for order-mockups/ and cart-items/ still 200.
+--
 -- ⚠️ APPLY MANUALLY in the Lovable SQL Editor — Lovable does NOT auto-apply
 -- migrations; this file is the repo record.
 --
