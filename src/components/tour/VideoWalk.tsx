@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Gamepad2, Maximize2, Minimize2, MoveVertical, Volume2, VolumeX } from "lucide-react";
+import { Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import {
   CanvasTexture,
   CircleGeometry,
@@ -20,8 +20,6 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
-import Joystick from "./Joystick";
-import DPad from "./DPad";
 import { angleDiff, easeToward, keysToStick, mergeSticks, normDeg, TOUR_KEYS, turnRateFromStick, type StickAxes } from "@/lib/tour/tourMath";
 import {
   distanceAt,
@@ -30,44 +28,52 @@ import {
   followTarget,
   footprints,
   globalTime,
-  branchToPrime,
-  branchForView,
-  LEAN_CFG,
-  junctionsAhead,
-  pathPointAt,
   localTime,
   partIndexAt,
   loopJump,
   skipJump,
   vfovFor,
-  walkFromStick,
-  hopChoice,
-  seekJunction,
-  SEEK_CFG,
   playbackStep,
-  slideAlong,
-  slideSpeed,
   WALK_FEEL,
   WALK_TRACK,
   WALK_VIDEO,
   type Facing,
   type WalkDir,
-  type WalkIntent,
 } from "@/lib/tour/walkTrack";
 import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
-import { bearingDeg, nearestOnRack, nearestRack, positionAt, SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
+import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
+import { planRoute, reached, type RouteStep } from "@/lib/tour/autoWalk";
+
+/** A place to walk to: a rack (its sheet opens on arrival) or the entrance. */
+interface WalkDest {
+  id: string;
+  title: string;
+  t: number;
+  yawDeg: number;
+  rack?: ShowroomRack;
+}
+
+/** Every rack with a stop, then the entrance. */
+const dests: WalkDest[] = [
+  ...SHOWROOM_RACKS.filter((r) => r.stop).map((r) => ({ id: r.id, title: r.title, t: r.stop!.t, yawDeg: r.stop!.yawDeg, rack: r })),
+  { id: "entrance", title: "შესასვლელი", t: WALK_TRACK.start, yawDeg: headingAt(WALK_TRACK.start) },
+];
+
+/** Speed of the walk to a place (playback rate; 1 = as filmed, a slow walk). */
+const AUTO_RATE = 1.4;
 import RackSheet from "./RackSheet";
 
-// /showroom walk-through: a 360° video of a loop around the shop, played
-// forward or backward while the joystick is held (walkTrack.ts has the files
-// and the track). three.js renders the frame on the inside of a sphere; this
-// file is imported only from the lazy ShowroomPage.
+// /showroom walk-through: a 360° video of the shop, played forward or
+// backward to walk (walkTrack.ts has the files and the track). three.js
+// renders the frame on the inside of a sphere; this file is imported only
+// from the lazy ShowroomPage.
 //
-// CONTROLS
-//   joystick (bottom-left) / ↑↓ or W S: hold forward to walk along the loop,
-//     back to step backward; further = faster. ←→ / A D / stick x: turn.
-//   drag anywhere else: look around; wheel / pinch: zoom.
+// CONTROLS (2026-11-05: no joystick any more — David: walking by hand had too
+// many rough spots; the walk only exists where the camera went)
+//   tap a rack in the bar at the bottom: the walk goes there by itself along
+//     the filmed passes (autoWalk.ts), turns to the rack and opens its sheet.
+//   drag: look around (also while walking); wheel / pinch: zoom; ←→ / A D: turn.
 // WALKING: the video of the matching direction plays (walk-rev.mp4 for
 // backward, so both are smooth); switching direction seeks the other video to
 // the same moment first and swaps once it's there. While walking the view
@@ -79,16 +85,6 @@ import RackSheet from "./RackSheet";
 
 const DEG = Math.PI / 180;
 const SOUND_KEY = "maika.showroom.sound";
-const CONTROLS_KEY = "maika.showroom.controls";
-type Controls = "joystick" | "arrows";
-
-function readControls(): Controls {
-  try {
-    return window.localStorage.getItem(CONTROLS_KEY) === "arrows" ? "arrows" : "joystick";
-  } catch {
-    return "joystick";
-  }
-}
 
 /** iPhone / iPad Safari: no video download before a tap, so ask for the tap right away. */
 function needsTapToLoad(): boolean {
@@ -306,29 +302,15 @@ export default function VideoWalk() {
   // iPhone Safari does not load a video before a tap: after a moment without
   // data the loader shows a start button (the tap starts the download)
   const [needsTap, setNeedsTap] = useState(() => needsTapToLoad());
-  const [controls, setControls] = useState<Controls>(() => readControls());
-  // rack markers: positioned every frame by the loop (refs, no re-render);
-  // the "nearby" chip and the open sheet are state (they change rarely)
-  const pinRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const [nearRackId, setNearRackId] = useState<string | null>(null);
   const [openRack, setOpenRack] = useState<ShowroomRack | null>(null);
+  // the place being walked to (bar highlight); goRef starts a walk (set by the effect)
+  const [goingTo, setGoingTo] = useState<string | null>(null);
+  const goRef = useRef<(d: WalkDest) => void>(() => {});
   const sheetOpenRef = useRef(false);
   useEffect(() => {
     sheetOpenRef.current = !!openRack;
     if (openRack) stickRef.current = { x: 0, y: 0 };
   }, [openRack]);
-  const switchControls = useCallback(() => {
-    setControls((c) => {
-      const next: Controls = c === "joystick" ? "arrows" : "joystick";
-      try {
-        window.localStorage.setItem(CONTROLS_KEY, next);
-      } catch {
-        // storage blocked: the choice holds for this visit
-      }
-      return next;
-    });
-    stickRef.current = { x: 0, y: 0 };
-  }, []);
   const [errDetail, setErrDetail] = useState("");
   const [debug] = useState(() => {
     try {
@@ -533,35 +515,10 @@ export default function VideoWalk() {
       scene.add(mesh);
       prints.push(mesh);
     }
-    /**
-     * Arrows for the other way at the junction just ahead — only the branch
-     * the view leans toward (the one walking on would take): along the other
-     * pass from the junction spot, turned into this frame (yaw shift).
-     */
-    const branchPrints = (t: number, d: WalkDir) => {
-      const out: { x: number; z: number; hDeg: number; fade: number }[] = [];
-      const j = junctionsAhead(t, d, AR.startM + AR.lengthM - 0.3, track)[0];
-      if (!j) return out;
-      const b = branchForView(j, d, yawDeg, LEAN_CFG, track);
-      if (!b) return out;
-      const at = pathPointAt(t, d, j.distM, track);
-      const bp = footprints(j.other, b.dir, { startM: 0.5, lengthM: 2.4, strideM: AR.spacingM, footOffsetM: 0 }, track);
-      const r = -j.shift * DEG;
-      const c = Math.cos(r);
-      const sn = Math.sin(r);
-      for (const p of bp) {
-        out.push({
-          x: at.x + p.x * c - p.z * sn,
-          z: at.z + p.z * c + p.x * sn,
-          hDeg: normDeg(p.hDeg - j.shift),
-          fade: 1 - p.r / 3.2,
-        });
-      }
-      return out.slice(0, BRANCH_PRINTS);
-    };
     const updatePrints = (t: number, d: WalkDir, alpha: number) => {
       const fp = footprints(t, d, { startM: AR.startM, lengthM: AR.lengthM, strideM: AR.spacingM, footOffsetM: 0 }, track);
-      const bp = alpha > 0.02 ? branchPrints(t, d) : [];
+      // (no arrows for other ways: the walk to a place picks its own way)
+      const bp: { x: number; z: number; hDeg: number; fade: number }[] = [];
       branchCount = bp.length;
       for (let i = 0; i < prints.length; i++) {
         const mesh = prints[i];
@@ -626,9 +583,12 @@ export default function VideoWalk() {
     let lastStepNo: number | null = null;
     let bobAmp = 0;
     let facing: Facing = "along";
-    let lastJunctionAt = -1e9;
-    let activeIntent: WalkIntent | null = null;
-    let seeking = false; // walking to a crossing the view points past: the view stays put
+    // ── walking to a place (autoWalk.ts) ────────────────────────────────────
+    let route: RouteStep[] | null = null;
+    let routeIdx = 0;
+    let routeDest: WalkDest | null = null;
+    // arrived: the view turns to the rack, then its sheet opens
+    let arriving: { yaw: number; since: number; dest: WalkDest } | null = null;
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
     const active = () => clip(part, dir).video;
@@ -682,30 +642,21 @@ export default function VideoWalk() {
       });
 
     /**
-     * Before a junction: the branch the view leans toward gets its video
-     * seeked there and paused (only when that is another video than the one
+     * Before a step across on the route: the other pass's video gets seeked
+     * there and paused (only when that is another video than the one
      * playing), so the jump can swap at once instead of waiting for a seek.
      */
     let primedVideo: HTMLVideoElement | null = null;
-    let primedWant = -1;
     let priming = false;
     let lastPrime = 0;
-    const primeBranch = (t: number) => {
+    const primeHop = (h: { t: number; dir: WalkDir }) => {
       if (priming || jumping || switching) return;
-      const b = branchToPrime(t, dir, yawDeg, F.primeAheadM, track);
-      if (!b) {
-        primedVideo = null;
-        return;
-      }
-      const p2 = partIndexAt(b.t, b.dir, track);
-      const v = clip(p2, b.dir).video;
-      // never the playing video, nor the other direction's (kept parked for turning round)
-      const idleV = clip(part, dir === "fwd" ? "rev" : "fwd").video;
-      if (v === active() || v === idleV || v.readyState < 1) return;
-      const want = localTime(b.t, p2, b.dir, track);
+      const p2 = partIndexAt(h.t, h.dir, track);
+      const v = clip(p2, h.dir).video;
+      if (v === active() || v.readyState < 1) return;
       primedVideo = v;
-      if (primedWant === want && Math.abs(v.currentTime - want) < 0.15) return;
-      primedWant = want;
+      const want = localTime(h.t, p2, h.dir, track);
+      if (Math.abs(v.currentTime - want) < 0.15) return;
       priming = true;
       void seekTo(v, want, 6000).then(() => {
         priming = false;
@@ -1018,6 +969,31 @@ export default function VideoWalk() {
     };
     document.addEventListener("visibilitychange", onVisibility);
 
+    // ── walking to a place ─────────────────────────────────────────────────
+    goRef.current = (d: WalkDest) => {
+      unlockRef.current();
+      if (!ready) return;
+      const steps = planRoute(fwdTime(), d.t, track);
+      if (!steps) return;
+      route = steps;
+      routeIdx = 0;
+      routeDest = d;
+      arriving = null;
+      setGoingTo(d.id);
+      setHintVisible(false);
+    };
+    const arrive = () => {
+      const v = active();
+      v.pause();
+      playing = false;
+      rate = 0;
+      lastStepNo = null;
+      if (routeDest) arriving = { yaw: routeDest.yawDeg, since: performance.now(), dest: routeDest };
+      route = null;
+      routeDest = null;
+      parkIdle();
+    };
+
     // ── the frame loop ─────────────────────────────────────────────────────
     let turnRate = 0;
     let last = performance.now();
@@ -1028,56 +1004,6 @@ export default function VideoWalk() {
       const f = footstepsRef.current;
       if (soundOnRef.current && f) f.play(footIndex % 2 === 0 ? "left" : "right", footIndex % 2 === 0 ? 0.8 : 0.72);
       footIndex++;
-    };
-
-    // ── rack markers ───────────────────────────────────────────────────────
-    // Each rack's marker sits over its nearest point (a label at ~1.75 m on
-    // the rack), projected with the camera; the 3 nearest within 6 m show,
-    // fading with distance. Within 1.8 m the rack also gets the "nearby" chip.
-    const pinDir = new Vector3();
-    let shownNear: string | null = null;
-    const placeRackPins = () => {
-      const pos = positionAt(fwdTime(), track);
-      const w = host.clientWidth;
-      const h = host.clientHeight;
-      if (!pos || !w || !h) return;
-      camera.updateMatrixWorld();
-      const near = SHOWROOM_RACKS.map((r, i) => ({ r, i, n: nearestOnRack(pos, r) })).sort((a, b) => a.n.dist - b.n.dist);
-      near.forEach(({ i, n }, rank) => {
-        const el = pinRefs.current[i];
-        if (!el) return;
-        if (rank > 2 || n.dist > 6) {
-          el.style.visibility = "hidden";
-          return;
-        }
-        const yaw = bearingDeg(pos, n) * DEG;
-        const pitch = Math.atan2(1.75 - F.steps.cameraHeightM, Math.max(0.5, n.dist));
-        pinDir.set(Math.cos(pitch) * Math.sin(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.cos(yaw)).multiplyScalar(10).project(camera);
-        if (pinDir.z > 1 || Math.abs(pinDir.x) > 1.2 || Math.abs(pinDir.y) > 1.2) {
-          el.style.visibility = "hidden";
-          return;
-        }
-        const x = (pinDir.x + 1) * 0.5 * w;
-        const y = (1 - pinDir.y) * 0.5 * h;
-        el.style.visibility = "visible";
-        el.style.opacity = String(Math.max(0.35, Math.min(1, 1.4 - n.dist / 6)));
-        el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -100%)`;
-      });
-      // the chip changes rack only on a clear difference (between two racks it
-      // used to flip every second): the shown one holds until it is 2.3 m away
-      // or another is 0.5 m closer
-      const nr = nearestRack(pos, 1.8);
-      let id = nr ? nr.id : null;
-      const cur = shownNear ? SHOWROOM_RACKS.find((r) => r.id === shownNear) : undefined;
-      if (cur && id !== shownNear) {
-        const curD = nearestOnRack(pos, cur).dist;
-        const newD = nr ? nearestOnRack(pos, nr).dist : Infinity;
-        if (curD <= 2.3 && newD > curD - 0.5) id = shownNear;
-      }
-      if (id !== shownNear) {
-        shownNear = id;
-        setNearRackId(id);
-      }
     };
 
     const loop = (now: number) => {
@@ -1095,48 +1021,51 @@ export default function VideoWalk() {
           setHintVisible(false);
         } else turnRate = 0;
 
-        // walking, like sliding along walls in a game: the stick says where to
-        // go (ahead = where the view looks, back = behind it); the walk takes the
-        // way along the filmed pass closest to that, at a speed that drops as
-        // the match gets worse (straight across the pass = stand still), and
-        // steps across to another pass running within ~0.5 m whenever that one
-        // heads clearly closer to where the visitor wants to go
-        const want = walkFromStick(stick.y);
-        activeIntent = want ? want.intent : null;
-        seeking = false;
+        // walking to a place: the route's steps one after the other — walk in a
+        // direction until a time, or step across to another pass at a crossing
         let target = 0;
-        if (want && !switching) {
-          const t = fwdTime();
-          const desired = normDeg(yawDeg + (want.intent === "back" ? 180 : 0));
-          const slide = slideAlong(t, dir, desired, track);
-          let seek: ReturnType<typeof seekJunction> = null;
-          const hop = now - lastJunctionAt > F.junctionCooldownMs ? hopChoice(t, desired, slide.match, track) : null;
-          if (hop) {
-            lastJunctionAt = now;
-            printDir = hop.dir;
-            facing = (want.intent === "ahead") === (hop.dir === "fwd") ? "along" : "against";
-            void jumpTo(hop.t, hop.dir, hop.yawShift);
-          } else if (slide.match < SEEK_CFG.seekBelow && (seek = seekJunction(t, desired, slide.match, track))) {
-            // looking down a way this pass doesn't go, with a crossing that
-            // does a few metres along: walk to it (the view stays where the
-            // visitor looks) and step across there
-            seeking = true;
-            printDir = seek.dir;
-            facing = (want.intent === "ahead") === (seek.dir === "fwd") ? "along" : "against";
-            if (seek.dir !== dir) void switchDir(seek.dir);
-            else target = want.rate;
+        if (route && !switching) {
+          const st = route[routeIdx];
+          if (!st) arrive();
+          else if (st.kind === "hop") {
+            routeIdx++;
+            facing = st.dir === "fwd" ? "along" : "against";
+            printDir = st.dir;
+            void jumpTo(st.t, st.dir, st.yawShift);
           } else {
-            printDir = slide.dir;
-            facing = (want.intent === "ahead") === (slide.dir === "fwd") ? "along" : "against";
-            if (slide.dir !== dir) void switchDir(slide.dir);
-            else target = want.rate * slideSpeed(slide.match);
-            // pushing while looking off the filmed way: the view is drawn round
-            // to the way (as games steer you along a wall) — also while standing,
-            // so pushing never just stays put
-            const busy = pointers.size > 0 || Math.abs(stick.x) > F.turnDeadZone || now - lastDragAt < 400;
-            if (!busy && slide.match < 0.97) {
-              yawDeg = followStep(yawDeg, followTarget(t, slide.dir, facing), dt, { followMaxDegPerSec: 90, followEaseMs: 500 });
+            const t = fwdTime();
+            if (reached(t, st.dir, st.until)) {
+              routeIdx++;
+              if (routeIdx >= route.length) arrive();
+            } else if (st.dir !== dir) {
+              facing = st.dir === "fwd" ? "along" : "against";
+              void switchDir(st.dir);
+            } else {
+              facing = dir === "fwd" ? "along" : "against";
+              printDir = dir;
+              target = AUTO_RATE;
+              // the step across coming next: get its video there in time
+              const nx = route[routeIdx + 1];
+              if (nx && nx.kind === "hop" && now - lastPrime > 250) {
+                lastPrime = now;
+                primeHop(nx);
+              }
             }
+          }
+        }
+        // arrived: turn to the rack, then open its sheet
+        if (arriving) {
+          const busy = pointers.size > 0 || now - lastDragAt < 400;
+          if (!busy) {
+            yawDeg = followStep(yawDeg, arriving.yaw, dt, { followMaxDegPerSec: 120, followEaseMs: 350 });
+            pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
+          }
+          const off = Math.abs(angleDiff(arriving.yaw, yawDeg));
+          if (off < 4 || busy || now - arriving.since > 2500) {
+            const d = arriving.dest;
+            arriving = null;
+            setGoingTo(null);
+            if (d.rack) setOpenRack(d.rack);
           }
         }
         rate = easeToward(rate, target, dt, F.rateEaseMs);
@@ -1172,16 +1101,12 @@ export default function VideoWalk() {
           }
           stepPhase = walked / F.steps.strideM;
           const busyLooking = pointers.size > 0 || now - Math.max(lastDragAt, lastTurnAt) < F.followDelayMs;
-          if (!busyLooking && !seeking) {
+          if (!busyLooking) {
             const scaled = { followMaxDegPerSec: F.followMaxDegPerSec * Math.min(1.2, r), followEaseMs: F.followEaseMs };
             yawDeg = followStep(yawDeg, followTarget(t, dir, facing), dt, scaled);
             pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
           }
-          // keep the branch ahead and the other direction ready
-          if (activeIntent === "ahead" && now - lastPrime > 250) {
-            lastPrime = now;
-            primeBranch(t);
-          }
+          // keep the other direction ready
           if (now - lastPark > F.parkEveryMs) parkIdle();
           const ps = track.parts;
           const next = loopJump(t, dir, track) ?? skipJump(t, dir, track);
@@ -1220,7 +1145,6 @@ export default function VideoWalk() {
       camera.rotation.y = -yawDeg * DEG;
       camera.rotation.x = (pitchDeg + bobPitch) * DEG;
       camera.rotation.z = bobRoll * DEG;
-      if (ready) placeRackPins();
       renderer.render(scene, camera);
       if (wantFreeze) {
         wantFreeze = false;
@@ -1366,43 +1290,13 @@ export default function VideoWalk() {
         </p>
       )}
 
-      {status === "ready" &&
-        SHOWROOM_RACKS.map((r, i) => (
-          <button
-            key={r.id}
-            type="button"
-            ref={(el) => {
-              pinRefs.current[i] = el;
-            }}
-            onClick={() => setOpenRack(r)}
-            className="absolute left-0 top-0 z-20 flex flex-col items-center"
-            style={{ visibility: "hidden", transform: "translate(-9999px, 0)" }}
-            aria-label={`${r.title} — ნახვა`}
-          >
-            <span className="max-w-[11rem] truncate rounded-full bg-black/65 px-3 py-1 text-xs font-medium text-white shadow-lg ring-1 ring-amber-400/70 backdrop-blur-sm">
-              {r.title}
-            </span>
-            <span className="mt-1 h-3 w-3 rounded-full bg-amber-400 shadow ring-2 ring-white/80" />
-          </button>
-        ))}
-
-      {status === "ready" && nearRackId && !openRack && (
-        <button
-          type="button"
-          onClick={() => setOpenRack(SHOWROOM_RACKS.find((r) => r.id === nearRackId) ?? null)}
-          className="absolute left-1/2 top-16 z-30 -translate-x-1/2 rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-black shadow-lg hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-        >
-          {SHOWROOM_RACKS.find((r) => r.id === nearRackId)?.title} — ნახვა
-        </button>
-      )}
-
       {openRack && <RackSheet rack={openRack} onClose={() => setOpenRack(null)} />}
 
       {status === "ready" && hintVisible && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
           {touch
-            ? "ჯოისტიკი ან ისარი წინ გეჭიროთ — იარეთ, უკან — უკუსვლა, გვერდზე — მობრუნება. თითით გადაათრიეთ — მიმოხედვა."
-            : "↑/W დაჭერილი — სიარული, ↓/S — უკან, ←/→ ან A/D — მობრუნება. მაუსით გადაათრიეთ — მიმოხედვა."}
+            ? "აირჩიეთ საკიდი ქვემოთ — მიგიყვანთ. თითით გადაათრიეთ — მიმოხედვა."
+            : "აირჩიეთ საკიდი ქვემოთ — მიგიყვანთ. მაუსით გადაათრიეთ — მიმოხედვა."}
         </p>
       )}
 
@@ -1430,43 +1324,33 @@ export default function VideoWalk() {
         </button>
       )}
 
-      {status === "ready" && !touch && (
-        <p
-          className="pointer-events-none absolute left-4 z-20 rounded-md bg-black/45 px-2 py-1 text-[11px] leading-tight text-white/90"
-          style={{ bottom: controls === "arrows" ? 186 : 150 }}
+      {status === "ready" && !openRack && (
+        <nav
+          aria-label="სად წავიდეთ"
+          className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/70 to-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-6"
         >
-          ↑ სიარული · ↓ უკან · ← → მობრუნება
-        </p>
-      )}
-
-      {status === "ready" &&
-        (controls === "arrows" ? (
-          <DPad
-            onChange={(axes) => {
-              if (axes.x !== 0 || axes.y !== 0) unlockRef.current();
-              stickRef.current = axes;
-            }}
-          />
-        ) : (
-          <Joystick
-            onChange={(axes) => {
-              if (axes.x !== 0 || axes.y !== 0) unlockRef.current();
-              stickRef.current = axes;
-            }}
-          />
-        ))}
-
-      {status === "ready" && (
-        <button
-          type="button"
-          onClick={switchControls}
-          aria-label={controls === "arrows" ? "ჯოისტიკზე გადართვა" : "ისრებზე გადართვა"}
-          className="absolute bottom-4 z-20 flex h-11 items-center gap-1.5 rounded-full bg-black/55 px-3 text-xs text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-          style={{ left: controls === "arrows" ? 196 : 160 }}
-        >
-          {controls === "arrows" ? <Gamepad2 className="h-4 w-4" aria-hidden /> : <MoveVertical className="h-4 w-4" aria-hidden />}
-          {controls === "arrows" ? "ჯოისტიკი" : "ისრები"}
-        </button>
+          <p className="px-4 pb-2 text-xs font-medium text-white/80">სად წავიდეთ?</p>
+          {/* right padding: the sitewide chat button sits in the bottom-right corner */}
+          <ul className="flex gap-2 overflow-x-auto pl-4 pr-20 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {dests.map((d) => (
+              <li key={d.id} className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (soundOn) ensureAudio();
+                    goRef.current(d);
+                  }}
+                  aria-pressed={goingTo === d.id}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold shadow-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                    goingTo === d.id ? "bg-amber-400 text-black" : "bg-black/65 text-white ring-1 ring-amber-400/70 backdrop-blur-sm hover:bg-black/80"
+                  }`}
+                >
+                  {d.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
       )}
     </div>
   );

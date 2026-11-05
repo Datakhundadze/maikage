@@ -31,6 +31,12 @@ export interface ShowroomRack {
   b: readonly [number, number];
   /** What hangs there; "catalog" = the yellow rack: the whole design catalog. */
   items: readonly RackItem[] | "catalog";
+  /**
+   * Where the walk stops for this rack (forward time on the walk) and where
+   * the view then looks (video-frame yaw): tapping the rack's button walks
+   * there by itself (autoWalk.ts). Picked on the video frames.
+   */
+  stop?: { t: number; yawDeg: number };
 }
 
 export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
