@@ -1039,6 +1039,24 @@ export type Database = {
         }
         Relationships: []
       }
+      price_floors: {
+        Row: {
+          min_price: number
+          price_key: string
+          updated_at: string
+        }
+        Insert: {
+          min_price: number
+          price_key: string
+          updated_at?: string
+        }
+        Update: {
+          min_price?: number
+          price_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           base_price: number | null
