@@ -50,8 +50,8 @@ serve(async (req) => {
     // the DB and require the client amount to match. Phase 1 only — does
     // not seal price-forgery at the orders.insert step.
     const totalsQuery = cartId
-      ? supabase.from("orders").select("total_price").eq("cart_id", cartId)
-      : supabase.from("orders").select("total_price").eq("id", orderId);
+      ? supabase.from("orders").select("id, total_price, payment_status").eq("cart_id", cartId)
+      : supabase.from("orders").select("id, total_price, payment_status").eq("id", orderId);
     const { data: totalRows, error: totalsErr } = await totalsQuery;
     if (totalsErr) {
       console.error("[create-payment-flitt] amount validation query failed:", totalsErr);
@@ -63,6 +63,24 @@ serve(async (req) => {
     if (!totalRows || totalRows.length === 0) {
       return new Response(
         JSON.stringify({ error: "Order not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    // SECURITY (2026-11-05): the order must belong to the cart it is paid
+    // with, and an already-paid order/cart is never re-opened. Before this,
+    // anyone knowing an order/cart id could flip a PAID order back to
+    // "pending" (the update below had no status filter).
+    const rowsForGuard = totalRows as { id: string; payment_status: string | null }[];
+    if (cartId && !rowsForGuard.some((r) => r.id === orderId)) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (rowsForGuard.some((r) => r.payment_status === "paid")) {
+      console.warn(`[create-payment-flitt] refused: already paid — orderId=${orderId} cartId=${cartId ?? "null"}`);
+      return new Response(
+        JSON.stringify({ error: "Order already paid" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -134,12 +152,14 @@ serve(async (req) => {
       await supabase
         .from("orders")
         .update({ payment_status: "pending", bog_order_id: providerRef })
-        .eq("cart_id", cartId);
+        .eq("cart_id", cartId)
+        .neq("payment_status", "paid");
     } else {
       await supabase
         .from("orders")
         .update({ payment_status: "pending", bog_order_id: providerRef })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .neq("payment_status", "paid");
     }
 
     // Server-side back_transparent_image_url backfill. Previously ran from
@@ -149,11 +169,20 @@ serve(async (req) => {
     if (Array.isArray(backTransparentBackfill)) {
       for (const entry of backTransparentBackfill) {
         if (!entry || !entry.url || !Array.isArray(entry.orderIds) || entry.orderIds.length === 0) continue;
+        // SECURITY (2026-11-05): only rows of THIS order/cart, only files in
+        // our own designs bucket — never another customer's order or a foreign URL.
+        const ownIds = new Set(rowsForGuard.map((r) => r.id));
+        const scopedIds = (entry.orderIds as unknown[]).filter((id): id is string => typeof id === "string" && ownIds.has(id));
+        const ownPrefix = `${Deno.env.get("SUPABASE_URL")}/storage/v1/object/public/designs/`;
+        if (scopedIds.length === 0 || typeof entry.url !== "string" || !entry.url.startsWith(ownPrefix)) {
+          console.warn("[create-payment-flitt] backfill entry rejected (foreign order id or URL)");
+          continue;
+        }
         try {
           const { error: bfErr } = await supabase
             .from("orders")
             .update({ back_transparent_image_url: entry.url })
-            .in("id", entry.orderIds);
+            .in("id", scopedIds);
           if (bfErr) console.warn("[create-payment-flitt] back_transparent_image_url backfill skipped:", bfErr.message);
         } catch (bfThrow) {
           console.warn("[create-payment-flitt] back_transparent_image_url backfill threw:", bfThrow);

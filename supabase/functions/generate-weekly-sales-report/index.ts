@@ -65,8 +65,32 @@ const GE_MONTHS = [
 // exact. Shifting by +4h makes a Date's getUTC* fields read as Tbilisi local.
 const TB_OFFSET_MS = 4 * 60 * 60 * 1000;
 
+// SECURITY (2026-11-05): verify_jwt = true lets the PUBLIC anon key through,
+// so anyone could trigger the accountant emails and read the counts in the
+// response. Only the pg_cron caller (vault "email_queue_service_role_key",
+// role service_role) may run it — same check as process-email-queue. The
+// gateway has already verified the JWT signature; this reads its role claim.
+function jwtRole(authHeader: string | null): string | null {
+  if (!authHeader?.startsWith("Bearer ")) return null;
+  const part = authHeader.slice("Bearer ".length).trim().split(".")[1];
+  if (!part) return null;
+  try {
+    const b64 = part.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(part.length / 4) * 4, "=");
+    const role = (JSON.parse(atob(b64)) as { role?: unknown }).role;
+    return typeof role === "string" ? role : null;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (jwtRole(req.headers.get("Authorization")) !== "service_role") {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const supabase = createClient(
