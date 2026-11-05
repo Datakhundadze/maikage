@@ -34,6 +34,10 @@ export interface PackageOrderRow {
   is_studio: boolean;
   created_at: string;
   delivery_type: string;
+  /** Contact + courier data for the job sheet. Optional so older callers compile. */
+  phone?: string | null;
+  email?: string | null;
+  delivery_address?: string | null;
   front_mockup_url: string | null;
   back_mockup_url: string | null;
   transparent_image_url: string | null;
@@ -210,7 +214,7 @@ async function renderFromDesignState(
 ): Promise<SidePrint | null> {
   const { side, notes } = withPhotoOverrides(sideState, choices);
   const missing = side.photos.filter((p) => !p.url).length;
-  if (missing) notes.push(`⚠️ ${missing} ფოტო შეკვეთაში ვერ აიტვირთა — ფაილში არ არის`);
+  if (missing) notes.push(`ყურადღება: ${missing} ფოტო შეკვეთაში ვერ აიტვირთა — ფაილში არ არის`);
 
   const base = await compositePrintFileFromDesignState(side, { canvasWidth: BASE_CANVAS });
   if (!base) return null;
@@ -349,6 +353,18 @@ export function orderNumber(rows: PackageOrderRow[]): string {
   return (rows[0].cart_id || rows[0].id).slice(0, 8).toUpperCase();
 }
 
+interface SheetContact {
+  phone: string | null;
+  address: string | null;
+}
+
+/** First non-empty phone / courier address across the cart's rows. */
+export function sheetContact(rows: PackageOrderRow[]): SheetContact {
+  const pick = (f: (r: PackageOrderRow) => string | null | undefined) =>
+    rows.map(f).find((v) => typeof v === "string" && v.trim().length > 0)?.trim() ?? null;
+  return { phone: pick((r) => r.phone), address: pick((r) => r.delivery_address) };
+}
+
 interface SheetUnit {
   unit: PackageUnit;
   index: number;
@@ -356,7 +372,7 @@ interface SheetUnit {
   prints: SidePrint[];
 }
 
-async function drawSheetPage(head: PackageOrderRow, su: SheetUnit): Promise<PdfJpegPage> {
+async function drawSheetPage(head: PackageOrderRow, contact: SheetContact, su: SheetUnit): Promise<PdfJpegPage> {
   const c = document.createElement("canvas");
   c.width = PAGE_W;
   c.height = PAGE_H;
@@ -380,8 +396,29 @@ async function drawSheetPage(head: PackageOrderRow, su: SheetUnit): Promise<PdfJ
   ctx.fillText(dateStr, PAGE_W - M, y + 46);
   ctx.textAlign = "left";
   y += 72;
-  ctx.fillText(`${head.first_name} ${head.last_name} · ${DELIVERY_LABELS[head.delivery_type] ?? head.delivery_type}`, M, y);
-  y += 56;
+  // Customer: name + phone, then delivery (+ courier address). Row 0 of a cart
+  // carries the delivery data, so the caller passes `head` = first unit's row;
+  // fall back across units for phone/address (sheetContact).
+  ctx.font = `bold 34px ${FONT}`;
+  ctx.fillStyle = "#111111";
+  const phone = contact.phone ? `  ·  ტელ: ${contact.phone}` : "";
+  ctx.fillText(`${head.first_name} ${head.last_name}${phone}`, M, y);
+  y += 50;
+  ctx.font = `30px ${FONT}`;
+  ctx.fillStyle = "#333333";
+  const deliveryLabel = DELIVERY_LABELS[head.delivery_type] ?? head.delivery_type;
+  const isCourier = head.delivery_type !== "pickup";
+  const deliveryLine = isCourier && contact.address ? `${deliveryLabel}: ${contact.address}` : deliveryLabel;
+  for (const l of wrapLines(ctx, deliveryLine, PAGE_W - 2 * M).slice(0, 3)) {
+    ctx.fillText(l, M, y);
+    y += 42;
+  }
+  if (isCourier && !contact.address) {
+    ctx.fillStyle = "#b45309";
+    ctx.fillText("მისამართი შეკვეთაში არ არის — დაუკავშირდით კლიენტს", M, y);
+    y += 42;
+  }
+  y += 14;
   ctx.fillStyle = "#e5e5e5";
   ctx.fillRect(M, y, PAGE_W - 2 * M, 3);
   y += 30;
@@ -513,6 +550,7 @@ export async function buildPrintPackage(
   if (!units.length) throw new Error("შეკვეთაში ნივთი არ არის");
   await ensureSheetFonts();
   const head = units[0].row;
+  const contact = sheetContact(units.map((u) => u.row));
   const num = orderNumber(units.map((u) => u.row));
   const files: Zippable = {};
   const pages: PdfJpegPage[] = [];
@@ -530,7 +568,7 @@ export async function buildPrintPackage(
       sides++;
     }
     onProgress?.(`ნივთი ${i + 1}: ფურცელი…`);
-    pages.push(await drawSheetPage(head, { unit: u, index: i, total: units.length, prints }));
+    pages.push(await drawSheetPage(head, contact, { unit: u, index: i, total: units.length, prints }));
   }
 
   files[`maika-${num}.pdf`] = [buildJpegPdf(pages), { level: 6 }];

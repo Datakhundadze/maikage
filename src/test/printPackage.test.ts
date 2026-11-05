@@ -3,7 +3,7 @@ import { physicalSizeFromZoneFraction, physicalSizeForItem, hasPhysicalSizeRule,
 import { setPngDpi, readPngDpi, crc32 } from "@/lib/printPackage/pngDpi";
 import { removeSolidBackground } from "@/lib/printPackage/solidBackground";
 import { buildJpegPdf } from "@/lib/printPackage/simplePdf";
-import { backgroundMatchesGarment } from "@/lib/printPackage/buildPrintPackage";
+import { backgroundMatchesGarment, sheetContact, type PackageOrderRow } from "@/lib/printPackage/buildPrintPackage";
 
 describe("print size rule (David 2026-11-04)", () => {
   it("full zone → 28 cm wide, height proportional", () => {
@@ -175,5 +175,16 @@ describe("kids and cap sizes (David 2026-11-04)", () => {
   it("mug and phone case have no rule", () => {
     expect(physicalSizeForItem("Mug", null, 1, 1)).toBeNull();
     expect(physicalSizeForItem("Phone Case", null, 1, 1)).toBeNull();
+  });
+});
+
+describe("job sheet contact", () => {
+  const row = (o: Partial<PackageOrderRow>) => o as PackageOrderRow;
+  it("takes phone and courier address from whichever row of the cart has them", () => {
+    const c = sheetContact([row({ phone: "", delivery_address: null }), row({ phone: " 599 00 00 00 ", delivery_address: "ვაჟა-ფშაველას 12" })]);
+    expect(c).toEqual({ phone: "599 00 00 00", address: "ვაჟა-ფშაველას 12" });
+  });
+  it("returns nulls when nothing is set", () => {
+    expect(sheetContact([row({})])).toEqual({ phone: null, address: null });
   });
 });
