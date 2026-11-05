@@ -43,7 +43,9 @@ export default function AdminDashboard() {
         setFetchError(null);
       }
 
-      setOrders((ordersRes.data as Order[]) || []);
+      // Site stats only: showroom orders (payment_provider "showroom", saved by
+      // an admin without card payment) are not site sales / conversions.
+      setOrders(((ordersRes.data as Order[]) || []).filter((o) => (o as { payment_provider?: string }).payment_provider !== "showroom"));
       setProfileCount(profilesRes.count || 0);
       setDesignCount(generationsRes.count || 0);
       setTodayDesignCount(todayGenRes.count || 0);

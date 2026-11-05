@@ -15,6 +15,10 @@ import type { DesignState } from "@/lib/designState";
 import { uploadBlobWithRetry, dataUrlToBlob } from "@/lib/uploadWithRetry";
 import { isOwnStorageUrl } from "@/lib/ownStorageUrl";
 import { mergeDesignStateUrls, submitOrder } from "@/lib/orderSubmission";
+// Showroom order (admin only, no card payment) — add-only, see showroomOrder.ts.
+import { saveShowroomOrder, showroomSubmitLabel, type ShowroomMode } from "@/lib/showroomOrder";
+import ShowroomOrderChoice from "@/components/ShowroomOrderChoice";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import PaymentMethodSelector, { type PaymentMethod } from "@/components/PaymentMethodSelector";
 import { BAG_FEE, BAG_FEE_LABEL_KA } from "@/lib/fees";
 
@@ -148,6 +152,9 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
   // TBC/Flitt is the only offered method (BOG removed from checkout); the
   // "bog" type value survives for historical orders only.
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("tbc");
+  const { isAdmin } = useAdminCheck();
+  const [showroomMode, setShowroomMode] = useState<ShowroomMode>("unpaid");
+  const isShowroom = isAdmin && showroomMode !== "card";
 
   // SAFETY INVARIANT: the displayed "სულ" below and the `amount` sent to
   // the payment edge function MUST both derive from this single variable.
@@ -272,6 +279,25 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
       // SUM(total_price) === orderTotal exactly.
       rows[0].total_price = rows[0].product_price + deliveryPrice + BAG_FEE;
 
+      if (isShowroom) {
+        const res = await saveShowroomOrder({
+          rows,
+          paid: showroomMode === "paid",
+          backTransparentBackfill: backTransparentUrl
+            ? [{ orderIds: rows.map((r) => r.id), url: backTransparentUrl }]
+            : undefined,
+          adminUserId: user?.id ?? null,
+        });
+        setSubmitting(false);
+        setOpen(false);
+        toast({
+          title: showroomMode === "paid" ? "შეკვეთა შენახულია — გადახდილი ✓" : "შეკვეთა შენახულია — გადაუხდელი",
+          description: res.warnings.length ? res.warnings.join(" · ") : "ადმინკაში შეკვეთებში ჩანს",
+          variant: res.warnings.length ? "destructive" : undefined,
+        });
+        return;
+      }
+
       const redirectUrl = await submitOrder({
         rows,
         paymentOrderId: rows[0].id,
@@ -363,7 +389,8 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           )}
 
           {/* Payment method */}
-          <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />
+          {isAdmin && <ShowroomOrderChoice value={showroomMode} onChange={setShowroomMode} />}
+          {!isShowroom && <PaymentMethodSelector value={paymentMethod} onChange={setPaymentMethod} />}
 
           {/* Price summary */}
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-1.5">
@@ -399,7 +426,7 @@ export default function OrderDialog({ breakdown, product, subProduct, color, isS
           </div>
 
           <Button type="submit" disabled={submitting} className="w-full h-12 font-semibold text-base">
-            {submitting ? "იგზავნება..." : "გადახდა და შეკვეთა"}
+            {(isShowroom && showroomSubmitLabel(showroomMode, submitting)) || (submitting ? "იგზავნება..." : "გადახდა და შეკვეთა")}
           </Button>
           <p className="text-xs text-muted-foreground text-center mt-2">
             წარმოების ვადა: 1-3 სამუშაო დღე

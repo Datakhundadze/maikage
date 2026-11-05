@@ -2325,6 +2325,52 @@ CRITICAL:
       }
     }
 
+    // ── ADD-ONLY (2026-11-05, security review): convert-bg-black rate limit ──
+    // convert-bg-black is a paid Gemini image call but is not in
+    // BILLABLE_ACTIONS (it is the second half of a generate-design, and the
+    // constructor's "remove white" button), so it had NO limit at all: a
+    // script could loop it anonymously. It gets its OWN bucket (bgblack:…) so
+    // a customer's generation units are not charged twice. Limits sit well
+    // above honest use (one call per generation or per "remove white" click;
+    // guests get 4 generation units/day). Admins exempt; fails open on RPC
+    // error, like every other gate here.
+    if (action === "convert-bg-black") {
+      let bgIsAdmin = false;
+      if (user) {
+        const { data: bgAdminFlag } = await client.rpc("has_role", { _user_id: user.id, _role: "admin" });
+        bgIsAdmin = bgAdminFlag === true;
+      }
+      if (!bgIsAdmin) {
+        const bgGuest = !user || user.is_anonymous === true;
+        let bgKey: string;
+        if (!bgGuest && user) {
+          bgKey = `bgblack:user:${user.id}`;
+        } else {
+          const ip = req.headers.get("cf-connecting-ip")
+            ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+            ?? "unknown";
+          bgKey = `bgblack:ip:${ip}`;
+        }
+        const { data: bgAllowed, error: bgErr } = await client.rpc("check_and_increment_rate_limit", {
+          p_key: bgKey,
+          p_hour_limit: bgGuest ? 12 : 60,
+          p_day_limit: bgGuest ? 24 : 200,
+        });
+        if (bgErr) {
+          console.error("[gemini-proxy] convert-bg-black rate-limit check failed — failing open:", bgErr);
+        } else if (bgAllowed === false) {
+          console.log(`[gemini-proxy] convert-bg-black rate limit reached for ${bgKey}`);
+          return new Response(
+            JSON.stringify({
+              error: "ძალიან ბევრი მოთხოვნა — სცადეთ მოგვიანებით. (Too many requests — please try again later.)",
+              code: "RATE_LIMITED",
+            }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } },
+          );
+        }
+      }
+    }
+
     // ── ADD-ONLY (2026-10-22): GPT Image photo actions ─────────────────────
     // "isolate-subject-gpt" (GPT Image 2.5 Sunburst) and "restyle-gpt" (GPT
     // Image 2.5 Flare) are the GPT versions of isolate-subject and restyle,

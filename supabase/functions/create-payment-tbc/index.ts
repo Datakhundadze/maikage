@@ -33,8 +33,8 @@ serve(async (req) => {
     // create-payment-flitt), so this validation is defensive against any
     // future re-wiring. Same sum-vs-amount check as the two live functions.
     const totalsQuery = cartId
-      ? supabase.from("orders").select("total_price").eq("cart_id", cartId)
-      : supabase.from("orders").select("total_price").eq("id", orderId);
+      ? supabase.from("orders").select("id, total_price, payment_status").eq("cart_id", cartId)
+      : supabase.from("orders").select("id, total_price, payment_status").eq("id", orderId);
     const { data: totalRows, error: totalsErr } = await totalsQuery;
     if (totalsErr) {
       console.error("[create-payment-tbc] amount validation query failed:", totalsErr);
@@ -46,6 +46,24 @@ serve(async (req) => {
     if (!totalRows || totalRows.length === 0) {
       return new Response(
         JSON.stringify({ error: "Order not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    // SECURITY (2026-11-05): the order must belong to the cart it is paid
+    // with, and an already-paid order/cart is never re-opened. Before this,
+    // anyone knowing an order/cart id could flip a PAID order back to
+    // "pending" (the update below had no status filter).
+    const rowsForGuard = totalRows as { id: string; payment_status: string | null }[];
+    if (cartId && !rowsForGuard.some((r) => r.id === orderId)) {
+      return new Response(
+        JSON.stringify({ error: "Order not found" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    if (rowsForGuard.some((r) => r.payment_status === "paid")) {
+      console.warn(`[create-payment-tbc] refused: already paid — orderId=${orderId} cartId=${cartId ?? "null"}`);
+      return new Response(
+        JSON.stringify({ error: "Order already paid" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -145,12 +163,14 @@ serve(async (req) => {
       await supabase
         .from("orders")
         .update({ payment_status: "pending", bog_order_id: payId })
-        .eq("cart_id", cartId);
+        .eq("cart_id", cartId)
+        .neq("payment_status", "paid");
     } else {
       await supabase
         .from("orders")
         .update({ payment_status: "pending", bog_order_id: payId })
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .neq("payment_status", "paid");
     }
 
     // 4. Email notification (fire-and-forget)

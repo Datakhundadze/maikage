@@ -1039,6 +1039,24 @@ export type Database = {
         }
         Relationships: []
       }
+      price_floors: {
+        Row: {
+          min_price: number
+          price_key: string
+          updated_at: string
+        }
+        Insert: {
+          min_price: number
+          price_key: string
+          updated_at?: string
+        }
+        Update: {
+          min_price?: number
+          price_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           base_price: number | null
@@ -1162,6 +1180,27 @@ export type Database = {
           bucket_key?: string
           created_at?: string
           id?: never
+        }
+        Relationships: []
+      }
+      report_recipients: {
+        Row: {
+          active: boolean
+          created_at: string
+          email: string
+          report: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          email: string
+          report?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          email?: string
+          report?: string
         }
         Relationships: []
       }
