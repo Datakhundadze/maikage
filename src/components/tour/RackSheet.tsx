@@ -103,7 +103,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
 
           <div className="flex items-stretch md:block">
             {/* the photo: hover = loupe (computer); tap = large view */}
-            <div className="relative w-[42%] shrink-0 md:w-full">
+            <div className="relative w-[32%] shrink-0 md:w-full">
               <div className="maika-photo-in aspect-[4/5] w-full overflow-hidden bg-zinc-900">
                 <MagnifierLens active={hover} zoomSrc={photo}>
                   <button
@@ -119,7 +119,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
               </div>
               <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
                 <Search className="h-3 w-3" aria-hidden />
-                {hover ? "ლუპა — მიიტანე მაუსი" : "გადიდება"}
+                {hover ? "ლუპა — მიიტანე მაუსი" : "ლუპა"}
               </span>
               {/* fade into the text below (wide) */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-16 bg-gradient-to-t from-[#111] to-transparent md:block" aria-hidden />
@@ -128,7 +128,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
             <div className="flex min-w-0 flex-1 flex-col justify-between p-3 pr-11 md:-mt-6 md:p-5 md:pr-5">
               <div className="relative">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-400">{label}</p>
-                <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-tight md:text-xl">{heading}</h2>
+                <h2 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight md:text-xl">{heading}</h2>
                 {item ? (
                   <p className="mt-1 text-sm text-white/70">
                     <span className="text-lg font-semibold text-white">{item.price} ₾</span>-დან
@@ -138,11 +138,11 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
                 )}
               </div>
               {item ? (
-                <button type="button" onClick={() => choose(item)} className={`${cta} mt-2 px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
-                  არჩევა და დიზაინი <ArrowRight className="h-4 w-4" aria-hidden />
+                <button type="button" onClick={() => choose(item)} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
+                  არჩევა<span className="hidden md:inline"> და დიზაინი</span> <ArrowRight className="h-4 w-4" aria-hidden />
                 </button>
               ) : (
-                <button type="button" onClick={() => openPage("/designs")} className={`${cta} mt-2 px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
+                <button type="button" onClick={() => openPage("/designs")} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
                   კატალოგის ნახვა <ArrowRight className="h-4 w-4" aria-hidden />
                 </button>
               )}

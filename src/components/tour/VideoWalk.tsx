@@ -632,10 +632,12 @@ export default function VideoWalk() {
     // screen is wide, not tall, and level showed mostly ceiling (David,
     // 2026-11-07). On arrival a bit lower still: the rack's garments hang
     // below eye level. Never much lower: the camera was held just above
-    // David's head, so close below it the picture is smeared.
+    // David's head, so close below it the picture is smeared. Portrait goes
+    // lower on arrival (−20°): the rack moves up into the free upper part and
+    // the card at the bottom covers the smeared bottom of the picture.
     const landscape = () => host.clientWidth > host.clientHeight * 1.1;
     const walkPitch = () => (landscape() ? -4 : F.walkPitchDeg);
-    const arrivePitch = () => (landscape() ? -10 : -8);
+    const arrivePitch = () => (landscape() ? -10 : -20);
     let pitchDeg: number = walkPitch();
     let vfov = vfovFor(host.clientWidth, host.clientHeight, 100, MIN_VFOV, MAX_VFOV);
     let userZoom = 1; // multiplies vfov (pinch / wheel)
@@ -1495,7 +1497,7 @@ export default function VideoWalk() {
           <nav
             id="maika-rack-picker"
             aria-label="სად წავიდეთ"
-            className="maika-picker absolute inset-x-0 bottom-0 z-50 max-h-[78%] overflow-y-auto rounded-t-3xl border-t border-white/10 bg-[#121212]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-white shadow-2xl backdrop-blur-md md:inset-x-auto md:bottom-20 md:left-3 md:w-[26rem] md:rounded-3xl md:border"
+            className="maika-picker absolute inset-x-0 bottom-0 z-50 max-h-[78%] overflow-y-auto rounded-t-3xl border-t border-white/10 bg-[#121212]/95 px-4 pb-24 pt-3 text-white shadow-2xl backdrop-blur-md md:inset-x-auto md:bottom-20 md:left-3 md:w-[26rem] md:rounded-3xl md:border"
           >
             <style>{`
               @keyframes maika-picker-up { from { transform: translateY(40px); opacity: 0 } to { transform: none; opacity: 1 } }
