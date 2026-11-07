@@ -646,6 +646,29 @@ export default function VideoWalk() {
      * (readyState ≥ HAVE_CURRENT_DATA after "seeked"), false after
      * `timeoutMs` without it — on a phone the bytes may still be downloading.
      */
+    // walking speed: a slow line gets a calmer walk (fewer bytes per second needed)
+    const autoRate = tier === "lite" ? 1.15 : AUTO_RATE;
+
+    /**
+     * After a jump to a spot not downloaded yet: wait (≤ timeoutMs) until a
+     * little is buffered ahead, so the walk then plays on smoothly instead of
+     * stuttering frame by frame while the line catches up.
+     */
+    const waitAhead = (v: HTMLVideoElement, aheadSec = 1.2, timeoutMs = 2500) =>
+      new Promise<void>((resolve) => {
+        const t0 = performance.now();
+        const check = () => {
+          const t = v.currentTime;
+          let ahead = 0;
+          for (let i = 0; i < v.buffered.length; i++) {
+            if (v.buffered.start(i) <= t + 0.05 && v.buffered.end(i) > t) ahead = v.buffered.end(i) - t;
+          }
+          if (disposed || ahead >= aheadSec || v.readyState >= 4 || performance.now() - t0 > timeoutMs) resolve();
+          else window.setTimeout(check, 100);
+        };
+        check();
+      });
+
     const seekTo = (v: HTMLVideoElement, time: number, timeoutMs = 1500) =>
       new Promise<boolean>((resolve) => {
         const clamped = Math.min(Math.max(0, time), (v.duration || track.duration) - 0.05);
@@ -826,6 +849,8 @@ export default function VideoWalk() {
       jumps++;
       lastStepNo = null;
       lastT = fwdTime();
+      if (!sameClip && wasPlaying && rate > 0) await waitAhead(active());
+      if (disposed) return;
       if (wasPlaying && rate > 0) safePlay(active());
       else playing = false;
       releaseFrame();
@@ -1094,7 +1119,7 @@ export default function VideoWalk() {
             } else {
               facing = dir === "fwd" ? "along" : "against";
               printDir = dir;
-              target = AUTO_RATE;
+              target = autoRate;
               // the step across coming next: get its video there in time
               const nx = route[routeIdx + 1];
               if (nx && nx.kind === "hop" && now - lastPrime > 250) {
@@ -1110,12 +1135,12 @@ export default function VideoWalk() {
         if (arriving) {
           const busy = pointers.size > 0 || now - lastDragAt < 400;
           if (!busy) {
-            yawDeg = followStep(yawDeg, arriving.yaw, dt, { followMaxDegPerSec: 90, followEaseMs: 450 });
+            yawDeg = followStep(yawDeg, arriving.yaw, dt, { followMaxDegPerSec: 110, followEaseMs: 380 });
             pitchDeg = easeToward(pitchDeg, arriving.pitch, dt, 700);
           }
           const off = Math.max(Math.abs(angleDiff(arriving.yaw, yawDeg)), Math.abs(arriving.pitch - pitchDeg));
-          if (arriving.settledAt === null && (off < 1.5 || busy || now - arriving.since > 4500)) arriving.settledAt = now;
-          if (arriving.settledAt !== null && (busy || now - arriving.settledAt > 900)) {
+          if (arriving.settledAt === null && (off < 2 || busy || now - arriving.since > 3000)) arriving.settledAt = now;
+          if (arriving.settledAt !== null && (busy || now - arriving.settledAt > 700)) {
             const d = arriving.dest;
             arriving = null;
             setGoingTo(null);
