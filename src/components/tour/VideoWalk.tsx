@@ -29,6 +29,7 @@ import {
   footprints,
   globalTime,
   localTime,
+  crossPartTime,
   partIndexAt,
   loopJump,
   skipJump,
@@ -1169,9 +1170,9 @@ export default function VideoWalk() {
             void jumpTo(next);
           } else if (dir === "fwd" && part < ps.length - 1 && t >= ps[part].to - 0.02) {
             // into the next part's file
-            void jumpTo(t, "fwd");
+            void jumpTo(crossPartTime(t, "fwd", part, track), "fwd");
           } else if (dir === "rev" && part > 0 && t <= ps[part].from + 0.02) {
-            void jumpTo(t, "rev");
+            void jumpTo(crossPartTime(t, "rev", part, track), "rev");
           } else if ((dir === "fwd" && t >= track.duration - 0.1) || (dir === "rev" && t <= 0.1)) {
             // the very ends of the walk
             v.pause();

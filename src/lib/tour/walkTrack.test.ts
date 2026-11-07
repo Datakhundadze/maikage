@@ -12,6 +12,7 @@ import {
   branchToPrime,
   junctionsAhead,
   localTime,
+  crossPartTime,
   partIndexAt,
   pathPointAt,
   facingFromView,
@@ -402,3 +403,22 @@ describe("skipJump", () => {
   });
 });
 
+
+describe("crossPartTime (end of a part's file)", () => {
+  const ps = WALK_TRACK.parts;
+  it("forward: lands in the next file even from its last frame, 0.02 s short", () => {
+    const t = ps[1].to - 0.019;
+    const t2 = crossPartTime(t, "fwd", 1);
+    expect(partIndexAt(t2, "fwd")).toBe(2);
+    expect(t2 - t).toBeLessThan(0.05);
+  });
+  it("backward: lands in the previous file", () => {
+    const t = ps[2].from + 0.019;
+    const t2 = crossPartTime(t, "rev", 2);
+    expect(partIndexAt(t2, "rev")).toBe(1);
+  });
+  it("the first and last parts have nowhere to go", () => {
+    expect(crossPartTime(1, "rev", 0)).toBe(1);
+    expect(crossPartTime(ps[3].to, "fwd", 3)).toBe(ps[3].to);
+  });
+});

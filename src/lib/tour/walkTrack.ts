@@ -275,6 +275,19 @@ export function partIndexAt(t: number, dir: WalkDir, track: WalkTrack = WALK_TRA
   return ps.length - 1;
 }
 
+/**
+ * Where to continue when the walk reaches the end of part `p`'s file in
+ * `dir`: at least the next part's first moment, so partIndexAt lands in the
+ * next file. (The last frame of a file is ~0.02 s short of the boundary;
+ * jumping to that t picked the same file again and the walk stood there
+ * for good — seen on maika.ge 2026-11-07.)
+ */
+export function crossPartTime(t: number, dir: WalkDir, p: number, track: WalkTrack = WALK_TRACK): number {
+  const ps = track.parts;
+  if (dir === "fwd") return p + 1 < ps.length ? Math.max(t, ps[p + 1].from) : t;
+  return p > 0 ? Math.min(t, ps[p - 1].to) : t;
+}
+
 /** Time on part p's video that plays in `dir`, showing forward time t. */
 export function localTime(t: number, p: number, dir: WalkDir, track: WalkTrack = WALK_TRACK): number {
   const part = track.parts[p];
