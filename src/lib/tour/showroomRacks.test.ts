@@ -1,6 +1,9 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SUB_PRODUCTS } from "@/lib/catalog";
 import { planRoute } from "./autoWalk";
+import { rackPhoto } from "./rackItem";
 import { SHOWROOM_RACKS } from "./showroomRacks";
 import { WALK_TRACK } from "./walkTrack";
 
@@ -34,5 +37,9 @@ describe("showroom racks", () => {
       expect(Math.abs(yawDeg)).toBeLessThanOrEqual(180);
       expect(planRoute(WALK_TRACK.start, t)).not.toBeNull();
     }
+  });
+
+  it("every rack has its photo in public/tour/racks", () => {
+    for (const r of SHOWROOM_RACKS) expect(existsSync(resolve(process.cwd(), "public" + rackPhoto(r)))).toBe(true);
   });
 });

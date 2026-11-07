@@ -10,11 +10,12 @@
 // hang under the GILDAN hoodies", …); the five racks in the middle by matching
 // the photo's background to the video and solving where the phone stood
 // (feature matching + PnP), then checked on the frames. stop.t = a moment of
-// the walk 2–2.5 m in front of the rack's face (picked on the floor path,
-// posM), yawDeg = toward it. Not closer and not looking down: the camera was
-// held just above David's head, so everything below ~−25° near the camera is
-// stretched and smeared (his recording, 2026-11-05) — at 2 m the rack sits at
-// eye level instead. No football kits (official logos; old models) — 2026-11-05.
+// the walk ~1.4 m in front of the rack's face (picked on the floor path,
+// posM; David 2026-11-07: "every rack, close"), yawDeg = toward it; the view
+// then tilts only a little down (VideoWalk arrivePitch) — below ~−25° near the
+// camera the picture is smeared (the camera was held just above David's head).
+// Polo stays at 2.5 m (its rack is only seen whole from there). No football
+// kits (official logos; old models) — 2026-11-05.
 
 import type { ProductType } from "@/lib/catalog";
 
@@ -46,26 +47,26 @@ const one = (id: string, title: string, product: ProductType, brand: string, t: 
 
 export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
   // the middle racks (T-shirts)
-  one("gildan", "GILDAN", "T-Shirt", "GILDAN", 68.6, -91),
-  one("gildan-kids", "GILDAN KIDS", "T-Shirt", "GILDAN KIDS", 70.6, -92),
+  one("gildan", "GILDAN", "T-Shirt", "GILDAN", 159.0, -95),
+  one("gildan-kids", "GILDAN KIDS", "T-Shirt", "GILDAN KIDS", 74.2, -104),
   one("polo", "Polo", "T-Shirt", "Polo", 241.8, 70),
-  one("sols", "Sol's", "T-Shirt", "Sol's", 83, -107),
-  one("th", "TH", "T-Shirt", "TH", 225.8, 114),
+  one("sols", "Sol's", "T-Shirt", "Sol's", 253.6, -110),
+  one("th", "TH", "T-Shirt", "TH", 224.6, 128),
   // the window line, from the entrance door to the maika.ge sign
-  one("gildan-hoodie", "GILDAN ჰუდი", "Hoodie", "GILDAN Hoodie", 99.8, 170),
-  one("washed-hoodie", "Washed ჰუდი", "Hoodie", "Premium Washed Hoodie", 100, 172),
-  one("washed-tee", "Washed მაისური", "T-Shirt", "JEL T-Shirt", 247.2, 176),
-  one("oversize", "Oversize", "T-Shirt", "Oversize", 190.4, -176),
-  one("giordano", "GIORDANO", "T-Shirt", "GIORDANO", 102.2, -166),
-  one("hummer", "GILDAN HUMMER", "T-Shirt", "GILDAN HUMMER", 244.2, -138),
+  one("gildan-hoodie", "GILDAN ჰუდი", "Hoodie", "GILDAN Hoodie", 102.0, 154),
+  one("washed-hoodie", "Washed ჰუდი", "Hoodie", "Premium Washed Hoodie", 245.6, 159),
+  one("washed-tee", "Washed მაისური", "T-Shirt", "JEL T-Shirt", 102.2, 166),
+  one("oversize", "Oversize", "T-Shirt", "Oversize", 103.2, 179),
+  one("giordano", "GIORDANO", "T-Shirt", "GIORDANO", 173.0, -163),
+  one("hummer", "GILDAN HUMMER", "T-Shirt", "GILDAN HUMMER", 174.2, -116),
   // the window display table at the far end
-  one("nike", "NIKE", "T-Shirt", "NIKE", 40, 172),
-  one("khundadze", "Khundadze", "T-Shirt", "Khundadze", 38, -172),
+  one("nike", "NIKE", "T-Shirt", "NIKE", 118.8, 168),
+  one("khundadze", "Khundadze", "T-Shirt", "Khundadze", 121.6, -172),
   // the wall hooks beside the skeleton, the yellow rack, the hooks under the jerseys
-  one("jel-zipper", "JEL Washed Zipper", "Hoodie", "JEL Zipper", 109.8, -47),
-  one("jel-standard-zipper", "JEL Standard Zipper", "Hoodie", "JEL Standard Zipper", 176.8, -39),
-  { id: "catalog", title: "მთელი კატალოგი", items: "catalog", stop: { t: 106.8, yawDeg: -22 } },
-  one("bomber", "GILDAN Bomber", "Hoodie", "GILDAN Bomber", 224.8, -71),
+  one("jel-zipper", "JEL Washed Zipper", "Hoodie", "JEL Zipper", 238.6, -38),
+  one("jel-standard-zipper", "JEL Standard Zipper", "Hoodie", "JEL Standard Zipper", 53.6, -23),
+  { id: "catalog", title: "მთელი კატალოგი", items: "catalog", stop: { t: 55.2, yawDeg: 3 } },
+  one("bomber", "GILDAN Bomber", "Hoodie", "GILDAN Bomber", 226.2, -61),
   // the yellow coat stand beside the blue door
   one("tote", "ნაჭრის ჩანთები", "Tote Bag", "Tote Bag", 148, 48),
 ];

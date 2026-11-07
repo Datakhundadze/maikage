@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planRoute, reached, routeLength } from "./autoWalk";
+import { planRoute, reached, routeJumps, routeLength } from "./autoWalk";
 import { WALK_TRACK, type WalkTrack } from "./walkTrack";
 
 // a 20 s walk at 1 m/s; at t=2 the camera passes the spot of t=18 again
@@ -55,5 +55,22 @@ describe("reached", () => {
     expect(reached(4.8, "fwd", 5)).toBe(false);
     expect(reached(5.04, "rev", 5)).toBe(true);
     expect(reached(5.3, "rev", 5)).toBe(false);
+  });
+});
+
+describe("routeJumps", () => {
+  it("a straight walk inside one part: nothing to prepare", () => {
+    expect(routeJumps(1, "fwd", [{ kind: "walk", dir: "fwd", until: 5 }], T)).toEqual([]);
+  });
+  it("turning round at the start and a step across", () => {
+    const r = planRoute(5, 1, T)!;
+    expect(routeJumps(5, "fwd", r, T)).toEqual([{ t: 5, dir: "rev" }]);
+    const h = planRoute(1, 17, T)!;
+    expect(routeJumps(1, "fwd", h, T)).toEqual([{ t: 18, dir: "rev" }]);
+  });
+  it("on the real track: a long forward walk crosses the part boundaries into the next files", () => {
+    const ps = WALK_TRACK.parts;
+    const j = routeJumps(10, "fwd", [{ kind: "walk", dir: "fwd", until: ps[2].from + 5 }]);
+    expect(j.map((x) => x.t)).toEqual([ps[1].from, ps[2].from]);
   });
 });

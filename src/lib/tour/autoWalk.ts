@@ -4,7 +4,7 @@
 // another only at the filmed crossings (links: the camera within a few cm, so
 // the swap is clean). Pure logic, unit-tested; VideoWalk.tsx runs the steps.
 
-import { distanceAt, WALK_TRACK, type WalkDir, type WalkTrack } from "./walkTrack";
+import { crossPartTime, distanceAt, partIndexAt, WALK_TRACK, type WalkDir, type WalkTrack } from "./walkTrack";
 
 /** One step of a route: play in `dir` until forward time `until`, or step across to another pass. */
 export type RouteStep =
@@ -14,8 +14,13 @@ export type RouteStep =
 export const AUTO_CFG = {
   /** Playing a pass backward looks a little less natural (people walk backward): cost × this. */
   revPenalty: 1.3,
-  /** A step across costs like walking this far (m): fewer, cleaner swaps. */
-  hopCostM: 1.5,
+  /**
+   * A step across costs like walking this far (m). High on purpose: every
+   * step across is a jump to another spot of the video (David 2026-11-07:
+   * "let it walk longer, but without those stops") — only where it saves a
+   * real detour.
+   */
+  hopCostM: 5,
 } as const;
 
 interface Edge {
@@ -120,4 +125,55 @@ export function routeLength(steps: RouteStep[], from: number, track: WalkTrack =
     }
   }
   return { m, hops };
+}
+
+/** A spot the walk will jump to on a route: the video for `dir` must be there, at forward time `t`. */
+export interface RouteJump {
+  t: number;
+  dir: WalkDir;
+}
+
+/**
+ * Every jump the route makes from forward time `from` (playing `dir0`):
+ * turning round at the start, each step across, each part boundary crossed
+ * (into the next file), each still stretch skipped. The walk prepares a
+ * video at each of these before it starts, so none of them waits for a
+ * download on the way.
+ */
+export function routeJumps(from: number, dir0: WalkDir, steps: RouteStep[], track: WalkTrack = WALK_TRACK): RouteJump[] {
+  const out: RouteJump[] = [];
+  let t = from;
+  let dir = dir0;
+  const firstWalk = steps.find((s) => s.kind === "walk");
+  if (steps[0]?.kind === "walk" && firstWalk && firstWalk.kind === "walk" && firstWalk.dir !== dir) {
+    dir = firstWalk.dir;
+    out.push({ t, dir });
+  }
+  for (const s of steps) {
+    if (s.kind === "hop") {
+      t = s.t;
+      dir = s.dir;
+      out.push({ t, dir });
+      continue;
+    }
+    dir = s.dir;
+    const lo = Math.min(t, s.until);
+    const hi = Math.max(t, s.until);
+    // part boundaries passed on the way
+    const ps = track.parts;
+    for (let i = 0; i + 1 < ps.length; i++) {
+      const b = ps[i].to;
+      if (b > lo + 0.02 && b < hi - 0.02) {
+        const p = partIndexAt(dir === "fwd" ? b - 0.05 : b + 0.05, dir, track);
+        out.push({ t: crossPartTime(b, dir, p, track), dir });
+      }
+    }
+    // still stretches jumped across
+    for (const [a, b] of track.skips ?? []) {
+      if (dir === "fwd" && a > lo && a < hi) out.push({ t: b, dir });
+      if (dir === "rev" && b > lo && b < hi) out.push({ t: a, dir });
+    }
+    t = s.until;
+  }
+  return out;
 }
