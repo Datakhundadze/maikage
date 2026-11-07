@@ -43,6 +43,7 @@ import {
 import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
+import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
 import { planRoute, reached, type RouteStep } from "@/lib/tour/autoWalk";
 
 /** A place to walk to: a rack (its sheet opens on arrival) or the entrance. */
@@ -557,7 +558,16 @@ export default function VideoWalk() {
 
     // ── view state ─────────────────────────────────────────────────────────
     let yawDeg = headingAt(track.start); // facing the way the walk starts
-    let pitchDeg: number = F.walkPitchDeg; // a little up: the cover under the visitor stays low on screen
+    // Tilt. Portrait (phones, tall view): a little up — the cover under the
+    // visitor stays low on screen. Landscape (desktop): a little down — the
+    // screen is wide, not tall, and level showed mostly ceiling (David,
+    // 2026-11-07). On arrival a bit lower still: the rack's garments hang
+    // below eye level. Never much lower: the camera was held just above
+    // David's head, so close below it the picture is smeared.
+    const landscape = () => host.clientWidth > host.clientHeight * 1.1;
+    const walkPitch = () => (landscape() ? -4 : F.walkPitchDeg);
+    const arrivePitch = () => (landscape() ? -8 : -4);
+    let pitchDeg: number = walkPitch();
     let vfov = vfovFor(host.clientWidth, host.clientHeight, 100, MIN_VFOV, MAX_VFOV);
     let userZoom = 1; // multiplies vfov (pinch / wheel)
     const resize = () => {
@@ -590,7 +600,8 @@ export default function VideoWalk() {
     let routeIdx = 0;
     let routeDest: WalkDest | null = null;
     // arrived: the view turns to the rack, then its sheet opens
-    let arriving: { yaw: number; pitch: number; since: number; dest: WalkDest } | null = null;
+    // arrived at a rack: turn to it, hold still a moment so the rack is seen, then open its card
+    let arriving: { yaw: number; pitch: number; since: number; settledAt: number | null; dest: WalkDest } | null = null;
     const reduceMotion = media("(prefers-reduced-motion: reduce)");
     let footIndex = 0;
     const active = () => clip(part, dir).video;
@@ -981,6 +992,8 @@ export default function VideoWalk() {
       routeIdx = 0;
       routeDest = d;
       arriving = null;
+      setOpenRack(null);
+      if (d.rack) preloadRack(d.rack);
       setGoingTo(d.id);
       setHintVisible(false);
     };
@@ -990,7 +1003,20 @@ export default function VideoWalk() {
       playing = false;
       rate = 0;
       lastStepNo = null;
-      if (routeDest) arriving = { yaw: routeDest.yawDeg, pitch: routeDest.pitchDeg ?? F.walkPitchDeg, since: performance.now(), dest: routeDest };
+      if (routeDest) {
+        // wide screens: the card is a panel on the right — look a little to the
+        // right of the rack so it sits in the middle of the free left part
+        let yaw = routeDest.yawDeg;
+        if (routeDest.rack && window.matchMedia(RACK_CARD_WIDE_QUERY).matches) {
+          const w = host.clientWidth;
+          const h = host.clientHeight;
+          const halfV = ((vfov * userZoom) / 2) * (Math.PI / 180);
+          const tanHalfH = Math.tan(halfV) * (w / Math.max(1, h));
+          const dx = (RACK_CARD_WIDE_PX + 20) / 2; // px the free part's centre lies left of the screen's centre
+          yaw = normDeg(yaw + (Math.atan((dx / (w / 2)) * tanHalfH) * 180) / Math.PI);
+        }
+        arriving = { yaw, pitch: routeDest.pitchDeg ?? arrivePitch(), since: performance.now(), settledAt: null, dest: routeDest };
+      }
       route = null;
       routeDest = null;
       parkIdle();
@@ -1055,15 +1081,18 @@ export default function VideoWalk() {
             }
           }
         }
-        // arrived: turn to the rack, then open its sheet
+        // arrived: turn to the rack (calmly), hold still ~0.9 s so the rack
+        // itself is seen, then open its card (David: the card came up before
+        // the turn had finished and covered the rack)
         if (arriving) {
           const busy = pointers.size > 0 || now - lastDragAt < 400;
           if (!busy) {
-            yawDeg = followStep(yawDeg, arriving.yaw, dt, { followMaxDegPerSec: 120, followEaseMs: 350 });
-            pitchDeg = easeToward(pitchDeg, arriving.pitch, dt, F.pitchEaseMs);
+            yawDeg = followStep(yawDeg, arriving.yaw, dt, { followMaxDegPerSec: 90, followEaseMs: 450 });
+            pitchDeg = easeToward(pitchDeg, arriving.pitch, dt, 700);
           }
           const off = Math.max(Math.abs(angleDiff(arriving.yaw, yawDeg)), Math.abs(arriving.pitch - pitchDeg));
-          if (off < 4 || busy || now - arriving.since > 2500) {
+          if (arriving.settledAt === null && (off < 1.5 || busy || now - arriving.since > 4500)) arriving.settledAt = now;
+          if (arriving.settledAt !== null && (busy || now - arriving.settledAt > 900)) {
             const d = arriving.dest;
             arriving = null;
             setGoingTo(null);
@@ -1106,7 +1135,7 @@ export default function VideoWalk() {
           if (!busyLooking) {
             const scaled = { followMaxDegPerSec: F.followMaxDegPerSec * Math.min(1.2, r), followEaseMs: F.followEaseMs };
             yawDeg = followStep(yawDeg, followTarget(t, dir, facing), dt, scaled);
-            pitchDeg = easeToward(pitchDeg, F.walkPitchDeg, dt, F.pitchEaseMs);
+            pitchDeg = easeToward(pitchDeg, walkPitch(), dt, F.pitchEaseMs);
           }
           // keep the other direction ready
           if (now - lastPark > F.parkEveryMs) parkIdle();
@@ -1326,7 +1355,7 @@ export default function VideoWalk() {
         </button>
       )}
 
-      {status === "ready" && !openRack && (
+      {status === "ready" && (
         <nav
           aria-label="სად წავიდეთ"
           className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/70 to-transparent pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-6"
