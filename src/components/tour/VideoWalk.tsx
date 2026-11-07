@@ -44,6 +44,7 @@ import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
 import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
+import { cachedMbps, measureMbps, partBase, pickTier, type VideoTier } from "@/lib/tour/videoTier";
 import { planRoute, reached, type RouteStep } from "@/lib/tour/autoWalk";
 
 /** A place to walk to: a rack (its sheet opens on arrival) or the entrance. */
@@ -324,6 +325,24 @@ export default function VideoWalk() {
   });
   const [debugText, setDebugText] = useState("");
 
+  // which copy of the video this line can stream (videoTier.ts): measured
+  // once per session before the walk is built; until then the loader shows
+  const [tier, setTier] = useState<VideoTier | null>(() => {
+    const m = cachedMbps();
+    return m === null ? null : pickTier(m, wantsPhoneVideo());
+  });
+  useEffect(() => {
+    if (tier) return;
+    let alive = true;
+    const probe = `${partBase(WALK_TRACK.parts[0], "hd")}-fwd.mp4`;
+    void measureMbps(probe).then((m) => {
+      if (alive) setTier(pickTier(m, wantsPhoneVideo()));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [tier]);
+
   // sound (footsteps + quiet music): on by default, but audio may only start
   // from the visitor's own tap / key press
   const ensureAudio = useCallback(() => {
@@ -346,6 +365,7 @@ export default function VideoWalk() {
 
   useEffect(() => {
     if (status === "nowebgl") return;
+    if (!tier) return;
     const host = hostRef.current;
     if (!host) return;
     let disposed = false;
@@ -376,10 +396,9 @@ export default function VideoWalk() {
 
     // one video + texture per part and direction (walkTrack.ts: parts)
     type Clip = { video: HTMLVideoElement; texture: VideoTexture };
-    const phoneVideo = wantsPhoneVideo();
     const clips: Clip[][] = track.parts.map((part, i) =>
       (["fwd", "rev"] as WalkDir[]).map((d) => {
-        const video = makeVideo(phoneVideo && part.mobileBase ? part.mobileBase : part.base, d, i === 0 && d === "fwd" ? "auto" : "metadata");
+        const video = makeVideo(partBase(part, tier), d, i === 0 && d === "fwd" ? "auto" : "metadata");
         const texture = new VideoTexture(video);
         texture.colorSpace = SRGBColorSpace;
         texture.minFilter = LinearFilter;
@@ -955,7 +974,7 @@ export default function VideoWalk() {
         const v = active();
         const b = v.buffered.length ? v.buffered.end(v.buffered.length - 1).toFixed(1) : "0";
         setDebugText(
-          `p${part} ${dir} rs=${v.readyState} ns=${v.networkState} err=${v.error?.code ?? "-"} t=${v.currentTime.toFixed(2)} buf=${b} paused=${v.paused} ${v.currentSrc.split("/").pop()}`,
+          `${tier} ${cachedMbps()?.toFixed(1) ?? "?"}Mbps p${part} ${dir} rs=${v.readyState} ns=${v.networkState} err=${v.error?.code ?? "-"} t=${v.currentTime.toFixed(2)} buf=${b} paused=${v.paused} ${v.currentSrc.split("/").pop()}`,
         );
       }, 500);
     }
@@ -994,6 +1013,9 @@ export default function VideoWalk() {
       arriving = null;
       setOpenRack(null);
       if (d.rack) preloadRack(d.rack);
+      // the first step across: get its video there now (it may come within a second)
+      const firstHop = steps.find((x) => x.kind === "hop");
+      if (firstHop && firstHop.kind === "hop") primeHop(firstHop);
       setGoingTo(d.id);
       setHintVisible(false);
     };
@@ -1253,9 +1275,9 @@ export default function VideoWalk() {
       void musicRef.current?.close();
       musicRef.current = null;
     };
-    // set up once; `status` is read only to skip setup without WebGL
+    // set up once the video tier is known; `status` is read only to skip setup without WebGL
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [tier]);
 
   if (status === "nowebgl") {
     return (

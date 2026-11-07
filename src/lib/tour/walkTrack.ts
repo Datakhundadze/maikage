@@ -63,8 +63,10 @@ export interface WalkPart {
   from: number;
   to: number;
   base: string;
-  /** Same frames at 2560×1280 (about half the bytes) for phones and tablets. */
+  /** Same frames at 2560×1280 (about half the bytes): phones, tablets, middling lines. */
   mobileBase?: string;
+  /** Same frames at 1920×960 (≤ 3 Mbps) for slow lines (videoTier.ts). */
+  liteBase?: string;
   revEnd: number;
 }
 

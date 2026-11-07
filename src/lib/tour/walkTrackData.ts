@@ -6,10 +6,10 @@
 export const WALK_TRACK_DATA = {
   duration: 259.993,
   parts: [
-    { from: 0.0, to: 64.998, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p0", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p0", revEnd: 64.965 },
-    { from: 64.998, to: 129.997, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p1", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p1", revEnd: 64.965 },
-    { from: 129.997, to: 194.995, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p2", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p2", revEnd: 64.965 },
-    { from: 194.995, to: 259.993, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p3", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p3", revEnd: 64.965 },
+    { from: 0.0, to: 64.998, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p0", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p0", liteBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3s/p0", revEnd: 64.965 },
+    { from: 64.998, to: 129.997, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p1", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p1", liteBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3s/p1", revEnd: 64.965 },
+    { from: 129.997, to: 194.995, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p2", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p2", liteBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3s/p2", revEnd: 64.965 },
+    { from: 194.995, to: 259.993, base: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3/p3", mobileBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3m/p3", liteBase: "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/showroom/walk3s/p3", revEnd: 64.965 },
   ],
   fps: 29.97,
   stepSec: 0.2,
