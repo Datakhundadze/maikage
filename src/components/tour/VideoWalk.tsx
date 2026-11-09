@@ -74,8 +74,8 @@ interface WalkDest {
  */
 const OPERATOR_STOP = { t: 8, yawDeg: 1.5, pitchDeg: -7 };
 const OPERATORS = [
-  { id: "boy", yawDeg: -10, pitchDeg: -13, heightDeg: 19 },
-  { id: "girl", yawDeg: 12.7, pitchDeg: -13, heightDeg: 19 },
+  { id: "boy", yawDeg: -13.5, pitchDeg: -15.5, heightDeg: 14 },
+  { id: "girl", yawDeg: 16, pitchDeg: -15.5, heightDeg: 14 },
 ] as const;
 const OPERATOR_FRAMES = ["base", "blink", "talk1", "talk2"] as const;
 type OperatorFrame = (typeof OPERATOR_FRAMES)[number];
@@ -113,7 +113,7 @@ const PICKER_GROUPS: { title: string; dests: WalkDest[] }[] = [
 const MAX_SPARES = 5;
 
 /** Speed of the walk to a place (playback rate; 1 = as filmed, a slow walk). */
-const AUTO_RATE = 1.4;
+const AUTO_RATE = 1.6;
 import RackSheet from "./RackSheet";
 
 // /showroom walk-through: a 360° video of the shop, played forward or
@@ -850,7 +850,7 @@ export default function VideoWalk() {
      * `timeoutMs` without it — on a phone the bytes may still be downloading.
      */
     // walking speed: a slow line gets a calmer walk (fewer bytes per second needed)
-    const autoRate = tier === "lite" ? 1.15 : AUTO_RATE;
+    const autoRate = tier === "lite" ? 1.3 : AUTO_RATE;
 
     /**
      * After a jump to a spot not downloaded yet: wait (≤ timeoutMs) until a
@@ -1222,6 +1222,23 @@ export default function VideoWalk() {
         ready = true;
         setStatus("ready");
         publish();
+        // iPhone Safari draws a paused video that never played as black in
+        // WebGL (David 2026-11-09: black until the first walk). Play it a
+        // moment (muted autoplay is allowed), then put it back at the start.
+        const startLocal = localTime(track.start, 0, "fwd", track);
+        const wake = fv.paused ? fv.play() : undefined;
+        if (wake && typeof wake.then === "function")
+          wake
+            .then(() => {
+              if (disposed || playing || jumping || active() !== fv) return;
+              fv.pause();
+              void seekTo(fv, startLocal).then(() => {
+                clip(0, "fwd").texture.needsUpdate = true;
+              });
+            })
+            .catch(() => {
+              // refused (low power mode): the start button / first walk plays it
+            });
         // back from the catalog or the constructor (or a reload): carry on
         // where the visitor was
         const saved = readResume();
