@@ -73,6 +73,7 @@ interface WalkDest {
  * swapped to blink and talk). Tapping one opens the site chat.
  */
 const OPERATOR_STOP = { t: 8, yawDeg: 1.5, pitchDeg: -7 };
+const SHOW_FLOOR_ARROWS = false;
 const OPERATORS = [
   { id: "boy", yawDeg: -13.5, pitchDeg: -15.5, heightDeg: 14 },
   { id: "girl", yawDeg: 16, pitchDeg: -15.5, heightDeg: 14 },
@@ -354,6 +355,10 @@ export default function VideoWalk() {
   // iPhone Safari does not load a video before a tap: after a moment without
   // data the loader shows a start button (the tap starts the download)
   const [needsTap, setNeedsTap] = useState(() => needsTapToLoad());
+  // entry screen: one tap starts the video (no black picture on iPhone), the
+  // music and the walk to the operators (David 2026-11-09)
+  const [entered, setEntered] = useState(false);
+  const pendingEnterRef = useRef(false);
   const [openRack, setOpenRack] = useState<ShowroomRack | null>(null);
   // the place being walked to (bar highlight); goRef starts a walk (set by the effect)
   const [goingTo, setGoingTo] = useState<string | null>(null);
@@ -417,6 +422,21 @@ export default function VideoWalk() {
       void musicRef.current?.stop();
     }
   }, [ensureAudio]);
+
+  const enter = useCallback(() => {
+    setEntered(true);
+    if (soundOnRef.current) ensureAudio();
+    // the tap is a user gesture: play the start video once so iPhone shows a picture
+    startRef.current();
+    pendingEnterRef.current = true;
+  }, [ensureAudio]);
+  // after the entry tap: walk to the operators as soon as the video is ready
+  useEffect(() => {
+    if (status !== "ready" || !pendingEnterRef.current) return;
+    pendingEnterRef.current = false;
+    const id = window.setTimeout(() => goRef.current(dests[0]), 250);
+    return () => window.clearTimeout(id);
+  }, [status, entered]);
 
   useEffect(() => {
     if (status === "nowebgl") return;
@@ -1524,7 +1544,8 @@ export default function VideoWalk() {
       // footprints: shown while the stick is held or the walk runs
       if (ready) {
         const st = mergeSticks(stickRef.current, keysToStick(keys));
-        const show = playing || Math.abs(st.y) > 0.08;
+        // floor arrows off (David 2026-11-09: they get in the way; the walk is automatic now)
+        const show = SHOW_FLOOR_ARROWS && (playing || Math.abs(st.y) > 0.08);
         printAlpha = easeToward(printAlpha, show ? 0.8 : 0, dt, show ? 120 : 450);
         updatePrints(fwdTime(), printDir, printAlpha);
       }
@@ -1648,7 +1669,27 @@ export default function VideoWalk() {
     >
       <div ref={hostRef} className="absolute inset-0 touch-none" />
 
-      {status === "loading" && (
+      {!entered && status !== "error" && (
+        <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center gap-5 bg-[radial-gradient(ellipse_at_center,#2a2418_0%,#101010_70%)] px-6 text-center text-white">
+          <div className="flex items-end gap-2" aria-hidden>
+            <img src="/tour/operators/boy-base.webp" alt="" width={112} height={168} className="h-36 w-auto drop-shadow-[0_10px_24px_rgba(0,0,0,.6)]" />
+            <img src="/tour/operators/girl-base.webp" alt="" width={112} height={168} className="h-36 w-auto drop-shadow-[0_10px_24px_rgba(0,0,0,.6)]" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-extrabold">maika.ge შოურუმი</h2>
+            <p className="mt-1 text-sm text-white/70">ოპერატორები გელოდებიან</p>
+          </div>
+          <button
+            type="button"
+            onClick={enter}
+            className="rounded-full bg-amber-400 px-8 py-3.5 text-base font-bold text-black shadow-[0_10px_30px_-8px_rgba(251,191,36,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            შემოდით
+          </button>
+        </div>
+      )}
+
+      {entered && status === "loading" && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#101010] text-white">
           {/* iPhone: nothing loads before the tap, so no bar until then */}
           {!needsTap && (
