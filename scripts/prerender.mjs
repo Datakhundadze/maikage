@@ -996,7 +996,7 @@ async function writeDataPages(template, cfg, stats, app) {
         const listed = linkable;
         await writeStatic("blog", renderPage(template, {
           // lib/blogSeo.ts — BlogPage's SeoHead.
-          title: blogApp ? blogApp.BLOG_INDEX_SEO.title : "ბლოგი — Maika.ge სიახლეები და ივენთები",
+          title: blogApp ? blogApp.BLOG_INDEX_SEO.title : "ბლოგი — მაისურებზე ბეჭდვის რჩევები და იდეები | maika.ge",
           description: blogApp
             ? blogApp.BLOG_INDEX_SEO.description
             : "Maika.ge-ის სიახლეები: პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",

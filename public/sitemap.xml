@@ -4,1733 +4,435 @@
     xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://maika.ge/</loc>
-    <lastmod>2026-08-22</lastmod>
+    <lastmod>2026-11-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs</loc>
-    <lastmod>2026-08-22</lastmod>
+    <lastmod>2026-11-09</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://maika.ge/corporate</loc>
-    <lastmod>2026-08-22</lastmod>
+    <lastmod>2026-11-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://maika.ge/faq</loc>
-    <lastmod>2026-08-22</lastmod>
+    <lastmod>2026-11-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://maika.ge/portfolio</loc>
-    <lastmod>2026-08-22</lastmod>
+    <lastmod>2026-11-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/blog</loc>
-    <lastmod>2026-08-22</lastmod>
+    <lastmod>2026-11-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/contact</loc>
-    <lastmod>2026-08-22</lastmod>
+    <lastmod>2026-11-09</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://maika.ge/privacy</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/hoodie</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/tote-bag</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/cap</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/apron</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/phone-case</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/mug</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/gildan</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/sols</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/gildan-hummer</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/th</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/jel</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/giordano</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/khundadze</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/nike</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/polo</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/oversize</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/t-shirt/gildan-kids</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/hoodie/gildan</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/hoodie/premium-washed</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/hoodie/jel-standard</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/hoodie/jel-zipper</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/hoodie/jel-standard-zipper</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/hoodie/gildan-bomber</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/designs?category=animals</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://maika.ge/designs?category=auto-moto</loc>
-    <lastmod>2026-08-03</lastmod>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=couples</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=georgian</loc>
-    <lastmod>2026-08-08</lastmod>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=humor</loc>
-    <lastmod>2026-08-07</lastmod>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=movies</loc>
-    <lastmod>2026-07-16</lastmod>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/designs?category=music</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=seasonal</loc>
-    <lastmod>2026-07-01</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=sports</loc>
-    <lastmod>2026-07-17</lastmod>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=travel</loc>
-    <lastmod>2026-07-27</lastmod>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://maika.ge/designs?category=various</loc>
-    <lastmod>2026-08-03</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://maika.ge/design/sakartvelos-mepi</loc>
-    <lastmod>2026-08-08</lastmod>
+    <loc>https://maika.ge/design/pikri</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sakartvelos-mepi-1778763932484.png</image:loc>
-      <image:title>საქართველოს მეპი</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pikri-1793271352932.png</image:loc>
+      <image:title>ფიქრი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/tired-12</loc>
-    <lastmod>2026-08-07</lastmod>
+    <loc>https://maika.ge/design/espreso</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tired-12-1786114038274.png</image:loc>
-      <image:title>tired 1.2</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/espreso-1793619520369.png</image:loc>
+      <image:title>ესპრესო</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/tired-11</loc>
-    <lastmod>2026-08-07</lastmod>
+    <loc>https://maika.ge/design/snekebi</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tired-11-1786114038274.png</image:loc>
-      <image:title>tired 1.1</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/snekebi-1793271369512.png</image:loc>
+      <image:title>სნექები</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/arktik-manki-12</loc>
-    <lastmod>2026-08-07</lastmod>
+    <loc>https://maika.ge/design/qava</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/arktik-manki-12-1786093131564.png</image:loc>
-      <image:title>არქტიკ მანქი 1.2</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/qava-1793271369349.png</image:loc>
+      <image:title>ყავა</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/arktik-manki-11</loc>
-    <lastmod>2026-08-07</lastmod>
+    <loc>https://maika.ge/design/sarkazmi</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/arktik-manki-11-1786093131563.png</image:loc>
-      <image:title>არქტიკ მანქი 1.1</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sarkazmi-1793271362614.png</image:loc>
+      <image:title>სარკაზმი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/verbs-11</loc>
-    <lastmod>2026-08-05</lastmod>
+    <loc>https://maika.ge/design/kata</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/verbs-11-1785918810520.png</image:loc>
-      <image:title>ვერბს 1.1</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kata-1793271639629.png</image:loc>
+      <image:title>კატა</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/verbs</loc>
-    <lastmod>2026-08-05</lastmod>
+    <loc>https://maika.ge/design/shvebuleba</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/verbs-1785918810520.png</image:loc>
-      <image:title>ვერბს</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shvebuleba-1793271352932.png</image:loc>
+      <image:title>შვებულება</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/porshe-11</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/geimeri</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/porshe-11-1785747720804.png</image:loc>
-      <image:title>პორშე 1.1</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/geimeri-1793271369621.png</image:loc>
+      <image:title>გეიმერი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/porshe</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/dzaghli1</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/porshe-1785747720803.png</image:loc>
-      <image:title>პორშე</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dzaghli1-1793271657804.png</image:loc>
+      <image:title>ძაღლი-1</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/design-12-5</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/guli1</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-5-1785745450868.png</image:loc>
-      <image:title>Design 12 (5)</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/guli1-1793271657804.png</image:loc>
+      <image:title>გული-1</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/design-12-4</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/daghlili</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-4-1785745450832.png</image:loc>
-      <image:title>Design 12 (4)</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/daghlili-1793271361993.png</image:loc>
+      <image:title>დაღლილი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/design-12-1</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/katis-tskhovreba</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-1-1785745449760.png</image:loc>
-      <image:title>Design 12 (1)</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/katis-tskhovreba-1793271360590.png</image:loc>
+      <image:title>კატის ცხოვრება</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/design-12-3</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/sadili</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-3-1785745449760.png</image:loc>
-      <image:title>Design 12 (3)</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sadili-1793271352931.png</image:loc>
+      <image:title>სადილი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/design-12-2</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/pitsa1</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-2-1785745449760.png</image:loc>
-      <image:title>Design 12 (2)</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pitsa1-1793271657804.png</image:loc>
+      <image:title>პიცა-1</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/dizaini-1-6</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/dagvianeba</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-6-1785745143057.png</image:loc>
-      <image:title>დიზაინი 1 (6)</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dagvianeba-1793271375616.png</image:loc>
+      <image:title>დაგვიანება</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/dizaini-1-3</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/ikhvi</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-3-1785745141631.png</image:loc>
-      <image:title>დიზაინი 1 (3)</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ikhvi-1793271639689.png</image:loc>
+      <image:title>იხვი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/dizaini-1-4</loc>
-    <lastmod>2026-08-03</lastmod>
+    <loc>https://maika.ge/design/espreso-11</loc>
+    <lastmod>2026-11-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-4-1785745141829.png</image:loc>
-      <image:title>დიზაინი 1 (4)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-2</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-2-1785745140497.png</image:loc>
-      <image:title>დიზაინი 1 (2)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-11</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-11-1785745140496.png</image:loc>
-      <image:title>დიზაინი 1 (11)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-5</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-5-1785745143051.png</image:loc>
-      <image:title>დიზაინი 1 (5)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-7</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-7-1785745143412.png</image:loc>
-      <image:title>დიზაინი 1 (7)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-8</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-8-1785745144293.png</image:loc>
-      <image:title>დიზაინი 1 (8)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-10</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-10-1785745145172.png</image:loc>
-      <image:title>დიზაინი 1 (10)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-9</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-9-1785745144858.png</image:loc>
-      <image:title>დიზაინი 1 (9)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dizaini-1-1</loc>
-    <lastmod>2026-08-03</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-1-1785745140497.png</image:loc>
-      <image:title>დიზაინი 1 (1)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tbilisi-11</loc>
-    <lastmod>2026-07-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-11-1785404833276.png</image:loc>
-      <image:title>თბილისი 1.1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tbilisi-12</loc>
-    <lastmod>2026-07-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-12-1785404833276.png</image:loc>
-      <image:title>თბილისი 1.2</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-20</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-20-1785136708187.png</image:loc>
-      <image:title>1 (20)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-23</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-23-1785136708188.png</image:loc>
-      <image:title>1 (23)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-21</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-21-1785136708188.png</image:loc>
-      <image:title>1 (21)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-28</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-28-1785136709934.png</image:loc>
-      <image:title>1 (28)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-25</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-25-1785136709922.png</image:loc>
-      <image:title>1 (25)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-31</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-31-1785136710288.png</image:loc>
-      <image:title>1 (31)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-17</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-17-1785136711310.png</image:loc>
-      <image:title>1 (17)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-18</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-18-1785136711650.png</image:loc>
-      <image:title>1 (18)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-19</loc>
-    <lastmod>2026-07-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-19-1785136711650.png</image:loc>
-      <image:title>1 (19)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-14</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-14-1784714981048.png</image:loc>
-      <image:title>1 (14)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-9</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-9-1784714981049.png</image:loc>
-      <image:title>1 (9)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-15</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-15-1784714981049.png</image:loc>
-      <image:title>1 (15)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-12</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-12-1784714983084.png</image:loc>
-      <image:title>1 (12)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-10</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-10-1784714983062.png</image:loc>
-      <image:title>1 (10)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-11</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-11-1784714983064.png</image:loc>
-      <image:title>1 (11)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-13</loc>
-    <lastmod>2026-07-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-13-1784714984733.png</image:loc>
-      <image:title>1 (13)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-3</loc>
-    <lastmod>2026-07-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-3-1784554316605.png</image:loc>
-      <image:title>1 (3)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-1</loc>
-    <lastmod>2026-07-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-1-1784554316604.png</image:loc>
-      <image:title>1 (1)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-2</loc>
-    <lastmod>2026-07-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-2-1784554316605.png</image:loc>
-      <image:title>1 (2)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-5</loc>
-    <lastmod>2026-07-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-5-1784554319214.png</image:loc>
-      <image:title>1 (5)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-4</loc>
-    <lastmod>2026-07-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-4-1784554318590.png</image:loc>
-      <image:title>1 (4)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-6</loc>
-    <lastmod>2026-07-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-6-1784554319719.png</image:loc>
-      <image:title>1 (6)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/1-7</loc>
-    <lastmod>2026-07-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-7-1784554320669.png</image:loc>
-      <image:title>1 (7)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/poo</loc>
-    <lastmod>2026-07-17</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/poo-1783930537918.png</image:loc>
-      <image:title>ფოო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/mesi</loc>
-    <lastmod>2026-07-17</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mesi-1784275493875.png</image:loc>
-      <image:title>მესი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/utsnauri-ambebi</loc>
-    <lastmod>2026-07-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/utsnauri-ambebi-1784203148776.png</image:loc>
-      <image:title>უცნაური ამბები</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/spaidermeni</loc>
-    <lastmod>2026-07-16</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/spaidermeni-1784202924416.png</image:loc>
-      <image:title>სპაიდერმენი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/trandy-designs-88dz-2</loc>
-    <lastmod>2026-07-14</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/trandy-designs-88dz-2-1783939013495.png</image:loc>
-      <image:title>trandy designs #3</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/late</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/late-1783930482959.png</image:loc>
-      <image:title>ლატე</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/puri</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/puri-1783930482960.png</image:loc>
-      <image:title>პური</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/rameni</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/rameni-1783930482960.png</image:loc>
-      <image:title>რამენი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/macha</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/macha-1783930486668.png</image:loc>
-      <image:title>მაჩა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tsiqvi</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tsiqvi-1783930486233.png</image:loc>
-      <image:title>ციყვი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/popkorni</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/popkorni-1783930486061.png</image:loc>
-      <image:title>პოპკორნი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/potoli</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/potoli-1783930488744.png</image:loc>
-      <image:title>ფოთოლი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/sokoebi</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sokoebi-1783930488753.png</image:loc>
-      <image:title>სოკოები</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/valentini</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/valentini-1783930493564.png</image:loc>
-      <image:title>ვალენტინი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/siqvaruli</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/siqvaruli-1783930493815.png</image:loc>
-      <image:title>სიყვარული</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/vashlii</loc>
-    <lastmod>2026-07-13</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vashlii-1783930537918.png</image:loc>
-      <image:title>ვაშლიი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/travel-design-with-bold-typography-sloga-ax8m-0</loc>
-    <lastmod>2026-07-10</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/travel-design-with-bold-typography-sloga-ax8m-0-1783695594694.png</image:loc>
-      <image:title>travel design with bold typography sloga… #1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/meksika</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/meksika-1782897419693.png</image:loc>
-      <image:title>მექსიკა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/simindi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/simindi-1782897426152.png</image:loc>
-      <image:title>სიმინდი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/katamtro</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/katamtro-1782897419693.png</image:loc>
-      <image:title>კატამთრო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/vrepi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vrepi-1782897419693.png</image:loc>
-      <image:title>ვრეპი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/mochveneba</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mochveneba-1782897424474.png</image:loc>
-      <image:title>მოჩვენება</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/zazuna</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zazuna-1782897423929.png</image:loc>
-      <image:title>ზაზუნა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/ortskhobila</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ortskhobila-1782897422329.png</image:loc>
-      <image:title>ორცხობილა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tskheli-shokoladi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tskheli-shokoladi-1782897422315.png</image:loc>
-      <image:title>ცხელი შოკოლადი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/stapilo</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/stapilo-1782897422162.png</image:loc>
-      <image:title>სტაფილო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/prangi-burgeri</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/prangi-burgeri-1782897424544.png</image:loc>
-      <image:title>ფრანგი ბურგერი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/pirati</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pirati-1782897425262.png</image:loc>
-      <image:title>პირატი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/kattusi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kattusi-1782897426924.png</image:loc>
-      <image:title>კატტუსი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/roki</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/roki-1782897426821.png</image:loc>
-      <image:title>როკი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/shentvis-vmgheri</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shentvis-vmgheri-1782896379694.png</image:loc>
-      <image:title>შენთვის ვმღერი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/chven-erti-gundi-vart1</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chven-erti-gundi-vart1-1782896379694.png</image:loc>
-      <image:title>ჩვენ ერთი გუნდი ვართ1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/chven-erti-gundi-vart</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chven-erti-gundi-vart-1782896379694.png</image:loc>
-      <image:title>ჩვენ ერთი გუნდი ვართ</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/shentvis-vmgheri1</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shentvis-vmgheri1-1782896381516.png</image:loc>
-      <image:title>შენთვის ვმღერი1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/zghapris-bolo</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zghapris-bolo-1782896382386.png</image:loc>
-      <image:title>ზღაპრის ბოლო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/zghapris-bolo1</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zghapris-bolo1-1782896382700.png</image:loc>
-      <image:title>ზღაპრის ბოლო1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/me-var-sakartvelo</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo-1782896383047.png</image:loc>
-      <image:title>მე ვარ საქართველო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/me-var-sakartvelo-1</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo-1-1782896384378.png</image:loc>
-      <image:title>მე ვარ საქართველო 1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/me-var-sakartvelo-2</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo-2-1782896397629.png</image:loc>
-      <image:title>მე ვარ საქართველო 2</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/me-var-sakartvelo2</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo2-1782896404093.png</image:loc>
-      <image:title>მე ვარ საქართველო2</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tosti</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tosti-1782894574107.png</image:loc>
-      <image:title>ტოსტი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dasveneba</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dasveneba-1782894574106.png</image:loc>
-      <image:title>დასვენება</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/kartopili</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kartopili-1782894576517.png</image:loc>
-      <image:title>კარტოფილი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/nacho</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/nacho-1782894577480.png</image:loc>
-      <image:title>ნაჩო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/ludi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ludi-1782894574107.png</image:loc>
-      <image:title>ლუდი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dino</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dino-1782894578573.png</image:loc>
-      <image:title>დინო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/lemonchelo</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/lemonchelo-1782894579007.png</image:loc>
-      <image:title>ლემონჩელო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/avokado</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/avokado-1782894579944.png</image:loc>
-      <image:title>ავოკადო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/saponi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/saponi-1782894580214.png</image:loc>
-      <image:title>საპონი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tsomi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tsomi-1782894581347.png</image:loc>
-      <image:title>ცომი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/soko</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/soko-1782894581352.png</image:loc>
-      <image:title>სოკო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/ananasi1</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ananasi1-1782894585212.png</image:loc>
-      <image:title>ანანასი1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/peria</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/peria-1782894583751.png</image:loc>
-      <image:title>ფერია</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/putkari</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/putkari-1782894583406.png</image:loc>
-      <image:title>ფუტკარი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/chizburgeri</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chizburgeri-1782894583385.png</image:loc>
-      <image:title>ჩიზბურგერი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/khili</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khili-1782894581891.png</image:loc>
-      <image:title>ხილი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/mze</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mze-1782893442513.png</image:loc>
-      <image:title>მზე</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/ananasi</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ananasi-1782893442514.png</image:loc>
-      <image:title>ანანასი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/bbk</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/bbk-1782893445514.png</image:loc>
-      <image:title>ბბქ</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/burgeri</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/burgeri-1782893447071.png</image:loc>
-      <image:title>ბურგერი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/limoni</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/limoni-1782893449091.png</image:loc>
-      <image:title>ლიმონი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/gamagrilebeli</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gamagrilebeli-1782893451734.png</image:loc>
-      <image:title>გამაგრილებელი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/sanapiro</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sanapiro-1782893453606.png</image:loc>
-      <image:title>სანაპირო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/naqini1</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/naqini1-1782893485008.png</image:loc>
-      <image:title>ნაყინი1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/kreveti1</loc>
-    <lastmod>2026-07-01</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kreveti1-1782893485008.png</image:loc>
-      <image:title>კრევეტი1</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/naqini</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/naqini-1782823089850.png</image:loc>
-      <image:title>ნაყინი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/kreveti</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kreveti-1782823089850.png</image:loc>
-      <image:title>კრევეტი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/sosisebi</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sosisebi-1782823089849.png</image:loc>
-      <image:title>სოსისები</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/martsqvi</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/martsqvi-1782823093047.png</image:loc>
-      <image:title>მარწყვი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/mango</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mango-1782823093478.png</image:loc>
-      <image:title>მანგო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/sazamtro</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sazamtro-1782823094683.png</image:loc>
-      <image:title>საზამთრო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/zvigeni</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zvigeni-1782823093400.png</image:loc>
-      <image:title>ზვიგენი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/banani</loc>
-    <lastmod>2026-06-30</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/banani-1782823096341.png</image:loc>
-      <image:title>ბანანი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/peisit-l</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/peisit-l-1782475115604.png</image:loc>
-      <image:title>ფეისით L</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/margarita</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/margarita-1782475107910.png</image:loc>
-      <image:title>მარგარიტა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/vashli</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vashli-1782475107912.png</image:loc>
-      <image:title>ვაშლი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/lamazi</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/lamazi-1782475109365.png</image:loc>
-      <image:title>ლამაზი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/sheqvarebuli</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sheqvarebuli-1782475110015.png</image:loc>
-      <image:title>შეყვარებული</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tqupebi</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tqupebi-1782475109400.png</image:loc>
-      <image:title>ტყუპები</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/es-aris</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/es-aris-1782475111385.png</image:loc>
-      <image:title>ეს არის</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/plirti</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/plirti-1782475110994.png</image:loc>
-      <image:title>ფლირტი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/kartveli</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kartveli-1782475111385.png</image:loc>
-      <image:title>ქართველი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tsartsera</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tsartsera-1782475112656.png</image:loc>
-      <image:title>წარწერა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/eiai</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/eiai-1782475112912.png</image:loc>
-      <image:title>ეიაი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/gamotove</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gamotove-1782475113216.png</image:loc>
-      <image:title>გამოტოვე</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/praza</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/praza-1782475113719.png</image:loc>
-      <image:title>ფრაზა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/peisit-w</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/peisit-w-1782475114088.png</image:loc>
-      <image:title>ფეისით W</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/kotsna</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kotsna-1782475113924.png</image:loc>
-      <image:title>კოცნა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/gegma-b</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gegma-b-1782475115625.png</image:loc>
-      <image:title>გეგმა ბ</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/qava-tatu-dasveneba</loc>
-    <lastmod>2026-06-26</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/qava-tatu-dasveneba-1782475107912.png</image:loc>
-      <image:title>ყავა, ტატუ, დასვენება</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/khmarebashi-gaitsevs</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khmarebashi-gaitsevs-1778252140559.png</image:loc>
-      <image:title>ხმარებაში გაიწევს</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/neta-2-viqo</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/neta-2-viqo-1778316255636.png</image:loc>
-      <image:title>ნეტა 2 ვიყო</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/maghonebs</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/maghonebs-1778667071460.png</image:loc>
-      <image:title>მაღონებს</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/guli-anbani</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/guli-anbani-1778667071460.png</image:loc>
-      <image:title>გული ანბანი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/khachapuri</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khachapuri-1778667071459.png</image:loc>
-      <image:title>ხაჭაპური</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tbilisi</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-1778667073155.png</image:loc>
-      <image:title>თბილისი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/houm</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/houm-1778667073656.png</image:loc>
-      <image:title>ჰოუმ</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/vazha</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vazha-1778667073459.png</image:loc>
-      <image:title>ვაჟა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/eklesia</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/eklesia-1778763925438.png</image:loc>
-      <image:title>ეკლესია</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/guli</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/guli-1778763927949.png</image:loc>
-      <image:title>გული</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/anbani</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/anbani-1778763928821.png</image:loc>
-      <image:title>ანბანი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/vazha-pshavela</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vazha-pshavela-1778763930298.png</image:loc>
-      <image:title>ვაჟა ფშაველა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/shota-rustaveli</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shota-rustaveli-1778763930441.png</image:loc>
-      <image:title>შოთა რუსთაველი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/vepkhistqaosani</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vepkhistqaosani-1778763933947.png</image:loc>
-      <image:title>ვეფხისტყაოსანი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/regionebi</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/regionebi-1778763935934.png</image:loc>
-      <image:title>რეგიონები</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/arktik-manki-tbilisi</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/arktik-manki-tbilisi-1778935151300.png</image:loc>
-      <image:title>არქტიკ მანქი თბილისი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/drosha</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/drosha-1779363779961.png</image:loc>
-      <image:title>დროშა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/ruka</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ruka-1779363779959.png</image:loc>
-      <image:title>რუკა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/okupatsia</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/okupatsia-1779363782587.png</image:loc>
-      <image:title>ოკუპაცია</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/sakartveloperadi</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sakartveloperadi-1779363782591.png</image:loc>
-      <image:title>საქართველო(ფერადი)</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/khinkali</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khinkali-1779363788279.png</image:loc>
-      <image:title>ხინკალი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/khokhobi</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khokhobi-1779363791048.png</image:loc>
-      <image:title>ხოხობი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/tbilisi-tsartsera</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-tsartsera-1779363792372.png</image:loc>
-      <image:title>თბილისი წარწერა</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/espreso-11-1793619520370.png</image:loc>
+      <image:title>ესპრესო 1.1</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://maika.ge/design/borjghala</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -1739,58 +441,528 @@
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/okupatsia-20</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/tbilisis-andza</loc>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/okupatsia-20-1779363799548.png</image:loc>
-      <image:title>ოკუპაცია 20%</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisis-andza-1790675378350.png</image:loc>
+      <image:title>თბილისის ანძა</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/skeiti</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/sheni-gundi</loc>
+    <lastmod>2026-11-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/skeiti-1779453441374.png</image:loc>
-      <image:title>სკეიტი</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sheni-gundi-1791286998363.png</image:loc>
+      <image:title>შენი გუნდი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-19</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-19-1785136711650.png</image:loc>
+      <image:title>Roam the Peaks — მთები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/chokha-1</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chokha-1-1779363841666.png</image:loc>
+      <image:title>ჩოხა 1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-7</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-7-1792145609715.png</image:loc>
+      <image:title>კაფე რეისერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/khinkali</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khinkali-1779363788279.png</image:loc>
+      <image:title>ხინკალი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/pirosmani</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pirosmani-1778763934218.png</image:loc>
+      <image:title>ფიროსმანი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/maghonebs</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/maghonebs-1778667071460.png</image:loc>
+      <image:title>Tbilisi — წითელი 3D წარწერა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/panda-evil</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/panda-evil-1779453446616.png</image:loc>
+      <image:title>ონის ნიღაბი — Remove the Evil</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dzaghli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dzaghli-1779453446572.png</image:loc>
+      <image:title>სამურაი მოფსი — კუნგ-ფუ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dasveneba</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dasveneba-1782894574106.png</image:loc>
+      <image:title>Sunsational — მზე სათვალით</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-1778667073155.png</image:loc>
+      <image:title>ქართული ანბანი — მხედრული</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sakartvelo</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sakartvelo-1778763923973.png</image:loc>
+      <image:title>ოკუპაცია 20% — რუკა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/drakoni</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/drakoni-1779453448305.png</image:loc>
+      <image:title>კოი თევზი — Enjoy Life</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://maika.ge/design/banjo</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/banjo-1779453441371.png</image:loc>
-      <image:title>ბანჯო</image:title>
+      <image:title>ბანჯო და კაზუი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/dedpuli</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/dizaini120</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dedpuli-1779453441374.png</image:loc>
-      <image:title>დედპული</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini120-1792669625526.png</image:loc>
+      <image:title>კაცი შავებში — სიმპსონების სტილში</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/seilori</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/dizaini18</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/seilori-1779453443822.png</image:loc>
-      <image:title>სეილორი</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini18-1792142457799.png</image:loc>
+      <image:title>მარტო სახლში</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini15</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini15-1792142455212.png</image:loc>
+      <image:title>სნეიპი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini26</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini26-1792142472551.png</image:loc>
+      <image:title>პატარა პრინცი პლანეტაზე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini14</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini14-1792142455150.png</image:loc>
+      <image:title>ნიღბიანი ძაღლი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/margarita</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/margarita-1782475107910.png</image:loc>
+      <image:title>მარგარიტა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini24</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini24-1792142470129.png</image:loc>
+      <image:title>ნიღაბი — ენა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini16</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini16-1792142455362.png</image:loc>
+      <image:title>მარტო სახლში — მარვი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-28</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-28-1785136709934.png</image:loc>
+      <image:title>Park Ranger</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/mze</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mze-1782893442513.png</image:loc>
+      <image:title>მზე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini160</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini160-1792669625526.png</image:loc>
+      <image:title>True Detective</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/travel-design-with-bold-typography-sloga-ax8m-0</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/travel-design-with-bold-typography-sloga-ax8m-0-1783695594694.png</image:loc>
+      <image:title>Catch Flights, Not Feelings</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-18</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-18-1785136711650.png</image:loc>
+      <image:title>Work Save Travel Repeat</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-5</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-5-1785745143051.png</image:loc>
+      <image:title>I&apos;m Not Shy — ვარდისფერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini180</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini180-1792669627134.png</image:loc>
+      <image:title>I&apos;ll Be There For You</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-8</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-8-1785745144293.png</image:loc>
+      <image:title>Shhh, Nobody Cares</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-4</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-4-1792145599082.png</image:loc>
+      <image:title>Race Mode ჩაფხუტი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-6</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-6-1785745143057.png</image:loc>
+      <image:title>Selectively Social</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini25</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini25-1792142470236.png</image:loc>
+      <image:title>Gummy Bear — მხიარული დათუნია</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-1-1792145589780.png</image:loc>
+      <image:title>მოტოკროსი Off-Road</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini190</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini190-1792669627246.png</image:loc>
+      <image:title>Sons of Anarchy — ჯაქსი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-4</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-4-1785745141829.png</image:loc>
+      <image:title>Ew. — ვარდისფერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-8</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-8-1792145589779.png</image:loc>
+      <image:title>Auto Moto Dual Power</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-6</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-6-1784554319719.png</image:loc>
+      <image:title>Cabin Escape — ქოხი ტყეში</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/design-12-2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-2-1785745449760.png</image:loc>
+      <image:title>WTF — Where&apos;s the Food</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini17</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini17-1792142456301.png</image:loc>
+      <image:title>მარტო სახლში — ქურდები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini170</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini170-1792669627060.png</image:loc>
+      <image:title>Sons of Anarchy — მოტოციკლი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/porshe-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/porshe-11-1785747720804.png</image:loc>
+      <image:title>პორშე 1.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-31</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-31-1785136710288.png</image:loc>
+      <image:title>Roam Free</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-9</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-9-1784714981049.png</image:loc>
+      <image:title>And So the Adventure Begins</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-17</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-17-1785136711310.png</image:loc>
+      <image:title>Travel Far — მოგზაურობა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/design-12-1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-1-1785745449760.png</image:loc>
+      <image:title>When Nothing Goes Right, Go Left</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-6</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-6-1792145609709.png</image:loc>
+      <image:title>სუპერქარი Speed</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-5</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-5-1792145599353.png</image:loc>
+      <image:title>სპორტული მოტოციკლი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/mochveneba</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mochveneba-1782897424474.png</image:loc>
+      <image:title>მოჩვენება</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-4</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-4-1784554318590.png</image:loc>
+      <image:title>Let&apos;s Go on an Adventure</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/vazha-pshavela</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vazha-pshavela-1778763930298.png</image:loc>
+      <image:title>ვაჟა ფშაველა</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://maika.ge/design/panda</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -1799,98 +971,8 @@
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/datvi</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/datvi-1779453444021.png</image:loc>
-      <image:title>დათვი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/karate-panda</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/karate-panda-1779453445717.png</image:loc>
-      <image:title>კარატე პანდა</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/dzaghli</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dzaghli-1779453446572.png</image:loc>
-      <image:title>ძაღლი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/panda-evil</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/panda-evil-1779453446616.png</image:loc>
-      <image:title>პანდა ევილ</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/drakoni</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/drakoni-1779453448305.png</image:loc>
-      <image:title>დრაკონი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/khval-iqos</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khval-iqos-1779374101199.png</image:loc>
-      <image:title>ხვალ იყოს</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/neta-ki</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/neta-ki-1779374102429.png</image:loc>
-      <image:title>ნეტა კი</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/gasuli-var</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gasuli-var-1779374098444.png</image:loc>
-      <image:title>გასული ვარ</image:title>
-    </image:image>
-  </url>
-  <url>
-    <loc>https://maika.ge/design/rodis-achen</loc>
-    <lastmod>2026-05-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-    <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/rodis-achen-1779374099476.png</image:loc>
-      <image:title>როდის აჩენ</image:title>
-    </image:image>
-  </url>
-  <url>
     <loc>https://maika.ge/design/pitsa</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -1900,7 +982,7 @@
   </url>
   <url>
     <loc>https://maika.ge/design/sakartvelo-1</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -1910,7 +992,7 @@
   </url>
   <url>
     <loc>https://maika.ge/design/gerbi</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -1919,28 +1001,228 @@
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/neta-ori-viqo</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/tqupebi</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/neta-ori-viqo-1779374102105.png</image:loc>
-      <image:title>ნეტა ორი ვიყო</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tqupebi-1782475109400.png</image:loc>
+      <image:title>ტყუპები</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/chokha-1</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/pirosmani-11</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chokha-1-1779363841666.png</image:loc>
-      <image:title>ჩოხა 1</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pirosmani-11-1790678595207.png</image:loc>
+      <image:title>ფიროსმანი 1.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-01</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-01-1790682721031.png</image:loc>
+      <image:title>თბილისი 0.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini12</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini12-1792142453941.png</image:loc>
+      <image:title>პატარა პრინცი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/saponi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/saponi-1782894580214.png</image:loc>
+      <image:title>საპონი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/me-var-sakartvelo2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo2-1782896404093.png</image:loc>
+      <image:title>მე ვარ საქართველო2</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/prangi-burgeri</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/prangi-burgeri-1782897424544.png</image:loc>
+      <image:title>ფრანგი ბურგერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/simindi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/simindi-1782897426152.png</image:loc>
+      <image:title>სიმინდი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-9</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-9-1785745144858.png</image:loc>
+      <image:title>3% Human, 97% Stress</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/macha</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/macha-1783930486668.png</image:loc>
+      <image:title>მაჩა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/rameni</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/rameni-1783930482960.png</image:loc>
+      <image:title>რამენი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/kattusi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kattusi-1782897426924.png</image:loc>
+      <image:title>კატტუსი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/puri</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/puri-1783930482960.png</image:loc>
+      <image:title>პური</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/late</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/late-1783930482959.png</image:loc>
+      <image:title>ლატე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-1-1784554316604.png</image:loc>
+      <image:title>Adventure Calls — კომპასი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/kreveti</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kreveti-1782823089850.png</image:loc>
+      <image:title>კრევეტი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/poo</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/poo-1783930537918.png</image:loc>
+      <image:title>ფოო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tsartsera</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tsartsera-1782475112656.png</image:loc>
+      <image:title>წარწერა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/eklesia</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/eklesia-1778763925438.png</image:loc>
+      <image:title>ეკლესია</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/khachapuri</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khachapuri-1778667071459.png</image:loc>
+      <image:title>ხაჭაპური</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-2-1792145589780.png</image:loc>
+      <image:title>კლასიკური მასლქარი 1969</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/kartlis-deda</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kartlis-deda-1790675489454.png</image:loc>
+      <image:title>ქართლის დედა</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://maika.ge/design/daleva</loc>
-    <lastmod>2026-05-22</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -1949,78 +1231,148 @@
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/zurgit-vzivar</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/khval-iqos</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zurgit-vzivar-1779374098443.png</image:loc>
-      <image:title>ზურგით ვზივარ</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khval-iqos-1779374101199.png</image:loc>
+      <image:title>ხვალ იყოს</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/ar-mtsalia</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/shota-rustaveli</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ar-mtsalia-1779374101302.png</image:loc>
-      <image:title>არ მცალია</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shota-rustaveli-1778763930441.png</image:loc>
+      <image:title>შოთა რუსთაველი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/shechema</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/anbani</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shechema-1779374102338.png</image:loc>
-      <image:title>შეჩემა</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/anbani-1778763928821.png</image:loc>
+      <image:title>ანბანი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/tbilisi-1</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/regionebi</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-1-1779363841666.png</image:loc>
-      <image:title>თბილისი 1</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/regionebi-1778763935934.png</image:loc>
+      <image:title>რეგიონები</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/khinkali1</loc>
-    <lastmod>2026-05-22</lastmod>
+    <loc>https://maika.ge/design/plirti</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khinkali1-1779363843514.png</image:loc>
-      <image:title>ხინკალი1</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/plirti-1782475110994.png</image:loc>
+      <image:title>ფლირტი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/sakartvelo</loc>
-    <lastmod>2026-05-21</lastmod>
+    <loc>https://maika.ge/design/martsqvi</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sakartvelo-1778763923973.png</image:loc>
-      <image:title>საქართველო</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/martsqvi-1782823093047.png</image:loc>
+      <image:title>მარწყვი</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/pink-ploid-tbilisi</loc>
-    <lastmod>2026-05-21</lastmod>
+    <loc>https://maika.ge/design/dizaini-01</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pink-ploid-tbilisi-1778935151300.png</image:loc>
-      <image:title>პინკ ფლოიდ თბილისი</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-01-1792147980011.png</image:loc>
+      <image:title>Arctic Monkeys — სავარძელი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/praza</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/praza-1782475113719.png</image:loc>
+      <image:title>ფრაზა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/peisit-l</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/peisit-l-1782475115604.png</image:loc>
+      <image:title>ფეისით L</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/naqini1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/naqini1-1782893485008.png</image:loc>
+      <image:title>ნაყინი1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/ruka</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ruka-1779363779959.png</image:loc>
+      <image:title>რუკა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sakartveloperadi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sakartveloperadi-1779363782591.png</image:loc>
+      <image:title>საქართველო(ფერადი)</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/arktik-manki-tbilisi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/arktik-manki-tbilisi-1778935151300.png</image:loc>
+      <image:title>არქტიკ მანქი თბილისი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/guli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/guli-1778763927949.png</image:loc>
+      <image:title>გული</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://maika.ge/design/dzveli-tbilisi</loc>
-    <lastmod>2026-05-21</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
@@ -2029,23 +1381,1713 @@
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/design/pirosmani</loc>
-    <lastmod>2026-05-21</lastmod>
+    <loc>https://maika.ge/design/neta-ori-viqo</loc>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
-      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pirosmani-1778763934218.png</image:loc>
-      <image:title>ფიროსმანი</image:title>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/neta-ori-viqo-1779374102105.png</image:loc>
+      <image:title>ნეტა ორი ვიყო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-tsartsera</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-tsartsera-1779363792372.png</image:loc>
+      <image:title>თბილისი წარწერა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/okupatsia-20</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/okupatsia-20-1779363799548.png</image:loc>
+      <image:title>ოკუპაცია 20%</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/khinkali1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khinkali1-1779363843514.png</image:loc>
+      <image:title>ხინკალი1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/khokhobi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khokhobi-1779363791048.png</image:loc>
+      <image:title>ხოხობი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/qava-tatu-dasveneba</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/qava-tatu-dasveneba-1782475107912.png</image:loc>
+      <image:title>ყავა, ტატუ, დასვენება</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/bbk</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/bbk-1782893445514.png</image:loc>
+      <image:title>ბბქ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/zvigeni</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zvigeni-1782823093400.png</image:loc>
+      <image:title>ზვიგენი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/ananasi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ananasi-1782893442514.png</image:loc>
+      <image:title>ანანასი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-03</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-03-1792148040100.png</image:loc>
+      <image:title>Pink Floyd — Animals</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-07</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-07-1792148045329.png</image:loc>
+      <image:title>Arctic Monkeys — გიტარა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-06</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-06-1792148044012.png</image:loc>
+      <image:title>Arctic Monkeys — გასაღები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-05</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-05-1792148043408.png</image:loc>
+      <image:title>Arctic Monkeys — მაიმუნი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/guli-anbani</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/guli-anbani-1778667071460.png</image:loc>
+      <image:title>გული ანბანი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/zghapris-bolo</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zghapris-bolo-1782896382386.png</image:loc>
+      <image:title>ზღაპრის ბოლო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/shentvis-vmgheri</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shentvis-vmgheri-1782896379694.png</image:loc>
+      <image:title>შენთვის ვმღერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/chven-erti-gundi-vart1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chven-erti-gundi-vart1-1782896379694.png</image:loc>
+      <image:title>ჩვენ ერთი გუნდი ვართ1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/me-var-sakartvelo-2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo-2-1782896397629.png</image:loc>
+      <image:title>მე ვარ საქართველო 2</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/karate-panda</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/karate-panda-1779453445717.png</image:loc>
+      <image:title>კარატე პანდა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/porshe</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/porshe-1785747720803.png</image:loc>
+      <image:title>პორშე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-3</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-3-1784554316605.png</image:loc>
+      <image:title>Stay Wild</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sheni-gundi-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sheni-gundi-11-1791286998364.png</image:loc>
+      <image:title>შენი გუნდი 1.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-3</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-3-1791185918576.png</image:loc>
+      <image:title>თბილისი - 3</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/zurgit-vzivar</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zurgit-vzivar-1779374098443.png</image:loc>
+      <image:title>ზურგით ვზივარ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/seilori</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/seilori-1779453443822.png</image:loc>
+      <image:title>სეილორი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dedpuli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dedpuli-1779453441374.png</image:loc>
+      <image:title>დედპული</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/shechema</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shechema-1779374102338.png</image:loc>
+      <image:title>შეჩემა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/gamotove</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gamotove-1782475113216.png</image:loc>
+      <image:title>გამოტოვე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tired-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tired-11-1786114038274.png</image:loc>
+      <image:title>tired 1.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/neta-ki</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/neta-ki-1779374102429.png</image:loc>
+      <image:title>ნეტა კი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/okupatsia</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/okupatsia-1779363782587.png</image:loc>
+      <image:title>ოკუპაცია</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tsiqvi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tsiqvi-1783930486233.png</image:loc>
+      <image:title>ციყვი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/pink-ploid-tbilisi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pink-ploid-tbilisi-1778935151300.png</image:loc>
+      <image:title>პინკ ფლოიდ თბილისი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/siqvaruli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/siqvaruli-1783930493815.png</image:loc>
+      <image:title>სიყვარული</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sakartvelos-mepi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sakartvelos-mepi-1778763932484.png</image:loc>
+      <image:title>საქართველოს მეპი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/peisit-w</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/peisit-w-1782475114088.png</image:loc>
+      <image:title>ფეისით W</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/kotsna</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kotsna-1782475113924.png</image:loc>
+      <image:title>კოცნა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/drosha</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/drosha-1779363779961.png</image:loc>
+      <image:title>დროშა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/eiai</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/eiai-1782475112912.png</image:loc>
+      <image:title>ეიაი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-1-1779363841666.png</image:loc>
+      <image:title>თბილისი 1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sheqvarebuli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sheqvarebuli-1782475110015.png</image:loc>
+      <image:title>შეყვარებული</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/lemonchelo</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/lemonchelo-1782894579007.png</image:loc>
+      <image:title>ლემონჩელო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/kreveti1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kreveti1-1782893485008.png</image:loc>
+      <image:title>კრევეტი1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/gamagrilebeli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gamagrilebeli-1782893451734.png</image:loc>
+      <image:title>გამაგრილებელი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/chizburgeri</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chizburgeri-1782894583385.png</image:loc>
+      <image:title>ჩიზბურგერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/spaidermeni</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/spaidermeni-1784202924416.png</image:loc>
+      <image:title>სპაიდერმენი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sanapiro</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sanapiro-1782893453606.png</image:loc>
+      <image:title>სანაპირო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/soko</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/soko-1782894581352.png</image:loc>
+      <image:title>სოკო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/kartopili</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kartopili-1782894576517.png</image:loc>
+      <image:title>კარტოფილი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tsomi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tsomi-1782894581347.png</image:loc>
+      <image:title>ცომი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/pirati</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/pirati-1782897425262.png</image:loc>
+      <image:title>პირატი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/utsnauri-ambebi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/utsnauri-ambebi-1784203148776.png</image:loc>
+      <image:title>უცნაური ამბები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini27</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini27-1792142474271.png</image:loc>
+      <image:title>Crazy Frog</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/ananasi1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ananasi1-1782894585212.png</image:loc>
+      <image:title>ანანასი1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/nacho</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/nacho-1782894577480.png</image:loc>
+      <image:title>ნაჩო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/zghapris-bolo1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zghapris-bolo1-1782896382700.png</image:loc>
+      <image:title>ზღაპრის ბოლო1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/chven-erti-gundi-vart</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/chven-erti-gundi-vart-1782896379694.png</image:loc>
+      <image:title>ჩვენ ერთი გუნდი ვართ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/katamtro</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/katamtro-1782897419693.png</image:loc>
+      <image:title>კატამთრო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tskheli-shokoladi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tskheli-shokoladi-1782897422315.png</image:loc>
+      <image:title>ცხელი შოკოლადი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-7</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-7-1785745143412.png</image:loc>
+      <image:title>Call Me Antisocial</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/shentvis-vmgheri1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/shentvis-vmgheri1-1782896381516.png</image:loc>
+      <image:title>შენთვის ვმღერი1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/ortskhobila</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ortskhobila-1782897422329.png</image:loc>
+      <image:title>ორცხობილა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini1-3</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini1-3-1792145598828.png</image:loc>
+      <image:title>Garage Built კუპე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/verbs-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/verbs-11-1785918810520.png</image:loc>
+      <image:title>ვერბს 1.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/gasuli-var</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gasuli-var-1779374098444.png</image:loc>
+      <image:title>გასული ვარ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/ludi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ludi-1782894574107.png</image:loc>
+      <image:title>ლუდი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/houm</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/houm-1778667073656.png</image:loc>
+      <image:title>ჰოუმ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-3</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-3-1785745141631.png</image:loc>
+      <image:title>It Izzz What It Izzz</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/verbs</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/verbs-1785918810520.png</image:loc>
+      <image:title>ვერბს</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-02</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-02-1790767435399.png</image:loc>
+      <image:title>თბილისი 0.2</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/arktik-manki-12</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/arktik-manki-12-1786093131564.png</image:loc>
+      <image:title>არქტიკ მანქი 1.2</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-03</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-03-1790767451639.png</image:loc>
+      <image:title>თბილისი 0.3</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-11-1785404833276.png</image:loc>
+      <image:title>თბილისი 1.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-4</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-4-1791185934710.png</image:loc>
+      <image:title>თბილისი - 4</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-6</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-6-1791185936226.png</image:loc>
+      <image:title>თბილისი - 6</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-1-1785745140497.png</image:loc>
+      <image:title>Before You Ask — The Answer Is No</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-10</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-10-1785745145172.png</image:loc>
+      <image:title>კარმა — Uno Reverse</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-11-1785745140496.png</image:loc>
+      <image:title>მოთმინება 1%</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/van-gogi-x-tbilisi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/van-gogi-x-tbilisi-1790675378349.png</image:loc>
+      <image:title>ვან გოგი x თბილისი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tired-12</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tired-12-1786114038274.png</image:loc>
+      <image:title>tired 1.2</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-1-2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-1-2-1785745140497.png</image:loc>
+      <image:title>Do I Look Like… სტიკერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sokoebi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sokoebi-1783930488753.png</image:loc>
+      <image:title>სოკოები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/naqini</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/naqini-1782823089850.png</image:loc>
+      <image:title>ნაყინი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/vepkhistqaosani</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vepkhistqaosani-1778763933947.png</image:loc>
+      <image:title>ვეფხისტყაოსანი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dino</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dino-1782894578573.png</image:loc>
+      <image:title>დინო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/design-12-5</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-5-1785745450868.png</image:loc>
+      <image:title>People — 1 ვარსკვლავი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/design-12-4</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-4-1785745450832.png</image:loc>
+      <image:title>I&apos;m Not Shy — შავი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/mesi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mesi-1784275493875.png</image:loc>
+      <image:title>მესი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tosti</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tosti-1782894574107.png</image:loc>
+      <image:title>ტოსტი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/rodis-achen</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/rodis-achen-1779374099476.png</image:loc>
+      <image:title>როდის აჩენ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/me-var-sakartvelo</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo-1782896383047.png</image:loc>
+      <image:title>მე ვარ საქართველო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/stapilo</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/stapilo-1782897422162.png</image:loc>
+      <image:title>სტაფილო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi11-1791186070678.png</image:loc>
+      <image:title>თბილისი1:1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-5</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-5-1791185934993.png</image:loc>
+      <image:title>თბილისი - 5</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-12</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-12-1785404833276.png</image:loc>
+      <image:title>თბილისი 1.2</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/ar-mtsalia</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/ar-mtsalia-1779374101302.png</image:loc>
+      <image:title>არ მცალია</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/gegma-b</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/gegma-b-1782475115625.png</image:loc>
+      <image:title>გეგმა ბ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-7</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-7-1791185941680.png</image:loc>
+      <image:title>თბილისი - 7</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/arktik-manki-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/arktik-manki-11-1786093131563.png</image:loc>
+      <image:title>არქტიკ მანქი 1.1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/neta-2-viqo</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/neta-2-viqo-1778316255636.png</image:loc>
+      <image:title>ნეტა 2 ვიყო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/potoli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/potoli-1783930488744.png</image:loc>
+      <image:title>ფოთოლი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/kartveli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kartveli-1782475111385.png</image:loc>
+      <image:title>ქართველი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/lamazi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/lamazi-1782475109365.png</image:loc>
+      <image:title>ლამაზი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sosisebi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sosisebi-1782823089849.png</image:loc>
+      <image:title>სოსისები</image:title>
     </image:image>
   </url>
   <url>
     <loc>https://maika.ge/design/kartuli</loc>
-    <lastmod>2026-05-21</lastmod>
+    <lastmod>2026-10-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
     <image:image>
       <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/kartuli-1778763932212.png</image:loc>
       <image:title>ქართული</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/datvi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/datvi-1779453444021.png</image:loc>
+      <image:title>დათვი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/es-aris</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/es-aris-1782475111385.png</image:loc>
+      <image:title>ეს არის</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/khmarebashi-gaitsevs</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khmarebashi-gaitsevs-1778252140559.png</image:loc>
+      <image:title>ხმარებაში გაიწევს</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/skeiti</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/skeiti-1779453441374.png</image:loc>
+      <image:title>სკეიტი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/vazha</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vazha-1778667073459.png</image:loc>
+      <image:title>ვაჟა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/peria</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/peria-1782894583751.png</image:loc>
+      <image:title>ფერია</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/mango</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/mango-1782823093478.png</image:loc>
+      <image:title>მანგო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/sazamtro</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/sazamtro-1782823094683.png</image:loc>
+      <image:title>საზამთრო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/burgeri</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/burgeri-1782893447071.png</image:loc>
+      <image:title>ბურგერი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/limoni</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/limoni-1782893449091.png</image:loc>
+      <image:title>ლიმონი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/khili</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/khili-1782894581891.png</image:loc>
+      <image:title>ხილი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/putkari</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/putkari-1782894583406.png</image:loc>
+      <image:title>ფუტკარი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/vrepi</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vrepi-1782897419693.png</image:loc>
+      <image:title>ვრეპი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/me-var-sakartvelo-1</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/me-var-sakartvelo-1-1782896384378.png</image:loc>
+      <image:title>მე ვარ საქართველო 1</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/meksika</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/meksika-1782897419693.png</image:loc>
+      <image:title>მექსიკა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/roki</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/roki-1782897426821.png</image:loc>
+      <image:title>როკი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/zazuna</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/zazuna-1782897423929.png</image:loc>
+      <image:title>ზაზუნა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-7</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-7-1784554320669.png</image:loc>
+      <image:title>Forest Explorer</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/valentini</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/valentini-1783930493564.png</image:loc>
+      <image:title>ვალენტინი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/popkorni</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/popkorni-1783930486061.png</image:loc>
+      <image:title>პოპკორნი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/vashlii</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vashlii-1783930537918.png</image:loc>
+      <image:title>ვაშლიი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/design-12-3</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/design-12-3-1785745449760.png</image:loc>
+      <image:title>Ugh, People</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-14</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-14-1784714981048.png</image:loc>
+      <image:title>Canyon Adventure — კანიონი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/tbilisi-2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/tbilisi-2-1791185918576.png</image:loc>
+      <image:title>თბილისი - 2</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini8</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini8-1792669526910.png</image:loc>
+      <image:title>Peaky Blinders</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini3</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini3-1792669524105.png</image:loc>
+      <image:title>რიკი და მორტი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-04</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-04-1792148040100.png</image:loc>
+      <image:title>Pink Floyd — კედელი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/avokado</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/avokado-1782894579944.png</image:loc>
+      <image:title>ავოკადო</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini9</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini9-1792669527520.png</image:loc>
+      <image:title>სამეფო კარის თამაშები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini4</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini4-1792669524105.png</image:loc>
+      <image:title>ტონი სტარკი — პოპ-არტი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini-02</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini-02-1792148040100.png</image:loc>
+      <image:title>Pink Floyd — პრიზმა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-5</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-5-1784554319214.png</image:loc>
+      <image:title>Timber Trails — ცულები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-23</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-23-1785136708188.png</image:loc>
+      <image:title>Stay Wild — მთები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/vashli</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/vashli-1782475107912.png</image:loc>
+      <image:title>ვაშლი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini10</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini10-1792669527686.png</image:loc>
+      <image:title>Friends — მეგობრები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini5</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini5-1792669525979.png</image:loc>
+      <image:title>მორიარტი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/trandy-designs-88dz-2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/trandy-designs-88dz-2-1783939013495.png</image:loc>
+      <image:title>მუსიკის გოგონა — 3D</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-25</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-25-1785136709922.png</image:loc>
+      <image:title>Into the Wild</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini2-1792669524102.png</image:loc>
+      <image:title>Sons of Anarchy — V. President</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini13</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini13-1792142453941.png</image:loc>
+      <image:title>პატარა პრინცი — სპილო გველში</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini28</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini28-1792142476142.png</image:loc>
+      <image:title>ჯეკ სპაროუ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-13</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-13-1784714984733.png</image:loc>
+      <image:title>Home Is Where We Roam — ავტოსახლი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-11-1784714983064.png</image:loc>
+      <image:title>Wild and Free</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-10</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-10-1784714983062.png</image:loc>
+      <image:title>Every Day Is a New Adventure</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini6</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini6-1792669526399.png</image:loc>
+      <image:title>ჯონ სნოუ — სიმპსონების სტილში</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini21</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini21-1792142464264.png</image:loc>
+      <image:title>მარტო სახლში — კევინი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-12</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-12-1784714983084.png</image:loc>
+      <image:title>Jaunt — მთები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-15</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-15-1784714981049.png</image:loc>
+      <image:title>Adventure Is Out There</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini19</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini19-1792142463046.png</image:loc>
+      <image:title>მარტო სახლში — კევინი საწოლში</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/banani</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/banani-1782823096341.png</image:loc>
+      <image:title>ბანანი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini7</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini7-1792669526801.png</image:loc>
+      <image:title>ოდინის შვილი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini22</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini22-1792142467297.png</image:loc>
+      <image:title>ნიღაბი</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/dizaini11</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/dizaini11-1792142453939.png</image:loc>
+      <image:title>Gummy Bear — მწვანე დათუნია</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-2</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-2-1784554316605.png</image:loc>
+      <image:title>ლაშქრობის ბოტასები — მთები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-20</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-20-1785136708187.png</image:loc>
+      <image:title>მთები და ტყე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/design/1-21</loc>
+    <lastmod>2026-10-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/catalog-designs/thumbnails/1-21-1785136708188.png</image:loc>
+      <image:title>Say Yes to New Adventures</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/maisuri-kartuli-tsartserit-ideebi</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//blog/racks.webp</image:loc>
+      <image:title>მაისური ქართული წარწერით: იდეები და როგორ შევუკვეთოთ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/maikage-showroom-sabchota-da-90-ianebis-muzeumi</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//blog/showroom-wall.webp</image:loc>
+      <image:title>maika.ge-ს შოურუმი: საბჭოთა და 90-იანების მუზეუმი, სადაც მაისურებს ბეჭდავენ</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/ai-dizaini-maisurze</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//blog/showroom.webp</image:loc>
+      <image:title>AI დიზაინი მაისურზე: როგორ შევქმნათ უნიკალური პრინტი რამდენიმე წუთში</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/saakhaltslo-sachukari-sakutari-pototi</loc>
+    <lastmod>2026-11-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//blog/wall-printed-tees.webp</image:loc>
+      <image:title>საახალწლო საჩუქარი საკუთარი ფოტოთი: 7 იდეა, რომელიც ნამდვილად გაახარებს</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/brendirebuli-forma-kompaniistvis</loc>
+    <lastmod>2026-11-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//services/vests-elf.webp</image:loc>
+      <image:title>ბრენდირებული ფორმა კომპანიისთვის: 7 რამ, რაც შეკვეთამდე უნდა იცოდე</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/gundis-formis-shekveta-nabij-nabij</loc>
+    <lastmod>2026-11-03</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//products/sport/jersey-1.webp</image:loc>
+      <image:title>გუნდის ფორმის შეკვეთა ნაბიჯ-ნაბიჯ: ფეხბურთის და კალათბურთის ფორმები</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/saakhaltslo-korporatiuli-sachukrebi</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//services/tote-epam.webp</image:loc>
+      <image:title>საახალწლო კორპორატიული საჩუქრები კომპანიის ლოგოთი: რა შევუკვეთოთ და როდის</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/maisuris-zomis-shercheva-da-movla</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//blog/hoodies.webp</image:loc>
+      <image:title>როგორ შევარჩიოთ მაისურის და ჰუდის ზომა + დაბეჭდილი ნივთის მოვლა</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/rogor-movamzadot-faili-maisurze-dasabechdad</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//blog/white-tees.webp</image:loc>
+      <image:title>როგორ მოვამზადოთ ფაილი მაისურზე დასაბეჭდად</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://maika.ge/blog/dtf-sholkografia-tu-kargva</loc>
+    <lastmod>2026-11-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/blog//blog/tshirts-colors.webp</image:loc>
+      <image:title>DTF, შოლკოგრაფია თუ ქარგვა: რომელი მეთოდი ავირჩიოთ</image:title>
     </image:image>
   </url>
   <url>
@@ -2109,122 +3151,67 @@
     </image:image>
   </url>
   <url>
-    <loc>https://maika.ge/t-shirt</loc>
+    <loc>https://maika.ge/maisurebze-bechdva</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maika.ge/t-shirt/gildan</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/sols</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/gildan-hummer</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/th</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/jel</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/giordano</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/khundadze</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/nike</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/polo</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/oversize</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/t-shirt/gildan-kids</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/hoodie</loc>
+    <loc>https://maika.ge/sportuli-formebi</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maika.ge/hoodie/gildan</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/hoodie/premium-washed</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/hoodie/jel-standard</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/hoodie/jel-zipper</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/hoodie/jel-standard-zipper</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/hoodie/gildan-bomber</loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>https://maika.ge/tote-bag</loc>
+    <loc>https://maika.ge/fekhburtis-formebi</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maika.ge/cap</loc>
+    <loc>https://maika.ge/kalatburtis-formebi</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maika.ge/apron</loc>
+    <loc>https://maika.ge/dtf-bechdva</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maika.ge/phone-case</loc>
+    <loc>https://maika.ge/shelkografia</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://maika.ge/mug</loc>
+    <loc>https://maika.ge/logos-kargva</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/chiqaze-bechdva</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/korporatiuli-sachukrebi</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/maisurebi-kartuli-tsartserebit</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/telefonis-qeisebi</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/natsris-chantebi</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/zhiletebi-da-satsvimrebi</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
