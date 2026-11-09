@@ -48,6 +48,7 @@ import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
 import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
+import { labelView, rackLabels } from "@/lib/tour/rackLabels";
 import { cachedMbps, measureMbps, partBase, pickTier, type VideoTier } from "@/lib/tour/videoTier";
 import { planRoute, reached, routeJumps, type RouteStep } from "@/lib/tour/autoWalk";
 
@@ -74,6 +75,8 @@ interface WalkDest {
  */
 const OPERATOR_STOP = { t: 8, yawDeg: 1.5, pitchDeg: -7 };
 const SHOW_FLOOR_ARROWS = false;
+/** Brand names over the racks (see rackLabels.ts). */
+const RACK_LABELS = rackLabels();
 const OPERATORS = [
   { id: "boy", yawDeg: -13.5, pitchDeg: -15.5, heightDeg: 14 },
   { id: "girl", yawDeg: 16, pitchDeg: -15.5, heightDeg: 14 },
@@ -360,10 +363,17 @@ export default function VideoWalk() {
   const [entered, setEntered] = useState(false);
   const pendingEnterRef = useRef(false);
   const [openRack, setOpenRack] = useState<ShowroomRack | null>(null);
+  const labelRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  // read by the render loop: hide the labels behind the picker / the open rack's own label
+  const labelHideRef = useRef<{ picker: boolean; rackId: string | null }>({ picker: false, rackId: null });
+
   // the place being walked to (bar highlight); goRef starts a walk (set by the effect)
   const [goingTo, setGoingTo] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  useEffect(() => {
+    labelHideRef.current = { picker: pickerOpen, rackId: openRack?.id ?? null };
+  }, [pickerOpen, openRack]);
   // the racks open up once the visitor has met the operators (David: operator first, then the brands)
   const [metOperators, setMetOperators] = useState(metOperatorsBefore);
   const [bubble, setBubble] = useState<{ who: number; text: string } | null>(null);
@@ -735,6 +745,56 @@ export default function VideoWalk() {
           bub.style.opacity = "1";
           bub.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
         }
+      }
+    };
+
+    // ── brand names over the racks ─────────────────────────────────────────
+    const placed: { x0: number; y0: number; x1: number; y1: number }[] = [];
+    const labelOrder = RACK_LABELS.map((_, i) => i);
+    const views = RACK_LABELS.map(() => ({ yawDeg: 0, pitchDeg: 0, distM: 0 }));
+    const updateLabels = () => {
+      const els = labelRefs.current;
+      const hide = labelHideRef.current;
+      const show = ready && !hide.picker;
+      const t = fwdTime();
+      RACK_LABELS.forEach((l, i) => {
+        views[i] = labelView(l, t);
+      });
+      // nearest first: a nearer label keeps its place, a farther one moves up out of its way
+      labelOrder.sort((a, b) => views[a].distM - views[b].distM);
+      placed.length = 0;
+      const W = host.clientWidth;
+      const H = host.clientHeight;
+      for (const i of labelOrder) {
+        const el = els[i];
+        if (!el) continue;
+        const v = views[i];
+        const near = v.distM < 2.4 && (!playing || hide.rackId === RACK_LABELS[i].rack.id);
+        let alpha = show && !near ? Math.min(1, Math.max(0, (12 - v.distM) / 4)) : 0;
+        if (playing) alpha *= 0.75;
+        const y = v.yawDeg * DEG;
+        const pch = v.pitchDeg * DEG;
+        v3.set(Math.cos(pch) * Math.sin(y), Math.sin(pch), -Math.cos(pch) * Math.cos(y)).multiplyScalar(10);
+        v3.project(camera);
+        if (alpha < 0.02 || v3.z > 1 || Math.abs(v3.x) > 1.3 || Math.abs(v3.y) > 1.3) {
+          el.style.opacity = "0";
+          el.style.pointerEvents = "none";
+          continue;
+        }
+        const fs = Math.max(10, Math.min(16, 18 - v.distM * 0.9));
+        const sx = ((v3.x + 1) / 2) * W;
+        let sy = ((1 - v3.y) / 2) * H;
+        const w = el.offsetWidth * (fs / 14);
+        const h = el.offsetHeight * (fs / 14);
+        for (let k = 0; k < 4; k++) {
+          const hit = placed.some((r) => sx - w / 2 < r.x1 && sx + w / 2 > r.x0 && sy - h < r.y1 && sy > r.y0);
+          if (!hit) break;
+          sy -= h + 4;
+        }
+        placed.push({ x0: sx - w / 2, y0: sy - h, x1: sx + w / 2, y1: sy });
+        el.style.opacity = String(alpha);
+        el.style.pointerEvents = alpha > 0.3 ? "auto" : "none";
+        el.style.transform = `translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px) translate(-50%, -100%) scale(${(fs / 14).toFixed(3)})`;
       }
     };
 
@@ -1568,6 +1628,7 @@ export default function VideoWalk() {
       }
       drawFrozen(now);
       updateOperators(now, dt);
+      updateLabels();
       if (now - lastPublish > 100) {
         lastPublish = now;
         publish();
@@ -1732,6 +1793,27 @@ export default function VideoWalk() {
         <p className="pointer-events-none absolute bottom-36 left-3 right-3 z-30 rounded bg-black/70 px-2 py-1 font-mono text-[10px] text-lime-300">
           {status} {debugText}
         </p>
+      )}
+
+      {status === "ready" && (
+        <div className="pointer-events-none absolute inset-0 z-[9] overflow-hidden" aria-label="საკიდები">
+          {RACK_LABELS.map((l, i) => (
+            <button
+              key={l.rack.id}
+              ref={(el) => (labelRefs.current[i] = el)}
+              type="button"
+              onClick={() => {
+                if (soundOn) ensureAudio();
+                const d = dests.find((x) => x.id === l.rack.id);
+                if (d) goRef.current(d);
+              }}
+              style={{ opacity: 0, transformOrigin: "50% 100%" }}
+              className="absolute left-0 top-0 whitespace-nowrap rounded-full border border-white/25 bg-black/35 px-3 py-1 text-[14px] font-bold uppercase tracking-wide text-white shadow-[0_4px_14px_-4px_rgba(0,0,0,.6)] backdrop-blur-[3px] transition-opacity duration-300 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              {l.rack.title}
+            </button>
+          ))}
+        </div>
       )}
 
       {status === "ready" && (

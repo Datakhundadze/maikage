@@ -119,7 +119,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
               </div>
               <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
                 <Search className="h-3 w-3" aria-hidden />
-                {hover ? "ლუპა — მიიტანე მაუსი" : "ლუპა"}
+                {hover ? "გადიდება — მიიტანე მაუსი" : "გადიდება"}
               </span>
               {/* fade into the text below (wide) */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-16 bg-gradient-to-t from-[#111] to-transparent md:block" aria-hidden />
@@ -178,7 +178,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
               </MagnifierLens>
             </div>
             <p className="mt-3 text-center text-xs text-white/70">
-              {hover ? "მიიტანე მაუსი — ლუპა" : "დააჭირე და გეჭიროს — ლუპა"}
+              {hover ? "მიიტანე მაუსი — გადიდება" : "დააჭირე და გეჭიროს — გადიდება"}
             </p>
           </div>,
           document.body,
