@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Footprints, LayoutGrid, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { Footprints, Headset, LayoutGrid, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import {
   CanvasTexture,
   CircleGeometry,
@@ -8,6 +8,7 @@ import {
   LinearFilter,
   Mesh,
   MeshBasicMaterial,
+  Object3D,
   OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
@@ -15,6 +16,8 @@ import {
   Scene,
   SphereGeometry,
   SRGBColorSpace,
+  Texture,
+  TextureLoader,
   Vector2,
   VideoTexture,
   Vector3,
@@ -57,10 +60,41 @@ interface WalkDest {
   /** Where the view tilts on arrival (a rack right beside the walk is low in the picture); default: the walking tilt. */
   pitchDeg?: number;
   rack?: ShowroomRack;
+  /** The operators' desk: on arrival the AI operators greet (and the racks open up). */
+  operator?: boolean;
 }
 
-/** Every rack (one per brand), then the entrance. */
+/**
+ * The AI operators: cartoons of the shop's two operators (made with ChatGPT
+ * from a video of them, they agreed — 2026-11-09), sitting on their chairs
+ * behind the desk. Each is a flat picture placed in the 360° scene at a fixed
+ * direction (video-frame yaw / pitch, height in degrees), seen only while the
+ * walk stands at the desk. Frames: base, blink, talk1, talk2 (pixel-aligned,
+ * swapped to blink and talk). Tapping one opens the site chat.
+ */
+const OPERATOR_STOP = { t: 8, yawDeg: 1.5, pitchDeg: -7 };
+const OPERATORS = [
+  { id: "boy", yawDeg: -10, pitchDeg: -13, heightDeg: 19 },
+  { id: "girl", yawDeg: 12.7, pitchDeg: -13, heightDeg: 19 },
+] as const;
+const OPERATOR_FRAMES = ["base", "blink", "talk1", "talk2"] as const;
+type OperatorFrame = (typeof OPERATOR_FRAMES)[number];
+const GREETINGS = [
+  { who: 1, text: "გამარჯობა! 👋 რით დაგეხმაროთ?", ms: 2600 },
+  { who: 0, text: "დაგვაჭირეთ და მოგვწერეთ — ჩატში გიპასუხებთ 🙂", ms: 2800 },
+];
+
+function metOperatorsBefore(): boolean {
+  try {
+    return window.sessionStorage.getItem("maika.tour.met") === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** The operators' desk, every rack (one per brand), then the entrance. */
 const dests: WalkDest[] = [
+  { id: "operator", title: "ოპერატორი", t: OPERATOR_STOP.t, yawDeg: OPERATOR_STOP.yawDeg, pitchDeg: OPERATOR_STOP.pitchDeg, operator: true },
   ...SHOWROOM_RACKS.map((r) => ({ id: r.id, title: r.title, t: r.stop.t, yawDeg: r.stop.yawDeg, pitchDeg: r.stop.pitchDeg, rack: r })),
   { id: "entrance", title: "შესასვლელი", t: WALK_TRACK.start, yawDeg: headingAt(WALK_TRACK.start) },
 ];
@@ -71,7 +105,7 @@ const PICKER_GROUPS: { title: string; dests: WalkDest[] }[] = [
   { title: "ჰუდები", dests: dests.filter((d) => d.rack && d.rack.items !== "catalog" && d.rack.items[0].product === "Hoodie") },
   {
     title: "სხვა",
-    dests: dests.filter((d) => !d.rack || d.rack.items === "catalog" || !["T-Shirt", "Hoodie"].includes(d.rack.items[0].product)),
+    dests: dests.filter((d) => !d.operator && (!d.rack || d.rack.items === "catalog" || !["T-Shirt", "Hoodie"].includes(d.rack.items[0].product))),
   },
 ];
 
@@ -325,6 +359,11 @@ export default function VideoWalk() {
   const [goingTo, setGoingTo] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // the racks open up once the visitor has met the operators (David: operator first, then the brands)
+  const [metOperators, setMetOperators] = useState(metOperatorsBefore);
+  const [bubble, setBubble] = useState<{ who: number; text: string } | null>(null);
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const opHitRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const goRef = useRef<(d: WalkDest) => void>(() => {});
   const sheetOpenRef = useRef(false);
   useEffect(() => {
@@ -567,6 +606,117 @@ export default function VideoWalk() {
       coverTex.needsUpdate = true;
     };
     logoImg.src = NL.url;
+
+    // ── the AI operators at the desk ────────────────────────────────────────
+    const texLoader = new TextureLoader();
+    const opTex = OPERATORS.map((o) => {
+      const m = {} as Record<OperatorFrame, Texture>;
+      for (const f of OPERATOR_FRAMES) {
+        const t = texLoader.load(`/tour/operators/${o.id}-${f}.webp`);
+        t.colorSpace = SRGBColorSpace;
+        m[f] = t;
+      }
+      return m;
+    });
+    const OP_R = SPHERE_R * 0.5;
+    const ops = OPERATORS.map((o, i) => {
+      const h = 2 * OP_R * Math.tan((o.heightDeg / 2) * DEG);
+      const w = (h * 2) / 3;
+      const geo = new PlaneGeometry(w, h);
+      const mat = new MeshBasicMaterial({ map: opTex[i].base, transparent: true, opacity: 0, depthTest: false, depthWrite: false });
+      const mesh = new Mesh(geo, mat);
+      mesh.position.set(0, 0, -OP_R);
+      mesh.renderOrder = 6;
+      mesh.visible = false;
+      const pivot = new Object3D();
+      pivot.rotation.order = "YXZ";
+      pivot.rotation.y = -o.yawDeg * DEG;
+      pivot.rotation.x = o.pitchDeg * DEG;
+      pivot.add(mesh);
+      scene.add(pivot);
+      return { mesh, mat, geo, w, h, frame: "base" as OperatorFrame, nextBlink: 0, blinkUntil: 0, talkUntil: 0, mouth: 0, nextMouth: 0 };
+    });
+    let chatTyping = false;
+    const onTyping = (e: Event) => {
+      chatTyping = !!(e as CustomEvent<boolean>).detail;
+    };
+    window.addEventListener("maika:chat-typing", onTyping);
+    const greetTimers: number[] = [];
+    const greet = () => {
+      greetTimers.forEach((id) => window.clearTimeout(id));
+      greetTimers.length = 0;
+      let at = 450;
+      for (const g of GREETINGS) {
+        greetTimers.push(
+          window.setTimeout(() => {
+            ops[g.who].talkUntil = performance.now() + g.ms;
+            setBubble({ who: g.who, text: g.text });
+          }, at),
+        );
+        at += g.ms + 700;
+      }
+      greetTimers.push(window.setTimeout(() => setBubble(null), at + 2500));
+    };
+    const v3 = new Vector3();
+    const toScreen = (mesh: Mesh, x: number, y: number) => {
+      v3.set(x, y, 0);
+      mesh.localToWorld(v3);
+      v3.project(camera);
+      return { x: ((v3.x + 1) / 2) * host.clientWidth, y: ((1 - v3.y) / 2) * host.clientHeight, front: v3.z < 1 };
+    };
+    const updateOperators = (now: number, dt: number) => {
+      const atDesk = ready && !jumping && !switching && !playing && !route && Math.abs(fwdTime() - OPERATOR_STOP.t) < 0.8;
+      ops.forEach((a, i) => {
+        a.mat.opacity = easeToward(a.mat.opacity, atDesk ? 1 : 0, dt, atDesk ? 380 : 160);
+        a.mesh.visible = a.mat.opacity > 0.01;
+        if (!a.mesh.visible) return;
+        if (now > a.nextBlink) {
+          a.blinkUntil = now + 130;
+          a.nextBlink = now + 2600 + Math.random() * 3600;
+        }
+        let f: OperatorFrame = "base";
+        const talking = now < a.talkUntil || (chatTyping && i === 1);
+        if (talking) {
+          if (now > a.nextMouth) {
+            a.mouth = (a.mouth + 1 + (Math.random() < 0.35 ? 1 : 0)) % 3;
+            a.nextMouth = now + 80 + Math.random() * 100;
+          }
+          f = a.mouth === 0 ? "base" : a.mouth === 1 ? "talk1" : "talk2";
+        }
+        if (now < a.blinkUntil) f = "blink";
+        if (f !== a.frame) {
+          a.frame = f;
+          a.mat.map = opTex[i][f];
+          a.mat.needsUpdate = true;
+        }
+      });
+      // tap areas over each operator, and the speech bubble over the one talking
+      ops.forEach((a, i) => {
+        const btn = opHitRefs.current[i];
+        if (!btn) return;
+        if (a.mat.opacity < 0.5) {
+          btn.style.display = "none";
+          return;
+        }
+        const tl = toScreen(a.mesh, -a.w / 2, a.h / 2);
+        const br = toScreen(a.mesh, a.w / 2, -a.h / 2);
+        btn.style.display = tl.front ? "block" : "none";
+        btn.style.transform = `translate(${tl.x}px, ${tl.y}px)`;
+        btn.style.width = `${Math.max(0, br.x - tl.x)}px`;
+        btn.style.height = `${Math.max(0, br.y - tl.y)}px`;
+      });
+      const bub = bubbleRef.current;
+      if (bub) {
+        const who = Number(bub.dataset.who ?? -1);
+        const a = ops[who];
+        if (!a || a.mat.opacity < 0.5) bub.style.opacity = "0";
+        else {
+          const p = toScreen(a.mesh, 0, a.h * 0.5);
+          bub.style.opacity = "1";
+          bub.style.transform = `translate(${p.x}px, ${p.y}px) translate(-50%, -100%)`;
+        }
+      }
+    };
 
     // ── footprints on the floor (where the walk goes next) ─────────────────
     const ST = F.steps;
@@ -1285,6 +1435,15 @@ export default function VideoWalk() {
             arriving = null;
             setGoingTo(null);
             if (d.rack) setOpenRack(d.rack);
+            if (d.operator) {
+              setMetOperators(true);
+              try {
+                window.sessionStorage.setItem("maika.tour.met", "1");
+              } catch {
+                // private mode: the racks open again after the next greeting
+              }
+              greet();
+            }
           }
         }
         rate = easeToward(rate, target, dt, F.rateEaseMs);
@@ -1370,6 +1529,7 @@ export default function VideoWalk() {
         freezeFrame();
       }
       drawFrozen(now);
+      updateOperators(now, dt);
       if (now - lastPublish > 100) {
         lastPublish = now;
         publish();
@@ -1430,6 +1590,13 @@ export default function VideoWalk() {
       printGeo.dispose();
       printTex.dispose();
       prints.forEach((m) => m.material.dispose());
+      window.removeEventListener("maika:chat-typing", onTyping);
+      greetTimers.forEach((id) => window.clearTimeout(id));
+      ops.forEach((a) => {
+        a.mat.dispose();
+        a.geo.dispose();
+      });
+      opTex.forEach((m) => Object.values(m).forEach((t) => t.dispose()));
       material.dispose();
       geometry.dispose();
       renderer.dispose();
@@ -1509,13 +1676,40 @@ export default function VideoWalk() {
         </p>
       )}
 
+      {status === "ready" && (
+        <>
+          {/* tap areas over the two operators (placed every frame by the 3D scene) and the speech bubble */}
+          {OPERATORS.map((o, i) => (
+            <button
+              key={o.id}
+              ref={(el) => (opHitRefs.current[i] = el)}
+              type="button"
+              aria-label="ოპერატორს მიწერა ჩატში"
+              onClick={() => window.dispatchEvent(new Event("maika:open-chat"))}
+              style={{ display: "none" }}
+              className="absolute left-0 top-0 z-10 cursor-pointer rounded-[40%] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            />
+          ))}
+          {bubble && (
+            <div
+              ref={bubbleRef}
+              data-who={bubble.who}
+              role="status"
+              style={{ opacity: 0 }}
+              className="pointer-events-none absolute left-0 top-0 z-10 max-w-[13rem] rounded-2xl bg-white px-3 py-2 text-[13px] font-medium leading-snug text-black shadow-[0_8px_24px_-6px_rgba(0,0,0,.6)] transition-opacity duration-200"
+            >
+              {bubble.text}
+              <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-white" aria-hidden />
+            </div>
+          )}
+        </>
+      )}
+
       {openRack && <RackSheet rack={openRack} onClose={() => setOpenRack(null)} />}
 
       {status === "ready" && hintVisible && !pickerOpen && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
-          {touch
-            ? "დააჭირეთ „საკიდები“ — მიგიყვანთ. თითით გადაათრიეთ — მიმოხედვა."
-            : "დააჭირეთ „საკიდები“ — მიგიყვანთ. მაუსით გადაათრიეთ — მიმოხედვა."}
+          {`დააჭირეთ „${metOperators ? "საკიდები" : "ოპერატორი"}“ — მიგიყვანთ. ${touch ? "თითით" : "მაუსით"} გადაათრიეთ — მიმოხედვა.`}
         </p>
       )}
 
@@ -1545,7 +1739,26 @@ export default function VideoWalk() {
 
       {status === "ready" && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 bg-gradient-to-t from-black/60 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pr-20 pt-8">
-          {/* one big button opens every rack at once (no sideways scrolling — David 2026-11-07) */}
+          {/* first the operators (David 2026-11-09), then every rack at once (no sideways scrolling — 2026-11-07) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (soundOn) ensureAudio();
+              setPickerOpen(false);
+              goRef.current(dests[0]);
+            }}
+            aria-pressed={goingTo === "operator"}
+            className={
+              metOperators
+                ? "pointer-events-auto inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-transform hover:bg-black/70 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                : "pointer-events-auto inline-flex h-12 items-center gap-2 rounded-full bg-amber-400 px-5 text-sm font-bold text-black shadow-[0_8px_24px_-6px_rgba(0,0,0,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            }
+            aria-label={metOperators ? "ოპერატორი" : undefined}
+          >
+            <Headset className="h-5 w-5" aria-hidden />
+            {!metOperators && "ოპერატორი"}
+          </button>
+          {metOperators && (
           <button
             type="button"
             onClick={() => setPickerOpen((o) => !o)}
@@ -1556,6 +1769,7 @@ export default function VideoWalk() {
             <LayoutGrid className="h-5 w-5" aria-hidden />
             საკიდები
           </button>
+          )}
           {(preparing || goingTo) && (
             <span
               role="status"

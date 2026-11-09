@@ -276,6 +276,18 @@ export default function ChatWidget() {
     setTimeout(() => inputRef.current?.focus(), 60);
   }, [lang, revealPhotoOffer]);
 
+  // /showroom: tapping an AI operator opens this chat; the operators "talk"
+  // while an answer is being written (window events, so neither side imports
+  // the other).
+  useEffect(() => {
+    const onOpen = () => openPanel();
+    window.addEventListener("maika:open-chat", onOpen);
+    return () => window.removeEventListener("maika:open-chat", onOpen);
+  }, [openPanel]);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("maika:chat-typing", { detail: loading }));
+  }, [loading]);
+
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
