@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Footprints, LayoutGrid, Maximize2, Minimize2, Volume2, VolumeX, X } from "lucide-react";
+import { Footprints, LayoutGrid, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import {
   CanvasTexture,
   CircleGeometry,
@@ -811,6 +811,8 @@ export default function VideoWalk() {
     let frozenTex: FramebufferTexture | null = null;
     let frozenShown = false;
     let fadeStart = -1; // performance.now() when the fade began; −1 = holding
+    let fadeMs: number = F.loopFadeMs;
+    let fadeZoom: number = F.jumpZoom;
     const freezeFrame = (): boolean => {
       renderer.getDrawingBufferSize(bufSize);
       if (!bufSize.x || !bufSize.y) return false;
@@ -826,16 +828,18 @@ export default function VideoWalk() {
       fadeStart = -1;
       return true;
     };
-    const releaseFrame = () => {
+    const releaseFrame = (ms: number = F.loopFadeMs, zoom: number = F.jumpZoom) => {
+      fadeMs = ms;
+      fadeZoom = zoom;
       if (frozenShown) fadeStart = performance.now();
     };
     const drawFrozen = (now: number) => {
       if (!frozenShown) return;
       if (fadeStart >= 0) {
-        const k = Math.min(1, (now - fadeStart) / F.loopFadeMs);
+        const k = Math.min(1, (now - fadeStart) / fadeMs);
         const e = 1 - Math.pow(1 - k, 2); // ease-out
         overlayMat.uniforms.opacity.value = 1 - e;
-        overlayMat.uniforms.zoom.value = 1 + (F.jumpZoom - 1) * e;
+        overlayMat.uniforms.zoom.value = 1 + (fadeZoom - 1) * e;
         if (k >= 1) {
           frozenShown = false;
           return;
@@ -848,12 +852,85 @@ export default function VideoWalk() {
     let wantFreeze = false; // freeze right after the next render (the buffer is valid then)
 
     /**
+     * Seamless jump to a prepared video (route): it is already playing from a
+     * moment before the spot (rolled in just before the jump: rollSpare) or
+     * starts now; the old picture keeps moving until the swap, then dissolves
+     * into the new one (short fade, no zoom). No pause, no wait for a seek.
+     */
+    let rolling: Spare | null = null;
+    const handOver = async (sp: Spare, p2: number, newDir: WalkDir, want: number, yawShift: number) => {
+      jumping = true;
+      const v2 = sp.clip.video;
+      v2.playbackRate = Math.max(0.25, rate);
+      if (v2.paused) {
+        if (Math.abs(v2.currentTime - want) > 0.08) await seekTo(v2, want, 2000);
+        safePlay(v2);
+        // until its frames really move (≤ 300 ms)
+        const t0 = v2.currentTime;
+        const s0 = performance.now();
+        await new Promise<void>((r) => {
+          const tick = () => (v2.currentTime !== t0 || performance.now() - s0 > 300 ? r() : requestAnimationFrame(tick));
+          tick();
+        });
+      }
+      // capture the old picture, then swap
+      wantFreeze = true;
+      await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+      if (disposed) return;
+      const old = active();
+      if (rolling === sp) rolling = null;
+      spares = spares.filter((x) => x !== sp);
+      const slot = newDir === "fwd" ? 0 : 1;
+      const prev = clips[p2][slot];
+      clips[p2][slot] = sp.clip;
+      part = p2;
+      dir = newDir;
+      material.map = sp.clip.texture;
+      sp.clip.texture.needsUpdate = true;
+      yawDeg = normDeg(yawDeg + yawShift);
+      old.pause();
+      if (prev !== sp.clip) window.setTimeout(() => letGo(prev), 0);
+      jumps++;
+      lastStepNo = null;
+      lastT = fwdTime();
+      playing = true;
+      releaseFrame(320, 1);
+      jumping = false;
+    };
+    /** Just before a step across: start its prepared video so it is already moving at the swap. */
+    const rollSpare = (p2: number, newDir: WalkDir, want: number, leadSec: number) => {
+      if (rolling) return;
+      const sp = spares.find((x) => x.part === p2 && x.dir === newDir && Math.abs(x.local - want) < 0.35);
+      if (!sp || sp.clip.video.readyState < 3) return;
+      const start = want - leadSec;
+      if (start < 0.05) return; // the start of a file: handOver starts it at the spot
+      rolling = sp;
+      const v = sp.clip.video;
+      v.playbackRate = Math.max(0.25, rate);
+      v.currentTime = start;
+      safePlay(v);
+    };
+
+    /**
      * Continue at forward time t (loop point, the next part, a junction):
      * the current frame is frozen on top, the clip for (t, newDir) seeks
      * there, then the frozen frame fades. yawShift turns the view with the
      * new pass's frame so the visitor keeps looking the same way.
      */
     const jumpTo = async (t: number, newDir: WalkDir = dir, yawShift = 0) => {
+      // a prepared video for this spot: hand over while moving (no stop)
+      {
+        const p2 = partIndexAt(t, newDir, track);
+        const want = localTime(t, p2, newDir, track);
+        const sp =
+          rolling && rolling.part === p2 && rolling.dir === newDir && Math.abs(rolling.clip.video.currentTime - want) < 0.6
+            ? rolling
+            : spares.find((x) => x.part === p2 && x.dir === newDir && Math.abs(x.local - want) < 0.35) ?? null;
+        if (sp && sp.clip.video.readyState >= 3 && playing) {
+          await handOver(sp, p2, newDir, want, yawShift);
+          return;
+        }
+      }
       jumping = true;
       wantFreeze = true;
       // stop the old clip right away (the frozen frame shows where it stood)
@@ -1094,7 +1171,7 @@ export default function VideoWalk() {
         spares.push({ clip: c, part: p2, dir: j.dir, local });
         const pp = v.play(); // started inside the tap (iPhone), stopped at once
         if (pp && typeof pp.then === "function") pp.then(() => v.pause()).catch(() => {});
-        return seekTo(v, local, 8000).then(() => waitAhead(v, 2.5, 8000));
+        return seekTo(v, Math.max(0, local - 0.7), 8000).then(() => waitAhead(v, 3.2, 8000));
       });
       // and the video the walk starts on: a few seconds ahead of here
       ready2.push(waitAhead(active(), 2, 6000));
@@ -1180,6 +1257,15 @@ export default function VideoWalk() {
               facing = dir === "fwd" ? "along" : "against";
               printDir = dir;
               target = autoRate;
+              // the step across coming next: roll its video in ~0.45 s before
+              const nx = route[routeIdx + 1];
+              if (nx && nx.kind === "hop" && playing) {
+                const left = Math.abs(st.until - fwdTime());
+                if (left / Math.max(0.3, rate) < 0.45) {
+                  const p2 = partIndexAt(nx.t, nx.dir, track);
+                  rollSpare(p2, nx.dir, localTime(nx.t, p2, nx.dir, track), left);
+                }
+              }
             }
           }
         }
@@ -1425,7 +1511,7 @@ export default function VideoWalk() {
 
       {openRack && <RackSheet rack={openRack} onClose={() => setOpenRack(null)} />}
 
-      {status === "ready" && hintVisible && (
+      {status === "ready" && hintVisible && !pickerOpen && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
           {touch
             ? "დააჭირეთ „საკიდები“ — მიგიყვანთ. თითით გადაათრიეთ — მიმოხედვა."
@@ -1493,54 +1579,56 @@ export default function VideoWalk() {
 
       {status === "ready" && pickerOpen && (
         <>
-          <button type="button" aria-label="დახურვა" className="absolute inset-0 z-40 bg-black/40" onClick={() => setPickerOpen(false)} />
+          {/* the showroom stays in view: only a soft shade behind the buttons */}
+          <button
+            type="button"
+            aria-label="დახურვა"
+            className="maika-picker-shade absolute inset-0 z-40 bg-[radial-gradient(ellipse_at_50%_85%,rgba(0,0,0,.55),rgba(0,0,0,.15)_60%,transparent_85%)]"
+            onClick={() => setPickerOpen(false)}
+          />
           <nav
             id="maika-rack-picker"
             aria-label="სად წავიდეთ"
-            className="maika-picker absolute inset-x-0 bottom-0 z-50 max-h-[78%] overflow-y-auto rounded-t-3xl border-t border-white/10 bg-[#121212]/95 px-4 pb-24 pt-3 text-white shadow-2xl backdrop-blur-md md:inset-x-auto md:bottom-20 md:left-3 md:w-[26rem] md:rounded-3xl md:border"
+            className="pointer-events-none absolute inset-x-0 bottom-[4.75rem] top-16 z-50 mx-auto flex max-w-2xl flex-col overflow-y-auto px-3 pb-2 text-white"
           >
             <style>{`
-              @keyframes maika-picker-up { from { transform: translateY(40px); opacity: 0 } to { transform: none; opacity: 1 } }
-              .maika-picker { animation: maika-picker-up 240ms cubic-bezier(.2,.8,.2,1) both }
-              @media (prefers-reduced-motion: reduce) { .maika-picker { animation: none } }
+              @keyframes maika-chip-in { from { opacity: 0; transform: translateY(10px) scale(.96) } to { opacity: 1; transform: none } }
+              @keyframes maika-shade-in { from { opacity: 0 } to { opacity: 1 } }
+              .maika-chip { animation: maika-chip-in 260ms cubic-bezier(.2,.8,.2,1) both }
+              .maika-picker-shade { animation: maika-shade-in 200ms ease-out both }
+              @media (prefers-reduced-motion: reduce) { .maika-chip, .maika-picker-shade { animation: none } }
             `}</style>
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/25 md:hidden" aria-hidden />
-            <div className="flex items-center justify-between">
-              <p className="text-base font-semibold">სად წავიდეთ?</p>
-              <button
-                type="button"
-                onClick={() => setPickerOpen(false)}
-                aria-label="დახურვა"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
+            <div className="mt-auto">
+              {PICKER_GROUPS.map((g, gi) => (
+                <section key={g.title} className="mt-2.5 first:mt-0">
+                  <h3 className="mb-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85 [text-shadow:0_1px_6px_rgba(0,0,0,.8)]">
+                    {g.title}
+                  </h3>
+                  <ul className="flex flex-wrap justify-center gap-2">
+                    {g.dests.map((d, di) => (
+                      <li key={d.id} className="maika-chip pointer-events-auto" style={{ animationDelay: `${(gi * 6 + di) * 18}ms` }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (soundOn) ensureAudio();
+                            setPickerOpen(false);
+                            goRef.current(d);
+                          }}
+                          aria-pressed={goingTo === d.id}
+                          className={`h-9 rounded-full px-3.5 text-[13px] font-semibold shadow-[0_4px_18px_-4px_rgba(0,0,0,.6)] backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 md:h-10 md:px-4 md:text-sm ${
+                            goingTo === d.id
+                              ? "bg-amber-400/90 text-black"
+                              : "bg-white/15 text-white ring-1 ring-white/35 [text-shadow:0_1px_4px_rgba(0,0,0,.7)] hover:bg-white/25 active:bg-white/30"
+                          }`}
+                        >
+                          {d.title}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
             </div>
-            {PICKER_GROUPS.map((g) => (
-              <section key={g.title} className="mt-3">
-                <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-400">{g.title}</h3>
-                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {g.dests.map((d) => (
-                    <li key={d.id}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (soundOn) ensureAudio();
-                          setPickerOpen(false);
-                          goRef.current(d);
-                        }}
-                        aria-pressed={goingTo === d.id}
-                        className={`flex h-12 w-full items-center justify-center rounded-xl px-2 text-center text-sm font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                          goingTo === d.id ? "bg-amber-400 text-black" : "bg-white/[0.07] text-white ring-1 ring-white/10 hover:bg-white/15 active:bg-white/20"
-                        }`}
-                      >
-                        {d.title}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))}
           </nav>
         </>
       )}
