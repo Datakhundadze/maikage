@@ -15,8 +15,8 @@ export const BLOG_OTHER_POSTS_MAX = 3;
 
 /** /blog — BlogPage's SeoHead (also the prerendered /blog head). */
 export const BLOG_INDEX_SEO = {
-  title: "ბლოგი — Maika.ge სიახლეები და ივენთები",
-  description: "Maika.ge-ის ბლოგი: რჩევები ბეჭდვასა და დიზაინზე, პარტნიორული ივენთები, ბანაკები, კოლაბორაციები და ბექსთეიჯი.",
+  title: "ბლოგი — მაისურებზე ბეჭდვის რჩევები და იდეები | maika.ge",
+  description: "რჩევები მაისურებზე და ჰუდებზე ბეჭდვაზე: ფაილის მომზადება, ზომები, DTF თუ ქარგვა, საჩუქრის იდეები, გუნდის და კომპანიის ფორმა. Maika.ge ბლოგი.",
 } as const;
 
 /** /blog heading, intro and the two sections (BlogPage + the /blog prerender). */
