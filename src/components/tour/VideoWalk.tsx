@@ -86,7 +86,8 @@ const OPERATOR_FRAMES = ["base", "blink", "talk1", "talk2"] as const;
 type OperatorFrame = (typeof OPERATOR_FRAMES)[number];
 const GREETINGS = [
   { who: 1, text: "გამარჯობა! 👋 გისმენთ", ms: 2200 },
-  { who: 0, text: "რით შეგვიძლია დაგეხმაროთ?", ms: 2400 },
+  // the last line stays while the visitor stands at the desk: the three category buttons answer it
+  { who: 0, text: "რომელი პროდუქტი გაინტერესებთ?", ms: 2400 },
 ];
 
 function metOperatorsBefore(): boolean {
@@ -119,6 +120,7 @@ const MAX_SPARES = 5;
 
 /** Speed of the walk to a place (playback rate; 1 = as filmed, a slow walk). */
 const AUTO_RATE = 1.6;
+import RackPicker from "@/components/tour/RackPicker";
 import RackSheet from "./RackSheet";
 
 // /showroom walk-through: a 360° video of the shop, played forward or
@@ -545,8 +547,10 @@ export default function VideoWalk() {
       if (video.readyState >= 1) setTexel(video);
       else video.addEventListener("loadedmetadata", () => setTexel(video), { once: true });
     });
-    material.onBeforeCompile = (shader) => {
-      shader.uniforms.walkTexel = texel;
+    // the same picture treatment for the video and for the sharp still shown at a stop
+    type BeforeCompile = NonNullable<MeshBasicMaterial["onBeforeCompile"]>;
+    const lift = (texelU: { value: Vector2 }): BeforeCompile => (shader) => {
+      shader.uniforms.walkTexel = texelU;
       const f = (n: number) => n.toFixed(3);
       shader.fragmentShader = shader.fragmentShader
         .replace("void main() {", "uniform vec2 walkTexel;\nvoid main() {")
@@ -595,10 +599,58 @@ export default function VideoWalk() {
           ].join("\n"),
         );
     };
+    material.onBeforeCompile = lift(texel);
     const sphere = new Mesh(geometry, material);
     // three.js puts the frame's centre at −x; turn it to −z (the camera's yaw 0)
     sphere.rotation.y = -Math.PI / 2;
     scene.add(sphere);
+
+    // ── a sharp still at the stops ─────────────────────────────────────────
+    // Standing at a rack or at the desk the visitor looks around: the paused
+    // video frame (2560 or 1920 px wide on most phones) is replaced, with a
+    // soft dissolve, by the same frame from the 4K file (David 2026-11-10).
+    const STILL_TS = [...DESK_TS, ...SHOWROOM_RACKS.map((r) => r.stop.t)];
+    const stillMat = new MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false });
+    stillMat.onBeforeCompile = lift({ value: new Vector2(1 / 3840, 1 / 1920) });
+    const stillMesh = new Mesh(geometry, stillMat);
+    stillMesh.rotation.y = -Math.PI / 2;
+    stillMesh.renderOrder = 1; // over the video, under the floor logo, prints and operators
+    stillMesh.visible = false;
+    scene.add(stillMesh);
+    const stillLoader = new TextureLoader();
+    const stills = new Map<number, { tex: Texture; ok: boolean }>();
+    const updateStill = (dt: number) => {
+      const parked = ready && !jumping && !switching && !playing && !route && !preparing;
+      const t = fwdTime();
+      const near = STILL_TS.reduce((a, x) => (Math.abs(x - t) < Math.abs(a - t) ? x : a), STILL_TS[0]);
+      const k = parked && Math.abs(near - t) < 0.3 ? near : null;
+      if (k !== null && !stills.has(k)) {
+        const e = { tex: null as unknown as Texture, ok: false };
+        e.tex = stillLoader.load(`/tour/stills/${Math.round(k * 10)}.webp`, () => {
+          e.ok = true;
+        });
+        e.tex.colorSpace = SRGBColorSpace;
+        e.tex.generateMipmaps = false;
+        e.tex.minFilter = LinearFilter;
+        stills.set(k, e);
+        // keep a few (memory on phones)
+        for (const [key, old] of stills) {
+          if (stills.size <= 4) break;
+          if (key !== k && stillMat.map !== old.tex) {
+            old.tex.dispose();
+            stills.delete(key);
+          }
+        }
+      }
+      const e = k !== null ? stills.get(k) : undefined;
+      if (e?.ok && stillMat.map !== e.tex && stillMat.opacity < 0.02) {
+        stillMat.map = e.tex;
+        stillMat.needsUpdate = true;
+      }
+      const on = !!e?.ok && stillMat.map === e.tex;
+      stillMat.opacity = easeToward(stillMat.opacity, on ? 1 : 0, dt, on ? 450 : 110);
+      stillMesh.visible = stillMat.opacity > 0.01;
+    };
 
     const logoDist = 10;
     const NL = WALK_VIDEO.nadirLogo;
@@ -689,7 +741,6 @@ export default function VideoWalk() {
         );
         at += g.ms + 700;
       }
-      greetTimers.push(window.setTimeout(() => setBubble(null), at + 2500));
     };
     const v3 = new Vector3();
     const toScreen = (mesh: Mesh, x: number, y: number) => {
@@ -704,6 +755,11 @@ export default function VideoWalk() {
       if (atDesk !== atDeskShown) {
         atDeskShown = atDesk;
         setAtDesk(atDesk);
+        if (!atDesk) {
+          greetTimers.forEach((id) => window.clearTimeout(id));
+          greetTimers.length = 0;
+          setBubble(null);
+        }
       }
       ops.forEach((a, i) => {
         // the video frame's yaw drifts a degree or two between the passes of the desk
@@ -877,7 +933,7 @@ export default function VideoWalk() {
     // the card at the bottom covers the smeared bottom of the picture.
     const landscape = () => host.clientWidth > host.clientHeight * 1.1;
     const walkPitch = () => (landscape() ? -4 : F.walkPitchDeg);
-    const arrivePitch = () => (landscape() ? -10 : -15); // portrait was −20: the smeared floor under the camera came up over the rack (David 2026-11-10)
+    const arrivePitch = () => (landscape() ? -10 : -20);
     let pitchDeg: number = walkPitch();
     let vfov = vfovFor(host.clientWidth, host.clientHeight, 100, MIN_VFOV, MAX_VFOV);
     let userZoom = 1; // multiplies vfov (pinch / wheel)
@@ -1652,6 +1708,7 @@ export default function VideoWalk() {
         freezeFrame();
       }
       drawFrozen(now);
+      updateStill(dt);
       updateOperators(now, dt);
       updateLabels();
       if (now - lastPublish > 100) {
@@ -1721,6 +1778,8 @@ export default function VideoWalk() {
         a.geo.dispose();
       });
       opTex.forEach((m) => Object.values(m).forEach((t) => t.dispose()));
+      stills.forEach((e) => e.tex.dispose());
+      stillMat.dispose();
       material.dispose();
       geometry.dispose();
       renderer.dispose();
@@ -1950,46 +2009,14 @@ export default function VideoWalk() {
             aria-hidden
             className="maika-picker-shade pointer-events-none absolute inset-0 z-[8] bg-[radial-gradient(ellipse_at_50%_100%,rgba(0,0,0,.6),rgba(0,0,0,.2)_45%,transparent_70%)]"
           />
-          <nav
-            id="maika-rack-picker"
-            aria-label="სად წავიდეთ"
-            className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] top-16 z-50 mx-auto flex max-w-3xl flex-col overflow-y-auto px-2 pb-1 text-white"
-          >
-            <style>{`
-              @keyframes maika-chip-in { from { opacity: 0; transform: translateY(10px) scale(.96) } to { opacity: 1; transform: none } }
-              @keyframes maika-shade-in { from { opacity: 0 } to { opacity: 1 } }
-              .maika-chip { animation: maika-chip-in 260ms cubic-bezier(.2,.8,.2,1) both }
-              .maika-picker-shade { animation: maika-shade-in 200ms ease-out both }
-              @media (prefers-reduced-motion: reduce) { .maika-chip, .maika-picker-shade { animation: none } }
-            `}</style>
-            <div className="mt-auto">
-              {PICKER_GROUPS.map((g, gi) => (
-                <section key={g.title} aria-label={g.title} className="mt-1.5 first:mt-0">
-                  <ul className="flex flex-wrap justify-center gap-1.5">
-                    {g.dests.map((d, di) => (
-                      <li key={d.id} className="maika-chip pointer-events-auto" style={{ animationDelay: `${(gi * 6 + di) * 18}ms` }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (soundOn) ensureAudio();
-                            goRef.current(d);
-                          }}
-                          aria-pressed={goingTo === d.id}
-                          className={`h-8 rounded-full px-3 text-[12px] font-semibold shadow-[0_4px_18px_-4px_rgba(0,0,0,.6)] backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 md:h-10 md:px-4 md:text-sm ${
-                            goingTo === d.id
-                              ? "bg-amber-400/90 text-black"
-                              : "bg-white/15 text-white ring-1 ring-white/35 [text-shadow:0_1px_4px_rgba(0,0,0,.7)] hover:bg-white/25 active:bg-white/30"
-                          }`}
-                        >
-                          {d.title}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-          </nav>
+          <RackPicker
+            groups={PICKER_GROUPS}
+            onPick={(id) => {
+              if (soundOn) ensureAudio();
+              const d = dests.find((x) => x.id === id);
+              if (d) goRef.current(d);
+            }}
+          />
         </>
       )}
     </div>
