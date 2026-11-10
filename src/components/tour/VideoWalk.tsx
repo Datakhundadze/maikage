@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Footprints, Headset, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { Footprints, Headset, Maximize2, Minimize2, Volume2, VolumeX, ZoomIn } from "lucide-react";
 import {
   CanvasTexture,
   CircleGeometry,
@@ -157,6 +157,8 @@ function needsTapToLoad(): boolean {
 }
 const MIN_VFOV = 35;
 const MAX_VFOV = 90;
+/** How much the magnifying glass enlarges what is under it. */
+const LOUPE_ZOOM = 2.6;
 const SPHERE_R = 50;
 
 type Status = "loading" | "ready" | "error" | "nowebgl";
@@ -376,6 +378,13 @@ export default function VideoWalk() {
   const [preparing, setPreparing] = useState(false);
   // the rack list is shown while standing with the operators, nowhere else (David 2026-11-10)
   const [atDesk, setAtDesk] = useState(false);
+  // the magnifying glass over the picture (David 2026-11-10: "people will have
+  // fun looking at the interesting things in the showroom"); only while standing
+  const [loupe, setLoupe] = useState(false);
+  const loupeRef = useRef(false);
+  loupeRef.current = loupe;
+  const lensElRef = useRef<HTMLDivElement>(null);
+  const lensCanvasRef = useRef<HTMLCanvasElement>(null);
   // the racks open up once the visitor has met the operators (David: operator first, then the brands)
   const [metOperators, setMetOperators] = useState(metOperatorsBefore);
   const pickerOpen = atDesk && metOperators && !goingTo;
@@ -1351,12 +1360,23 @@ export default function VideoWalk() {
     window.addEventListener("blur", onBlur);
 
     const pointers = new Map<number, { x: number; y: number }>();
+    // the magnifying glass: the point it looks at (host px) and whether a finger put it there
+    const lensPt = { x: host.clientWidth / 2, y: host.clientHeight / 2, touch: false };
+    const lensCam = new PerspectiveCamera(20, 1, 0.1, 200);
+    const lensDir = new Vector3();
+    const moveLens = (e: PointerEvent) => {
+      const r = canvas.getBoundingClientRect();
+      lensPt.x = Math.max(0, Math.min(r.width, e.clientX - r.left));
+      lensPt.y = Math.max(0, Math.min(r.height, e.clientY - r.top));
+      lensPt.touch = e.pointerType !== "mouse";
+    };
     let pinchDist = 0;
     let lastDragAt = 0;
     let lastTurnAt = 0;
     const onPointerDown = (e: PointerEvent) => {
       canvas.setPointerCapture(e.pointerId);
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (loupeRef.current && pointers.size === 1) moveLens(e);
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
         pinchDist = Math.hypot(a.x - b.x, a.y - b.y);
@@ -1365,10 +1385,17 @@ export default function VideoWalk() {
     };
     const onPointerMove = (e: PointerEvent) => {
       const prev = pointers.get(e.pointerId);
-      if (!prev) return;
+      if (!prev) {
+        // a mouse carries the glass without pressing
+        if (loupeRef.current && e.pointerType === "mouse" && pointers.size === 0) moveLens(e);
+        return;
+      }
       const cur = { x: e.clientX, y: e.clientY };
       pointers.set(e.pointerId, cur);
-      if (pointers.size === 1) {
+      if (pointers.size === 1 && loupeRef.current) {
+        // the glass is on: a drag carries the glass, the view stays
+        moveLens(e);
+      } else if (pointers.size === 1) {
         const degPerPx = (vfov * userZoom) / Math.max(1, host.clientHeight);
         // like a game camera: finger right = look right, finger down = look down
         yawDeg = normDeg(yawDeg + (cur.x - prev.x) * degPerPx);
@@ -1738,6 +1765,39 @@ export default function VideoWalk() {
       camera.rotation.y = -yawDeg * DEG;
       camera.rotation.x = (pitchDeg + bobPitch) * DEG;
       camera.rotation.z = bobRoll * DEG;
+      if (loupeRef.current && (playing || route || preparing)) {
+        loupeRef.current = false;
+        setLoupe(false);
+      }
+      const lensEl = lensElRef.current;
+      const lensCv = lensCanvasRef.current;
+      if (loupeRef.current && lensEl && lensCv) {
+        // the same scene once more through a narrow camera aimed at the point
+        // under the finger, into a corner of the canvas; copied into the round
+        // glass before the main picture is drawn over it
+        const w = host.clientWidth;
+        const h = host.clientHeight;
+        const d = lensEl.offsetWidth;
+        const px = Math.round(d * renderer.getPixelRatio());
+        camera.updateMatrixWorld();
+        lensDir.set((lensPt.x / w) * 2 - 1, 1 - (lensPt.y / h) * 2, 0.5).unproject(camera);
+        lensCam.position.copy(camera.position);
+        lensCam.lookAt(lensDir);
+        lensCam.fov = (2 * Math.atan((Math.tan((camera.fov * DEG) / 2) * (d / h)) / LOUPE_ZOOM)) / DEG;
+        lensCam.updateProjectionMatrix();
+        renderer.setViewport(0, 0, d, d);
+        renderer.setScissor(0, 0, d, d);
+        renderer.setScissorTest(true);
+        renderer.render(scene, lensCam);
+        renderer.setScissorTest(false);
+        renderer.setViewport(0, 0, w, h);
+        if (lensCv.width !== px) lensCv.width = lensCv.height = px;
+        lensCv.getContext("2d")?.drawImage(canvas, 0, canvas.height - px, px, px, 0, 0, px, px);
+        // a finger would hide the glass: it rides above the finger
+        const cx = Math.max(d / 2 + 4, Math.min(w - d / 2 - 4, lensPt.x));
+        const cy = Math.max(d / 2 + 4, Math.min(h - d / 2 - 4, lensPt.y - (lensPt.touch ? d / 2 + 34 : 0)));
+        lensEl.style.transform = `translate(${cx - d / 2}px, ${cy - d / 2}px)`;
+      }
       renderer.render(scene, camera);
       if (wantFreeze) {
         wantFreeze = false;
@@ -1996,6 +2056,31 @@ export default function VideoWalk() {
         >
           {fullscreen || covering ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}
         </button>
+      )}
+
+      {status === "ready" && entered && !goingTo && !preparing && (
+        <button
+          type="button"
+          onClick={() => setLoupe((v) => !v)}
+          aria-pressed={loupe}
+          aria-label="გადიდება"
+          className={`absolute right-[7.25rem] top-3 z-20 flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+            loupe ? "bg-amber-400 text-black hover:bg-amber-300" : "bg-black/55 text-white hover:bg-black/70"
+          }`}
+        >
+          <ZoomIn className="h-5 w-5" aria-hidden />
+          {!hintVisible && <span>გადიდება</span>}
+        </button>
+      )}
+
+      {status === "ready" && loupe && (
+        <div
+          ref={lensElRef}
+          aria-hidden
+          className="pointer-events-none absolute left-0 top-0 z-[15] h-44 w-44 overflow-hidden rounded-full border-[3px] border-white/90 bg-black shadow-[0_10px_30px_rgba(0,0,0,.65),inset_0_0_0_1px_rgba(0,0,0,.4)] sm:h-60 sm:w-60"
+        >
+          <canvas ref={lensCanvasRef} className="h-full w-full" />
+        </div>
       )}
 
       {status === "ready" && (
