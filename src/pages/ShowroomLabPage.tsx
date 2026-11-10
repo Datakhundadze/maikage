@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { ImagePlus, RefreshCw, Trash2, Type } from "lucide-react";
+import { ImagePlus, Printer, RefreshCw, Trash2, Type } from "lucide-react";
+import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnimation";
 import { COLORS } from "@/lib/catalog";
 
 // /showroom/lab — a LOOK PROTOTYPE, not a constructor (David 2026-11-10).
@@ -30,6 +31,11 @@ const SRC: Record<Side, { photo: string; mask: string }> = {
   back: { photo: "/tour/lab/oversize-back.webp", mask: "/tour/lab/oversize-back-mask.png" },
 };
 // the brand's real colours first, then a few catalog colours only to judge the recolouring
+// the garment's box in the photo (for the print film: the garment alone, cut out)
+const BOX: Record<Side, { x: number; y: number; w: number; h: number }> = {
+  front: { x: 120, y: 255, w: 970, h: 1185 },
+  back: { x: 110, y: 255, w: 970, h: 1185 },
+};
 const REAL = ["White", "Black"];
 const DEMO = ["Beige", "Gray", "Red", "Burgundy", "Pink", "Yellow", "Green", "Light Blue", "Blue"];
 const hexOf = (name: string) => COLORS.find((c) => c.name === name)?.hex ?? "#FFFFFF";
@@ -124,6 +130,8 @@ export default function ShowroomLabPage() {
   const [color, setColor] = useState("White");
   const [designs, setDesigns] = useState<Record<Side, Design>>({ front: emptyDesign(), back: emptyDesign() });
   const [textOpen, setTextOpen] = useState(false);
+  const [film, setFilm] = useState<Omit<PrintAnimationProps, "onDone" | "onSkip"> | null>(null);
+  const [printed, setPrinted] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const design = designs[side];
   const setDesign = useCallback((patch: Partial<Design>) => setDesigns((d) => ({ ...d, [side]: { ...d[side], ...patch } })), [side]);
@@ -234,6 +242,47 @@ export default function ShowroomLabPage() {
     drag.current = null;
   };
 
+  // the pictures the print film needs, from what is on the canvas now
+  const startPrint = () => {
+    const L = layers.current[side];
+    if (!L || !tmpA.current || !tmpB.current) return;
+    const B = BOX[side];
+    const crop = (src: HTMLCanvasElement, x = B.x, y = B.y, w = B.w, h = B.h) => {
+      const c = canvas(w, h);
+      c.getContext("2d")!.drawImage(src, x, y, w, h, 0, 0, w, h);
+      return c;
+    };
+    const garment = canvas();
+    const g = garment.getContext("2d")!;
+    g.drawImage(L.photo, 0, 0, W, H);
+    if (color !== "White") g.drawImage(tmpA.current, 0, 0);
+    g.globalCompositeOperation = "destination-in";
+    g.drawImage(L.mask, 0, 0);
+    const blank = crop(garment);
+    g.globalCompositeOperation = "source-over";
+    g.globalAlpha = 0.95;
+    g.drawImage(tmpB.current, 0, 0);
+    const done = crop(garment);
+    // the print alone, cropped to what is drawn
+    const d = tmpB.current.getContext("2d", { willReadFrequently: true })!.getImageData(0, 0, W, H).data;
+    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+    for (let y = 0; y < H; y += 2)
+      for (let x = 0; x < W; x += 2)
+        if (d[(y * W + x) * 4 + 3] > 20) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+    if (x1 <= x0 || y1 <= y0) return;
+    setFilm({
+      designSrc: crop(tmpB.current, x0, y0, x1 - x0 + 2, y1 - y0 + 2).toDataURL("image/png"),
+      garmentBlankSrc: blank.toDataURL("image/png"),
+      garmentPrintedSrc: done.toDataURL("image/png"),
+      printLayerSrc: crop(tmpB.current).toDataURL("image/png"),
+    });
+  };
+
   const flip = () => {
     if (turn !== 0) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -265,8 +314,17 @@ export default function ShowroomLabPage() {
       </Helmet>
       <div aria-hidden className="absolute -inset-10 bg-cover bg-center opacity-70 blur-2xl" style={{ backgroundImage: `url(${SRC.front.photo})` }} />
       <div aria-hidden className="absolute inset-0 bg-black/35" />
+      {film && (
+        <PrintAnimation
+          {...film}
+          onDone={() => {
+            setFilm(null);
+            setPrinted(true);
+          }}
+        />
+      )}
 
-      <p className={`relative z-10 mt-3 px-3 py-1 text-[11px] font-semibold ${glass}`}>ნიმუში · Oversize · შეკვეთა ჯერ არ მუშაობს</p>
+      <p className={`relative z-10 mt-3 px-3 py-1 text-[11px] font-semibold ${glass}`}>ნიმუში · Oversize · შეკვეთა არ ფორმდება</p>
 
       <div className="relative z-10 mt-2 flex w-full flex-1 items-center justify-center px-3" style={{ perspective: "1400px" }}>
         <canvas
@@ -344,9 +402,17 @@ export default function ShowroomLabPage() {
             <input type="range" min={0.2} max={1.1} step={0.01} value={design.scale} onChange={(e) => setDesign({ scale: Number(e.target.value) })} className="h-2 flex-1 accent-amber-400" />
           </label>
         )}
-        <button type="button" disabled className="h-12 rounded-full bg-amber-400/50 text-base font-bold text-black/70">
-          შეკვეთა — მალე
+        <button
+          type="button"
+          disabled={!has}
+          onClick={startPrint}
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 text-base font-bold text-black transition-opacity disabled:opacity-45"
+        >
+          <Printer className="h-5 w-5" aria-hidden /> ბეჭდვა
         </button>
+        <p className="text-center text-[10.5px] leading-tight text-white/65">
+          {printed ? "ნამდვილ საიტზე აქ შეკვეთის ფანჯარა გაიხსნება" : has ? "ნიმუშია: ანიმაციის მერე შეკვეთა არ გაფორმდება" : "ჯერ დაადე ფოტო ან წარწერა"}
+        </p>
       </div>
     </div>
   );
