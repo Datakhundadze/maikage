@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { ImagePlus, Printer, RefreshCw, Trash2, Type } from "lucide-react";
 import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnimation";
 import { COLORS } from "@/lib/catalog";
+import { AREA, BOX, canvas, H, loadImg, loadSide, lum, SRC, W, type Side, type SideLayers } from "@/lib/tour/garmentPhoto";
 
 // /showroom/lab — a LOOK PROTOTYPE, not a constructor (David 2026-11-10).
 // The idea under test: design a garment right on the showroom's own rack
@@ -18,24 +19,7 @@ import { COLORS } from "@/lib/catalog";
 //   print   = the design × the same shade map, clipped to the mask — so the
 //             folds run through the print as they would on cloth
 
-type Side = "front" | "back";
-const W = 1200;
-const H = 1500;
-// where a print sits on the garment in the photo (px of the 1200×1500 photo)
-const AREA: Record<Side, { x: number; y: number; w: number; h: number }> = {
-  front: { x: 395, y: 470, w: 430, h: 560 },
-  back: { x: 375, y: 400, w: 430, h: 620 },
-};
-const SRC: Record<Side, { photo: string; mask: string }> = {
-  front: { photo: "/tour/lab/oversize-front.webp", mask: "/tour/lab/oversize-front-mask.png" },
-  back: { photo: "/tour/lab/oversize-back.webp", mask: "/tour/lab/oversize-back-mask.png" },
-};
 // the brand's real colours first, then a few catalog colours only to judge the recolouring
-// the garment's box in the photo (for the print film: the garment alone, cut out)
-const BOX: Record<Side, { x: number; y: number; w: number; h: number }> = {
-  front: { x: 120, y: 255, w: 970, h: 1185 },
-  back: { x: 110, y: 255, w: 970, h: 1185 },
-};
 const REAL = ["White", "Black"];
 const DEMO = ["Beige", "Gray", "Red", "Burgundy", "Pink", "Yellow", "Green", "Light Blue", "Blue"];
 const hexOf = (name: string) => COLORS.find((c) => c.name === name)?.hex ?? "#FFFFFF";
@@ -48,75 +32,6 @@ interface Design {
   scale: number; // 1 = as wide as the print area
 }
 const emptyDesign = (): Design => ({ img: null, text: "", x: 0.5, y: 0.38, scale: 0.7 });
-
-interface SideLayers {
-  photo: HTMLImageElement;
-  mask: HTMLCanvasElement; // alpha = the garment
-  shade: HTMLCanvasElement; // grey: the white garment's light, 1 = flat lit cloth
-}
-
-const loadImg = (src: string) =>
-  new Promise<HTMLImageElement>((res, rej) => {
-    const i = new Image();
-    i.onload = () => res(i);
-    i.onerror = rej;
-    i.src = src;
-  });
-const canvas = (w = W, h = H) => {
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  return c;
-};
-
-async function loadSide(side: Side): Promise<SideLayers> {
-  const [photo, maskImg] = await Promise.all([loadImg(SRC[side].photo), loadImg(SRC[side].mask)]);
-  // mask file is a grey picture → alpha
-  const mask = canvas();
-  const mg = mask.getContext("2d", { willReadFrequently: true })!;
-  mg.drawImage(maskImg, 0, 0, W, H);
-  const md = mg.getImageData(0, 0, W, H);
-  // shade = photo luminance over the garment's bright level (90th percentile inside the mask)
-  const pc = canvas();
-  const pg = pc.getContext("2d", { willReadFrequently: true })!;
-  pg.drawImage(photo, 0, 0, W, H);
-  const pd = pg.getImageData(0, 0, W, H);
-  const hist = new Uint32Array(256);
-  let n = 0;
-  for (let i = 0; i < md.data.length; i += 4) {
-    const a = md.data[i];
-    md.data[i + 3] = a;
-    md.data[i] = md.data[i + 1] = md.data[i + 2] = 255;
-    if (a > 200) {
-      const l = Math.round(0.2126 * pd.data[i] + 0.7152 * pd.data[i + 1] + 0.0722 * pd.data[i + 2]);
-      hist[l]++;
-      n++;
-    }
-  }
-  let ref = 255;
-  for (let l = 255, acc = 0; l >= 0; l--) {
-    acc += hist[l];
-    if (acc > n * 0.1) {
-      ref = l;
-      break;
-    }
-  }
-  mg.putImageData(md, 0, 0);
-  for (let i = 0; i < pd.data.length; i += 4) {
-    const l = 0.2126 * pd.data[i] + 0.7152 * pd.data[i + 1] + 0.0722 * pd.data[i + 2];
-    const s = Math.min(255, (l / ref) * 255);
-    pd.data[i] = pd.data[i + 1] = pd.data[i + 2] = s;
-    pd.data[i + 3] = 255;
-  }
-  const shade = canvas();
-  shade.getContext("2d")!.putImageData(pd, 0, 0);
-  return { photo, mask, shade };
-}
-
-function lum(hex: string): number {
-  const v = parseInt(hex.slice(1), 16);
-  return (0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255)) / 255;
-}
 
 export default function ShowroomLabPage() {
   const ref = useRef<HTMLCanvasElement>(null);

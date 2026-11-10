@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Search, X } from "lucide-react";
 import MagnifierLens from "@/components/MagnifierLens";
+import RackPhotoDesigner from "@/components/tour/RackPhotoDesigner";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { fromPrice } from "@/lib/landingPrice";
 import { RACK_CARD_WIDE_PX, rackItemName, rackLandingPath, rackPhoto } from "@/lib/tour/rackItem";
@@ -74,6 +75,8 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
     "inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-400 font-semibold text-black transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
   const label = item ? rack.title : "ყვითელი საკიდი";
   const heading = item ? item.name : rack.title;
+  // design on the photo (look only): the rack whose photo has a garment mask
+  const designable = rack.id === "oversize";
 
   return (
     <>
@@ -169,18 +172,25 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
-            <div
-              className="aspect-[4/5] overflow-hidden rounded-2xl shadow-2xl"
-              style={{ width: "min(92vw, calc((100dvh - 7rem) * 0.8))" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <MagnifierLens active zoomSrc={photo}>
-                <img src={photo} alt={heading} draggable={false} className="h-full w-full select-none object-cover" />
-              </MagnifierLens>
-            </div>
-            <p className="mt-3 text-center text-xs text-white/70">
-              {hover ? "მიიტანე მაუსი — გადიდება" : "დააჭირე და გეჭიროს — გადიდება"}
-            </p>
+            {designable ? (
+              // the one rack with a garment mask: the upload frame right on the photo
+              <RackPhotoDesigner alt={heading} />
+            ) : (
+              <>
+              <div
+                className="aspect-[4/5] overflow-hidden rounded-2xl shadow-2xl"
+                style={{ width: "min(92vw, calc((100dvh - 7rem) * 0.8))" }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MagnifierLens active zoomSrc={photo}>
+                  <img src={photo} alt={heading} draggable={false} className="h-full w-full select-none object-cover" />
+                </MagnifierLens>
+              </div>
+              <p className="mt-3 text-center text-xs text-white/70">
+                {hover ? "მიიტანე მაუსი — გადიდება" : "დააჭირე და გეჭიროს — გადიდება"}
+              </p>
+              </>
+            )}
           </div>,
           document.body,
         )}
