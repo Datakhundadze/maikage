@@ -39,6 +39,12 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
   const navigate = useNavigate();
   const photo = rackPhoto(rack);
   const [big, setBig] = useState(false);
+  // large view: first the product alone, "დაწყება" brings the tools (David 2026-11-10)
+  const [designing, setDesigning] = useState(false);
+  const closeBig = () => {
+    setBig(false);
+    setDesigning(false);
+  };
   const [hover] = useState(() => media("(hover: hover) and (pointer: fine)"));
   const item = useMemo(() => {
     if (rack.items === "catalog") return null;
@@ -49,7 +55,10 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (big) setBig(false);
+      if (big) {
+        setBig(false);
+        setDesigning(false);
+      }
       else onClose();
     };
     window.addEventListener("keydown", onKey);
@@ -162,24 +171,24 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
             aria-modal="true"
             aria-label={heading}
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/90 p-4"
-            onClick={() => setBig(false)}
+            onClick={closeBig}
           >
             <button
               type="button"
-              onClick={() => setBig(false)}
+              onClick={closeBig}
               aria-label="დახურვა"
               className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
-            {designable ? (
+            {designable && designing ? (
               // the one rack with a garment mask: the upload frame right on the photo
               <RackPhotoDesigner alt={heading} />
             ) : (
               <>
               <div
                 className="aspect-[4/5] overflow-hidden rounded-2xl shadow-2xl"
-                style={{ width: "min(92vw, calc((100dvh - 7rem) * 0.8))" }}
+                style={{ width: `min(92vw, calc((100dvh - ${designable ? 11 : 7}rem) * 0.8))` }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <MagnifierLens active zoomSrc={photo}>
@@ -189,6 +198,18 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
               <p className="mt-3 text-center text-xs text-white/70">
                 {hover ? "მიიტანე მაუსი — გადიდება" : "დააჭირე და გეჭიროს — გადიდება"}
               </p>
+                {designable && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDesigning(true);
+                    }}
+                    className={`${cta} mt-3 h-12 px-8 text-base font-bold`}
+                  >
+                    დაწყება <ArrowRight className="h-5 w-5" aria-hidden />
+                  </button>
+                )}
               </>
             )}
           </div>,
