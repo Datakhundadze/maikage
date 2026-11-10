@@ -85,8 +85,8 @@ const OPERATORS = [
 const OPERATOR_FRAMES = ["base", "blink", "talk1", "talk2"] as const;
 type OperatorFrame = (typeof OPERATOR_FRAMES)[number];
 const GREETINGS = [
-  { who: 1, text: "გამარჯობა! 👋 რით დაგეხმაროთ?", ms: 2600 },
-  { who: 0, text: "დაგვაჭირეთ და მოგვწერეთ — ჩატში გიპასუხებთ 🙂", ms: 2800 },
+  { who: 1, text: "გამარჯობა! 👋 გისმენთ", ms: 2200 },
+  { who: 0, text: "რით შეგვიძლია დაგეხმაროთ?", ms: 2400 },
 ];
 
 function metOperatorsBefore(): boolean {
@@ -781,7 +781,7 @@ export default function VideoWalk() {
         if (!el) continue;
         const v = views[i];
         const near = hide.rackId === RACK_LABELS[i].rack.id || v.distM < 0.9;
-        const alpha = show && !near ? Math.min(1, Math.max(0, (5.5 - v.distM) / 1.5)) : 0;
+        const alpha = show && !near ? Math.min(1, Math.max(0, (4.2 - v.distM) / 1.2)) : 0;
         const y = v.yawDeg * DEG;
         const pch = v.pitchDeg * DEG;
         v3.set(Math.cos(pch) * Math.sin(y), Math.sin(pch), -Math.cos(pch) * Math.cos(y)).multiplyScalar(10);
@@ -791,7 +791,7 @@ export default function VideoWalk() {
           el.style.pointerEvents = "none";
           continue;
         }
-        const fs = Math.max(10, Math.min(16, 18 - v.distM * 0.9));
+        const fs = Math.max(9, Math.min(12, 14 - v.distM * 0.9));
         const sx = ((v3.x + 1) / 2) * W;
         let sy = ((1 - v3.y) / 2) * H;
         const w = el.offsetWidth * (fs / 14);
@@ -877,7 +877,7 @@ export default function VideoWalk() {
     // the card at the bottom covers the smeared bottom of the picture.
     const landscape = () => host.clientWidth > host.clientHeight * 1.1;
     const walkPitch = () => (landscape() ? -4 : F.walkPitchDeg);
-    const arrivePitch = () => (landscape() ? -10 : -20);
+    const arrivePitch = () => (landscape() ? -10 : -15); // portrait was −20: the smeared floor under the camera came up over the rack (David 2026-11-10)
     let pitchDeg: number = walkPitch();
     let vfov = vfovFor(host.clientWidth, host.clientHeight, 100, MIN_VFOV, MAX_VFOV);
     let userZoom = 1; // multiplies vfov (pinch / wheel)
