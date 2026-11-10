@@ -2,6 +2,7 @@
 // Kept out of the component so the walk can fetch the photo while it is
 // still walking (the card then opens with it already there).
 
+import { BRAND_SLUGS, LANDING_PRODUCT_SLUGS, resolveProductSlug } from "@/lib/productSlugs";
 import { productTypeKa } from "@/lib/i18n";
 import type { RackItem, ShowroomRack } from "./showroomRacks";
 
@@ -36,4 +37,26 @@ export function rackPhoto(rack: ShowroomRack): string {
 export function preloadRack(rack: ShowroomRack): void {
   if (typeof Image === "undefined") return;
   new Image().src = rackPhoto(rack);
+}
+
+/**
+ * Where "choose" on a rack card leads: the product's own landing route
+ * (/t-shirt/giordano …) — the constructor with that product and brand already
+ * picked. Not "/": a fresh tab at the root shows the home page, not the
+ * constructor (David 2026-11-10: "it went to the main page"). The hash tells
+ * the page the visitor came from the showroom (ShowroomBackdrop); a hash never
+ * reaches the server or the canonical URL.
+ */
+export function rackLandingPath(rackId: string, it: RackItem): string {
+  const productSlug = LANDING_PRODUCT_SLUGS.find((slug) => resolveProductSlug(slug) === it.product);
+  if (!productSlug) return "/";
+  const brands = BRAND_SLUGS[it.product] ?? {};
+  const brandSlug = Object.keys(brands).find((slug) => brands[slug] === it.brand);
+  return `/${productSlug}${brandSlug ? `/${brandSlug}` : ""}#showroom=${rackId}`;
+}
+
+/** The rack id a showroom hand-over left in the URL hash, or null. */
+export function showroomRackFromHash(hash: string): string | null {
+  const m = /^#showroom=([a-z0-9-]{1,40})$/.exec(hash);
+  return m ? m[1] : null;
 }

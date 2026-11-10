@@ -5,7 +5,7 @@ import { ArrowRight, Search, X } from "lucide-react";
 import MagnifierLens from "@/components/MagnifierLens";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { fromPrice } from "@/lib/landingPrice";
-import { RACK_CARD_WIDE_PX, rackItemName, rackPhoto } from "@/lib/tour/rackItem";
+import { RACK_CARD_WIDE_PX, rackItemName, rackLandingPath, rackPhoto } from "@/lib/tour/rackItem";
 import type { RackItem, ShowroomRack } from "@/lib/tour/showroomRacks";
 
 // The card a rack opens in /showroom once the walk has stopped and turned to
@@ -65,8 +65,9 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
     else navigate(path);
   };
   const choose = (it: RackItem) => {
+    // the seed is the fallback for a product without a landing route (then "/")
     writeConstructorSeed({ product: it.product, subProduct: it.brand });
-    openPage("/");
+    openPage(rackLandingPath(rack.id, it));
   };
 
   const cta =

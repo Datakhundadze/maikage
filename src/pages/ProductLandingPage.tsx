@@ -6,6 +6,7 @@ import NotFound from "@/pages/NotFound";
 import LandingHero from "@/components/landing/LandingHero";
 import LandingCopySection from "@/components/landing/LandingCopySection";
 import PrintServicesLinks from "@/components/PrintServicesLinks";
+import ShowroomBackdrop from "@/components/tour/ShowroomBackdrop";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { productTypeKa } from "@/lib/i18n";
 import { heroTitle } from "@/lib/heroTitle";
@@ -149,6 +150,7 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
           ))}
         </Helmet>
       )}
+      <ShowroomBackdrop />
       <SimplePage
         seoTitle={seo.title}
         seoDescription={seo.description}
