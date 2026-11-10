@@ -42,6 +42,7 @@ const BlogPage = lazyWithRetry(() => import("./pages/BlogPage"));
 const BlogPostPage = lazyWithRetry(() => import("./pages/BlogPostPage"));
 const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
 const ProductLandingPage = lazyWithRetry(() => import("./pages/ProductLandingPage"));
+const ShowroomLabPage = lazyWithRetry(() => import("./pages/ShowroomLabPage"));
 const ShowroomPage = lazyWithRetry(() => import("./pages/ShowroomPage"));
 const ServicePage = lazyWithRetry(() => import("./pages/ServicePage"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -147,6 +148,8 @@ function AppRoutes() {
         <Route key={`${slug}/:brandSlug`} path={`/${slug}/:brandSlug`} element={<ProductLandingPage productSlug={slug} />} />
       ))}
       <Route path="/showroom" element={<ShowroomPage />} />
+      {/* look prototype of designing on a rack photo — noindex, linked from nowhere */}
+      <Route path="/showroom/lab" element={<ShowroomLabPage />} />
       <Route path="/review" element={<ReviewRedirectPage />} />
       {/* Service landing pages (/maisurebze-bechdva, /sportuli-formebi) —
           text pages for search; copy in lib/serviceCopy.ts, prerendered. */}
