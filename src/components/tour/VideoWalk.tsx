@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Footprints, Headset, LayoutGrid, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { Footprints, Headset, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
 import {
   CanvasTexture,
   CircleGeometry,
@@ -50,7 +50,8 @@ import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
 import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
 import { labelView, rackLabels } from "@/lib/tour/rackLabels";
 import { cachedMbps, measureMbps, partBase, pickTier, type VideoTier } from "@/lib/tour/videoTier";
-import { planRoute, reached, routeJumps, type RouteStep } from "@/lib/tour/autoWalk";
+import { reached, routeJumps, type RouteStep } from "@/lib/tour/autoWalk";
+import { DESK_TS, deskMomentAt, planHubRoute } from "@/lib/tour/hubRoute";
 
 /** A place to walk to: a rack (its sheet opens on arrival) or the entrance. */
 interface WalkDest {
@@ -109,7 +110,7 @@ const PICKER_GROUPS: { title: string; dests: WalkDest[] }[] = [
   { title: "ჰუდები", dests: dests.filter((d) => d.rack && d.rack.items !== "catalog" && d.rack.items[0].product === "Hoodie") },
   {
     title: "სხვა",
-    dests: dests.filter((d) => !d.operator && (!d.rack || d.rack.items === "catalog" || !["T-Shirt", "Hoodie"].includes(d.rack.items[0].product))),
+    dests: dests.filter((d) => !d.operator && d.rack && (d.rack.items === "catalog" || !["T-Shirt", "Hoodie"].includes(d.rack.items[0].product))),
   },
 ];
 
@@ -370,12 +371,14 @@ export default function VideoWalk() {
   // the place being walked to (bar highlight); goRef starts a walk (set by the effect)
   const [goingTo, setGoingTo] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // the rack list is shown while standing with the operators, nowhere else (David 2026-11-10)
+  const [atDesk, setAtDesk] = useState(false);
+  // the racks open up once the visitor has met the operators (David: operator first, then the brands)
+  const [metOperators, setMetOperators] = useState(metOperatorsBefore);
+  const pickerOpen = atDesk && metOperators && !goingTo;
   useEffect(() => {
     labelHideRef.current = { picker: pickerOpen, rackId: openRack?.id ?? null };
   }, [pickerOpen, openRack]);
-  // the racks open up once the visitor has met the operators (David: operator first, then the brands)
-  const [metOperators, setMetOperators] = useState(metOperatorsBefore);
   const [bubble, setBubble] = useState<{ who: number; text: string } | null>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const opHitRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -664,8 +667,9 @@ export default function VideoWalk() {
       pivot.rotation.x = o.pitchDeg * DEG;
       pivot.add(mesh);
       scene.add(pivot);
-      return { mesh, mat, geo, w, h, frame: "base" as OperatorFrame, nextBlink: 0, blinkUntil: 0, talkUntil: 0, mouth: 0, nextMouth: 0 };
+      return { mesh, mat, geo, pivot, w, h, frame: "base" as OperatorFrame, nextBlink: 0, blinkUntil: 0, talkUntil: 0, mouth: 0, nextMouth: 0 };
     });
+    let atDeskShown = false;
     let chatTyping = false;
     const onTyping = (e: Event) => {
       chatTyping = !!(e as CustomEvent<boolean>).detail;
@@ -695,8 +699,15 @@ export default function VideoWalk() {
       return { x: ((v3.x + 1) / 2) * host.clientWidth, y: ((1 - v3.y) / 2) * host.clientHeight, front: v3.z < 1 };
     };
     const updateOperators = (now: number, dt: number) => {
-      const atDesk = ready && !jumping && !switching && !playing && !route && Math.abs(fwdTime() - OPERATOR_STOP.t) < 0.8;
+      const desk = ready && !jumping && !switching && !playing && !route ? deskMomentAt(fwdTime()) : null;
+      const atDesk = desk !== null;
+      if (atDesk !== atDeskShown) {
+        atDeskShown = atDesk;
+        setAtDesk(atDesk);
+      }
       ops.forEach((a, i) => {
+        // the video frame's yaw drifts a degree or two between the passes of the desk
+        if (desk) a.pivot.rotation.y = -(OPERATORS[i].yawDeg + desk.yawOffDeg) * DEG;
         a.mat.opacity = easeToward(a.mat.opacity, atDesk ? 1 : 0, dt, atDesk ? 380 : 160);
         a.mesh.visible = a.mat.opacity > 0.01;
         if (!a.mesh.visible) return;
@@ -769,9 +780,8 @@ export default function VideoWalk() {
         const el = els[i];
         if (!el) continue;
         const v = views[i];
-        const near = v.distM < 2.4 && (!playing || hide.rackId === RACK_LABELS[i].rack.id);
-        let alpha = show && !near ? Math.min(1, Math.max(0, (12 - v.distM) / 4)) : 0;
-        if (playing) alpha *= 0.75;
+        const near = hide.rackId === RACK_LABELS[i].rack.id || v.distM < 0.9;
+        const alpha = show && !near ? Math.min(1, Math.max(0, (5.5 - v.distM) / 1.5)) : 0;
         const y = v.yawDeg * DEG;
         const pch = v.pitchDeg * DEG;
         v3.set(Math.cos(pch) * Math.sin(y), Math.sin(pch), -Math.cos(pch) * Math.cos(y)).multiplyScalar(10);
@@ -931,6 +941,10 @@ export default function VideoWalk() {
      */
     // walking speed: a slow line gets a calmer walk (fewer bytes per second needed)
     const autoRate = tier === "lite" ? 1.3 : AUTO_RATE;
+    // a long walk (the far racks: ~50 s of video) plays faster when the measured line can feed it
+    const tierMbps = tier === "4k" ? 11 : tier === "hd" ? 5 : 3;
+    const longRate = Math.min(2.2, Math.max(autoRate, ((cachedMbps() ?? 0) * 0.6) / tierMbps));
+    let routeRate = autoRate;
 
     /**
      * After a jump to a spot not downloaded yet: wait (≤ timeoutMs) until a
@@ -1392,11 +1406,21 @@ export default function VideoWalk() {
     goRef.current = (d: WalkDest) => {
       unlockRef.current();
       if (!ready) return;
-      const steps = planRoute(fwdTime(), d.t, track);
+      // one change of video at most, standing; then one unbroken walk (hubRoute.ts)
+      const steps = planHubRoute(fwdTime(), d.operator ? DESK_TS : [d.t], track);
       if (!steps) return;
       route = steps;
       routeIdx = 0;
       routeDest = d;
+      {
+        let t0 = fwdTime();
+        let sec = 0;
+        for (const st of steps) {
+          if (st.kind === "walk") sec += Math.abs(st.until - t0);
+          t0 = st.kind === "walk" ? st.until : st.t;
+        }
+        routeRate = sec > 25 ? longRate : autoRate;
+      }
       arriving = null;
       setOpenRack(null);
       if (d.rack) preloadRack(d.rack);
@@ -1418,7 +1442,7 @@ export default function VideoWalk() {
         spares.push({ clip: c, part: p2, dir: j.dir, local });
         const pp = v.play(); // started inside the tap (iPhone), stopped at once
         if (pp && typeof pp.then === "function") pp.then(() => v.pause()).catch(() => {});
-        return seekTo(v, Math.max(0, local - 0.7), 8000).then(() => waitAhead(v, 3.2, 8000));
+        return seekTo(v, Math.max(0, local - 0.7), 8000).then(() => waitAhead(v, 6, 8000));
       });
       // and the video the walk starts on: a few seconds ahead of here
       ready2.push(waitAhead(active(), 2, 6000));
@@ -1447,7 +1471,8 @@ export default function VideoWalk() {
           const dx = (RACK_CARD_WIDE_PX + 20) / 2; // px the free part's centre lies left of the screen's centre
           yaw = normDeg(yaw + (Math.atan((dx / (w / 2)) * tanHalfH) * 180) / Math.PI);
         }
-        arriving = { yaw, pitch: routeDest.pitchDeg ?? arrivePitch(), since: performance.now(), settledAt: null, dest: routeDest };
+        const pitch = routeDest.operator ? (landscape() ? -16 : -25) : (routeDest.pitchDeg ?? arrivePitch());
+        arriving = { yaw, pitch, since: performance.now(), settledAt: null, dest: routeDest };
       }
       route = null;
       routeDest = null;
@@ -1503,7 +1528,7 @@ export default function VideoWalk() {
             } else {
               facing = dir === "fwd" ? "along" : "against";
               printDir = dir;
-              target = autoRate;
+              target = routeRate;
               // the step across coming next: roll its video in ~0.45 s before
               const nx = route[routeIdx + 1];
               if (nx && nx.kind === "hop" && playing) {
@@ -1849,7 +1874,7 @@ export default function VideoWalk() {
 
       {status === "ready" && hintVisible && !pickerOpen && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
-          {`დააჭირეთ „${metOperators ? "საკიდები" : "ოპერატორი"}“ — მიგიყვანთ. ${touch ? "თითით" : "მაუსით"} გადაათრიეთ — მიმოხედვა.`}
+          {`${metOperators ? "ოპერატორის ღილაკით სიას დაუბრუნდებით" : "დააჭირეთ „ოპერატორი“ — მიგიყვანთ"}. ${touch ? "თითით" : "მაუსით"} გადაათრიეთ — მიმოხედვა.`}
         </p>
       )}
 
@@ -1884,7 +1909,6 @@ export default function VideoWalk() {
             type="button"
             onClick={() => {
               if (soundOn) ensureAudio();
-              setPickerOpen(false);
               goRef.current(dests[0]);
             }}
             aria-pressed={goingTo === "operator"}
@@ -1898,18 +1922,6 @@ export default function VideoWalk() {
             <Headset className="h-5 w-5" aria-hidden />
             {!metOperators && "ოპერატორი"}
           </button>
-          {metOperators && (
-          <button
-            type="button"
-            onClick={() => setPickerOpen((o) => !o)}
-            aria-expanded={pickerOpen}
-            aria-controls="maika-rack-picker"
-            className="pointer-events-auto inline-flex h-12 items-center gap-2 rounded-full bg-amber-400 px-5 text-sm font-bold text-black shadow-[0_8px_24px_-6px_rgba(0,0,0,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          >
-            <LayoutGrid className="h-5 w-5" aria-hidden />
-            საკიდები
-          </button>
-          )}
           {(preparing || goingTo) && (
             <span
               role="status"
@@ -1934,16 +1946,14 @@ export default function VideoWalk() {
       {status === "ready" && pickerOpen && (
         <>
           {/* the showroom stays in view: only a soft shade behind the buttons */}
-          <button
-            type="button"
-            aria-label="დახურვა"
-            className="maika-picker-shade absolute inset-0 z-40 bg-[radial-gradient(ellipse_at_50%_85%,rgba(0,0,0,.55),rgba(0,0,0,.15)_60%,transparent_85%)]"
-            onClick={() => setPickerOpen(false)}
+          <div
+            aria-hidden
+            className="maika-picker-shade pointer-events-none absolute inset-0 z-[8] bg-[radial-gradient(ellipse_at_50%_100%,rgba(0,0,0,.6),rgba(0,0,0,.2)_45%,transparent_70%)]"
           />
           <nav
             id="maika-rack-picker"
             aria-label="სად წავიდეთ"
-            className="pointer-events-none absolute inset-x-0 bottom-[4.75rem] top-16 z-50 mx-auto flex max-w-2xl flex-col overflow-y-auto px-3 pb-2 text-white"
+            className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] top-16 z-50 mx-auto flex max-w-3xl flex-col overflow-y-auto px-2 pb-1 text-white"
           >
             <style>{`
               @keyframes maika-chip-in { from { opacity: 0; transform: translateY(10px) scale(.96) } to { opacity: 1; transform: none } }
@@ -1954,22 +1964,18 @@ export default function VideoWalk() {
             `}</style>
             <div className="mt-auto">
               {PICKER_GROUPS.map((g, gi) => (
-                <section key={g.title} className="mt-2.5 first:mt-0">
-                  <h3 className="mb-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-white/85 [text-shadow:0_1px_6px_rgba(0,0,0,.8)]">
-                    {g.title}
-                  </h3>
-                  <ul className="flex flex-wrap justify-center gap-2">
+                <section key={g.title} aria-label={g.title} className="mt-1.5 first:mt-0">
+                  <ul className="flex flex-wrap justify-center gap-1.5">
                     {g.dests.map((d, di) => (
                       <li key={d.id} className="maika-chip pointer-events-auto" style={{ animationDelay: `${(gi * 6 + di) * 18}ms` }}>
                         <button
                           type="button"
                           onClick={() => {
                             if (soundOn) ensureAudio();
-                            setPickerOpen(false);
                             goRef.current(d);
                           }}
                           aria-pressed={goingTo === d.id}
-                          className={`h-9 rounded-full px-3.5 text-[13px] font-semibold shadow-[0_4px_18px_-4px_rgba(0,0,0,.6)] backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 md:h-10 md:px-4 md:text-sm ${
+                          className={`h-8 rounded-full px-3 text-[12px] font-semibold shadow-[0_4px_18px_-4px_rgba(0,0,0,.6)] backdrop-blur-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 md:h-10 md:px-4 md:text-sm ${
                             goingTo === d.id
                               ? "bg-amber-400/90 text-black"
                               : "bg-white/15 text-white ring-1 ring-white/35 [text-shadow:0_1px_4px_rgba(0,0,0,.7)] hover:bg-white/25 active:bg-white/30"
