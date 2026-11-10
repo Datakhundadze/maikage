@@ -128,7 +128,10 @@ export const WALK_VIDEO = {
   /** Below the cap (this many degrees around straight down) the picture is
    *  filled with the floor just outside it, stretched inward and blurred —
    *  hides the person holding the camera without a black hole. */
-  nadirFillDeg: 52, // was 46: on some stretches the top of David's cap showed above the cover (2026-11-10)
+  // the cameraman's sector is covered up to this many degrees from straight down …
+  nadirFillDeg: 50,
+  // … everywhere else only this small cone (the stick and his hands)
+  nadirCoreDeg: 24,
 } as const;
 
 export const WALK_FEEL = {

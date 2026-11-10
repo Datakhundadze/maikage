@@ -48,6 +48,7 @@ import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
 import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
+import { personYawAt } from "@/lib/tour/personYaw";
 import { labelView, rackLabels } from "@/lib/tour/rackLabels";
 import { cachedMbps, measureMbps, partBase, pickTier, type VideoTier } from "@/lib/tour/videoTier";
 import { reached, routeJumps, type RouteStep } from "@/lib/tour/autoWalk";
@@ -537,6 +538,7 @@ export default function VideoWalk() {
     geometry.scale(-1, 1, 1); // seen from inside, not mirrored
     const material = new MeshBasicMaterial({ map: clip(0, "fwd").texture });
     const NF = WALK_VIDEO.nadirFillDeg;
+    const NC = WALK_VIDEO.nadirCoreDeg;
     // colour lift: unsharp mask on the video sample, then saturation +
     // vibrance + contrast + warmth on the final sRGB colour
     const texel = { value: new Vector2(1 / 3840, 1 / 1920) };
@@ -549,11 +551,25 @@ export default function VideoWalk() {
     });
     // the same picture treatment for the video and for the sharp still shown at a stop
     type BeforeCompile = NonNullable<MeshBasicMaterial["onBeforeCompile"]>;
-    const lift = (texelU: { value: Vector2 }): BeforeCompile => (shader) => {
+    const lift = (texelU: { value: Vector2 }, personU: { value: number }): BeforeCompile => (shader) => {
       shader.uniforms.walkTexel = texelU;
+      shader.uniforms.walkPersonU = personU;
       const f = (n: number) => n.toFixed(3);
       shader.fragmentShader = shader.fragmentShader
-        .replace("void main() {", "uniform vec2 walkTexel;\nvoid main() {")
+        .replace(
+          "void main() {",
+          [
+            "uniform vec2 walkTexel;",
+            "uniform float walkPersonU;",
+            // u moved out of the cameraman's sector: mirrored across the sector's edge (clean floor beside him)
+            "float walkClean( float u ) {",
+            "  float d = fract( u - walkPersonU + 0.5 ) - 0.5;",
+            "  float a = abs( d );",
+            "  return a < 0.17 ? fract( walkPersonU + ( d < 0.0 ? -1.0 : 1.0 ) * ( 0.34 - a ) ) : fract( u );",
+            "}",
+            "void main() {",
+          ].join("\n"),
+        )
         .replace(
           "#include <map_fragment>",
           [
@@ -563,17 +579,27 @@ export default function VideoWalk() {
             "  vec4 sb = 0.25 * ( texture2D( map, vMapUv + vec2(o.x, 0.0) ) + texture2D( map, vMapUv - vec2(o.x, 0.0) )",
             "                   + texture2D( map, vMapUv + vec2(0.0, o.y) ) + texture2D( map, vMapUv - vec2(0.0, o.y) ) );",
             `  vec4 sampledDiffuseColor = clamp( s0 + (s0 - sb) * ${f(F.sharpen)}, 0.0, 1.0 );`,
-            // nadir fill: below the cap use the floor just outside it, spread wider (blurrier) toward the pole
-            `  float capV = ${f(NF / 180)};`,
+            // 1) the cameraman: only his sector (±47°, soft to ±61°), up to capB — filled with the
+            //    floor at the same height mirrored in from both sides of the sector
+            `  float capB = ${f(NF / 180)};`,
+            "  float pd = fract( vMapUv.x - walkPersonU + 0.5 ) - 0.5;",
+            "  float inSector = 1.0 - smoothstep( 0.13, 0.17, abs( pd ) );",
+            "  if ( inSector > 0.0 && vMapUv.y < capB + 0.02 ) {",
+            "    float off = 0.34 - abs( pd );",
+            "    vec4 sideL = texture2D( map, vec2( fract( walkPersonU - off ), vMapUv.y ) );",
+            "    vec4 sideR = texture2D( map, vec2( fract( walkPersonU + off ), vMapUv.y ) );",
+            "    vec4 side = mix( sideL, sideR, smoothstep( -0.04, 0.04, pd ) );",
+            "    sampledDiffuseColor = mix( sampledDiffuseColor, side, inSector * smoothstep( capB + 0.02, capB - 0.01, vMapUv.y ) );",
+            "  }",
+            // 2) straight under the camera (the stick, his hands): a small cone melted from the floor ring around it
+            `  float capV = ${f(NC / 180)};`,
             "  if ( vMapUv.y < capV + 0.02 ) {",
             "    float depth = clamp( (capV - vMapUv.y) / capV, 0.0, 1.0 );",
-            // wide, soft average of the floor ring just outside the cap: near the
-            // edge it follows the floor, toward the pole it melts into one tone
             "    float spread = 0.02 + 0.3 * depth * depth;",
             "    vec4 fill = vec4( 0.0 );",
             "    for ( int i = -4; i <= 4; i++ ) {",
             "      float fi = float( i ) / 4.0;",
-            "      fill += texture2D( map, vec2( vMapUv.x + fi * spread, capV + 0.01 + 0.02 * abs( fi ) ) );",
+            "      fill += texture2D( map, vec2( walkClean( vMapUv.x + fi * spread ), capV + 0.01 + 0.02 * abs( fi ) ) );",
             "    }",
             "    fill /= 9.0;",
             "    sampledDiffuseColor = mix( sampledDiffuseColor, fill, smoothstep( capV + 0.02, capV - 0.01, vMapUv.y ) );",
@@ -599,7 +625,8 @@ export default function VideoWalk() {
           ].join("\n"),
         );
     };
-    material.onBeforeCompile = lift(texel);
+    const personU = { value: 0 };
+    material.onBeforeCompile = lift(texel, personU);
     const sphere = new Mesh(geometry, material);
     // three.js puts the frame's centre at −x; turn it to −z (the camera's yaw 0)
     sphere.rotation.y = -Math.PI / 2;
@@ -611,7 +638,8 @@ export default function VideoWalk() {
     // soft dissolve, by the same frame from the 4K file (David 2026-11-10).
     const STILL_TS = [...DESK_TS, ...SHOWROOM_RACKS.map((r) => r.stop.t)];
     const stillMat = new MeshBasicMaterial({ transparent: true, opacity: 0, depthTest: false, depthWrite: false });
-    stillMat.onBeforeCompile = lift({ value: new Vector2(1 / 3840, 1 / 1920) });
+    const stillPersonU = { value: 0 };
+    stillMat.onBeforeCompile = lift({ value: new Vector2(1 / 3840, 1 / 1920) }, stillPersonU);
     const stillMesh = new Mesh(geometry, stillMat);
     stillMesh.rotation.y = -Math.PI / 2;
     stillMesh.renderOrder = 1; // over the video, under the floor logo, prints and operators
@@ -646,6 +674,7 @@ export default function VideoWalk() {
       if (e?.ok && stillMat.map !== e.tex && stillMat.opacity < 0.02) {
         stillMat.map = e.tex;
         stillMat.needsUpdate = true;
+        stillPersonU.value = personYawAt(k as number) / 360 + 0.5;
       }
       const on = !!e?.ok && stillMat.map === e.tex;
       stillMat.opacity = easeToward(stillMat.opacity, on ? 1 : 0, dt, on ? 450 : 110);
@@ -1708,6 +1737,7 @@ export default function VideoWalk() {
         freezeFrame();
       }
       drawFrozen(now);
+      personU.value = personYawAt(fwdTime()) / 360 + 0.5;
       updateStill(dt);
       updateOperators(now, dt);
       updateLabels();
