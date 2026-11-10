@@ -129,7 +129,7 @@ export const WALK_VIDEO = {
    *  filled with the floor just outside it, stretched inward and blurred —
    *  hides the person holding the camera without a black hole. */
   // the cameraman's sector is covered up to this many degrees from straight down …
-  nadirFillDeg: 50,
+  nadirFillDeg: 48,
   // … everywhere else only this small cone (the stick and his hands)
   nadirCoreDeg: 24,
 } as const;

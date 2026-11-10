@@ -583,12 +583,19 @@ export default function VideoWalk() {
             //    floor at the same height mirrored in from both sides of the sector
             `  float capB = ${f(NF / 180)};`,
             "  float pd = fract( vMapUv.x - walkPersonU + 0.5 ) - 0.5;",
-            "  float inSector = 1.0 - smoothstep( 0.13, 0.17, abs( pd ) );",
+            "  float inSector = 1.0 - smoothstep( 0.11, 0.16, abs( pd ) );",
             "  if ( inSector > 0.0 && vMapUv.y < capB + 0.02 ) {",
             "    float off = 0.34 - abs( pd );",
-            "    vec4 sideL = texture2D( map, vec2( fract( walkPersonU - off ), vMapUv.y ) );",
-            "    vec4 sideR = texture2D( map, vec2( fract( walkPersonU + off ), vMapUv.y ) );",
-            "    vec4 side = mix( sideL, sideR, smoothstep( -0.04, 0.04, pd ) );",
+            // softened (7 taps along the circle): a sharp mirror image repeated the things beside him
+            //   — "the frames get mixed" (David 2026-11-10); a soft patch reads as floor
+            "    vec4 sideL = vec4( 0.0 ); vec4 sideR = vec4( 0.0 );",
+            "    for ( int i = -3; i <= 3; i++ ) {",
+            "      float fo = float( i ) * 0.014;",
+            "      float fv = vMapUv.y - 0.006 * abs( float( i ) );",
+            "      sideL += texture2D( map, vec2( fract( walkPersonU - off + fo ), fv ) );",
+            "      sideR += texture2D( map, vec2( fract( walkPersonU + off + fo ), fv ) );",
+            "    }",
+            "    vec4 side = mix( sideL, sideR, smoothstep( -0.06, 0.06, pd ) ) / 7.0;",
             "    sampledDiffuseColor = mix( sampledDiffuseColor, side, inSector * smoothstep( capB + 0.02, capB - 0.01, vMapUv.y ) );",
             "  }",
             // 2) straight under the camera (the stick, his hands): a small cone melted from the floor ring around it
