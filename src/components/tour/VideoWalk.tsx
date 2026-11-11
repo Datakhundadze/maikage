@@ -80,10 +80,22 @@ const SHOW_FLOOR_ARROWS = false;
 /** Brand names over the racks (see rackLabels.ts). */
 const RACK_LABELS = rackLabels();
 const OPERATORS = [
-  // 2026-11-11 (David): a little smaller, and the boy clear of the monitor on the desk
-  { id: "boy", yawDeg: -12.3, pitchDeg: -16.5, heightDeg: 12 },
-  { id: "girl", yawDeg: 16, pitchDeg: -16.5, heightDeg: 12 },
+  // 2026-11-11 (David): a little smaller. They sit BEHIND the counter ("the monitor does
+  // not cover the boy"): the boy on the chair behind the big monitor, which hides his lower
+  // left (OPERATOR_HIDE cuts that part out of his picture); both end at the counter's top.
+  { id: "boy", yawDeg: -11.25, pitchDeg: -14.4, heightDeg: 12 },
+  { id: "girl", yawDeg: 16, pitchDeg: -14.4, heightDeg: 12 },
 ] as const;
+/**
+ * Parts of an operator's picture hidden by something on the desk, as
+ * rectangles in the picture (0…1 from its left / top): the big monitor in
+ * front of the boy, read off the sharp desk photo (stills/80.webp: the
+ * monitor's back is x 1695–1790, y 1118–1190 px; the boy's picture covers
+ * x 1757–1843, y 1050–1178).
+ */
+const OPERATOR_HIDE: Record<string, readonly (readonly [number, number, number, number])[]> = {
+  boy: [[0, 0.53, 0.385, 1]],
+};
 /**
  * The operators stay in the picture while the walk leaves the desk (David
  * 2026-11-11: "they vanish when the walk starts — I don't want that"): each
@@ -91,9 +103,14 @@ const OPERATORS = [
  * direction, and is drawn from wherever the camera is (as the rack labels
  * are). They fade out between OPERATOR_FADE_M[0] and [1] metres away.
  */
-const OPERATOR_DIST_M = 4;
-const OPERATOR_FADE_M = [5.5, 8] as const;
-const OPERATOR_NEAR_M = [2.2, 3] as const;
+const OPERATOR_DIST_M = 3.6;
+/**
+ * …but only for the first steps: fully there while the camera is within
+ * [0] m of the desk stop, gone by [1] m. Their place is worked out from the
+ * walk track, which is not exact — farther off they slid about against the
+ * desk ("they move somehow", David 2026-11-11).
+ */
+const OPERATOR_FADE_M = [1.2, 3] as const;
 const OPERATOR_FRAMES = ["base", "blink", "talk1", "talk2"] as const;
 type OperatorFrame = (typeof OPERATOR_FRAMES)[number];
 const GREETINGS = [
@@ -580,6 +597,11 @@ export default function VideoWalk() {
             "  float a = abs( d );",
             "  return a < 0.17 ? fract( walkPersonU + ( d < 0.0 ? -1.0 : 1.0 ) * ( 0.34 - a ) ) : fract( u );",
             "}",
+            // a colour as the shop's floor would show it: its brightness in the tiles' beige
+            "vec3 walkFloor( vec3 c ) {",
+            "  float l = clamp( dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.30, 0.72 );",
+            "  return l * vec3( 1.10, 1.0, 0.86 );",
+            "}",
             "void main() {",
           ].join("\n"),
         )
@@ -602,26 +624,31 @@ export default function VideoWalk() {
             // softened (7 taps along the circle): a sharp mirror image repeated the things beside him
             //   — "the frames get mixed" (David 2026-11-10); a soft patch reads as floor
             "    vec4 sideL = vec4( 0.0 ); vec4 sideR = vec4( 0.0 );",
-            "    for ( int i = -3; i <= 3; i++ ) {",
-            "      float fo = float( i ) * 0.014;",
-            "      float fv = vMapUv.y - 0.006 * abs( float( i ) );",
+            // 2026-11-11 (David: "the patch looks very bad"): the mirrored racks drew coloured streaks
+            //   around the logo. Now a much wider average (13 taps, ±43° along the circle), and its
+            //   colour pulled to the floor's own beige — a calm patch of floor, not a smear of clothes
+            "    for ( int i = -6; i <= 6; i++ ) {",
+            "      float fo = float( i ) * 0.02;",
+            "      float fv = vMapUv.y - 0.004 * abs( float( i ) );",
             "      sideL += texture2D( map, vec2( fract( walkPersonU - off + fo ), fv ) );",
             "      sideR += texture2D( map, vec2( fract( walkPersonU + off + fo ), fv ) );",
             "    }",
-            "    vec4 side = mix( sideL, sideR, smoothstep( -0.06, 0.06, pd ) ) / 7.0;",
+            "    vec4 side = mix( sideL, sideR, smoothstep( -0.06, 0.06, pd ) ) / 13.0;",
+            "    side.rgb = mix( side.rgb, walkFloor( side.rgb ), 0.85 );",
             "    sampledDiffuseColor = mix( sampledDiffuseColor, side, inSector * smoothstep( capB + 0.02, capB - 0.01, vMapUv.y ) );",
             "  }",
             // 2) straight under the camera (the stick, his hands): a small cone melted from the floor ring around it
             `  float capV = ${f(NC / 180)};`,
             "  if ( vMapUv.y < capV + 0.02 ) {",
             "    float depth = clamp( (capV - vMapUv.y) / capV, 0.0, 1.0 );",
-            "    float spread = 0.02 + 0.3 * depth * depth;",
+            "    float spread = 0.10 + 0.3 * depth * depth;",
             "    vec4 fill = vec4( 0.0 );",
-            "    for ( int i = -4; i <= 4; i++ ) {",
-            "      float fi = float( i ) / 4.0;",
-            "      fill += texture2D( map, vec2( walkClean( vMapUv.x + fi * spread ), capV + 0.01 + 0.02 * abs( fi ) ) );",
+            "    for ( int i = -6; i <= 6; i++ ) {",
+            "      float fi = float( i ) / 6.0;",
+            "      fill += texture2D( map, vec2( walkClean( vMapUv.x + fi * spread ), capV + 0.01 + 0.03 * abs( fi ) ) );",
             "    }",
-            "    fill /= 9.0;",
+            "    fill /= 13.0;",
+            "    fill.rgb = mix( fill.rgb, walkFloor( fill.rgb ), min( 0.9, 0.35 + 0.6 * smoothstep( 0.0, 0.5, depth ) ) );",
             "    sampledDiffuseColor = mix( sampledDiffuseColor, fill, smoothstep( capV + 0.02, capV - 0.01, vMapUv.y ) );",
             "  }",
             "  #ifdef DECODE_VIDEO_TEXTURE",
@@ -753,11 +780,30 @@ export default function VideoWalk() {
       return m;
     });
     const OP_R = SPHERE_R * 0.5;
+    // The operators are drawn in a pass of their own, after the frozen frame of a
+    // video change: inside the main scene they were frozen into that frame too and
+    // showed twice while it faded (a ghost beside each — "they move somehow").
+    const opScene = new Scene();
     const ops = OPERATORS.map((o, i) => {
       const h = 2 * OP_R * Math.tan((o.heightDeg / 2) * DEG);
       const w = (h * 2) / 3;
       const geo = new PlaneGeometry(w, h);
       const mat = new MeshBasicMaterial({ map: opTex[i].base, transparent: true, opacity: 0, depthTest: false, depthWrite: false });
+      const hide = OPERATOR_HIDE[o.id];
+      if (hide) {
+        // what stands in front of this operator: cut out of the picture
+        const c = document.createElement("canvas");
+        c.width = 128;
+        c.height = 192;
+        const g = c.getContext("2d");
+        if (g) {
+          g.fillStyle = "#fff";
+          g.fillRect(0, 0, 128, 192);
+          g.fillStyle = "#000";
+          for (const [x0, y0, x1, y1] of hide) g.fillRect(x0 * 128, y0 * 192, (x1 - x0) * 128, (y1 - y0) * 192);
+          mat.alphaMap = new CanvasTexture(c);
+        }
+      }
       const mesh = new Mesh(geo, mat);
       mesh.position.set(0, 0, -OP_R);
       mesh.renderOrder = 6;
@@ -767,7 +813,7 @@ export default function VideoWalk() {
       pivot.rotation.y = -o.yawDeg * DEG;
       pivot.rotation.x = o.pitchDeg * DEG;
       pivot.add(mesh);
-      scene.add(pivot);
+      opScene.add(pivot);
       return { mesh, mat, geo, pivot, w, h, frame: "base" as OperatorFrame, nextBlink: 0, blinkUntil: 0, talkUntil: 0, mouth: 0, nextMouth: 0 };
     });
     // where each operator is in the room (m, seen from above) and how high its middle is
@@ -847,8 +893,12 @@ export default function VideoWalk() {
           a.pivot.rotation.y = -(v.yaw + opFix[i].yaw) * DEG;
           a.pivot.rotation.x = (v.pitch + opFix[i].pitch) * DEG;
           a.mesh.scale.setScalar((Math.hypot(OPERATOR_DIST_M, opWorld[i].y - CAM_HEIGHT_M) / v.range) * opFix[i].size);
-          // far away they fade; right next to them too (a flat picture cannot be walked around)
-          if (!atDesk) show = Math.max(0, Math.min(1, (OPERATOR_FADE_M[1] - v.dist) / (OPERATOR_FADE_M[1] - OPERATOR_FADE_M[0]), (v.dist - OPERATOR_NEAR_M[0]) / (OPERATOR_NEAR_M[1] - OPERATOR_NEAR_M[0])));
+          // they fade as the camera leaves the desk stop
+          if (!atDesk) {
+            const c = posAt(tNow, track);
+            const off = Math.hypot(c.x - opDesk.x, c.z - opDesk.z);
+            show = Math.max(0, Math.min(1, (OPERATOR_FADE_M[1] - off) / (OPERATOR_FADE_M[1] - OPERATOR_FADE_M[0])));
+          }
         } else show = a.mat.opacity > 0.5 ? 1 : 0; // a change of video: stay as they are
         a.mat.opacity = easeToward(a.mat.opacity, show, dt, show > a.mat.opacity ? 380 : 260);
         a.mesh.visible = a.mat.opacity > 0.01;
@@ -923,8 +973,8 @@ export default function VideoWalk() {
         if (!el) continue;
         const v = views[i];
         const near = hide.rackId === RACK_LABELS[i].rack.id || v.distM < 0.9;
-        // full near by; farther off a faint name stays (David 2026-11-11: "at least faintly"), gone by 9.5 m
-        const alpha = show && !near ? Math.max(Math.min(1, Math.max(0, (4.2 - v.distM) / 1.2)), 0.45 * Math.min(1, Math.max(0, (9.5 - v.distM) / 2))) : 0;
+        // full near by; farther off a faint name stays (David 2026-11-11: "at least faintly"), gone by 7.5 m
+        const alpha = show && !near ? Math.max(Math.min(1, Math.max(0, (4.2 - v.distM) / 1.2)), 0.42 * Math.min(1, Math.max(0, (7.5 - v.distM) / 1.5))) : 0;
         const y = v.yawDeg * DEG;
         const pch = v.pitchDeg * DEG;
         v3.set(Math.cos(pch) * Math.sin(y), Math.sin(pch), -Math.cos(pch) * Math.cos(y)).multiplyScalar(10);
@@ -1799,6 +1849,9 @@ export default function VideoWalk() {
         freezeFrame();
       }
       drawFrozen(now);
+      renderer.autoClear = false;
+      renderer.render(opScene, camera);
+      renderer.autoClear = true;
       personU.value = personYawAt(fwdTime()) / 360 + 0.5;
       updateStill(dt);
       updateOperators(now, dt);
@@ -1866,6 +1919,7 @@ export default function VideoWalk() {
       window.removeEventListener("maika:chat-typing", onTyping);
       greetTimers.forEach((id) => window.clearTimeout(id));
       ops.forEach((a) => {
+        a.mat.alphaMap?.dispose();
         a.mat.dispose();
         a.geo.dispose();
       });
