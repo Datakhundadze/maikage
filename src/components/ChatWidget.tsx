@@ -493,7 +493,7 @@ export default function ChatWidget() {
   // ── Open: panel (desktop card bottom-right; mobile full-width bottom sheet) ──
   return (
     <div
-      className="fixed z-50 inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-6 sm:right-6 flex flex-col w-full sm:w-[360px] h-[80vh] sm:h-auto sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden"
+      className="maika-chat-panel fixed z-50 inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-6 sm:right-6 flex flex-col w-full sm:w-[360px] h-[80vh] sm:h-auto sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden"
       role="dialog"
       aria-label={t(lang, "chat.title")}
     >

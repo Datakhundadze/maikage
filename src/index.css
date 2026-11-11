@@ -195,3 +195,11 @@ html.maika-from-showroom aside.bg-sidebar {
 html.maika-from-showroom main.bg-background {
   background-color: hsl(var(--background) / 0.28);
 }
+
+/* /showroom photo designer (RackPhotoDesigner, a z-100 overlay): its "ჩატი"
+   button opens the site chat — the open panel must come over that overlay.
+   Only while the designer is on screen, and only the open panel (not the
+   round chat button). */
+html.maika-chat-over .maika-chat-panel {
+  z-index: 150;
+}

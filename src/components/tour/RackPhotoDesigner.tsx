@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, ImagePlus, Printer, RefreshCw, Trash2, Type, X } from "lucide-react";
+import { ArrowRight, ImagePlus, MessageCircle, Printer, RefreshCw, Trash2, Type, X } from "lucide-react";
 import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnimation";
 import { BRAND_COLORS, COLORS } from "@/lib/catalog";
 import type { ConstructorSeed } from "@/lib/constructorSeed";
@@ -139,6 +139,12 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
       off = true;
     };
   }, [design.font, design.text]);
+
+  // the site chat may open over this overlay while it is on screen (index.css)
+  useEffect(() => {
+    document.documentElement.classList.add("maika-chat-over");
+    return () => document.documentElement.classList.remove("maika-chat-over");
+  }, []);
 
   const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -340,11 +346,15 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
           )}
           {!textOpen && (
             <div className="flex items-center justify-center gap-1.5">
-              <button type="button" onClick={() => fileRef.current?.click()} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold ${glass}`}>
+              <button type="button" onClick={() => fileRef.current?.click()} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
                 <ImagePlus className="h-4 w-4" aria-hidden /> ფოტო
               </button>
-              <button type="button" onClick={() => setTextOpen(true)} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold ${glass}`}>
+              <button type="button" onClick={() => setTextOpen(true)} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
                 <Type className="h-4 w-4" aria-hidden /> წარწერა
+              </button>
+              {/* the site's own chat, opened over this view (the operators answer there) */}
+              <button type="button" onClick={() => window.dispatchEvent(new Event("maika:open-chat"))} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
+                <MessageCircle className="h-4 w-4" aria-hidden /> ჩატი
               </button>
               {has && (
                 <button type="button" onClick={() => setDesign(emptyDesign())} aria-label="პრინტის წაშლა" className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${glass}`}>
