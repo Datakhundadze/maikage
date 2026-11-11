@@ -38,6 +38,10 @@ export const HUB_CFG = {
   swap: 3,
   /** a change to the desk from somewhere else (the picture changes place) */
   toDesk: 18,
+  /** A rack may also be looked at from another moment of the take filmed within this many metres of its stop… */
+  altStopM: 1.2,
+  /** …at this cost per metre off the stop (so the stop itself wins when it is about as near). */
+  altStopPerM: 8,
 } as const;
 
 function walkCost(a: number, b: number, track: WalkTrack, cfg = HUB_CFG): number {
@@ -53,7 +57,7 @@ function walkCost(a: number, b: number, track: WalkTrack, cfg = HUB_CFG): number
 }
 
 /** Other moments of the take filmed within `r` m of where the camera stood at `from` (closest of each pass). */
-export function sameSpotMoments(from: number, track: WalkTrack = WALK_TRACK, r = HUB_CFG.sameSpotM): { t: number; d: number }[] {
+export function sameSpotMoments(from: number, track: WalkTrack = WALK_TRACK, r: number = HUB_CFG.sameSpotM): { t: number; d: number }[] {
   const here = posAt(from, track);
   const end = Math.min(track.duration, track.loop.from);
   const out: { t: number; d: number }[] = [];
@@ -83,19 +87,39 @@ function yawShiftBetween(a: number, b: number, track: WalkTrack): number {
   return da && db ? db.yawOffDeg - da.yawOffDeg : 0;
 }
 
+/** A moment a walk may end at, and what ending there costs (s of video) on top of the walk. */
+export interface StopChoice {
+  t: number;
+  cost: number;
+}
+
+/**
+ * Where a rack can be looked at from (David 2026-11-11: "sometimes it picks a
+ * very long way — find the best ways between the racks"): its own stop, and
+ * the nearest moment of every other pass of the take that came within
+ * cfg.altStopM of that stop. Two racks a step apart were often filmed minutes
+ * apart, so walking to the stop itself meant a long loop through the shop;
+ * from a moment filmed right beside it the rack is just as near — the view
+ * turns to it from there (the caller aims at the rack, not along the stop's yaw).
+ */
+export function stopChoices(stopT: number, track: WalkTrack = WALK_TRACK, cfg = HUB_CFG): StopChoice[] {
+  return [{ t: stopT, cost: 0 }, ...sameSpotMoments(stopT, track, cfg.altStopM).map((m) => ({ t: m.t, cost: m.d * cfg.altStopPerM }))];
+}
+
 /**
  * The route from forward time `from` to the cheapest of `tos`: an optional
  * change of video first (standing), then one walk. Null when nothing reaches.
  */
-export function planHubRoute(from: number, tos: readonly number[], track: WalkTrack = WALK_TRACK, cfg = HUB_CFG): RouteStep[] | null {
+export function planHubRoute(from: number, tos: readonly (number | StopChoice)[], track: WalkTrack = WALK_TRACK, cfg = HUB_CFG): RouteStep[] | null {
   const starts: { t: number; cost: number }[] = [{ t: from, cost: 0 }];
   for (const m of sameSpotMoments(from, track, cfg.sameSpotM)) starts.push({ t: m.t, cost: cfg.swap + m.d * cfg.shiftPerM });
   const atDesk = deskMomentAt(from) !== null;
   for (const d of DESK_TS) if (Math.abs(d - from) > 0.05) starts.push({ t: d, cost: cfg.swap + (atDesk ? 0 : cfg.toDesk) });
   let best: { s: number; to: number; cost: number } | null = null;
   for (const s of starts)
-    for (const to of tos) {
-      const c = s.cost + walkCost(s.t, to, track, cfg);
+    for (const choice of tos) {
+      const to = typeof choice === "number" ? choice : choice.t;
+      const c = s.cost + walkCost(s.t, to, track, cfg) + (typeof choice === "number" ? 0 : choice.cost);
       if (c < Infinity && (!best || c < best.cost)) best = { s: s.t, to, cost: c };
     }
   if (!best) return null;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DESK_TS, deskMomentAt, planHubRoute } from "./hubRoute";
+import { DESK_TS, deskMomentAt, HUB_CFG, planHubRoute, stopChoices } from "./hubRoute";
 import { posAt } from "./rackLabels";
 import { SHOWROOM_RACKS } from "./showroomRacks";
 import { WALK_TRACK } from "./walkTrack";
@@ -65,5 +65,25 @@ describe("hub routes", () => {
 
   it("the entrance walks straight to the desk", () => {
     expect(planHubRoute(WALK_TRACK.start, DESK_TS)).toEqual([{ kind: "walk", dir: "fwd", until: 8 }]);
+  });
+
+  it("a rack may be reached beside its stop: never more than 1.2 m off, and no walk between racks is longer than 46 s of video", () => {
+    const places = [...DESK_TS, ...SHOWROOM_RACKS.map((r) => r.stop.t)];
+    let longOnes = 0;
+    for (const from of places)
+      for (const r of SHOWROOM_RACKS) {
+        const steps = planHubRoute(from, stopChoices(r.stop.t))!;
+        expect(steps).not.toBeNull();
+        expect(steps.filter((s) => s.kind === "hop").length).toBeLessThanOrEqual(1);
+        if (steps.length === 2) expect(steps[0].kind).toBe("hop");
+        const w = walkSec(from, steps);
+        const a = posAt(w.end);
+        const b = posAt(r.stop.t);
+        expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeLessThanOrEqual(HUB_CFG.altStopM + 0.01);
+        expect(w.sec).toBeLessThan(46);
+        if (w.sec >= 30) longOnes++;
+      }
+    // only the far corner (NIKE, Khundadze) is left; with the stops alone 28 pairs were over 40 s
+    expect(longOnes).toBeLessThanOrEqual(12);
   });
 });

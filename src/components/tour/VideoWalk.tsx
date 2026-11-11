@@ -52,7 +52,7 @@ import { personYawAt } from "@/lib/tour/personYaw";
 import { CAM_HEIGHT_M, labelView, posAt, rackLabels } from "@/lib/tour/rackLabels";
 import { cachedMbps, measureMbps, partBase, pickTier, type VideoTier } from "@/lib/tour/videoTier";
 import { reached, routeJumps, type RouteStep } from "@/lib/tour/autoWalk";
-import { DESK_TS, deskMomentAt, planHubRoute } from "@/lib/tour/hubRoute";
+import { DESK_TS, deskMomentAt, planHubRoute, stopChoices } from "@/lib/tour/hubRoute";
 
 /** A place to walk to: a rack (its sheet opens on arrival) or the entrance. */
 interface WalkDest {
@@ -921,7 +921,8 @@ export default function VideoWalk() {
         if (!el) continue;
         const v = views[i];
         const near = hide.rackId === RACK_LABELS[i].rack.id || v.distM < 0.9;
-        const alpha = show && !near ? Math.min(1, Math.max(0, (4.2 - v.distM) / 1.2)) : 0;
+        // full near by; farther off a faint name stays (David 2026-11-11: "at least faintly"), gone by 9.5 m
+        const alpha = show && !near ? Math.max(Math.min(1, Math.max(0, (4.2 - v.distM) / 1.2)), 0.45 * Math.min(1, Math.max(0, (9.5 - v.distM) / 2))) : 0;
         const y = v.yawDeg * DEG;
         const pch = v.pitchDeg * DEG;
         v3.set(Math.cos(pch) * Math.sin(y), Math.sin(pch), -Math.cos(pch) * Math.cos(y)).multiplyScalar(10);
@@ -1547,7 +1548,8 @@ export default function VideoWalk() {
       unlockRef.current();
       if (!ready) return;
       // one change of video at most, standing; then one unbroken walk (hubRoute.ts)
-      const steps = planHubRoute(fwdTime(), d.operator ? DESK_TS : [d.t], track);
+      // a rack may be reached at any moment filmed right beside its stop: the shortest way wins
+      const steps = planHubRoute(fwdTime(), d.operator ? DESK_TS : d.rack ? stopChoices(d.t, track) : [d.t], track);
       if (!steps) return;
       route = steps;
       routeIdx = 0;
@@ -1603,6 +1605,9 @@ export default function VideoWalk() {
         // wide screens: the card is a panel on the right — look a little to the
         // right of the rack so it sits in the middle of the free left part
         let yaw = routeDest.yawDeg;
+        // stopped beside the rack's own stop (another pass of the take): aim at the rack from here
+        const lbl = routeDest.rack && Math.abs(fwdTime() - routeDest.t) > 0.3 ? RACK_LABELS.find((l) => l.rack.id === routeDest?.rack?.id) : undefined;
+        if (lbl) yaw = labelView(lbl, fwdTime(), track).yawDeg;
         if (routeDest.rack && window.matchMedia(RACK_CARD_WIDE_QUERY).matches) {
           const w = host.clientWidth;
           const h = host.clientHeight;
