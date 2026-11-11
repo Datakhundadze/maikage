@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ImagePlus, Printer, RefreshCw, Trash2, Type, X } from "lucide-react";
+import { ArrowRight, ImagePlus, Printer, RefreshCw, Trash2, Type, X } from "lucide-react";
 import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnimation";
 import { BRAND_COLORS, COLORS } from "@/lib/catalog";
-import { AREA, drawGarment, garmentFilm, garmentScratch, H, loadImg, loadSide, W, type GarmentDesign, type GarmentScratch, type Side, type SideLayers } from "@/lib/tour/garmentPhoto";
+import type { ConstructorSeed } from "@/lib/constructorSeed";
+import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
+import { AREA, COLOR_PHOTO, drawGarment, garmentFilm, garmentScratch, H, loadImg, loadSide, W, type GarmentDesign, type GarmentScratch, type Side, type SideLayers } from "@/lib/tour/garmentPhoto";
 
 // The rack's large photo as the place to design (David 2026-11-10/11: "the
 // upload frame on this same photo… and the tools right there around it:
@@ -31,7 +33,21 @@ const FONTS = [
   { name: "Pacifico", family: "'Pacifico', cursive" },
   { name: "Dancing", family: "'Dancing Script', cursive" },
 ];
-const TEXT_COLORS: (string | null)[] = [null, "#141414", "#f6f6f6", "#e11d48", "#f59e0b", "#2563eb", "#16a34a"];
+// text colours: the constructor's own palette (so the order carries the same colour); null = automatic
+const TEXT_COLORS: (string | null)[] = [null, ...PALETTE.slice(0, 7).map((c) => c.hex)];
+
+/** The uploaded photo as a data URL small enough for the handoff (localStorage): longest side ≤ max px. */
+function photoDataUrl(img: HTMLImageElement, max: number): string {
+  const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement("canvas");
+  c.width = Math.round(img.naturalWidth * k);
+  c.height = Math.round(img.naturalHeight * k);
+  const g = c.getContext("2d")!;
+  g.drawImage(img, 0, 0, c.width, c.height);
+  // keep transparency when the picture has any (a corner is enough to tell a cut-out)
+  const d = g.getImageData(0, 0, 1, 1).data;
+  return d[3] < 250 ? c.toDataURL("image/png") : c.toDataURL("image/jpeg", 0.92);
+}
 const hexOf = (name: string) => COLORS.find((c) => c.name === name)?.hex ?? "#FFFFFF";
 const emptyDesign = (): GarmentDesign => ({ img: null, text: "", font: FONTS[0].family, textColor: null, x: 0.5, y: 0.4, scale: 0.8 });
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
@@ -42,9 +58,16 @@ interface Props {
   brand: string;
   /** CSS width of the photo — the same as the plain large view, so nothing jumps. */
   width: string;
+  /**
+   * "შეკვეთა": hand the design to the site's constructor (colour, side, photo,
+   * text) — the caller writes the seed and opens it. Returns false when the
+   * browser refused to store it (photo too big); the designer then retries
+   * with a smaller photo.
+   */
+  onOrder: (seed: ConstructorSeed) => boolean;
 }
 
-export default function RackPhotoDesigner({ alt, brand, width }: Props) {
+export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const layers = useRef<Partial<Record<Side, SideLayers>>>({});
@@ -59,10 +82,31 @@ export default function RackPhotoDesigner({ alt, brand, width }: Props) {
   const [fontTick, setFontTick] = useState(0);
   const [film, setFilm] = useState<Omit<PrintAnimationProps, "onDone" | "onSkip"> | null>(null);
   const [printed, setPrinted] = useState(false);
+  const [orderFailed, setOrderFailed] = useState(false);
   const design = designs[side];
   const setDesign = useCallback((patch: Partial<GarmentDesign>) => setDesigns((d) => ({ ...d, [side]: { ...d[side], ...patch } })), [side]);
   const has = !!design.img || !!design.text;
+  // any change after the film: print again before ordering
+  useEffect(() => {
+    setPrinted(false);
+    setOrderFailed(false);
+  }, [design, color, side]);
   const recolor = color !== "White";
+  // a ready photo of this colour and side, once it has loaded
+  const [basePhotos, setBasePhotos] = useState<Record<string, HTMLImageElement>>({});
+  const baseKey = `${color}|${side}`;
+  const baseSrc = COLOR_PHOTO[color]?.[side];
+  const base = baseSrc ? (basePhotos[baseKey] ?? null) : null;
+  useEffect(() => {
+    if (!baseSrc || basePhotos[baseKey]) return;
+    let off = false;
+    void loadImg(baseSrc).then((img) => {
+      if (!off) setBasePhotos((m) => ({ ...m, [baseKey]: img }));
+    });
+    return () => {
+      off = true;
+    };
+  }, [baseSrc, baseKey, basePhotos]);
 
   useEffect(() => {
     let off = false;
@@ -81,8 +125,8 @@ export default function RackPhotoDesigner({ alt, brand, width }: Props) {
     const L = layers.current[side];
     const g = ref.current?.getContext("2d");
     if (!ready || !L || !g || !scratch.current) return;
-    drawGarment(g, L, side, hexOf(color), recolor, design, scratch.current);
-  }, [ready, side, color, recolor, design, fontTick]);
+    drawGarment(g, L, side, hexOf(color), recolor, design, scratch.current, base);
+  }, [ready, side, color, recolor, design, fontTick, base]);
 
   // a web font is only there once it has been asked for: draw again when it arrives
   useEffect(() => {
@@ -140,8 +184,24 @@ export default function RackPhotoDesigner({ alt, brand, width }: Props) {
   const startPrint = () => {
     const L = layers.current[side];
     if (!L || !scratch.current) return;
-    const f = garmentFilm(L, side, recolor, scratch.current);
+    const f = garmentFilm(L, side, recolor, scratch.current, base);
     if (f) setFilm(f);
+  };
+
+  // the order: the same handoff the site chat uses — the constructor opens with
+  // this colour, side, photo and text on the garment; price, order form and
+  // payment are the constructor's own, untouched
+  const order = () => {
+    const base: ConstructorSeed = {
+      color,
+      side,
+      ...(design.text.trim() ? { text: design.text.trim() } : {}),
+      ...(design.textColor ? { textColor: PALETTE.find((c) => c.hex === design.textColor)?.name } : {}),
+    };
+    for (const max of design.img ? [2400, 1600, 1100] : [0]) {
+      if (onOrder(design.img ? { ...base, image: photoDataUrl(design.img, max) } : base)) return;
+    }
+    setOrderFailed(true);
   };
 
   const A = AREA[side];
@@ -297,16 +357,38 @@ export default function RackPhotoDesigner({ alt, brand, width }: Props) {
       </div>
 
       <p className="mt-3 text-center text-xs text-white/70">
-        {printed ? "ნიმუშია — შეკვეთისთვის დახურე და დააჭირე „არჩევა“" : has ? "თითით გადაადგილე პრინტი · ნიმუშია, შეკვეთა აქედან ჯერ არ ფორმდება" : "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ მაისურზე"}
+        {orderFailed
+          ? "ფოტო ძალიან დიდია გადასაცემად — დახურე და დააჭირე „არჩევა“, იქ ატვირთე"
+          : printed
+            ? "მზადაა! „შეკვეთა“ გახსნის შეკვეთის გვერდს ამ დიზაინით"
+            : has
+              ? "თითით გადაადგილე პრინტი, მერე დააჭირე „ბეჭდვა“"
+              : "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ მაისურზე"}
       </p>
-      <button
-        type="button"
-        disabled={!has}
-        onClick={startPrint}
-        className="mt-3 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-8 text-base font-bold text-black transition-opacity hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-45"
-      >
-        <Printer className="h-5 w-5" aria-hidden /> ბეჭდვა
-      </button>
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          disabled={!has}
+          onClick={startPrint}
+          className={
+            printed
+              ? "inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/25 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              : "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-8 text-base font-bold text-black transition-opacity hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-45"
+          }
+          aria-label={printed ? "ბეჭდვის ანიმაცია ხელახლა" : undefined}
+        >
+          <Printer className="h-5 w-5" aria-hidden /> {!printed && "ბეჭდვა"}
+        </button>
+        {printed && has && (
+          <button
+            type="button"
+            onClick={order}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-8 text-base font-bold text-black hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            შეკვეთა <ArrowRight className="h-5 w-5" aria-hidden />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

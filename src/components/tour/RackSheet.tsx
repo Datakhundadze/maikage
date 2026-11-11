@@ -5,6 +5,7 @@ import { ArrowRight, Search, X } from "lucide-react";
 import MagnifierLens from "@/components/MagnifierLens";
 import RackPhotoDesigner from "@/components/tour/RackPhotoDesigner";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
+import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 import { fromPrice } from "@/lib/landingPrice";
 import { RACK_CARD_WIDE_PX, rackItemName, rackLandingPath, rackPhoto } from "@/lib/tour/rackItem";
 import type { RackItem, ShowroomRack } from "@/lib/tour/showroomRacks";
@@ -185,7 +186,17 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
             </button>
             {designable && designing ? (
               // the one rack with a garment mask: the upload frame right on the photo
-              <RackPhotoDesigner alt={heading} brand={item?.brand ?? ""} width={bigWidth} />
+              <RackPhotoDesigner
+                alt={heading}
+                brand={item?.brand ?? ""}
+                width={bigWidth}
+                onOrder={(seed) => {
+                  // the site chat's own handoff: one seed, then the constructor ("/?constructor=1")
+                  if (!item || !writeConstructorSeed({ ...seed, product: item.product, subProduct: item.brand })) return false;
+                  openPage(CONSTRUCTOR_URL);
+                  return true;
+                }}
+              />
             ) : (
               <>
               <div

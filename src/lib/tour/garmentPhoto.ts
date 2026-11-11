@@ -90,6 +90,16 @@ export function lum(hex: string): number {
   return (0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255)) / 255;
 }
 
+/**
+ * Ready photos of the garment in a colour other than the photographed white:
+ * the same photo with the cloth re-toned (collar, seams and folds kept, made
+ * offline 2026-11-11) — looks like cloth, where the on-the-fly tint looked
+ * like a flat shape. Colours not listed here are tinted on the canvas.
+ */
+export const COLOR_PHOTO: Record<string, Record<Side, string>> = {
+  Black: { front: "/tour/lab/oversize-front-black.webp", back: "/tour/lab/oversize-back-black.webp" },
+};
+
 // ── drawing a designed garment (RackPhotoDesigner) ──────────────────────────
 
 export interface GarmentDesign {
@@ -115,13 +125,14 @@ export const garmentScratch = (): GarmentScratch => ({ a: canvas(), b: canvas(),
 /**
  * The photo with the garment in `hex` and the design on it. `recolor` false =
  * the photo's own (white) garment. Leaves the recoloured garment in s.a and
- * the print layer in s.b for garmentFilm().
+ * the print layer in s.b for garmentFilm(). `base` = a ready photo of the
+ * garment in that colour (COLOR_PHOTO), used instead of recolouring.
  */
-export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, side: Side, hex: string, recolor: boolean, d: GarmentDesign, s: GarmentScratch): void {
+export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, side: Side, hex: string, recolor: boolean, d: GarmentDesign, s: GarmentScratch, base?: HTMLImageElement | null): void {
   g.globalCompositeOperation = "source-over";
   g.globalAlpha = 1;
-  g.drawImage(L.photo, 0, 0, W, H);
-  if (recolor) {
+  g.drawImage(base ?? L.photo, 0, 0, W, H);
+  if (recolor && !base) {
     const a = s.a.getContext("2d")!;
     a.globalCompositeOperation = "source-over";
     a.globalAlpha = 1;
@@ -173,7 +184,7 @@ export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, side: Si
 }
 
 /** The four pictures the print film needs, from what drawGarment() left in the scratch canvases; null = nothing printed. */
-export function garmentFilm(L: SideLayers, side: Side, recolor: boolean, s: GarmentScratch): { designSrc: string; garmentBlankSrc: string; garmentPrintedSrc: string; printLayerSrc: string } | null {
+export function garmentFilm(L: SideLayers, side: Side, recolor: boolean, s: GarmentScratch, base?: HTMLImageElement | null): { designSrc: string; garmentBlankSrc: string; garmentPrintedSrc: string; printLayerSrc: string } | null {
   const B = BOX[side];
   const crop = (src: HTMLCanvasElement, x = B.x, y = B.y, w = B.w, h = B.h) => {
     const c = canvas(w, h);
@@ -196,8 +207,8 @@ export function garmentFilm(L: SideLayers, side: Side, recolor: boolean, s: Garm
   if (x1 <= x0 || y1 <= y0) return null;
   const garment = canvas();
   const g = garment.getContext("2d")!;
-  g.drawImage(L.photo, 0, 0, W, H);
-  if (recolor) g.drawImage(s.a, 0, 0);
+  g.drawImage(base ?? L.photo, 0, 0, W, H);
+  if (recolor && !base) g.drawImage(s.a, 0, 0);
   g.globalCompositeOperation = "destination-in";
   g.drawImage(L.mask, 0, 0);
   const blank = crop(garment);
