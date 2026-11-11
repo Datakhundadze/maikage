@@ -51,6 +51,7 @@ function photoDataUrl(img: HTMLImageElement, max: number): string {
 }
 const hexOf = (name: string) => COLORS.find((c) => c.name === name)?.hex ?? "#FFFFFF";
 const emptyDesign = (): GarmentDesign => ({ img: null, text: "", font: FONTS[0].family, textColor: null, x: 0.5, y: 0.4, scale: 0.8 });
+const WHOLE = { x: 0, y: 0, w: W, h: H };
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
 interface Props {
@@ -95,7 +96,7 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
     setOrderFailed(false);
   }, [design, color, side]);
   const recolor = color !== "White";
-  const A = garment.sides[side]?.area ?? { x: 0, y: 0, w: W, h: H };
+  const A = garment.sides[side]?.area ?? WHOLE;
   const canFlip = !!garment.sides.front && !!garment.sides.back;
   // a ready photo of this colour and side, once it has loaded
   const [basePhotos, setBasePhotos] = useState<Record<string, HTMLImageElement>>({});
@@ -197,7 +198,7 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
   const startPrint = () => {
     const L = layers.current[side];
     if (!L || !scratch.current) return;
-    const f = garmentFilm(L, garment.sides[side]?.box ?? { x: 0, y: 0, w: W, h: H }, recolor, scratch.current, base);
+    const f = garmentFilm(L, garment.sides[side]?.box ?? WHOLE, recolor, scratch.current, base);
     if (f) setFilm(f);
   };
 
