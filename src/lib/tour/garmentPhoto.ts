@@ -41,8 +41,8 @@ export const canvas = (w = W, h = H) => {
   return c;
 };
 
-export async function loadSide(side: Side): Promise<SideLayers> {
-  const [photo, maskImg] = await Promise.all([loadImg(SRC[side].photo), loadImg(SRC[side].mask)]);
+export async function loadSide(side: Side, src: { photo: string; mask: string } = SRC[side]): Promise<SideLayers> {
+  const [photo, maskImg] = await Promise.all([loadImg(src.photo), loadImg(src.mask)]);
   // mask file is a grey picture → alpha
   const mask = canvas();
   const mg = mask.getContext("2d", { willReadFrequently: true })!;
@@ -90,14 +90,82 @@ export function lum(hex: string): number {
   return (0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255)) / 255;
 }
 
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+/** One side of a garment on its rack photo: the photo with the garment WHITE, its mask, where a print sits, the garment's box. */
+export interface GarmentSide {
+  photo: string;
+  mask: string;
+  area: Rect;
+  box: Rect;
+}
 /**
- * Ready photos of the garment in a colour other than the photographed white:
- * the same photo with the cloth re-toned (collar, seams and folds kept, made
- * offline 2026-11-11) — looks like cloth, where the on-the-fly tint looked
- * like a flat shape. Colours not listed here are tinted on the canvas.
+ * A rack's garment that can be designed on its photo (RackPhotoDesigner).
+ * Every side's photo shows the garment in white: colours are tinted from it
+ * on the canvas with the cloth's own folds. `colorPhoto` = ready photos for
+ * colours that look better photographed than tinted (black above all).
+ *
+ * Where the rack photo shows a dark garment (GIORDANO, the washed tee, the
+ * GILDAN hoodie) the white photo was made offline from it (2026-11-11: mask
+ * by GrabCut, the cloth's light taken from the dark cloth and compressed,
+ * print area and box from the mask's bounds), and the rack photo itself is
+ * the ready photo of that colour.
  */
-export const COLOR_PHOTO: Record<string, Record<Side, string>> = {
-  Black: { front: "/tour/lab/oversize-front-black.webp", back: "/tour/lab/oversize-back-black.webp" },
+export interface GarmentSpec {
+  sides: Partial<Record<Side, GarmentSide>>;
+  colorPhoto?: Record<string, Partial<Record<Side, string>>>;
+  /** The colour the designer opens in (the one on the rack photo); default: the brand's first. */
+  start?: string;
+}
+export const GARMENTS: Record<string, GarmentSpec> = {
+  oversize: {
+    sides: {
+      front: { ...SRC.front, area: AREA.front, box: BOX.front },
+      back: { ...SRC.back, area: AREA.back, box: BOX.back },
+    },
+    // the same photo with the cloth re-toned (collar, seams, folds kept)
+    colorPhoto: { Black: { front: "/tour/lab/oversize-front-black.webp", back: "/tour/lab/oversize-back-black.webp" } },
+  },
+  giordano: {
+    sides: {
+      front: {
+        photo: "/tour/garments/giordano-front.webp",
+        mask: "/tour/garments/giordano-front-mask.png",
+        area: { x: 448, y: 588, w: 385, h: 461 },
+        box: { x: 187, y: 397, w: 898, h: 1004 },
+      },
+    },
+    colorPhoto: { Black: { front: "/tour/racks/giordano.webp" } },
+    start: "Black",
+  },
+  "washed-tee": {
+    sides: {
+      front: {
+        photo: "/tour/garments/washed-tee-front.webp",
+        mask: "/tour/garments/washed-tee-front-mask.png",
+        area: { x: 397, y: 533, w: 417, h: 533 },
+        box: { x: 116, y: 315, w: 970, h: 1155 },
+      },
+    },
+    colorPhoto: { Black: { front: "/tour/racks/washed-tee.webp" } },
+    start: "Black",
+  },
+  "gildan-hoodie": {
+    sides: {
+      front: {
+        photo: "/tour/garments/gildan-hoodie-front.webp",
+        mask: "/tour/garments/gildan-hoodie-front-mask.png",
+        area: { x: 408, y: 603, w: 384, h: 290 },
+        box: { x: 106, y: 267, w: 988, h: 1102 },
+      },
+    },
+    colorPhoto: { Black: { front: "/tour/racks/gildan-hoodie.webp" } },
+    start: "Black",
+  },
 };
 
 // ── drawing a designed garment (RackPhotoDesigner) ──────────────────────────
@@ -125,10 +193,11 @@ export const garmentScratch = (): GarmentScratch => ({ a: canvas(), b: canvas(),
 /**
  * The photo with the garment in `hex` and the design on it. `recolor` false =
  * the photo's own (white) garment. Leaves the recoloured garment in s.a and
- * the print layer in s.b for garmentFilm(). `base` = a ready photo of the
- * garment in that colour (COLOR_PHOTO), used instead of recolouring.
+ * the print layer in s.b for garmentFilm(). `A` = the print area. `base` = a
+ * ready photo of the garment in that colour (GarmentSpec.colorPhoto), used
+ * instead of recolouring.
  */
-export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, side: Side, hex: string, recolor: boolean, d: GarmentDesign, s: GarmentScratch, base?: HTMLImageElement | null): void {
+export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, A: Rect, hex: string, recolor: boolean, d: GarmentDesign, s: GarmentScratch, base?: HTMLImageElement | null): void {
   g.globalCompositeOperation = "source-over";
   g.globalAlpha = 1;
   g.drawImage(base ?? L.photo, 0, 0, W, H);
@@ -153,7 +222,6 @@ export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, side: Si
   b.globalAlpha = 1;
   b.clearRect(0, 0, W, H);
   if (!d.img && !d.text) return;
-  const A = AREA[side];
   const cx = A.x + d.x * A.w;
   const cy = A.y + d.y * A.h;
   const w = A.w * d.scale;
@@ -184,8 +252,7 @@ export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, side: Si
 }
 
 /** The four pictures the print film needs, from what drawGarment() left in the scratch canvases; null = nothing printed. */
-export function garmentFilm(L: SideLayers, side: Side, recolor: boolean, s: GarmentScratch, base?: HTMLImageElement | null): { designSrc: string; garmentBlankSrc: string; garmentPrintedSrc: string; printLayerSrc: string } | null {
-  const B = BOX[side];
+export function garmentFilm(L: SideLayers, B: Rect, recolor: boolean, s: GarmentScratch, base?: HTMLImageElement | null): { designSrc: string; garmentBlankSrc: string; garmentPrintedSrc: string; printLayerSrc: string } | null {
   const crop = (src: HTMLCanvasElement, x = B.x, y = B.y, w = B.w, h = B.h) => {
     const c = canvas(w, h);
     c.getContext("2d")!.drawImage(src, x, y, w, h, 0, 0, w, h);

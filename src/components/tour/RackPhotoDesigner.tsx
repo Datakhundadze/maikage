@@ -4,7 +4,7 @@ import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnim
 import { BRAND_COLORS, COLORS } from "@/lib/catalog";
 import type { ConstructorSeed } from "@/lib/constructorSeed";
 import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
-import { AREA, COLOR_PHOTO, drawGarment, garmentFilm, garmentScratch, H, loadImg, loadSide, W, type GarmentDesign, type GarmentScratch, type Side, type SideLayers } from "@/lib/tour/garmentPhoto";
+import { drawGarment, garmentFilm, garmentScratch, H, loadImg, loadSide, W, type GarmentDesign, type GarmentScratch, type GarmentSpec, type Side, type SideLayers } from "@/lib/tour/garmentPhoto";
 
 // The rack's large photo as the place to design (David 2026-11-10/11: "the
 // upload frame on this same photo… and the tools right there around it:
@@ -17,8 +17,9 @@ import { AREA, COLOR_PHOTO, drawGarment, garmentFilm, garmentScratch, H, loadImg
 //   drag = move the print, slider = its size, "ბეჭდვა" = the print film
 // LOOK ONLY: nothing is ordered, priced, saved or uploaded anywhere — the
 // photo never leaves the visitor's device. The order still goes through
-// "არჩევა" (the constructor). One rack for now (Oversize) — the only one with
-// a garment mask; its back photo is a stand-in made from the front.
+// "არჩევა" (the constructor). Racks listed in GARMENTS (garmentPhoto.ts):
+// Oversize (front + a stand-in back), GIORDANO, the washed tee and the GILDAN
+// hoodie (front only so far).
 
 // the constructor's own fonts (SimplePage FONT_GROUPS), the ones the site loads
 const FONTS = [
@@ -54,6 +55,8 @@ const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
 interface Props {
   alt: string;
+  /** The rack's garment: photos, masks, print areas (GARMENTS). */
+  garment: GarmentSpec;
   /** Catalog brand whose colours are offered (BRAND_COLORS). */
   brand: string;
   /** CSS width of the photo — the same as the plain large view, so nothing jumps. */
@@ -67,7 +70,7 @@ interface Props {
   onOrder: (seed: ConstructorSeed) => boolean;
 }
 
-export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props) {
+export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const layers = useRef<Partial<Record<Side, SideLayers>>>({});
@@ -76,7 +79,7 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
   const [ready, setReady] = useState(false);
   const [side, setSide] = useState<Side>("front");
   const [turn, setTurn] = useState(0);
-  const [color, setColor] = useState<string>(colors[0]);
+  const [color, setColor] = useState<string>(garment.start && (colors as readonly string[]).includes(garment.start) ? garment.start : colors[0]);
   const [designs, setDesigns] = useState<Record<Side, GarmentDesign>>({ front: emptyDesign(), back: emptyDesign() });
   const [textOpen, setTextOpen] = useState(false);
   const [fontTick, setFontTick] = useState(0);
@@ -92,10 +95,12 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
     setOrderFailed(false);
   }, [design, color, side]);
   const recolor = color !== "White";
+  const A = garment.sides[side]?.area ?? { x: 0, y: 0, w: W, h: H };
+  const canFlip = !!garment.sides.front && !!garment.sides.back;
   // a ready photo of this colour and side, once it has loaded
   const [basePhotos, setBasePhotos] = useState<Record<string, HTMLImageElement>>({});
   const baseKey = `${color}|${side}`;
-  const baseSrc = COLOR_PHOTO[color]?.[side];
+  const baseSrc = garment.colorPhoto?.[color]?.[side];
   const base = baseSrc ? (basePhotos[baseKey] ?? null) : null;
   useEffect(() => {
     if (!baseSrc || basePhotos[baseKey]) return;
@@ -111,22 +116,25 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
   useEffect(() => {
     let off = false;
     scratch.current = garmentScratch();
-    void Promise.all([loadSide("front"), loadSide("back")]).then(([f, b]) => {
+    const sides = (["front", "back"] as const).filter((sd) => garment.sides[sd]);
+    void Promise.all(sides.map((sd) => loadSide(sd, garment.sides[sd]))).then((ls) => {
       if (off) return;
-      layers.current = { front: f, back: b };
+      layers.current = Object.fromEntries(sides.map((sd, i) => [sd, ls[i]]));
       setReady(true);
     });
     return () => {
       off = true;
     };
-  }, []);
+  }, [garment]);
 
   useEffect(() => {
     const L = layers.current[side];
     const g = ref.current?.getContext("2d");
     if (!ready || !L || !g || !scratch.current) return;
-    drawGarment(g, L, side, hexOf(color), recolor, design, scratch.current, base);
-  }, [ready, side, color, recolor, design, fontTick, base]);
+    // a colour with its own photo that has not loaded yet: wait, do not flash the white one
+    if (baseSrc && !base) return;
+    drawGarment(g, L, A, hexOf(color), recolor, design, scratch.current, base);
+  }, [ready, side, color, recolor, design, fontTick, base, baseSrc, A]);
 
   // a web font is only there once it has been asked for: draw again when it arrives
   useEffect(() => {
@@ -156,7 +164,6 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
     const d = drag.current;
     if (!d) return;
     const k = W / e.currentTarget.getBoundingClientRect().width;
-    const A = AREA[side];
     setDesign({
       x: Math.min(1.1, Math.max(-0.1, d.x + ((e.clientX - d.px) * k) / A.w)),
       y: Math.min(1.1, Math.max(-0.1, d.y + ((e.clientY - d.py) * k) / A.h)),
@@ -190,7 +197,7 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
   const startPrint = () => {
     const L = layers.current[side];
     if (!L || !scratch.current) return;
-    const f = garmentFilm(L, side, recolor, scratch.current, base);
+    const f = garmentFilm(L, garment.sides[side]?.box ?? { x: 0, y: 0, w: W, h: H }, recolor, scratch.current, base);
     if (f) setFilm(f);
   };
 
@@ -210,7 +217,6 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
     setOrderFailed(true);
   };
 
-  const A = AREA[side];
   const glass = "bg-black/40 text-white ring-1 ring-white/30 backdrop-blur-md hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400";
 
   return (
@@ -261,7 +267,7 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
         )}
 
         {/* colours: the brand's own, as circles on the photo */}
-        <div className="absolute left-2 top-2 flex flex-col gap-2" role="radiogroup" aria-label="ფერი">
+        <div className={`absolute left-2 top-2 grid gap-2 ${colors.length > 8 ? "grid-cols-2" : "grid-cols-1"}`} role="radiogroup" aria-label="ფერი">
           {colors.map((name) => (
             <button
               key={name}
@@ -271,7 +277,7 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
               aria-label={name}
               title={name}
               onClick={() => setColor(name)}
-              className={`h-9 w-9 rounded-full shadow-[0_2px_8px_rgba(0,0,0,.55)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
+              className={`${colors.length > 5 ? "h-7 w-7" : "h-9 w-9"} rounded-full shadow-[0_2px_8px_rgba(0,0,0,.55)] transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${
                 color === name ? "scale-110 ring-2 ring-amber-400 ring-offset-2 ring-offset-black/30" : "ring-1 ring-white/60"
               }`}
               style={{ backgroundColor: hexOf(name) }}
@@ -280,9 +286,11 @@ export default function RackPhotoDesigner({ alt, brand, width, onOrder }: Props)
         </div>
 
         {/* the other side */}
-        <button type="button" onClick={flip} className={`absolute right-2 top-2 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold ${glass}`}>
-          <RefreshCw className="h-3.5 w-3.5" aria-hidden /> {side === "front" ? "ზურგი" : "წინა მხარე"}
-        </button>
+        {canFlip && (
+          <button type="button" onClick={flip} className={`absolute right-2 top-2 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold ${glass}`}>
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> {side === "front" ? "ზურგი" : "წინა მხარე"}
+          </button>
+        )}
 
         {/* tools along the bottom of the photo */}
         <div className="absolute inset-x-2 bottom-2 flex flex-col gap-1.5">

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Search, X } from "lucide-react";
 import MagnifierLens from "@/components/MagnifierLens";
 import RackPhotoDesigner from "@/components/tour/RackPhotoDesigner";
+import { GARMENTS } from "@/lib/tour/garmentPhoto";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 import { fromPrice } from "@/lib/landingPrice";
@@ -86,7 +87,8 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
   const label = item ? rack.title : "ყვითელი საკიდი";
   const heading = item ? item.name : rack.title;
   // design on the photo (look only): the rack whose photo has a garment mask
-  const designable = rack.id === "oversize";
+  const garment = GARMENTS[rack.id];
+  const designable = !!garment && !!item;
   // the large photo is the same size with and without the tools, so nothing jumps
   const bigWidth = `min(92vw, calc((100dvh - ${designable ? 11 : 7}rem) * 0.8))`;
 
@@ -188,6 +190,7 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
               // the one rack with a garment mask: the upload frame right on the photo
               <RackPhotoDesigner
                 alt={heading}
+                garment={garment}
                 brand={item?.brand ?? ""}
                 width={bigWidth}
                 onOrder={(seed) => {
