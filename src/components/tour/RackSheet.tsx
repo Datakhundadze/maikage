@@ -86,6 +86,8 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
   const heading = item ? item.name : rack.title;
   // design on the photo (look only): the rack whose photo has a garment mask
   const designable = rack.id === "oversize";
+  // the large photo is the same size with and without the tools, so nothing jumps
+  const bigWidth = `min(92vw, calc((100dvh - ${designable ? 11 : 7}rem) * 0.8))`;
 
   return (
     <>
@@ -183,12 +185,12 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
             </button>
             {designable && designing ? (
               // the one rack with a garment mask: the upload frame right on the photo
-              <RackPhotoDesigner alt={heading} />
+              <RackPhotoDesigner alt={heading} brand={item?.brand ?? ""} width={bigWidth} />
             ) : (
               <>
               <div
                 className="aspect-[4/5] overflow-hidden rounded-2xl shadow-2xl"
-                style={{ width: `min(92vw, calc((100dvh - ${designable ? 11 : 7}rem) * 0.8))` }}
+                style={{ width: bigWidth }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <MagnifierLens active zoomSrc={photo}>
