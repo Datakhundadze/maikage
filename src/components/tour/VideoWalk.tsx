@@ -452,6 +452,8 @@ export default function VideoWalk() {
 
   const enter = useCallback(() => {
     setEntered(true);
+    // this tap is the one and only "come in": no second button after it
+    setNeedsTap(false);
     if (soundOnRef.current) ensureAudio();
     // the tap is a user gesture: play the start video once so iPhone shows a picture
     startRef.current();
@@ -1910,16 +1912,14 @@ export default function VideoWalk() {
             <img src="/tour/operators/boy-base.webp" alt="" width={112} height={168} className="h-36 w-auto drop-shadow-[0_10px_24px_rgba(0,0,0,.6)]" />
             <img src="/tour/operators/girl-base.webp" alt="" width={112} height={168} className="h-36 w-auto drop-shadow-[0_10px_24px_rgba(0,0,0,.6)]" />
           </div>
-          <div>
-            <h2 className="text-2xl font-extrabold">maika.ge შოურუმი</h2>
-            <p className="mt-1 text-sm text-white/70">ოპერატორები გელოდებიან</p>
-          </div>
+          <h2 className="text-2xl font-extrabold">maika.ge შოურუმი</h2>
+          {/* the only button on the way in (David 2026-11-11) */}
           <button
             type="button"
             onClick={enter}
-            className="rounded-full bg-amber-400 px-8 py-3.5 text-base font-bold text-black shadow-[0_10px_30px_-8px_rgba(251,191,36,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="rounded-full bg-amber-400 px-10 py-4 text-lg font-bold text-black shadow-[0_10px_30px_-8px_rgba(251,191,36,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            შემოდით
+            მობრძანდით
           </button>
         </div>
       )}

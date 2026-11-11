@@ -172,7 +172,15 @@ export function createAmbientMusic(volume = 0.05): AmbientMusic | null {
   let running = false;
   return {
     async start() {
-      if (running) return;
+      if (running) {
+        // The first start can come from a touch that iPhone does not count as
+        // "the visitor's gesture" (pointerdown): the context then stays
+        // suspended and the music silent until sound was switched off and on
+        // again (David 2026-11-11). Every later call — the entry button's
+        // click is one — wakes it.
+        if (ctx.state !== "running") void ctx.resume().catch(() => {});
+        return;
+      }
       running = true;
       await ctx.resume().catch(() => {});
       startAt = ctx.currentTime + 0.1;
