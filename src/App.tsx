@@ -13,6 +13,7 @@ import { RouteChangeTracker } from "@/components/RouteChangeTracker";
 import { AttributionTracker } from "@/components/AttributionTracker";
 import { LANDING_PRODUCT_SLUGS } from "@/lib/productRouteSlugs";
 import { SERVICE_PAGE_SLUGS } from "@/lib/serviceRouteSlugs";
+import { EN_ROUTE_PATHS } from "@/lib/enRoutePaths";
 import { ChunkErrorBoundary, lazyWithRetry } from "@/lib/lazyWithRetry";
 import ReviewRedirectPage from "./pages/ReviewRedirectPage";
 
@@ -45,6 +46,7 @@ const ProductLandingPage = lazyWithRetry(() => import("./pages/ProductLandingPag
 const ShowroomLabPage = lazyWithRetry(() => import("./pages/ShowroomLabPage"));
 const ShowroomPage = lazyWithRetry(() => import("./pages/ShowroomPage"));
 const ServicePage = lazyWithRetry(() => import("./pages/ServicePage"));
+const EnPage = lazyWithRetry(() => import("./pages/EnPage"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 // Sitewide FAQ chat bubble — lazy so it never lands in the initial bundle.
 // Mounted once below (inside BrowserRouter) so it shows on every route; the
@@ -155,6 +157,10 @@ function AppRoutes() {
           text pages for search; copy in lib/serviceCopy.ts, prerendered. */}
       {SERVICE_PAGE_SLUGS.map((slug) => (
         <Route key={slug} path={`/${slug}`} element={<ServicePage slug={slug} />} />
+      ))}
+      {/* English pages (/en, /en/dtf-printing, …) — copy in lib/enPages.ts, prerendered. */}
+      {EN_ROUTE_PATHS.map((path) => (
+        <Route key={path} path={path} element={<EnPage path={path} />} />
       ))}
       <Route path="*" element={<NotFound />} />
     </Routes>

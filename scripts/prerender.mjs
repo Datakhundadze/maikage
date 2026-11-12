@@ -147,6 +147,7 @@ function outputPath(kind, slug) {
 const STATIC_ROUTES = new Set(["designs", "blog", "contact", "faq", "corporate", "portfolio", "showroom"]);
 const LANDING_ROUTES = new Set();
 const SERVICE_ROUTES = new Set();
+const EN_ROUTES = new Set();
 const ROUTE_SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // Directories the per-row pages and the assets own; a landing slug never may.
 const RESERVED_DIRS = new Set(["design", "assets", ...STATIC_ROUTES]);
@@ -168,8 +169,17 @@ function allowServiceRoute(route) {
   SERVICE_ROUTES.add(route);
 }
 
+/** Admit an English page's route: "en" or "en/<segment>" (lib/enPages.ts). */
+function allowEnRoute(route) {
+  const parts = route.split("/");
+  if (parts[0] !== "en" || parts.length > 2 || (parts.length === 2 && !ROUTE_SEGMENT.test(parts[1]))) {
+    throw new Error(`refusing English route: ${JSON.stringify(route)}`);
+  }
+  EN_ROUTES.add(route);
+}
+
 async function writeStatic(route, html) {
-  if (!STATIC_ROUTES.has(route) && !LANDING_ROUTES.has(route) && !SERVICE_ROUTES.has(route)) {
+  if (!STATIC_ROUTES.has(route) && !LANDING_ROUTES.has(route) && !SERVICE_ROUTES.has(route) && !EN_ROUTES.has(route)) {
     throw new Error(`refusing to write unknown static route: ${route}`);
   }
   const file = resolve(DIST, route, "index.html");
@@ -298,7 +308,7 @@ const wrapStatic = (html) => `<div id="seo-static">${html}</div>${HIDE_STATIC}`;
  * Shell + per-page head tags + root content. `robots` and `jsonLd` are the
  * SeoHead noindex tag and `schemas` scripts, emitted only when given.
  */
-function renderPage(template, { title, description, canonical, image, rootHtml, robots, jsonLd, ogType }) {
+function renderPage(template, { title, description, canonical, image, rootHtml, robots, jsonLd, ogType, lang, alternates }) {
   const tags = [
     `<meta data-rh="true" name="description" content="${esc(description)}" />`,
     `<link data-rh="true" rel="canonical" href="${esc(canonical)}" />`,
@@ -309,9 +319,14 @@ function renderPage(template, { title, description, canonical, image, rootHtml, 
     ...(ogType ? [`<meta data-rh="true" property="og:type" content="${esc(ogType)}" />`] : []),
     ...(image ? [`<meta data-rh="true" property="og:image" content="${esc(image)}" />`] : []),
     ...(jsonLd ?? []).map((schema) => `<script data-rh="true" type="application/ld+json">${jsonLdText(schema)}</script>`),
+    // hreflang pairs (Georgian page ↔ its /en twin, lib/enPages.ts).
+    ...(alternates ?? []).map((a) => `<link data-rh="true" rel="alternate" hreflang="${esc(a.hreflang)}" href="${esc(a.href)}" />`),
+    ...(lang === "en" ? [`<meta data-rh="true" property="og:locale" content="en_US" />`] : []),
   ].join("\n    ");
 
   let html = template;
+  // English pages (/en/…): the shell is lang="ka".
+  if (lang === "en") html = html.replace(/<html lang="ka">/i, '<html lang="en">');
   // The shell's own description has no data-rh, so Helmet would never remove
   // it; drop it here so the file carries exactly one description.
   html = html.replace(/[ \t]*<meta\s+name="description"[^>]*>[ \t]*\n?/i, "");
@@ -370,6 +385,18 @@ async function fetchAll({ url, key }, table, select, filter) {
  * loaded: printServiceLinksFor(path) — the services most relevant to that
  * page, never the page itself.
  */
+/** hreflang for a Georgian page that has an /en twin (lib/enPages.ts EN_PATH_FOR_KA); none otherwise. */
+function kaAlternates(app, path) {
+  const en = app?.EN_PATH_FOR_KA?.[path];
+  if (!en) return undefined;
+  const ka = path === "/" ? SITE_URL : `${SITE_URL}${path}`;
+  return [
+    { hreflang: "ka", href: ka },
+    { hreflang: "en", href: `${SITE_URL}${en}` },
+    { hreflang: "x-default", href: ka },
+  ];
+}
+
 function servicesBlock(app, exclude) {
   if (typeof app?.printServiceLinksFor !== "function") return "";
   return printServicesHtml({ heading: app.PRINT_SERVICES_HEADING, links: app.printServiceLinksFor(exclude) }, { esc, link, style: STYLE }, exclude);
@@ -657,15 +684,45 @@ async function writeAppPages(template, app, stats, corporateWork = "") {
         canonical: `${SITE_URL}${sp.path}`,
         image: DEFAULT_OG_IMAGE,
         jsonLd: app.serviceSchemas(sp),
+        alternates: kaAlternates(app, sp.path),
         rootHtml: servicePageHtml(
           sp,
           { esc, link, style: STYLE },
           servicesBlock(app, sp.path),
           app.CORPORATE_WORK_PATHS?.includes(sp.path) ? corporateWork : "",
+          app.EN_PATH_FOR_KA?.[sp.path]
+            ? `<nav style="${STYLE.nav}">${link("/", "მთავარი")} › ${esc(sp.name)} · ${link(app.EN_PATH_FOR_KA[sp.path], app.EN_SWITCH_LABEL)}</nav>`
+            : null,
         ),
       });
     })) stats.lists.push(route);
   }
+
+  // English pages (/en, /en/dtf-printing, …) — text, hreflang and JSON-LD
+  // from lib/enPages.ts (the live EnPage renders the same data).
+  let enCount = 0;
+  for (const ep of app.EN_PAGE_LIST ?? []) {
+    const route = String(ep?.path ?? "").replace(/^\//, "");
+    if (await page(`english ${ep?.path}`, route, () => {
+      allowEnRoute(route);
+      const services = `<nav>\n<h2 style="${STYLE.h3}">${esc(app.EN_SERVICES_HEADING)}</h2>\n<p style="${STYLE.p}">${app
+        .enServiceLinksFor(ep.path)
+        .map((l) => link(l.href, l.label))
+        .join(" · ")}</p>\n</nav>`;
+      const nav = `<nav style="${STYLE.nav}">${ep.path === "/en" ? "" : `${link("/en", app.EN_HOME_LABEL)} › ${esc(ep.name)} · `}${link(ep.kaPath, app.EN_GEORGIAN_LINK_LABEL)}</nav>`;
+      return renderPage(template, {
+        title: ep.seo.title,
+        description: ep.seo.description,
+        canonical: `${SITE_URL}${ep.path}`,
+        image: DEFAULT_OG_IMAGE,
+        jsonLd: app.enSchemas(ep),
+        alternates: app.enAlternates(ep),
+        lang: "en",
+        rootHtml: servicePageHtml(ep, { esc, link, style: STYLE }, services, "", nav),
+      });
+    })) enCount++;
+  }
+  if (enCount) stats.lists.push(`en (${enCount} pages)`);
 
   let routes = [];
   try {

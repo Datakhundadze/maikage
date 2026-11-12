@@ -16,6 +16,7 @@ const MobileNav = lazyWithRetry(() => import("@/components/MobileNav"));
 const preloadMobileNav = () => import("@/components/MobileNav");
 import { useCart } from "@/hooks/useCart";
 import { ALL_SERVICE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
+import { EN_SERVICE_MENU } from "@/lib/enRoutePaths";
 
 // Hover-preload map: when the customer hovers a nav button we kick off
 // the route's chunk fetch so the click-to-render gap shrinks from
@@ -129,7 +130,7 @@ export default function AppHeader() {
             </button>
             <div className="invisible opacity-0 group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 transition-opacity absolute left-0 top-full z-50 pt-1">
               <ul className="w-72 rounded-xl border border-sidebar-border bg-sidebar p-1.5 shadow-lg">
-                {ALL_SERVICE_LINKS.map((l) => (
+                {(lang === "en" ? EN_SERVICE_MENU : ALL_SERVICE_LINKS).map((l) => (
                   <li key={l.href}>
                     <Link
                       to={l.href}
@@ -246,7 +247,7 @@ export default function AppHeader() {
             returnFocusTo={menuButtonRef}
             lang={lang}
             items={navItems.map((item) => ({ ...item, preload: PRELOAD_BY_PATH[item.path] }))}
-            services={{ heading: lang === "en" ? "Services" : SERVICES_HEADING, links: ALL_SERVICE_LINKS }}
+            services={{ heading: lang === "en" ? "Services" : SERVICES_HEADING, links: lang === "en" ? EN_SERVICE_MENU : ALL_SERVICE_LINKS }}
           />
         </Suspense>
       )}
