@@ -690,6 +690,9 @@ async function writeAppPages(template, app, stats, corporateWork = "") {
           { esc, link, style: STYLE },
           servicesBlock(app, sp.path),
           app.CORPORATE_WORK_PATHS?.includes(sp.path) ? corporateWork : "",
+          app.EN_PATH_FOR_KA?.[sp.path]
+            ? `<nav style="${STYLE.nav}">${link("/", "მთავარი")} › ${esc(sp.name)} · ${link(app.EN_PATH_FOR_KA[sp.path], app.EN_SWITCH_LABEL)}</nav>`
+            : null,
         ),
       });
     })) stats.lists.push(route);

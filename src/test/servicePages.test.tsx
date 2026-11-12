@@ -458,8 +458,9 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     expect(home).toContain('"მაისურებზე და ჰუდებზე ბეჭდვა "');
     expect(home).toContain('"შენი დიზაინით"');
     expect(home).not.toContain('"Create your unique design easily"');
-    expect(source("src/components/AppHeader.tsx")).toContain("ALL_SERVICE_LINKS.map((l) =>");
-    expect(source("src/components/AppHeader.tsx")).toContain("links: ALL_SERVICE_LINKS }}");
+    // Georgian list by default (what crawlers get); the /en pages only when the visitor switched to English.
+    expect(source("src/components/AppHeader.tsx")).toContain('(lang === "en" ? EN_SERVICE_MENU : ALL_SERVICE_LINKS).map((l) =>');
+    expect(source("src/components/AppHeader.tsx")).toContain('links: lang === "en" ? EN_SERVICE_MENU : ALL_SERVICE_LINKS }}');
     // Home top bar: a <details> "სერვისები" menu with every service page; the
     // other pages also as a compact list under the four cards.
     expect(home).toContain("<details ref={servicesMenuRef}");

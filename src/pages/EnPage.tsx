@@ -1,4 +1,6 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAppState } from "@/hooks/useAppState";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
@@ -52,6 +54,14 @@ function LinkRow({ links }: { links: ServiceLink[] }) {
 
 function EnPageView({ page }: { page: EnPageCopy }) {
   const isHub = page.path === "/en";
+  // A visitor on an English page gets the rest of the site (header, designer)
+  // in English too — the same switch as the header's 🌐 EN button.
+  const { lang, toggleLang } = useAppState();
+  useEffect(() => {
+    if (lang !== "en") toggleLang();
+    // Once per page view: switching back to Georgian later must stick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page.path]);
   return (
     <div lang="en" className="min-h-screen bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white">
       <SeoHead title={page.seo.title} description={page.seo.description} url={`${SITE_URL}${page.path}`} schemas={enSchemas(page)} />

@@ -8,7 +8,7 @@ import CorporateWorkGallery from "@/components/CorporateWorkGallery";
 import { CORPORATE_WORK_PATHS } from "@/lib/corporateWork";
 import { SERVICE_PAGES, serviceSchemas, type ServiceLink, type ServicePageCopy } from "@/lib/serviceCopy";
 import type { ServicePageSlug } from "@/lib/serviceRouteSlugs";
-import { EN_PATH_FOR_KA } from "@/lib/enPages";
+import { EN_PATH_FOR_KA, EN_SWITCH_LABEL } from "@/lib/enPages";
 
 // Service landing pages (/maisurebze-bechdva, /sportuli-formebi, …). Purely
 // presentational: every string, the title / description and the JSON-LD come
@@ -68,11 +68,16 @@ function ServicePageView({ page }: { page: ServicePageCopy }) {
         </Helmet>
       )}
       <main className="max-w-3xl mx-auto px-4 py-12">
-        <nav aria-label="breadcrumb" className="mb-8 text-sm text-gray-500 dark:text-white/40">
+        <nav aria-label="breadcrumb" className="mb-8 flex items-center justify-between text-sm text-gray-500 dark:text-white/40">
           <Link to="/" className="inline-flex items-center gap-2 hover:text-gray-900 dark:hover:text-white transition-colors">
             <ArrowLeft className="h-4 w-4" />
             მთავარი
           </Link>
+          {EN_PATH_FOR_KA[page.path] && (
+            <Link to={EN_PATH_FOR_KA[page.path]} lang="en" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+              {EN_SWITCH_LABEL}
+            </Link>
+          )}
         </nav>
 
         <h1 className="text-3xl font-bold mb-4">{page.h1}</h1>

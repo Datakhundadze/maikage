@@ -2,13 +2,18 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { EN_PAGE_LIST, EN_PATH_FOR_KA, enAlternates, enSchemas } from "@/lib/enPages";
-import { EN_ROUTE_PATHS } from "@/lib/enRoutePaths";
+import { EN_ROUTE_PATHS, EN_SERVICE_MENU } from "@/lib/enRoutePaths";
+import { enServiceLinksFor } from "@/lib/enPages";
 import { SERVICE_PAGE_LIST } from "@/lib/serviceCopy";
 import { LEAD_TIME_EN, LEAD_TIME_KA } from "@/lib/leadTime";
 
 describe("English pages", () => {
   it("routes match the copy", () => {
     expect([...EN_ROUTE_PATHS]).toEqual(EN_PAGE_LIST.map((p) => p.path));
+  });
+
+  it("header menu (English mode) = the hub's services list", () => {
+    expect([...EN_SERVICE_MENU]).toEqual(enServiceLinksFor(""));
   });
 
   it("every page has a real Georgian twin", () => {

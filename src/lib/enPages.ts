@@ -48,6 +48,8 @@ export interface EnPageCopy {
 export const EN_HOME_LABEL = "Home";
 export const EN_SERVICES_HEADING = "Our services in English";
 export const EN_GEORGIAN_LINK_LABEL = "ქართულად";
+/** The link from a Georgian page to its English twin. */
+export const EN_SWITCH_LABEL = "English";
 
 // ── Shared facts ────────────────────────────────────────────────────────────
 

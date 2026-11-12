@@ -197,6 +197,7 @@ export async function loadAppModules(log) {
       EN_HOME_LABEL: m.enPages.EN_HOME_LABEL,
       EN_SERVICES_HEADING: m.enPages.EN_SERVICES_HEADING,
       EN_GEORGIAN_LINK_LABEL: m.enPages.EN_GEORGIAN_LINK_LABEL,
+      EN_SWITCH_LABEL: m.enPages.EN_SWITCH_LABEL,
     };
   } catch (e) {
     console.warn(`${log} WARNING: could not load app modules from src/: ${e?.message ?? e}`);
