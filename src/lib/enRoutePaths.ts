@@ -13,6 +13,8 @@ export const EN_ROUTE_PATHS = [
   "/en/mug-printing",
   "/en/phone-cases",
   "/en/tote-bags",
+  "/en/restaurant-cafe-uniforms",
+  "/en/event-t-shirts",
 ] as const;
 
 /**
@@ -32,4 +34,6 @@ export const EN_SERVICE_MENU: readonly { href: string; label: string }[] = [
   { href: "/en/mug-printing", label: "Mug printing" },
   { href: "/en/phone-cases", label: "Custom phone cases" },
   { href: "/en/tote-bags", label: "Custom tote bags" },
+  { href: "/en/restaurant-cafe-uniforms", label: "Restaurant & café uniforms" },
+  { href: "/en/event-t-shirts", label: "Event T-shirts & merch" },
 ];

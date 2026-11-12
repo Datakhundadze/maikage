@@ -153,6 +153,8 @@ export const EN_HUB: EnPageCopy = {
         { href: "/en/mug-printing", label: "Mug printing" },
         { href: "/en/phone-cases", label: "Custom phone cases" },
         { href: "/en/tote-bags", label: "Custom tote bags" },
+        { href: "/en/restaurant-cafe-uniforms", label: "Restaurant & café uniforms" },
+        { href: "/en/event-t-shirts", label: "Event T-shirts & merch" },
       ],
     },
     {
@@ -730,6 +732,148 @@ export const EN_TOTE: EnPageCopy = {
   serviceType: "Tote bag printing",
 };
 
+// ── /en/restaurant-cafe-uniforms ↔ /restornis-da-kafes-forma ────────────────
+
+export const EN_RESTAURANT: EnPageCopy = {
+  slug: "restaurant-cafe-uniforms",
+  path: "/en/restaurant-cafe-uniforms",
+  kaPath: "/restornis-da-kafes-forma",
+  seo: {
+    title: "Restaurant & Café Uniforms with Your Logo in Tbilisi | maika.ge",
+    description: "Staff uniforms with your logo for restaurants, cafés, bars and bakeries in Tbilisi: T-shirts, polos, aprons, caps — plus branded mugs and tote bags. Invoice for companies.",
+  },
+  name: "Restaurant & café uniforms",
+  h1: "Restaurant and café uniforms with your logo",
+  intro: "Matching uniforms with your logo give a restaurant, café, bar or bakery a tidy, memorable look. We make T-shirts, polos, aprons and caps with your logo for your staff, and branded mugs and tote bags for your guests. We have been sewing and printing in Tbilisi for 15 years.",
+  heroLinks: [CORPORATE, ...CONTACT_LINKS],
+  images: [
+    { src: "/products/apron/apron-white-front.webp", alt: "White apron ready for a café or restaurant logo", width: 721, height: 1005 },
+    { src: "/services/tote-pasticceria.webp", alt: "Tote bag with the Pasticceria logo — a corporate order made by maika.ge", width: 900, height: 1200 },
+  ],
+  sections: [
+    {
+      h2: "What we brand for cafés and restaurants",
+      bullets: [
+        { term: "T-shirts and polos", text: "everyday uniforms for waiters, baristas and cooks. Our polos are 100% cotton." },
+        { term: "Aprons", text: "white or black, with your logo — for the kitchen and the floor." },
+        { term: "Caps", text: "logo on the front — for the kitchen and delivery team." },
+        { term: "Hoodies", text: "for the cold season and staff working outside." },
+        { term: "Mugs", text: "with your café's logo — for the floor or as a gift for guests." },
+        { term: "Tote bags", text: "for takeaway and your shop, instead of plastic bags." },
+      ],
+    },
+    {
+      h2: "Choosing the branding method",
+      bullets: [
+        { term: "DTF printing", text: "a colourful logo in any quantity — for a new café or a small team." },
+        { term: "Screen printing", text: "large runs — the more you order, the cheaper each piece." },
+        { term: "Embroidery", text: "large quantities — an embroidered logo on polos and caps looks premium and lasts." },
+      ],
+      note: "Restaurant and café uniforms are washed often, so we choose the method together, by the item, the logo and the quantity.",
+      links: [
+        { href: "/en/dtf-printing", label: "DTF printing" },
+        { href: "/en/screen-printing", label: "Screen printing" },
+        { href: "/en/logo-embroidery", label: "Logo embroidery" },
+      ],
+    },
+    {
+      h2: "How we work",
+      steps: [
+        "Tell us what you need: which items, for how many people, which sizes and by when.",
+        "Send your logo — we choose the method and agree the layout: position, size and colours.",
+        "We produce, pack and deliver by courier, or hand it over at the showroom.",
+      ],
+    },
+    { h2: "Your logo file", body: `${FILE_EN} Production starts once the layout is approved.` },
+    { h2: "Care", body: "Wash printed uniforms at 30°C at most, turned inside out — the logo and colours keep their look much longer." },
+    { h2: "Price, lead time and documents", body: `The price depends on the item, the method and the quantity, with discounts on larger orders. The lead time depends on the method and the quantity — we agree it when you order. ${INVOICE_EN}`, links: [CORPORATE] },
+    { h2: "A single apron or T-shirt online", body: `Need just one or a few? Design it yourself online: upload your logo, choose the colour and size. Such orders are ready in ${LEAD_TIME_EN}.`, links: [{ href: "/apron", label: "Design an apron" }, DESIGNER] },
+    VISIT,
+  ],
+  faqHeading: "Restaurant & café uniforms — FAQ",
+  faq: [
+    { q: "What do you make for cafés and restaurants?", a: "T-shirts, polos, aprons, caps and hoodies for staff, plus mugs and tote bags with your logo for guests." },
+    { q: "Do you print logos on aprons?", a: "Yes — on white or black aprons. Order one or a few online, or message us for larger quantities." },
+    { q: "Can the logo be embroidered?", a: "Yes, for large quantities — especially on polos and caps. For small quantities we print a colourful logo with DTF." },
+    { q: "How long does it take?", a: "It depends on the method and the quantity; we agree the exact date when you order." },
+    { q: "Do you issue an invoice?", a: "Yes, always. On request — a contract and a waybill too." },
+  ],
+  cta: { h2: "Tell us what you need", body: "Send your logo and tell us which items your team needs — we will reply with options, price and date.", links: [CORPORATE, ...CONTACT_LINKS] },
+  serviceType: "Restaurant and café uniform branding",
+};
+
+// ── /en/event-t-shirts ↔ /ghonisdziebis-maisurebi ───────────────────────────
+
+export const EN_EVENTS: EnPageCopy = {
+  slug: "event-t-shirts",
+  path: "/en/event-t-shirts",
+  kaPath: "/ghonisdziebis-maisurebi",
+  seo: {
+    title: "Event T-shirts & Merch with Your Logo in Tbilisi | maika.ge",
+    description: "T-shirts, tote bags, caps and vests with your logo for conferences, festivals, marathons and team building in Tbilisi. DTF or screen printing, invoice for companies.",
+  },
+  name: "Event T-shirts & merch",
+  h1: "Event T-shirts and merch with your logo",
+  intro: "A conference, a festival, a marathon, team building or a company anniversary — matching T-shirts with a logo bring a team together and make the event memorable for guests. We make T-shirts, hoodies, caps, tote bags and vests with your event's design — for organisers, volunteers and participants.",
+  heroLinks: [CORPORATE, ...CONTACT_LINKS],
+  images: [
+    { src: "/services/tote-epam.webp", alt: "Tote bag with the EPAM logo — an event kit made by maika.ge", width: 900, height: 1200 },
+    { src: "/services/vests-elf.webp", alt: "Vests with the elf logo for event staff, made by maika.ge", width: 1000, height: 1000 },
+  ],
+  sections: [
+    {
+      h2: "What we make for events",
+      bullets: [
+        { term: "T-shirts", text: "for participants, the team or speakers — one design, or with names." },
+        { term: "Hoodies", text: "for outdoor events and the cold season." },
+        { term: "Caps", text: "for marathons, festivals and outdoor activities." },
+        { term: "Tote bags", text: "a participant kit — a bag with the event logo." },
+        { term: "Vests", text: "made to order for organisers and volunteers, so guests can spot them easily." },
+        { term: "Mugs", text: "a gift for speakers and partners." },
+      ],
+      links: [
+        { href: "/en/tote-bags", label: "Tote bags" },
+        { href: "/en/corporate-merch", label: "Branded merch" },
+      ],
+    },
+    {
+      h2: "Choosing the method",
+      bullets: [
+        { term: "Screen printing", text: "many participants, one design — the more you order, the cheaper each piece." },
+        { term: "DTF printing", text: "a colourful, detailed design, or a name on every T-shirt." },
+        { term: "Embroidery", text: "large quantities — on caps and hoodies meant to be used for a long time." },
+      ],
+      links: [
+        { href: "/en/screen-printing", label: "Screen printing" },
+        { href: "/en/dtf-printing", label: "DTF printing" },
+      ],
+    },
+    { h2: "Plan ahead", body: "An event date doesn't move, so message us as early as you can. The lead time depends on the method and the quantity — share the date, the items and the quantity, and we will tell you what can be ready and when." },
+    {
+      h2: "How we work",
+      steps: [
+        "Send us the event date, the items, the quantity and the sizes.",
+        "Send the logo or design — we agree the layout: position, size and colours.",
+        "We produce, pack and deliver by courier, or hand it over at the showroom.",
+      ],
+    },
+    { h2: "Sizes and the design file", body: `Collect participants' sizes in advance, so nothing is left over or missing. ${FILE_EN}` },
+    { h2: "Price and documents", body: `The price depends on the item, the method and the quantity, with discounts on larger orders. ${INVOICE_EN}`, links: [CORPORATE] },
+    { h2: "Small groups — online", body: `For friends, family or a small team, design it yourself online — even a single piece. Such orders are ready in ${LEAD_TIME_EN}.`, links: [DESIGNER] },
+    VISIT,
+  ],
+  faqHeading: "Event T-shirts — FAQ",
+  faq: [
+    { q: "How early should we order?", a: "As early as possible — the lead time depends on the method and the quantity. Tell us the date and we will tell you what can be ready." },
+    { q: "Can every T-shirt have a different name?", a: "Yes — names are printed with DTF or FLEX." },
+    { q: "Do you put together participant kits?", a: "Yes — a T-shirt, tote bag, cap or mug in one design." },
+    { q: "Do you issue an invoice?", a: "Yes, always. On request — a contract and a waybill too." },
+    { q: "Do you deliver outside Tbilisi?", a: "Yes, by courier across Georgia." },
+  ],
+  cta: { h2: "Tell us about your event", body: "The date, the items and the quantity — we will reply with options, price and date.", links: [CORPORATE, ...CONTACT_LINKS] },
+  serviceType: "Event T-shirts and merchandise",
+};
+
 // ── Lists, links, JSON-LD ───────────────────────────────────────────────────
 
 /** Every English page, hub first. */
@@ -745,6 +889,8 @@ export const EN_PAGE_LIST: readonly EnPageCopy[] = [
   EN_MUG,
   EN_PHONE,
   EN_TOTE,
+  EN_RESTAURANT,
+  EN_EVENTS,
 ];
 
 /** path → page, for the router. */

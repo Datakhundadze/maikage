@@ -40,6 +40,7 @@ import { buildDesignMetaDescription } from "@/lib/designMetaDescription";
 import { LANDING_SEO_OVERRIDES_KA, landingSeo } from "@/lib/landingSeo";
 import { FAQ_DELIVERY_PRICES, FAQ_PAGE } from "@/lib/faqContent";
 import { fromPrice } from "@/lib/landingPrice";
+import { EN_PATH_FOR_KA } from "@/lib/enPages";
 import { LEAD_TIME_KA } from "@/lib/leadTime";
 import { productTypeKa } from "@/lib/i18n";
 import { BRAND_SLUGS, LANDING_PRODUCT_SLUGS, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
@@ -423,7 +424,8 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     expect(HOME_SEO.title.startsWith("Maika.ge")).toBe(true);
     // No cannibalisation: the exact phrase belongs to /maisurebze-bechdva.
     expect(HOME_SEO.title).not.toContain("მაისურებზე ბეჭდვა");
-    expect(HOME_SEO.title).toContain("ტანსაცმელზე ბეჭდვა");
+    expect(HOME_SEO.title).toContain("მაისურებზე და ჰუდებზე ბეჭდვა");
+    expect(HOME_SEO.title).not.toContain("ტანსაცმელზე");
     expect(`${HOME_SEO.title} ${HOME_SEO.description}`).toMatch(/მაისურებზე ბეჭდვა|მაისურების ბეჭდვა/);
     expect(HOME_SEO.description).toContain("საქართველოს ცნობილი მაისურების ბრენდი");
   });
@@ -683,9 +685,9 @@ const PHASE3: Record<string, { h1: string; stem: string; order: string }> = {
 describe("phase 3 service pages", () => {
   const pages = SERVICE_PAGE_LIST.filter((p) => p.path in PHASE3);
 
-  it("all three are registered last, in order, with a menu link each", () => {
+  it("all three are registered after phase 2, in order, with a menu link each", () => {
     expect(pages.map((p) => p.path)).toEqual(Object.keys(PHASE3));
-    expect(SERVICE_PAGE_LIST.slice(-3).map((p) => p.path)).toEqual(Object.keys(PHASE3));
+    expect(SERVICE_PAGE_LIST.slice(10, 13).map((p) => p.path)).toEqual(Object.keys(PHASE3));
     for (const path of Object.keys(PHASE3)) expect(ALL_SERVICE_LINKS.some((l) => l.href === path), path).toBe(true);
   });
 
@@ -784,4 +786,51 @@ describe("spelling: შოლკოგრაფია (the owner's term)", () =>
       expect(pageTexts(q).join("\n"), q.path).not.toContain(OLD);
     }
   });
+});
+
+// Phase 4 (12.11): industry pages, each with an English twin (lib/enPages.ts).
+const PHASE4: Record<string, { h1: string; stem: string; en: string }> = {
+  "/restornis-da-kafes-forma": { h1: "რესტორნისა და კაფეს ფორმა ლოგოთი", stem: "კაფე", en: "/en/restaurant-cafe-uniforms" },
+  "/ghonisdziebis-maisurebi": { h1: "მაისურები ღონისძიებისთვის ლოგოთი", stem: "ღონისძიებ", en: "/en/event-t-shirts" },
+};
+
+describe("phase 4 industry pages", () => {
+  const pages = SERVICE_PAGE_LIST.filter((p) => p.path in PHASE4);
+
+  it("registered last, in order, with a menu link and an English twin each", () => {
+    expect(SERVICE_PAGE_LIST.slice(-2).map((p) => p.path)).toEqual(Object.keys(PHASE4));
+    for (const [path, { en }] of Object.entries(PHASE4)) {
+      expect(ALL_SERVICE_LINKS.some((l) => l.href === path), path).toBe(true);
+      expect(EN_PATH_FOR_KA[path], path).toBe(en);
+    }
+  });
+
+  for (const p of pages) {
+    const { h1, stem } = PHASE4[p.path];
+    it(`${p.path}: H1, ~350–520 words, 4–6 FAQ, no price, no quantity, links`, () => {
+      expect(p.h1).toBe(h1);
+      expect(bodyText(p).split(stem).length - 1).toBeGreaterThanOrEqual(2);
+      const words = pageTexts(p).slice(4).join(" ").split(/\s+/).filter(Boolean).length;
+      expect(words, `${p.path}: ${words} words`).toBeGreaterThanOrEqual(350);
+      expect(words, `${p.path}: ${words} words`).toBeLessThanOrEqual(560);
+      expect(p.faq.length).toBeGreaterThanOrEqual(4);
+      expect(p.faq.length).toBeLessThanOrEqual(6);
+      const text = pageTexts(p).join("\n");
+      expect(text).not.toContain("₾");
+      expect(text).not.toMatch(/ლარ/);
+      expect(containsPrice(text)).toBe(false);
+      expect(text).not.toMatch(/\d+\s*ცალ/);
+      expect(text).not.toContain("ტანსაცმელზე");
+      for (const m of text.matchAll(/[\d–-]+\s*(?:სამუშაო\s*)?დღე/g)) expect(m[0]).toBe(LEAD_TIME_KA);
+      expect(allLinks(p).map((l) => l.href)).toContain("/corporate");
+      for (const img of p.images ?? []) {
+        expect(img.alt).toMatch(/[ა-ჰ]/);
+        expect(readFileSync(path.join(ROOT, "public", img.src)).length).toBeGreaterThan(0);
+      }
+      const linkedFrom = [...SERVICE_PAGE_LIST.map((x) => x.path), "/corporate"].filter((x) =>
+        printServiceLinksFor(x).some((l) => l.href === p.path),
+      );
+      expect(linkedFrom.length, p.path).toBeGreaterThanOrEqual(2);
+    });
+  }
 });

@@ -14,7 +14,8 @@ import { LEAD_TIME_KA } from "@/lib/leadTime";
 export const HOME_SEO = {
   // Brand + broad: the exact phrase "მაისურებზე ბეჭდვა" belongs to
   // /maisurebze-bechdva alone (no cannibalisation). ≤60 characters.
-  title: "Maika.ge — ტანსაცმელზე ბეჭდვა თბილისში: მაისურები, ჰუდები",
+  // Matches the home H1 (owner: no „ტანსაცმელზე“ in titles, 12.11).
+  title: "Maika.ge — მაისურებზე და ჰუდებზე ბეჭდვა თბილისში",
   description: `Maika.ge — საქართველოს ცნობილი მაისურების ბრენდი. მაისურების ბეჭდვა შენი ფოტოთი, ლოგოთი ან AI დიზაინით, ${LEAD_TIME_KA}ში. შოურუმი დინამო არენაზე.`,
 } as const;
 
