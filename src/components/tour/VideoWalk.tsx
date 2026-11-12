@@ -53,6 +53,7 @@ import { CAM_HEIGHT_M, labelView, posAt, rackLabels } from "@/lib/tour/rackLabel
 import { cachedMbps, measureMbps, partBase, pickTier, type VideoTier } from "@/lib/tour/videoTier";
 import { reached, routeJumps, type RouteStep } from "@/lib/tour/autoWalk";
 import { DESK_TS, deskMomentAt, planHubRoute, stopChoices } from "@/lib/tour/hubRoute";
+import { operatorTrackAt } from "@/lib/tour/operatorTrack";
 
 /** A place to walk to: a rack (its sheet opens on arrival) or the entrance. */
 interface WalkDest {
@@ -84,7 +85,7 @@ const OPERATORS = [
   // not cover the boy"): the boy on the chair behind the big monitor, which hides his lower
   // left (OPERATOR_HIDE cuts that part out of his picture); both end at the counter's top.
   { id: "boy", yawDeg: -11.25, pitchDeg: -14.4, heightDeg: 12 },
-  { id: "girl", yawDeg: 16, pitchDeg: -14.4, heightDeg: 12 },
+  { id: "girl", yawDeg: 12.66, pitchDeg: -14.4, heightDeg: 12 }, // on her chair (the one with the jacket), not beside it
 ] as const;
 /**
  * Parts of an operator's picture hidden by something on the desk, as
@@ -96,21 +97,11 @@ const OPERATORS = [
 const OPERATOR_HIDE: Record<string, readonly (readonly [number, number, number, number])[]> = {
   boy: [[0, 0.53, 0.385, 1]],
 };
-/**
- * The operators stay in the picture while the walk leaves the desk (David
- * 2026-11-11: "they vanish when the walk starts — I don't want that"): each
- * has a place in the room, OPERATOR_DIST_M ahead of the desk stop in its
- * direction, and is drawn from wherever the camera is (as the rack labels
- * are). They fade out between OPERATOR_FADE_M[0] and [1] metres away.
- */
-const OPERATOR_DIST_M = 3.6;
-/**
- * …but only for the first steps: fully there while the camera is within
- * [0] m of the desk stop, gone by [1] m. Their place is worked out from the
- * walk track, which is not exact — farther off they slid about against the
- * desk ("they move somehow", David 2026-11-11).
- */
-const OPERATOR_FADE_M = [1.2, 3] as const;
+// The operators stay in the picture while the walk leaves or reaches the desk
+// (David 2026-11-11: "they vanish when the walk starts — I don't want that"):
+// their seats were tracked in the footage itself (operatorTrack.ts), so the
+// pictures sit on the chairs frame by frame, and fade over the last 1.5 s of
+// each tracked run (±6 s around every pass of the desk).
 const OPERATOR_FRAMES = ["base", "blink", "talk1", "talk2"] as const;
 type OperatorFrame = (typeof OPERATOR_FRAMES)[number];
 const GREETINGS = [
@@ -816,25 +807,6 @@ export default function VideoWalk() {
       opScene.add(pivot);
       return { mesh, mat, geo, pivot, w, h, frame: "base" as OperatorFrame, nextBlink: 0, blinkUntil: 0, talkUntil: 0, mouth: 0, nextMouth: 0 };
     });
-    // where each operator is in the room (m, seen from above) and how high its middle is
-    const opDesk = posAt(OPERATOR_STOP.t, track);
-    const opWorld = OPERATORS.map((o) => {
-      const a = o.yawDeg * DEG;
-      return { x: opDesk.x + Math.sin(a) * OPERATOR_DIST_M, z: opDesk.z - Math.cos(a) * OPERATOR_DIST_M, y: CAM_HEIGHT_M + OPERATOR_DIST_M * Math.tan(o.pitchDeg * DEG) };
-    });
-    /** An operator seen from walk time t: yaw / pitch (°) and distance on the floor and in the air (m). */
-    const opView = (i: number, t: number) => {
-      const c = posAt(t, track);
-      const dx = opWorld[i].x - c.x;
-      const dz = opWorld[i].z - c.z;
-      const dist = Math.max(0.5, Math.hypot(dx, dz));
-      const dy = opWorld[i].y - CAM_HEIGHT_M;
-      return { yaw: (Math.atan2(dx, -dz) * 180) / Math.PI, pitch: (Math.atan2(dy, dist) * 180) / Math.PI, dist, range: Math.hypot(dist, dy) };
-    };
-    // the hand-set place at the last desk moment passed, minus the computed one there:
-    // keeps the picture exactly as set at the desk and lets it move from there
-    const opFix = OPERATORS.map(() => ({ yaw: 0, pitch: 0, size: 1 }));
-    let opFixT = -1;
     let atDeskShown = false;
     let chatTyping = false;
     const onTyping = (e: Event) => {
@@ -875,31 +847,16 @@ export default function VideoWalk() {
           setBubble(null);
         }
       }
-      const tNow = fwdTime();
-      const near = deskMomentAt(tNow, 1.5);
-      if (near && near.t !== opFixT) {
-        opFixT = near.t;
-        OPERATORS.forEach((o, i) => {
-          const v = opView(i, near.t);
-          // (the video frame's yaw drifts a degree or two between the passes of the desk)
-          opFix[i] = { yaw: angleDiff(o.yawDeg + near.yawOffDeg, v.yaw), pitch: o.pitchDeg - v.pitch, size: v.range / Math.hypot(OPERATOR_DIST_M, opWorld[i].y - CAM_HEIGHT_M) };
-        });
-      }
       const steady = ready && !jumping && !switching;
+      const tr = steady ? operatorTrackAt(fwdTime()) : null;
       ops.forEach((a, i) => {
-        let show = atDesk ? 1 : 0;
-        if (steady) {
-          const v = opView(i, tNow);
-          a.pivot.rotation.y = -(v.yaw + opFix[i].yaw) * DEG;
-          a.pivot.rotation.x = (v.pitch + opFix[i].pitch) * DEG;
-          a.mesh.scale.setScalar((Math.hypot(OPERATOR_DIST_M, opWorld[i].y - CAM_HEIGHT_M) / v.range) * opFix[i].size);
-          // they fade as the camera leaves the desk stop
-          if (!atDesk) {
-            const c = posAt(tNow, track);
-            const off = Math.hypot(c.x - opDesk.x, c.z - opDesk.z);
-            show = Math.max(0, Math.min(1, (OPERATOR_FADE_M[1] - off) / (OPERATOR_FADE_M[1] - OPERATOR_FADE_M[0])));
-          }
-        } else show = a.mat.opacity > 0.5 ? 1 : 0; // a change of video: stay as they are
+        let show = 0;
+        if (tr) {
+          a.pivot.rotation.y = -tr.yaw[i] * DEG;
+          a.pivot.rotation.x = tr.pitch[i] * DEG;
+          a.mesh.scale.setScalar(tr.size);
+          show = atDesk ? 1 : tr.show;
+        } else if (!steady) show = a.mat.opacity > 0.5 ? 1 : 0; // a change of video: stay as they are
         a.mat.opacity = easeToward(a.mat.opacity, show, dt, show > a.mat.opacity ? 380 : 260);
         a.mesh.visible = a.mat.opacity > 0.01;
         if (!a.mesh.visible) return;
