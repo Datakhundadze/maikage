@@ -3226,6 +3226,16 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://maika.ge/restornis-da-kafes-forma</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/ghonisdziebis-maisurebi</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://maika.ge/en</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -3277,6 +3287,16 @@
   </url>
   <url>
     <loc>https://maika.ge/en/tote-bags</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/en/restaurant-cafe-uniforms</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/en/event-t-shirts</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
