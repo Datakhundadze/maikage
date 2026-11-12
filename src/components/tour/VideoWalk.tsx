@@ -2030,7 +2030,19 @@ export default function VideoWalk() {
         </>
       )}
 
-      {openRack && <RackSheet key={openRack.id} rack={openRack} onClose={() => setOpenRack(null)} />}
+      {openRack && (
+        <RackSheet
+          key={openRack.id}
+          rack={openRack}
+          onClose={() => setOpenRack(null)}
+          groups={PICKER_GROUPS}
+          onGo={(id) => {
+            if (soundOn) ensureAudio();
+            const d = dests.find((x) => x.id === id);
+            if (d) goRef.current(d);
+          }}
+        />
+      )}
 
       {status === "ready" && hintVisible && !pickerOpen && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">

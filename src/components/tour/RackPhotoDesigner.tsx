@@ -4,7 +4,7 @@ import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnim
 import { BRAND_COLORS, COLORS, type ProductColor, type ProductType } from "@/lib/catalog";
 import type { ConstructorSeed } from "@/lib/constructorSeed";
 import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
-import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
+import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, textSize, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
 import { hasBack, loadSiteSide, type RackGarment, type SiteSide } from "@/lib/tour/siteGarment";
 
 // The rack's large photo as the place to design (David 2026-11-10/12). The
@@ -137,23 +137,65 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     return () => document.documentElement.classList.remove("maika-chat-over");
   }, []);
 
-  const drag = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
+  // The photo and the text are two objects (David 2026-11-12: "they move together —
+  // I want each to be its own object"): the one under the finger is taken and moved;
+  // the size slider and the bin act on the one taken last.
+  const [sel, setSel] = useState<"img" | "text">("img");
+  const both = !!design.img && !!design.text;
+  const active: "img" | "text" = both ? sel : design.text && !design.img ? "text" : "img";
+  const measure = useRef<CanvasRenderingContext2D | null>(null);
+  /** The text's box in the photo's px (centre, half sizes). */
+  const textBox = () => {
+    if (!measure.current) measure.current = document.createElement("canvas").getContext("2d");
+    const size = textSize(design, A);
+    let w = size * design.text.length * 0.6;
+    if (measure.current) {
+      measure.current.font = `700 ${size}px ${design.font}`;
+      w = Math.min(A.w * 1.4, measure.current.measureText(design.text).width);
+    }
+    return { cx: A.x + (design.tx ?? 0.5) * A.w, cy: A.y + (design.ty ?? 0.5) * A.h, hw: w / 2 + 24, hh: size * 0.75 + 24 };
+  };
+  const drag = useRef<{ px: number; py: number; x: number; y: number; what: "img" | "text" } | null>(null);
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!has) return;
+    let what = active;
+    if (both) {
+      const r = e.currentTarget.getBoundingClientRect();
+      const k = W / r.width;
+      const x = (e.clientX - r.left) * k;
+      const y = (e.clientY - r.top) * k;
+      const t = textBox();
+      const onText = Math.abs(x - t.cx) <= t.hw && Math.abs(y - t.cy) <= t.hh;
+      const iw = (A.w * design.scale) / 2;
+      const ih = design.img ? (iw * design.img.naturalHeight) / design.img.naturalWidth : 0;
+      const onImg = Math.abs(x - (A.x + design.x * A.w)) <= iw && Math.abs(y - (A.y + design.y * A.h)) <= ih;
+      // the text lies over the photo: where both are, the text is taken
+      what = onText ? "text" : onImg ? "img" : sel;
+      setSel(what);
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { px: e.clientX, py: e.clientY, x: design.x, y: design.y };
+    drag.current = what === "text" ? { px: e.clientX, py: e.clientY, x: design.tx ?? 0.5, y: design.ty ?? 0.5, what } : { px: e.clientX, py: e.clientY, x: design.x, y: design.y, what };
   };
   const onMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const d = drag.current;
     if (!d) return;
     const k = W / e.currentTarget.getBoundingClientRect().width;
-    setDesign({
-      x: Math.min(1.1, Math.max(-0.1, d.x + ((e.clientX - d.px) * k) / A.w)),
-      y: Math.min(1.1, Math.max(-0.1, d.y + ((e.clientY - d.py) * k) / A.h)),
-    });
+    const x = Math.min(1.15, Math.max(-0.15, d.x + ((e.clientX - d.px) * k) / A.w));
+    const y = Math.min(1.15, Math.max(-0.15, d.y + ((e.clientY - d.py) * k) / A.h));
+    setDesign(d.what === "text" ? { tx: x, ty: y } : { x, y });
   };
   const onUp = () => {
     drag.current = null;
+  };
+
+  // the text gets its own place when it is first opened: under the photo, or mid-frame alone
+  const openText = () => {
+    if (design.tx === undefined) {
+      const ih = design.img ? (A.w * design.scale * design.img.naturalHeight) / design.img.naturalWidth / A.h : 0;
+      setDesign({ tx: 0.5, ty: design.img ? Math.min(1.02, design.y + ih / 2 + 0.09) : 0.45, ts: design.img ? design.scale : 0.9 });
+    }
+    setSel("text");
+    setTextOpen(true);
   };
 
   const onFile = (f: File | undefined) => {
@@ -165,6 +207,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       const tall = (img.naturalHeight / img.naturalWidth) * A.w; // its height at full frame width
       const scale = Math.min(0.8, (0.9 * A.h) / tall);
       setDesign({ img, scale, x: 0.5, y: tall * scale > 0.7 * A.h ? 0.5 : 0.42 });
+      setSel("img");
       setPrinted(false);
     });
   };
@@ -195,6 +238,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     const base: ConstructorSeed = {
       color,
       side,
+      ...(garment.placement && side === "front" ? { placement: garment.placement } : {}),
       ...(design.text.trim() ? { text: design.text.trim() } : {}),
       ...(design.textColor ? { textColor: PALETTE.find((c) => c.hex === design.textColor)?.name } : {}),
     };
@@ -252,8 +296,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
             }`}
             style={{ left: pct(A.x, W), top: pct(A.y, H), width: pct(A.w, W), height: pct(A.h, H) }}
           >
-            <ImagePlus className="h-7 w-7" aria-hidden />
-            <span className="px-2 text-center text-sm font-bold leading-tight">ატვირთე ფოტო</span>
+            <ImagePlus className={A.w < 300 ? "h-5 w-5" : "h-7 w-7"} aria-hidden />
+            {/* a small frame (a zip hoodie's chest) has room for the sign only */}
+            {A.w >= 300 ? <span className="px-2 text-center text-sm font-bold leading-tight">ატვირთე ფოტო</span> : <span className="sr-only">ატვირთე ფოტო</span>}
           </button>
         )}
 
@@ -340,7 +385,24 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           {has && !textOpen && (
             <label className="flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 text-[11px] text-white ring-1 ring-white/25 backdrop-blur-md">
               ზომა
-              <input type="range" min={0.2} max={1.1} step={0.01} value={design.scale} onChange={(e) => setDesign({ scale: Number(e.target.value) })} className="h-2 min-w-0 flex-1 accent-amber-400" />
+              {both && (
+                <span className="flex shrink-0 overflow-hidden rounded-full ring-1 ring-white/30" role="radiogroup" aria-label="რას ვცვლით">
+                  {(["img", "text"] as const).map((w) => (
+                    <button key={w} type="button" role="radio" aria-checked={active === w} onClick={() => setSel(w)} className={`px-2 py-0.5 text-[11px] font-semibold ${active === w ? "bg-amber-400 text-black" : "text-white/80"}`}>
+                      {w === "img" ? "ფოტო" : "წარწერა"}
+                    </button>
+                  ))}
+                </span>
+              )}
+              <input
+                type="range"
+                min={0.2}
+                max={active === "text" ? 2.2 : 1.1}
+                step={0.01}
+                value={active === "text" ? (design.ts ?? design.scale) : design.scale}
+                onChange={(e) => setDesign(active === "text" ? { ts: Number(e.target.value) } : { scale: Number(e.target.value) })}
+                className="h-2 min-w-0 flex-1 accent-amber-400"
+              />
             </label>
           )}
           {!textOpen && (
@@ -348,7 +410,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
               <button type="button" onClick={() => fileRef.current?.click()} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
                 <ImagePlus className="h-4 w-4" aria-hidden /> ფოტო
               </button>
-              <button type="button" onClick={() => setTextOpen(true)} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
+              <button type="button" onClick={openText} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
                 <Type className="h-4 w-4" aria-hidden /> წარწერა
               </button>
               {/* the site's own chat, opened over this view (the operators answer there) */}
@@ -356,7 +418,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
                 <MessageCircle className="h-4 w-4" aria-hidden /> ჩატი
               </button>
               {has && (
-                <button type="button" onClick={() => setDesign(emptyDesign())} aria-label="პრინტის წაშლა" className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${glass}`}>
+                <button type="button" onClick={() => setDesign(both ? (active === "text" ? { text: "" } : { img: null }) : emptyDesign())} aria-label={both ? (active === "text" ? "წარწერის წაშლა" : "ფოტოს წაშლა") : "პრინტის წაშლა"} className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${glass}`}>
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               )}
@@ -371,7 +433,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           : printed
             ? "მზადაა! „შეკვეთა“ გახსნის შეკვეთის გვერდს ამ დიზაინით"
             : has
-              ? "თითით გადაადგილე პრინტი, მერე დააჭირე „ბეჭდვა“"
+              ? both
+                ? "ფოტო და წარწერა ცალ-ცალკე გადაადგილდება · მერე „ბეჭდვა“"
+                : "თითით გადაადგილე პრინტი, მერე დააჭირე „ბეჭდვა“"
               : "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ მაისურზე"}
       </p>
       <div className="mt-3 flex items-center gap-2">

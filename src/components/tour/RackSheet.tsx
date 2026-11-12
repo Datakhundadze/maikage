@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Search, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, Search, X, ZoomIn, ZoomOut } from "lucide-react";
 import MagnifierLens from "@/components/MagnifierLens";
 import RackPhotoDesigner from "@/components/tour/RackPhotoDesigner";
 import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
@@ -33,11 +33,14 @@ import type { RackItem, ShowroomRack } from "@/lib/tour/showroomRacks";
 interface RackSheetProps {
   rack: ShowroomRack;
   onClose: () => void;
+  /** The other racks, for the "another product" menu of the large view, and the walk to one. */
+  groups?: { title: string; dests: { id: string; title: string }[] }[];
+  onGo?: (id: string) => void;
 }
 
 const media = (q: string) => typeof window !== "undefined" && window.matchMedia(q).matches;
 
-export default function RackSheet({ rack, onClose }: RackSheetProps) {
+export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProps) {
   const navigate = useNavigate();
   const photo = rackPhoto(rack);
   // A rack that can be designed opens straight in the large view (David 2026-11-12:
@@ -48,6 +51,13 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
   const [big, setBig] = useState(direct);
   // large view: first the product alone, "დაწყება" brings the tools (David 2026-11-10)
   const [designing, setDesigning] = useState(false);
+  // the plain large photo: zoomed by its loupe button, moved by a drag
+  const ZOOM = 2.3;
+  const [zoomed, setZoomed] = useState(false);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panFrom = useRef<{ px: number; py: number; x: number; y: number; w: number; h: number } | null>(null);
+  // "another product" menu in the large view
+  const [menu, setMenu] = useState(false);
   const closeBig = () => {
     setBig(false);
     setDesigning(false);
@@ -192,6 +202,53 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
+            <div className="absolute left-3 top-3 z-10 flex items-start gap-2" onClick={(e) => e.stopPropagation()}>
+              {designing && (
+                <button
+                  type="button"
+                  onClick={() => setDesigning(false)}
+                  aria-label="უკან"
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                >
+                  <ArrowLeft className="h-5 w-5" aria-hidden />
+                </button>
+              )}
+              {groups && onGo && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMenu((m) => !m)}
+                    aria-expanded={menu}
+                    className="flex h-11 items-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    სხვა პროდუქტი <ChevronDown className={`h-4 w-4 transition-transform ${menu ? "rotate-180" : ""}`} aria-hidden />
+                  </button>
+                  {menu && (
+                    <div className="absolute left-0 top-12 max-h-[70dvh] w-60 overflow-y-auto rounded-2xl bg-zinc-900/95 p-1.5 shadow-2xl ring-1 ring-white/15 backdrop-blur-md">
+                      {groups.map((g) => (
+                        <div key={g.title}>
+                          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/45">{g.title}</p>
+                          {g.dests.map((d) => (
+                            <button
+                              key={d.id}
+                              type="button"
+                              disabled={d.id === rack.id}
+                              onClick={() => {
+                                onClose();
+                                onGo(d.id);
+                              }}
+                              className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none disabled:text-amber-400 disabled:hover:bg-transparent"
+                            >
+                              {d.title}
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {designable && designing ? (
               // the one rack with a garment mask: the upload frame right on the photo
               <RackPhotoDesigner
@@ -210,18 +267,51 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
               />
             ) : (
               <>
-              <div
-                className="aspect-[4/5] overflow-hidden rounded-2xl shadow-2xl"
-                style={{ width: bigWidth }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MagnifierLens active zoomSrc={photo}>
-                  <img src={photo} alt={heading} draggable={false} className="h-full w-full select-none object-cover" />
-                </MagnifierLens>
-              </div>
-              <p className="mt-3 text-center text-xs text-white/70">
-                {hover ? "მიიტანე მაუსი — გადიდება" : "დააჭირე და გეჭიროს — გადიდება"}
-              </p>
+                {/* the photo; the loupe button zooms it, a drag then looks around (David 2026-11-12:
+                    "draw a loupe sign somewhere… as it is, nobody can tell it zooms") */}
+                <div
+                  className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-2xl"
+                  style={{ width: bigWidth, touchAction: zoomed ? "none" : undefined, cursor: zoomed ? "grab" : undefined }}
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => {
+                    if (!zoomed) return;
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    panFrom.current = { px: e.clientX, py: e.clientY, x: pan.x, y: pan.y, w: e.currentTarget.clientWidth, h: e.currentTarget.clientHeight };
+                  }}
+                  onPointerMove={(e) => {
+                    const d = panFrom.current;
+                    if (!d) return;
+                    const lim = ((ZOOM - 1) / (2 * ZOOM)) * 100;
+                    setPan({
+                      x: Math.max(-lim, Math.min(lim, d.x + ((e.clientX - d.px) / (d.w * ZOOM)) * 100)),
+                      y: Math.max(-lim, Math.min(lim, d.y + ((e.clientY - d.py) / (d.h * ZOOM)) * 100)),
+                    });
+                  }}
+                  onPointerUp={() => (panFrom.current = null)}
+                  onPointerCancel={() => (panFrom.current = null)}
+                >
+                  <img
+                    src={photo}
+                    alt={heading}
+                    draggable={false}
+                    className="h-full w-full select-none object-cover"
+                    style={{ transform: zoomed ? `scale(${ZOOM}) translate(${pan.x}%, ${pan.y}%)` : "none", transition: panFrom.current ? "none" : "transform 260ms cubic-bezier(.2,.8,.2,1)" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setZoomed((z) => !z);
+                      setPan({ x: 0, y: 0 });
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    aria-pressed={zoomed}
+                    aria-label={zoomed ? "დაპატარავება" : "გადიდება"}
+                    className={`absolute bottom-3 right-3 flex h-12 w-12 items-center justify-center rounded-full shadow-lg ring-1 ring-white/40 backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${zoomed ? "bg-amber-400 text-black" : "bg-black/55 text-white hover:bg-black/70"}`}
+                  >
+                    {zoomed ? <ZoomOut className="h-6 w-6" aria-hidden /> : <ZoomIn className="h-6 w-6" aria-hidden />}
+                  </button>
+                </div>
+                <p className="mt-3 text-center text-xs text-white/70">{zoomed ? "გადაათრიე — დაათვალიერე ახლოდან" : "ლუპა — გადიდება"}</p>
                 {designable && (
                   <button
                     type="button"

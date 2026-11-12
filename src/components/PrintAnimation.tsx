@@ -213,6 +213,11 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
             the folded garment drops IN between them. ── */}
         {packing && (
           <div className="absolute inset-0">
+            {/* a light, warm ground: a black garment and the black bag were lost on the dark screen (David 2026-11-12) */}
+            <div
+              className="absolute -inset-x-10 -bottom-6 top-1 rounded-[48px]"
+              style={{ background: "radial-gradient(ellipse at 50% 46%, #f6ecd9 0%, #e2d2b4 48%, rgba(180,160,125,.55) 68%, transparent 80%)", animation: "pa-in 300ms ease-out both" }}
+            />
             {/* the pressed garment leaves… */}
             {phase === "fold" && (
               <div className="absolute inset-x-[10px] bottom-[14.5%] top-[23.5%]" style={{ animation: "pa-away 360ms ease-in both" }}>

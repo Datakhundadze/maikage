@@ -105,10 +105,17 @@ export interface GarmentDesign {
   font: string;
   /** Text colour; null = black on light cloth, white on dark. */
   textColor: string | null;
-  x: number; // centre, 0..1 of the print area
+  x: number; // the photo's centre, 0..1 of the print area
   y: number;
   scale: number; // 1 = as wide as the print area
+  /** The text is its own object (David 2026-11-12): its centre and size; absent = under the photo, as before. */
+  tx?: number;
+  ty?: number;
+  ts?: number;
 }
+
+/** The text's letter height (px of the photo) for a design in area A. */
+export const textSize = (d: GarmentDesign, A: Rect) => Math.max(18, A.w * (d.ts ?? d.scale) * 0.16);
 
 /** Scratch canvases (W×H) the drawing reuses: a = recoloured garment, b = the print, c = shade under the print. */
 export interface GarmentScratch {
@@ -155,12 +162,13 @@ export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, A: Rect,
   const ih = d.img ? (w * d.img.naturalHeight) / d.img.naturalWidth : 0;
   if (d.img) b.drawImage(d.img, cx - w / 2, cy - ih / 2, w, ih);
   if (d.text) {
-    const size = Math.max(18, w * 0.16);
+    const size = textSize(d, A);
     b.font = `700 ${size}px ${d.font}`;
     b.textAlign = "center";
     b.textBaseline = "middle";
     b.fillStyle = d.textColor ?? (lum(hex) > 0.55 ? "#141414" : "#f6f6f6");
-    b.fillText(d.text, cx, d.img ? cy + ih / 2 + size * 0.9 : cy, A.w * 1.05);
+    if (d.tx !== undefined && d.ty !== undefined) b.fillText(d.text, A.x + d.tx * A.w, A.y + d.ty * A.h, A.w * 1.4);
+    else b.fillText(d.text, cx, d.img ? cy + ih / 2 + size * 0.9 : cy, A.w * 1.05);
   }
   // the cloth's folds through the print, and nothing outside the garment
   const c = s.c.getContext("2d")!;

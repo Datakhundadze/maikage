@@ -24,6 +24,14 @@ export interface RackGarment {
   kind?: "tee" | "hoodie";
   /** The colour of the garment on the rack photo: the designer opens in it. */
   start?: string;
+  /**
+   * Front print area as fractions of the hung photo (x, y, w, h), instead of the
+   * constructor's zone, and the placement handed to the constructor with it.
+   * Zip hoodies: at the heart, beside the zip — a print cannot cross the zip
+   * (David 2026-11-12).
+   */
+  frontArea?: readonly [number, number, number, number];
+  placement?: "left-chest";
 }
 
 export const RACK_GARMENTS: Record<string, RackGarment> = {
@@ -39,8 +47,8 @@ export const RACK_GARMENTS: Record<string, RackGarment> = {
   th: { bg: "/tour/garments/th-bg.webp", box: { x: 114, y: 398, w: 1028, h: 1044 }, start: "Black" },
   "washed-hoodie": { bg: "/tour/garments/washed-hoodie-bg.webp", box: { x: 201, y: 256, w: 781, h: 961 }, kind: "hoodie", start: "Gray" },
   bomber: { bg: "/tour/garments/bomber-bg.webp", box: { x: 87, y: 350, w: 945, h: 1097 }, start: "Black" },
-  "jel-zipper": { bg: "/tour/garments/jel-zipper-bg.webp", box: { x: 283, y: 503, w: 719, h: 839 }, kind: "hoodie", start: "Dark Navy" },
-  "jel-standard-zipper": { bg: "/tour/garments/jel-standard-zipper-bg.webp", box: { x: 197, y: 381, w: 765, h: 931 }, kind: "hoodie", start: "Black" },
+  "jel-zipper": { bg: "/tour/garments/jel-zipper-bg.webp", box: { x: 283, y: 503, w: 719, h: 839 }, kind: "hoodie", start: "Dark Navy", frontArea: [0.53, 0.27, 0.22, 0.19], placement: "left-chest" },
+  "jel-standard-zipper": { bg: "/tour/garments/jel-standard-zipper-bg.webp", box: { x: 197, y: 381, w: 765, h: 931 }, kind: "hoodie", start: "Black", frontArea: [0.53, 0.27, 0.22, 0.19], placement: "left-chest" },
   khundadze: { bg: "/tour/garments/khundadze-bg.webp", box: { x: 284, y: 229, w: 658, h: 791 }, start: "Black" },
   nike: { bg: "/tour/garments/nike-bg.webp", box: { x: 192, y: 316, w: 689, h: 696 }, start: "Dark Navy" },
 };
@@ -90,7 +98,7 @@ export async function loadSiteSide(g: RackGarment, product: ProductType, brand: 
 
   // hang it: as wide / tall as the rack's garment was (cover), its top at the hanger
   const ar = img.naturalWidth / img.naturalHeight;
-  let gw = Math.max(g.box.w, g.box.h * ar) * 0.97;
+  let gw = Math.max(g.box.w, g.box.h * ar) * 1.0;
   let gh = gw / ar;
   const gy = Math.max(0, g.box.y - 0.01 * gh);
   if (gy + gh > H - 8) {
@@ -193,6 +201,9 @@ export async function loadSiteSide(g: RackGarment, product: ProductType, brand: 
   const z = found.entry.placementZone;
   const aw = Math.min(0.5, z.scale * 1.25) * box.w;
   const ah = (z.scaleY ? z.scaleY * 1.05 : 0.46) * box.h;
-  const area: Rect = { x: Math.round(box.x + z.x * box.w - aw / 2), y: Math.round(box.y + z.y * box.h - ah / 2), w: Math.round(aw), h: Math.round(ah) };
+  const fa = side === "front" ? g.frontArea : undefined;
+  const area: Rect = fa
+    ? { x: Math.round(box.x + fa[0] * box.w), y: Math.round(box.y + fa[1] * box.h), w: Math.round(fa[2] * box.w), h: Math.round(fa[3] * box.h) }
+    : { x: Math.round(box.x + z.x * box.w - aw / 2), y: Math.round(box.y + z.y * box.h - ah / 2), w: Math.round(aw), h: Math.round(ah) };
   return { layers: { photo, mask, shade }, area, box };
 }
