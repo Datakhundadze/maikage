@@ -464,7 +464,7 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     // Home top bar: a <details> "სერვისები" menu with every service page; the
     // other pages also as a compact list under the four cards.
     expect(home).toContain("<details ref={servicesMenuRef}");
-    expect(home).toContain("{ALL_SERVICE_LINKS.map((l) => (");
+    expect(home).toContain('{(lang === "en" ? EN_SERVICE_MENU : ALL_SERVICE_LINKS).map((l) => (');
     expect(home).toContain("{MORE_SERVICE_LINKS.map((l) => (");
     expect(source("src/components/MobileNav.tsx")).toContain("services.links.map((l) =>");
     expect(source("src/pages/DesignDetailPage.tsx")).toContain("<PrintServicesLinks />");

@@ -10,6 +10,7 @@ import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import { LOCAL_BUSINESS_SCHEMA } from "@/lib/seoSchemas";
 import { HOME_SEO } from "@/lib/pageSeo";
 import { ALL_SERVICE_LINKS, MORE_SERVICE_LINKS, SERVICE_LINKS, SERVICE_PAGE_LINKS, SERVICES_HEADING } from "@/lib/serviceRouteSlugs";
+import { EN_SERVICE_MENU } from "@/lib/enRoutePaths";
 
 const SPORT_PHOTOS = [
   "https://ykoseamefoabptuijsza.supabase.co/storage/v1/object/public/products/sport/sport-set-white-front.png",
@@ -102,7 +103,7 @@ export default function LandingPage() {
               <ChevronDown className="h-3 w-3" />
             </summary>
             <ul className="absolute left-0 top-full z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover p-1.5 shadow-lg">
-              {ALL_SERVICE_LINKS.map((l) => (
+              {(lang === "en" ? EN_SERVICE_MENU : ALL_SERVICE_LINKS).map((l) => (
                 <li key={l.href}>
                   <Link
                     to={l.href}
