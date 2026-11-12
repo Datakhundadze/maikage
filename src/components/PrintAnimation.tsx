@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 // the chosen print comes out of a DTF printer on film, gets its powder and
 // heat, then the chosen garment lies on the heat press, the film goes on,
 // the press closes (3-2-1, steam), opens, the film is peeled off — the print
-// stays on the garment. ~10 s, can be skipped; with reduced motion only the
+// stays on the garment; then it is folded and dropped into the shop's paper
+// bag (David 2026-11-12, his photo of the bag). ~12 s, can be skipped; with reduced motion only the
 // finished garment is shown for a moment.
 //
 // The printer and the press are pictures drawn with ChatGPT (2026-11-11,
@@ -27,7 +28,7 @@ export interface PrintAnimationProps {
   onSkip?: () => void;
 }
 
-type Phase = "print" | "cure" | "lay" | "press" | "open" | "peel" | "done";
+type Phase = "print" | "cure" | "lay" | "press" | "open" | "peel" | "fold" | "bag" | "done";
 const ORDER: [Phase, number][] = [
   ["print", 2600],
   ["cure", 1500],
@@ -35,6 +36,8 @@ const ORDER: [Phase, number][] = [
   ["press", 2100],
   ["open", 600],
   ["peel", 1000],
+  ["fold", 900],
+  ["bag", 1500],
   ["done", 1300],
 ];
 const CAPTION: Record<Phase, string> = {
@@ -44,6 +47,8 @@ const CAPTION: Record<Phase, string> = {
   press: "თერმოპრესი…",
   open: "თერმოპრესი…",
   peel: "ფირი ძვრება…",
+  fold: "იკეცება…",
+  bag: "იფუთება…",
   done: "მზადაა!",
 };
 
@@ -76,7 +81,9 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
 
   const printer = phase === "print" || phase === "cure";
   const pressed = phase === "press";
-  const afterPress = phase === "open" || phase === "peel" || phase === "done";
+  const afterPress = phase === "open" || phase === "peel";
+  // the end: the printed garment is folded and goes into the shop's paper bag
+  const packing = phase === "fold" || phase === "bag" || phase === "done";
 
   return (
     <div role="dialog" aria-modal="true" aria-label="ბეჭდვა" className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_30%,#2b2620_0%,#0c0c0c_75%)] text-white">
@@ -92,6 +99,10 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
         @keyframes pa-pop { from { transform: scale(.6); opacity: 0 } 60% { transform: scale(1.08); opacity: 1 } to { transform: scale(1) } }
         @keyframes pa-shine { from { transform: translateX(-140%) skewX(-18deg) } to { transform: translateX(260%) skewX(-18deg) } }
         @keyframes pa-in { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+        @keyframes pa-fold { from { clip-path: inset(0 0 0 0 round 0px); transform: none } to { clip-path: inset(16% 27% 38% 27% round 10px); transform: translateY(-118px) scale(.9) } }
+        @keyframes pa-into { from { transform: translateY(-118px) scale(.9) } to { transform: translateY(112px) scale(.9) } }
+        @keyframes pa-bag-in { from { transform: translate(-50%, 130%) } to { transform: translate(-50%, 0) } }
+        @keyframes pa-bag-nod { 0%, 100% { transform: translate(-50%, 0) } 45% { transform: translate(-50%, 7px) scale(1.02, .985) } }
       `}</style>
 
       <p key={CAPTION[phase]} aria-live="polite" className="mb-4 h-7 text-base font-bold tracking-wide" style={{ animation: "pa-in 260ms ease-out both" }}>
@@ -138,15 +149,14 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
         )}
 
         {/* ── scene 3–4: the heat press from above (press-base.webp / press-top.webp, both 2:3) ── */}
-        {!printer && (
+        {!printer && !packing && (
           <div className="absolute inset-x-[10px] inset-y-0" style={{ animation: "pa-in 300ms ease-out both" }}>
             <img src="/tour/print/press-base.webp" alt="" draggable={false} className="absolute inset-0 h-full w-full select-none drop-shadow-[0_18px_30px_rgba(0,0,0,.8)]" />
             {/* the garment on the grey pad */}
             <div className="absolute bottom-[14.5%] left-[9%] right-[9%] top-[23.5%]">
               <img src={afterPress ? garmentPrintedSrc : garmentBlankSrc} alt="" className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_4px_6px_rgba(0,0,0,.35)]" />
               {/* the film with the print, laid on; peeled off at the end */}
-              {phase !== "done" && (
-                <div
+              <div
                   className="absolute inset-0"
                   style={{
                     animation: phase === "lay" ? "pa-drop 620ms cubic-bezier(.2,.8,.2,1) both" : phase === "peel" ? "pa-peel 900ms cubic-bezier(.5,0,.8,.4) both" : undefined,
@@ -156,12 +166,6 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
                   {!afterPress && <img src={printLayerSrc} alt="" className="absolute inset-0 h-full w-full object-contain" />}
                   <span className="absolute left-[16%] right-[16%] top-[10%] h-[62%] rounded-md border border-white/40 bg-white/[0.14]" />
                 </div>
-              )}
-              {phase === "done" && (
-                <span className="pointer-events-none absolute inset-0 overflow-hidden">
-                  <span className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/35 to-transparent" style={{ animation: "pa-shine 900ms ease-out both" }} />
-                </span>
-              )}
             </div>
             {/* the upper plate: comes down over the pad, the count on its display */}
             <div className="pointer-events-none absolute inset-x-0 -top-8 bottom-0 z-10 overflow-hidden">
@@ -187,8 +191,48 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
                   style={{ left: s < 0 ? "-6%" : "88%", ["--dx" as string]: `${s * (26 + i * 9)}px`, animation: `pa-steam 1100ms ease-out ${i * 260}ms infinite` }}
                 />
               ))}
+          </div>
+        )}
+
+        {/* ── scene 5: folded, into the maika.ge paper bag (the shop's own bag,
+            public/tour/print/bag.webp — its front, straightened from David's photo) ── */}
+        {packing && (
+          <div className="absolute inset-0" style={{ animation: phase === "fold" ? "pa-in 200ms ease-out both" : undefined }}>
+            {/* the garment: folds to its chest, then drops behind the bag's edge (the wrapper cuts it there) */}
+            {phase !== "done" && (
+              <div className="absolute inset-x-0 -top-10 z-10 h-[246px]" style={{ overflow: phase === "bag" ? "hidden" : "visible" }}>
+                <div
+                  className="absolute inset-x-6 top-[106px] h-[380px]"
+                  style={{
+                    clipPath: "inset(16% 27% 38% 27% round 10px)",
+                    transform: "translateY(-118px) scale(.9)",
+                    animation: phase === "fold" ? "pa-fold 760ms cubic-bezier(.5,0,.2,1) both" : "pa-into 720ms cubic-bezier(.6,0,.8,.5) 520ms both",
+                  }}
+                >
+                  <img src={garmentPrintedSrc} alt="" className="absolute inset-0 h-full w-full object-contain" />
+                </div>
+              </div>
+            )}
+            {(phase === "bag" || phase === "done") && (
+              <div
+                className="absolute left-1/2 top-[204px] z-20 w-[172px]"
+                style={{ transform: "translate(-50%, 0)", animation: phase === "bag" ? "pa-bag-in 480ms cubic-bezier(.2,.8,.2,1) both, pa-bag-nod 380ms ease-out 1180ms" : undefined }}
+              >
+                {/* twisted paper handles */}
+                <svg viewBox="0 0 172 60" className="absolute -top-[58px] left-0 h-[60px] w-full" aria-hidden>
+                  <path d="M52 60 C50 6, 122 6, 120 60" fill="none" stroke="#a9834f" strokeWidth="5" strokeLinecap="round" />
+                  <path d="M52 60 C50 6, 122 6, 120 60" fill="none" stroke="#d9b98a" strokeWidth="2" strokeLinecap="round" strokeDasharray="5 4" />
+                </svg>
+                <img src="/tour/print/bag.webp" alt="maika.ge" draggable={false} className="block w-full select-none rounded-[3px] shadow-[0_18px_30px_-6px_rgba(0,0,0,.85)]" />
+                {phase === "done" && (
+                  <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[3px]">
+                    <span className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/25 to-transparent" style={{ animation: "pa-shine 900ms ease-out both" }} />
+                  </span>
+                )}
+              </div>
+            )}
             {phase === "done" && (
-              <div className="absolute left-1/2 top-[7%] z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-500 px-5 py-2 text-lg font-extrabold text-white shadow-lg" style={{ animation: "pa-pop 420ms ease-out both" }}>
+              <div className="absolute left-1/2 top-[52px] z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-500 px-5 py-2 text-lg font-extrabold text-white shadow-lg" style={{ animation: "pa-pop 420ms ease-out both" }}>
                 ✓ მზადაა
               </div>
             )}

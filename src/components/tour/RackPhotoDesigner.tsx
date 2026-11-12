@@ -177,7 +177,12 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
   const onFile = (f: File | undefined) => {
     if (!f) return;
     void loadImg(URL.createObjectURL(f)).then((img) => {
-      setDesign({ img });
+      // The picture goes INSIDE the frame, whatever its shape (David 2026-11-12: "the
+      // uploaded photo missed the frame and sat on the neck" — a tall photo in a low
+      // frame, the hoodie's above all, was sized by width only and stuck out of the top).
+      const tall = (img.naturalHeight / img.naturalWidth) * A.w; // its height at full frame width
+      const scale = Math.min(0.8, (0.9 * A.h) / tall);
+      setDesign({ img, scale, x: 0.5, y: tall * scale > 0.7 * A.h ? 0.5 : 0.42 });
       setPrinted(false);
     });
   };

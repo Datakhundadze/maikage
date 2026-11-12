@@ -10,7 +10,7 @@ export const H = 1500;
 // where a print sits on the garment in the photo (px of the 1200×1500 photo)
 export const AREA: Record<Side, { x: number; y: number; w: number; h: number }> = {
   front: { x: 395, y: 470, w: 430, h: 560 },
-  back: { x: 375, y: 400, w: 430, h: 620 },
+  back: { x: 395, y: 400, w: 430, h: 620 },
 };
 export const SRC: Record<Side, { photo: string; mask: string }> = {
   front: { photo: "/tour/lab/oversize-front.webp", mask: "/tour/lab/oversize-front-mask.png" },
@@ -19,7 +19,7 @@ export const SRC: Record<Side, { photo: string; mask: string }> = {
 // the garment's box in the photo (for the print film: the garment alone, cut out)
 export const BOX: Record<Side, { x: number; y: number; w: number; h: number }> = {
   front: { x: 120, y: 255, w: 970, h: 1185 },
-  back: { x: 110, y: 255, w: 970, h: 1185 },
+  back: { x: 120, y: 255, w: 970, h: 1185 },
 };
 export interface SideLayers {
   photo: HTMLImageElement;
