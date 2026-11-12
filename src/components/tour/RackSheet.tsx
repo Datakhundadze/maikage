@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowRight, Search, X } from "lucide-react";
 import MagnifierLens from "@/components/MagnifierLens";
 import RackPhotoDesigner from "@/components/tour/RackPhotoDesigner";
-import { GARMENTS } from "@/lib/tour/garmentPhoto";
+import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 import { fromPrice } from "@/lib/landingPrice";
@@ -40,12 +40,18 @@ const media = (q: string) => typeof window !== "undefined" && window.matchMedia(
 export default function RackSheet({ rack, onClose }: RackSheetProps) {
   const navigate = useNavigate();
   const photo = rackPhoto(rack);
-  const [big, setBig] = useState(false);
+  // A rack that can be designed opens straight in the large view (David 2026-11-12:
+  // "the 'choose' button is no longer needed — open it enlarged right away"): its card
+  // is skipped, and closing the large view closes the rack.
+  const garment = RACK_GARMENTS[rack.id];
+  const direct = !!garment && rack.items !== "catalog";
+  const [big, setBig] = useState(direct);
   // large view: first the product alone, "დაწყება" brings the tools (David 2026-11-10)
   const [designing, setDesigning] = useState(false);
   const closeBig = () => {
     setBig(false);
     setDesigning(false);
+    if (direct) onClose();
   };
   const [hover] = useState(() => media("(hover: hover) and (pointer: fine)"));
   const item = useMemo(() => {
@@ -57,15 +63,14 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      if (big) {
+      if (big && !direct) {
         setBig(false);
         setDesigning(false);
-      }
-      else onClose();
+      } else onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, big]);
+  }, [onClose, big, direct]);
 
   // the constructor and the catalog open in a new tab, so the showroom stays
   // where it is (the seed is in localStorage, made for exactly this handoff);
@@ -87,87 +92,88 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
   const label = item ? rack.title : "ყვითელი საკიდი";
   const heading = item ? item.name : rack.title;
   // design on the photo (look only): the rack whose photo has a garment mask
-  const garment = GARMENTS[rack.id];
   const designable = !!garment && !!item;
   // the large photo is the same size with and without the tools, so nothing jumps
   const bigWidth = `min(92vw, calc((100dvh - ${designable ? 11 : 7}rem) * 0.8))`;
 
   return (
     <>
-      <aside
-        role="dialog"
-        aria-label={rack.title}
-        style={{ ["--card-w" as string]: `${RACK_CARD_WIDE_PX}px` }}
-        className="maika-rack-card absolute inset-x-3 bottom-[5.25rem] z-30 text-white md:inset-x-auto md:bottom-auto md:right-5 md:top-1/2 md:w-[var(--card-w)] md:-translate-y-1/2"
-      >
-        <style>{`
-          @keyframes maika-card-up { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: none } }
-          @keyframes maika-card-in { from { opacity: 0; transform: translate(32px, -50%) } to { opacity: 1; transform: translate(0, -50%) } }
-          @keyframes maika-photo-in { from { opacity: 0; transform: scale(1.06) } to { opacity: 1; transform: none } }
-          .maika-rack-card { animation: maika-card-up 320ms cubic-bezier(.2,.8,.2,1) both }
-          @media (min-width: 768px) { .maika-rack-card { animation-name: maika-card-in } }
-          .maika-photo-in { animation: maika-photo-in 600ms cubic-bezier(.2,.8,.2,1) 120ms both }
-          @media (prefers-reduced-motion: reduce) { .maika-rack-card, .maika-photo-in { animation: none !important } }
-        `}</style>
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#111]/90 shadow-[0_18px_50px_-12px_rgba(0,0,0,.85)] backdrop-blur-md">
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="დახურვა"
-            className="absolute right-2 top-2 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-          >
-            <X className="h-4 w-4" aria-hidden />
-          </button>
+      {!direct && (
+        <aside
+          role="dialog"
+          aria-label={rack.title}
+          style={{ ["--card-w" as string]: `${RACK_CARD_WIDE_PX}px` }}
+          className="maika-rack-card absolute inset-x-3 bottom-[5.25rem] z-30 text-white md:inset-x-auto md:bottom-auto md:right-5 md:top-1/2 md:w-[var(--card-w)] md:-translate-y-1/2"
+        >
+          <style>{`
+            @keyframes maika-card-up { from { opacity: 0; transform: translateY(24px) } to { opacity: 1; transform: none } }
+            @keyframes maika-card-in { from { opacity: 0; transform: translate(32px, -50%) } to { opacity: 1; transform: translate(0, -50%) } }
+            @keyframes maika-photo-in { from { opacity: 0; transform: scale(1.06) } to { opacity: 1; transform: none } }
+            .maika-rack-card { animation: maika-card-up 320ms cubic-bezier(.2,.8,.2,1) both }
+            @media (min-width: 768px) { .maika-rack-card { animation-name: maika-card-in } }
+            .maika-photo-in { animation: maika-photo-in 600ms cubic-bezier(.2,.8,.2,1) 120ms both }
+            @media (prefers-reduced-motion: reduce) { .maika-rack-card, .maika-photo-in { animation: none !important } }
+          `}</style>
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#111]/90 shadow-[0_18px_50px_-12px_rgba(0,0,0,.85)] backdrop-blur-md">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="დახურვა"
+              className="absolute right-2 top-2 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
 
-          <div className="flex items-stretch md:block">
-            {/* the photo: hover = loupe (computer); tap = large view */}
-            <div className="relative w-[32%] shrink-0 md:w-full">
-              <div className="maika-photo-in aspect-[4/5] w-full overflow-hidden bg-zinc-900">
-                <MagnifierLens active={hover} zoomSrc={photo}>
-                  <button
-                    type="button"
-                    onClick={() => setBig(true)}
-                    aria-label="ფოტოს გადიდება"
-                    className="block h-full w-full focus-visible:outline-none"
-                    style={hover ? { cursor: "none" } : undefined}
-                  >
-                    <img src={photo} alt={heading} decoding="async" draggable={false} className="h-full w-full select-none object-cover" />
-                  </button>
-                </MagnifierLens>
+            <div className="flex items-stretch md:block">
+              {/* the photo: hover = loupe (computer); tap = large view */}
+              <div className="relative w-[32%] shrink-0 md:w-full">
+                <div className="maika-photo-in aspect-[4/5] w-full overflow-hidden bg-zinc-900">
+                  <MagnifierLens active={hover} zoomSrc={photo}>
+                    <button
+                      type="button"
+                      onClick={() => setBig(true)}
+                      aria-label="ფოტოს გადიდება"
+                      className="block h-full w-full focus-visible:outline-none"
+                      style={hover ? { cursor: "none" } : undefined}
+                    >
+                      <img src={photo} alt={heading} decoding="async" draggable={false} className="h-full w-full select-none object-cover" />
+                    </button>
+                  </MagnifierLens>
+                </div>
+                <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
+                  <Search className="h-3 w-3" aria-hidden />
+                  {hover ? "გადიდება — მიიტანე მაუსი" : "გადიდება"}
+                </span>
+                {/* fade into the text below (wide) */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-16 bg-gradient-to-t from-[#111] to-transparent md:block" aria-hidden />
               </div>
-              <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
-                <Search className="h-3 w-3" aria-hidden />
-                {hover ? "გადიდება — მიიტანე მაუსი" : "გადიდება"}
-              </span>
-              {/* fade into the text below (wide) */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-16 bg-gradient-to-t from-[#111] to-transparent md:block" aria-hidden />
-            </div>
 
-            <div className="flex min-w-0 flex-1 flex-col justify-between p-3 pr-11 md:-mt-6 md:p-5 md:pr-5">
-              <div className="relative">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-400">{label}</p>
-                <h2 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight md:text-xl">{heading}</h2>
+              <div className="flex min-w-0 flex-1 flex-col justify-between p-3 pr-11 md:-mt-6 md:p-5 md:pr-5">
+                <div className="relative">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-400">{label}</p>
+                  <h2 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight md:text-xl">{heading}</h2>
+                  {item ? (
+                    <p className="mt-1 text-sm text-white/70">
+                      <span className="text-lg font-semibold text-white">{item.price} ₾</span>-დან
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm leading-snug text-white/70">აქ ყველა დიზაინი კიდია, რაც გვაქვს.</p>
+                  )}
+                </div>
                 {item ? (
-                  <p className="mt-1 text-sm text-white/70">
-                    <span className="text-lg font-semibold text-white">{item.price} ₾</span>-დან
-                  </p>
+                  <button type="button" onClick={() => choose(item)} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
+                    არჩევა<span className="hidden md:inline"> და დიზაინი</span> <ArrowRight className="h-4 w-4" aria-hidden />
+                  </button>
                 ) : (
-                  <p className="mt-1 text-sm leading-snug text-white/70">აქ ყველა დიზაინი კიდია, რაც გვაქვს.</p>
+                  <button type="button" onClick={() => openPage("/designs")} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
+                    კატალოგის ნახვა <ArrowRight className="h-4 w-4" aria-hidden />
+                  </button>
                 )}
               </div>
-              {item ? (
-                <button type="button" onClick={() => choose(item)} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
-                  არჩევა<span className="hidden md:inline"> და დიზაინი</span> <ArrowRight className="h-4 w-4" aria-hidden />
-                </button>
-              ) : (
-                <button type="button" onClick={() => openPage("/designs")} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
-                  კატალოგის ნახვა <ArrowRight className="h-4 w-4" aria-hidden />
-                </button>
-              )}
             </div>
           </div>
-        </div>
-      </aside>
+        </aside>
+      )}
 
       {big &&
         createPortal(
@@ -191,7 +197,9 @@ export default function RackSheet({ rack, onClose }: RackSheetProps) {
               <RackPhotoDesigner
                 alt={heading}
                 garment={garment}
-                brand={item?.brand ?? ""}
+                product={item.product}
+                brand={item.brand}
+                startColor={garment.start}
                 width={bigWidth}
                 onOrder={(seed) => {
                   // the site chat's own handoff: one seed, then the constructor ("/?constructor=1")

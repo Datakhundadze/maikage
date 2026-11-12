@@ -1,25 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ImagePlus, MessageCircle, Printer, RefreshCw, Trash2, Type, X } from "lucide-react";
 import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnimation";
-import { BRAND_COLORS, COLORS } from "@/lib/catalog";
+import { BRAND_COLORS, COLORS, type ProductColor, type ProductType } from "@/lib/catalog";
 import type { ConstructorSeed } from "@/lib/constructorSeed";
 import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
-import { drawGarment, garmentFilm, garmentScratch, H, loadImg, loadSide, W, type GarmentDesign, type GarmentScratch, type GarmentSpec, type Side, type SideLayers } from "@/lib/tour/garmentPhoto";
+import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
+import { hasBack, loadSiteSide, type RackGarment, type SiteSide } from "@/lib/tour/siteGarment";
 
-// The rack's large photo as the place to design (David 2026-11-10/11: "the
-// upload frame on this same photo… and the tools right there around it:
-// colours, back side, fonts — on exactly the background the enlarged view
-// opens, no separate panel"). Everything floats on the photo itself:
+// The rack's large photo as the place to design (David 2026-11-10/12). The
+// garment in it is the site's own product photo for the chosen colour and
+// side, hung where the rack's garment was (siteGarment.ts) — true colours and
+// a real back. Everything floats on the photo itself:
 //   dashed frame on the chest  → pick a photo
-//   colour circles (left)      → the brand's real colours (catalog)
+//   colour circles (left)      → the brand's colours (catalog)
 //   "ზურგი" (top right)        → the other side, with its own design
-//   ფოტო / წარწერა (bottom)    → photo; text with font and colour
-//   drag = move the print, slider = its size, "ბეჭდვა" = the print film
-// LOOK ONLY: nothing is ordered, priced, saved or uploaded anywhere — the
-// photo never leaves the visitor's device. The order still goes through
-// "არჩევა" (the constructor). Racks listed in GARMENTS (garmentPhoto.ts) —
-// every rack with one garment in front (16 of 18; not the tote stand and the
-// catalog rack). Oversize also has a made back; the others front only.
+//   ფოტო / წარწერა / ჩატი      → photo; text with font and colour; the site chat
+//   drag = move the print, slider = its size, "ბეჭდვა" = the print film,
+//   then "შეკვეთა" = the same design handed to the constructor.
+// Nothing is priced, saved or uploaded here; the photo stays on the device.
 
 // the constructor's own fonts (SimplePage FONT_GROUPS), the ones the site loads
 const FONTS = [
@@ -56,10 +54,13 @@ const pct = (v: number, of: number) => `${(v / of) * 100}%`;
 
 interface Props {
   alt: string;
-  /** The rack's garment: photos, masks, print areas (GARMENTS). */
-  garment: GarmentSpec;
-  /** Catalog brand whose colours are offered (BRAND_COLORS). */
+  /** The rack's place for the garment: the photo without it, and its box (RACK_GARMENTS). */
+  garment: RackGarment;
+  /** The catalog product and brand: its colours (BRAND_COLORS) and the site's photos of it. */
+  product: ProductType;
   brand: string;
+  /** The colour the rack photo shows — the designer opens in it when the brand has it. */
+  startColor?: string;
   /** CSS width of the photo — the same as the plain large view, so nothing jumps. */
   width: string;
   /**
@@ -71,16 +72,14 @@ interface Props {
   onOrder: (seed: ConstructorSeed) => boolean;
 }
 
-export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder }: Props) {
+export default function RackPhotoDesigner({ alt, garment, product, brand, startColor, width, onOrder }: Props) {
   const ref = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const layers = useRef<Partial<Record<Side, SideLayers>>>({});
   const scratch = useRef<GarmentScratch | null>(null);
   const colors = BRAND_COLORS[brand] ?? ["White"];
-  const [ready, setReady] = useState(false);
   const [side, setSide] = useState<Side>("front");
   const [turn, setTurn] = useState(0);
-  const [color, setColor] = useState<string>(garment.start && (colors as readonly string[]).includes(garment.start) ? garment.start : colors[0]);
+  const [color, setColor] = useState<string>(startColor && (colors as readonly string[]).includes(startColor) ? startColor : colors[0]);
   const [designs, setDesigns] = useState<Record<Side, GarmentDesign>>({ front: emptyDesign(), back: emptyDesign() });
   const [textOpen, setTextOpen] = useState(false);
   const [fontTick, setFontTick] = useState(0);
@@ -95,47 +94,30 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
     setPrinted(false);
     setOrderFailed(false);
   }, [design, color, side]);
-  const recolor = color !== "White";
-  const A = garment.sides[side]?.area ?? WHOLE;
-  const canFlip = !!garment.sides.front && !!garment.sides.back;
-  // a ready photo of this colour and side, once it has loaded
-  const [basePhotos, setBasePhotos] = useState<Record<string, HTMLImageElement>>({});
-  const baseKey = `${color}|${side}`;
-  const baseSrc = garment.colorPhoto?.[color]?.[side];
-  const base = baseSrc ? (basePhotos[baseKey] ?? null) : null;
+  // the site's photo of this colour and side, hung in the rack photo (siteGarment.ts)
+  const [site, setSite] = useState<SiteSide | null>(null);
+  const ready = !!site;
+  const A = site?.area ?? WHOLE;
+  const canFlip = hasBack(product, brand);
   useEffect(() => {
-    if (!baseSrc || basePhotos[baseKey]) return;
     let off = false;
-    void loadImg(baseSrc).then((img) => {
-      if (!off) setBasePhotos((m) => ({ ...m, [baseKey]: img }));
-    });
+    if (!scratch.current) scratch.current = garmentScratch();
+    void loadSiteSide(garment, product, brand, color as ProductColor, hexOf(color), side)
+      .then((sd) => {
+        if (!off && sd) setSite(sd);
+      })
+      .catch(() => {});
     return () => {
       off = true;
     };
-  }, [baseSrc, baseKey, basePhotos]);
+  }, [garment, product, brand, color, side]);
 
   useEffect(() => {
-    let off = false;
-    scratch.current = garmentScratch();
-    const sides = (["front", "back"] as const).filter((sd) => garment.sides[sd]);
-    void Promise.all(sides.map((sd) => loadSide(sd, garment.sides[sd]))).then((ls) => {
-      if (off) return;
-      layers.current = Object.fromEntries(sides.map((sd, i) => [sd, ls[i]]));
-      setReady(true);
-    });
-    return () => {
-      off = true;
-    };
-  }, [garment]);
-
-  useEffect(() => {
-    const L = layers.current[side];
     const g = ref.current?.getContext("2d");
-    if (!ready || !L || !g || !scratch.current) return;
-    // a colour with its own photo that has not loaded yet: wait, do not flash the white one
-    if (baseSrc && !base) return;
-    drawGarment(g, L, A, hexOf(color), recolor, design, scratch.current, base);
-  }, [ready, side, color, recolor, design, fontTick, base, baseSrc, A]);
+    if (!site || !g || !scratch.current) return;
+    drawGarment(g, site.layers, site.area, hexOf(color), false, design, scratch.current);
+    // (the colour only picks the automatic text colour here: the garment is already in it)
+  }, [site, color, design, fontTick]);
 
   // a web font is only there once it has been asked for: draw again when it arrives
   useEffect(() => {
@@ -201,9 +183,8 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
   };
 
   const startPrint = () => {
-    const L = layers.current[side];
-    if (!L || !scratch.current) return;
-    const f = garmentFilm(L, garment.sides[side]?.box ?? WHOLE, recolor, scratch.current, base);
+    if (!site || !scratch.current) return;
+    const f = garmentFilm(site.layers, site.box, false, scratch.current);
     if (f) setFilm({ ...f, garmentColor: hexOf(color), folded: garment.kind ?? "tee" });
   };
 
@@ -236,7 +217,11 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
           }}
         />
       )}
-      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
+          onFile(e.target.files?.[0]);
+          // the same file may be picked again (the other side, or after a delete)
+          e.target.value = "";
+        }} />
 
       <div className="relative aspect-[4/5]" style={{ width, perspective: "1400px" }}>
         <canvas
@@ -263,7 +248,7 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
             type="button"
             onClick={() => fileRef.current?.click()}
             className={`absolute flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-              recolor ? "border-white/70 text-white hover:bg-white/10" : "border-zinc-500/80 text-zinc-700 hover:bg-black/5"
+              lum(hexOf(color)) < 0.6 ? "border-white/70 text-white hover:bg-white/10" : "border-zinc-500/80 text-zinc-700 hover:bg-black/5"
             }`}
             style={{ left: pct(A.x, W), top: pct(A.y, H), width: pct(A.w, W), height: pct(A.h, H) }}
           >
