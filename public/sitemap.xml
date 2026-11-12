@@ -3236,6 +3236,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://maika.ge/maisurze-potos-dabechdva</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://maika.ge/en</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -3297,6 +3302,11 @@
   </url>
   <url>
     <loc>https://maika.ge/en/event-t-shirts</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/en/photo-t-shirt-printing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

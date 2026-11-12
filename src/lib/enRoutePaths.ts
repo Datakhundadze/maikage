@@ -15,6 +15,7 @@ export const EN_ROUTE_PATHS = [
   "/en/tote-bags",
   "/en/restaurant-cafe-uniforms",
   "/en/event-t-shirts",
+  "/en/photo-t-shirt-printing",
 ] as const;
 
 /**
@@ -36,4 +37,5 @@ export const EN_SERVICE_MENU: readonly { href: string; label: string }[] = [
   { href: "/en/tote-bags", label: "Custom tote bags" },
   { href: "/en/restaurant-cafe-uniforms", label: "Restaurant & café uniforms" },
   { href: "/en/event-t-shirts", label: "Event T-shirts & merch" },
+  { href: "/en/photo-t-shirt-printing", label: "Photo T-shirt printing" },
 ];

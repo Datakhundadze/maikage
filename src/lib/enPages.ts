@@ -155,6 +155,7 @@ export const EN_HUB: EnPageCopy = {
         { href: "/en/tote-bags", label: "Custom tote bags" },
         { href: "/en/restaurant-cafe-uniforms", label: "Restaurant & café uniforms" },
         { href: "/en/event-t-shirts", label: "Event T-shirts & merch" },
+        { href: "/en/photo-t-shirt-printing", label: "Photo T-shirt printing" },
       ],
     },
     {
@@ -874,6 +875,89 @@ export const EN_EVENTS: EnPageCopy = {
   serviceType: "Event T-shirts and merchandise",
 };
 
+// ── /en/photo-t-shirt-printing ↔ /maisurze-potos-dabechdva ──────────────────
+
+export const EN_PHOTO: EnPageCopy = {
+  slug: "photo-t-shirt-printing",
+  path: "/en/photo-t-shirt-printing",
+  kaPath: "/maisurze-potos-dabechdva",
+  seo: {
+    title: "Photo T-shirt Printing in Tbilisi — From 1 Item | maika.ge",
+    description: `Print your own photo on a T-shirt, hoodie, mug or phone case in Tbilisi: upload it, see it on screen and order even a single piece. Ready in ${LEAD_TIME_EN}.`,
+  },
+  name: "Photo T-shirt printing",
+  h1: "Photo T-shirt printing in Tbilisi",
+  intro: `A T-shirt with your own photo — for a birthday, New Year, a couple, friends or just for yourself. On maika.ge you can print a photo on a single piece: upload it, see on screen how it looks, and your order is ready in ${LEAD_TIME_EN}. We have been sewing and printing in Tbilisi for 15 years.`,
+  heroLinks: [DESIGNER, CONTACT_LINKS[0]],
+  images: [
+    { src: "/showroom/tee-white-front.webp", alt: "White T-shirt ready for printing your photo — maika.ge", width: 646, height: 948 },
+    { src: "/products/mug/mug-white-front.webp", alt: "White mug ready for your photo — a photo gift", width: 868, height: 796 },
+  ],
+  sections: [
+    {
+      h2: "How we print photos",
+      body: "On T-shirts, hoodies and tote bags we print photos with DTF: there is no limit on colours, so a photo's colours, shadows and fine detail come out well. Colours are bright and survive washing.",
+      links: [{ href: "/en/dtf-printing", label: "DTF printing" }],
+    },
+    {
+      h2: "What you can print a photo on",
+      bullets: [
+        { term: "T-shirt", text: "classic, oversized or kids' — colours look cleanest on a white T-shirt." },
+        { term: "Hoodie", text: "the photo on the front or the back." },
+        { term: "Mug", text: "the most popular photo gift." },
+        { term: "Phone case", text: "mainly iPhone, Xiaomi and Samsung models." },
+        { term: "Tote bag", text: "an everyday bag with your photo." },
+      ],
+      links: [
+        { href: "/en/mug-printing", label: "Mug printing" },
+        { href: "/en/phone-cases", label: "Phone cases" },
+        { href: "/en/tote-bags", label: "Tote bags" },
+      ],
+    },
+    {
+      h2: "How to order",
+      steps: [
+        "Choose the item and upload your photo — you can add text too.",
+        "Pick the colour and size and see how it looks on screen.",
+        "Pay online, or come to the showroom and order in person.",
+      ],
+      links: [DESIGNER],
+    },
+    {
+      h2: "Which photo works best",
+      bullets: [
+        { term: "High resolution", text: "upload straight from your phone camera. Screenshots and images saved from social media often print blurry." },
+        { term: "Good light", text: "a bright, sharp photo always prints better than a dark one." },
+        { term: "Main detail in the centre", text: "especially on mugs and phone cases, where the edges show less." },
+      ],
+      note: "Only have a low-quality photo? Message us and we will tell you how it will print.",
+    },
+    { h2: "Size and lead time", body: `Standard print size A4, maximum A3 — on the front, the back or both. Ready in ${LEAD_TIME_EN}; need it for a specific day? Message us and we will help.` },
+    {
+      h2: "Photo gift ideas",
+      bullets: [
+        { term: "Birthday", text: "a T-shirt or mug with a shared photo and a caption." },
+        { term: "New Year", text: "family photos on T-shirts, or a set of mugs — each with a different photo." },
+        { term: "Couples", text: "two T-shirts with each other's photo, or two halves of one photo." },
+        { term: "Friends", text: "matching T-shirts for a trip, a party or graduation." },
+      ],
+    },
+    { h2: "Care", body: "Wash printed items at 30°C at most, turned inside out — the photo keeps its colours much longer." },
+    { h2: "Printing on your own garment", body: BROUGHT_ITEM_EN },
+    VISIT,
+  ],
+  faqHeading: "Photo printing — FAQ",
+  faq: [
+    { q: "Can I order just one T-shirt with a photo?", a: "Yes — we print a photo on a single piece too." },
+    { q: "Will the photo look good?", a: "DTF keeps a photo's colours and detail. The better the file, the cleaner the print." },
+    { q: "How long does it take?", a: `${LEAD_TIME_EN}. Need it for a specific day? Message us.` },
+    { q: "Can I add text to the photo?", a: "Yes — add it while you put the design together." },
+    { q: "Does a photo print on a coloured T-shirt?", a: "Yes, though a photo's colours look most natural on a white T-shirt." },
+  ],
+  cta: { h2: "Upload your photo", body: "It takes a few minutes — you see on screen how it will look.", links: [DESIGNER, ...CONTACT_LINKS] },
+  serviceType: "Photo printing on T-shirts",
+};
+
 // ── Lists, links, JSON-LD ───────────────────────────────────────────────────
 
 /** Every English page, hub first. */
@@ -891,6 +975,7 @@ export const EN_PAGE_LIST: readonly EnPageCopy[] = [
   EN_TOTE,
   EN_RESTAURANT,
   EN_EVENTS,
+  EN_PHOTO,
 ];
 
 /** path → page, for the router. */

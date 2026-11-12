@@ -24,6 +24,7 @@ export const SERVICE_PAGE_SLUGS = [
   "zhiletebi-da-satsvimrebi",
   "restornis-da-kafes-forma",
   "ghonisdziebis-maisurebi",
+  "maisurze-potos-dabechdva",
 ] as const;
 
 export type ServicePageSlug = (typeof SERVICE_PAGE_SLUGS)[number];
@@ -45,6 +46,7 @@ export const SERVICE_PAGE_NAMES: Readonly<Record<ServicePageSlug, string>> = {
   "zhiletebi-da-satsvimrebi": "ჟილეტები და საწვიმრები",
   "restornis-da-kafes-forma": "რესტორნისა და კაფეს ფორმა",
   "ghonisdziebis-maisurebi": "მაისურები ღონისძიებისთვის",
+  "maisurze-potos-dabechdva": "მაისურზე ფოტოს დაბეჭდვა",
 };
 
 /** One link per service page (the home footer). */
@@ -168,6 +170,11 @@ export const MORE_SERVICE_LINKS: readonly ServiceNavLink[] = [
     label: "მაისურები ღონისძიებისთვის",
     description: "კონფერენცია, ფესტივალი, მარათონი, თიმბილდინგი — მაისურები, ჩანთები, კეპები და ჟილეტები ლოგოთი.",
   },
+  {
+    href: "/maisurze-potos-dabechdva",
+    label: "მაისურზე ფოტოს დაბეჭდვა",
+    description: `შენი ფოტო მაისურზე, ჰუდზე, ჭიქაზე ან ქეისზე — ერთი ცალიდან, მზადდება ${LEAD_TIME_KA}ში.`,
+  },
 ];
 
 /**
@@ -195,21 +202,22 @@ const DEFAULT_PRINT_SERVICES = [
   "/korporatiuli-sachukrebi",
 ];
 const PRINT_SERVICES_BY_PATH: Readonly<Record<string, readonly string[]>> = {
-  "/maisurebze-bechdva": ["/dtf-bechdva", "/shelkografia", "/logos-kargva", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/corporate", "/sportuli-formebi", "/chiqaze-bechdva"],
+  "/maisurebze-bechdva": ["/dtf-bechdva", "/shelkografia", "/logos-kargva", "/maisurze-potos-dabechdva", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/corporate", "/sportuli-formebi"],
   "/sportuli-formebi": ["/fekhburtis-formebi", "/kalatburtis-formebi", "/maisurebze-bechdva", "/dtf-bechdva", "/corporate", "/logos-kargva"],
   "/fekhburtis-formebi": ["/sportuli-formebi", "/kalatburtis-formebi", "/dtf-bechdva", "/maisurebze-bechdva", "/corporate", "/logos-kargva"],
   "/kalatburtis-formebi": ["/sportuli-formebi", "/fekhburtis-formebi", "/dtf-bechdva", "/maisurebze-bechdva", "/corporate"],
-  "/dtf-bechdva": ["/maisurebze-bechdva", "/shelkografia", "/logos-kargva", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/chiqaze-bechdva", "/corporate", "/sportuli-formebi"],
+  "/dtf-bechdva": ["/maisurebze-bechdva", "/maisurze-potos-dabechdva", "/shelkografia", "/logos-kargva", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/chiqaze-bechdva", "/corporate"],
   "/shelkografia": ["/maisurebze-bechdva", "/dtf-bechdva", "/logos-kargva", "/corporate", "/korporatiuli-sachukrebi", "/natsris-chantebi", "/zhiletebi-da-satsvimrebi", "/sportuli-formebi"],
   "/logos-kargva": ["/maisurebze-bechdva", "/shelkografia", "/dtf-bechdva", "/corporate", "/korporatiuli-sachukrebi", "/zhiletebi-da-satsvimrebi", "/hoodie"],
-  "/chiqaze-bechdva": ["/korporatiuli-sachukrebi", "/telefonis-qeisebi", "/natsris-chantebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva", "/corporate"],
+  "/chiqaze-bechdva": ["/maisurze-potos-dabechdva", "/korporatiuli-sachukrebi", "/telefonis-qeisebi", "/natsris-chantebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva", "/corporate"],
   "/korporatiuli-sachukrebi": ["/corporate", "/restornis-da-kafes-forma", "/ghonisdziebis-maisurebi", "/zhiletebi-da-satsvimrebi", "/natsris-chantebi", "/telefonis-qeisebi", "/logos-kargva", "/chiqaze-bechdva"],
   "/maisurebi-kartuli-tsartserebit": ["/maisurebze-bechdva", "/dtf-bechdva", "/hoodie", "/chiqaze-bechdva", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
   "/corporate": ["/korporatiuli-sachukrebi", "/logos-kargva", "/restornis-da-kafes-forma", "/ghonisdziebis-maisurebi", "/zhiletebi-da-satsvimrebi", "/natsris-chantebi", "/shelkografia", "/dtf-bechdva"],
-  "/telefonis-qeisebi": ["/chiqaze-bechdva", "/natsris-chantebi", "/korporatiuli-sachukrebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva"],
+  "/telefonis-qeisebi": ["/maisurze-potos-dabechdva", "/chiqaze-bechdva", "/natsris-chantebi", "/korporatiuli-sachukrebi", "/maisurebze-bechdva", "/maisurebi-kartuli-tsartserebit", "/dtf-bechdva"],
   "/natsris-chantebi": ["/korporatiuli-sachukrebi", "/ghonisdziebis-maisurebi", "/dtf-bechdva", "/shelkografia", "/corporate", "/telefonis-qeisebi", "/chiqaze-bechdva", "/maisurebze-bechdva"],
   "/zhiletebi-da-satsvimrebi": ["/corporate", "/korporatiuli-sachukrebi", "/ghonisdziebis-maisurebi", "/restornis-da-kafes-forma", "/logos-kargva", "/shelkografia", "/dtf-bechdva", "/sportuli-formebi"],
   "/restornis-da-kafes-forma": ["/corporate", "/korporatiuli-sachukrebi", "/logos-kargva", "/dtf-bechdva", "/shelkografia", "/chiqaze-bechdva", "/natsris-chantebi", "/ghonisdziebis-maisurebi"],
+  "/maisurze-potos-dabechdva": ["/maisurebze-bechdva", "/dtf-bechdva", "/chiqaze-bechdva", "/telefonis-qeisebi", "/hoodie", "/maisurebi-kartuli-tsartserebit", "/natsris-chantebi"],
   "/ghonisdziebis-maisurebi": ["/corporate", "/shelkografia", "/dtf-bechdva", "/natsris-chantebi", "/zhiletebi-da-satsvimrebi", "/korporatiuli-sachukrebi", "/restornis-da-kafes-forma", "/maisurebze-bechdva"],
   "/hoodie": ["/maisurebze-bechdva", "/dtf-bechdva", "/maisurebi-kartuli-tsartserebit", "/logos-kargva", "/corporate", "/korporatiuli-sachukrebi", "/sportuli-formebi"],
 };
