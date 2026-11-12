@@ -450,7 +450,7 @@ export default function VideoWalk() {
   // sound (footsteps + quiet music): on by default, but audio may only start
   // from the visitor's own tap / key press
   const ensureAudio = useCallback(() => {
-    if (!footstepsRef.current) footstepsRef.current = createFootsteps({ volume: 0.3, pitchHz: 70, pitchSpread: 0.08 });
+    if (!footstepsRef.current) footstepsRef.current = createFootsteps({ volume: 0.24, pitchHz: 64, pitchSpread: 0.08 });
     void footstepsRef.current?.resume();
     if (!musicRef.current) musicRef.current = createAmbientMusic(0.05);
     void musicRef.current?.start();

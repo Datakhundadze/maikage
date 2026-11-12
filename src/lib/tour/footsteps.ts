@@ -1,11 +1,13 @@
 // Footsteps of a shoe on a tiled floor, synthesised with the Web Audio API
 // (no audio files).
 //
-// Each footfall: heel strike = a short low sine dropping in pitch (the body)
-// plus a hard band-passed noise click, then ~80 ms later the toe = a softer
-// click and a scuff. Left and right feet differ slightly in pitch, and every
-// step varies a little in level, pitch and timing so the rhythm doesn't
-// sound mechanical.
+// Each footfall is a SOFT one — a sneaker, not a hard heel (David 2026-11-12:
+// "the footsteps are very harsh"): the heel = a low sine with a gentle start
+// plus a dull pat of low-passed noise, then ~90 ms later the toe = a quieter
+// pat and a short brush of the sole. No bright clicks: everything also goes
+// through one low-pass, so nothing above ~1.6 kHz is left. Left and right
+// feet differ slightly in pitch, and every step varies a little in level,
+// pitch and timing so the rhythm doesn't sound mechanical.
 //
 // The AudioContext is created by createFootsteps(), which the viewer calls
 // only from the user's own tap on the sound button (browsers require a
@@ -49,7 +51,12 @@ export function createFootsteps(cfg: FootstepConfig): Footsteps | null {
 
   const out = ctx.createGain();
   out.gain.value = cfg.volume;
-  out.connect(ctx.destination);
+  // the whole step through one low-pass: takes the edge off whatever is left
+  const soften = ctx.createBiquadFilter();
+  soften.type = "lowpass";
+  soften.frequency.value = 1600;
+  soften.Q.value = 0.5;
+  out.connect(soften).connect(ctx.destination);
 
   return {
     get state() {
@@ -62,43 +69,43 @@ export function createFootsteps(cfg: FootstepConfig): Footsteps | null {
       const tune = (foot === "left" ? 1 - cfg.pitchSpread / 2 : 1 + cfg.pitchSpread / 2) * (0.96 + Math.random() * 0.08);
       const f = cfg.pitchHz * tune;
 
-      // a shoe on a tiled floor: heel strike (body thud + hard click), then the
-      // toe rolling down a moment later (softer click + scuff)
+      // a soft sole on a tiled floor: the heel lands (low body + dull pat),
+      // then the toe rolls down a moment later (quieter pat + a brush)
       const thud = (t: number, gain: number) => {
         const osc = ctx.createOscillator();
         osc.type = "sine";
-        osc.frequency.setValueAtTime(f * 1.8, t);
-        osc.frequency.exponentialRampToValueAtTime(f, t + 0.04);
+        osc.frequency.setValueAtTime(f * 1.35, t);
+        osc.frequency.exponentialRampToValueAtTime(f, t + 0.06);
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(gain, t + 0.004);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
         osc.connect(g).connect(out);
         osc.start(t);
-        osc.stop(t + 0.13);
+        osc.stop(t + 0.18);
       };
-      const click = (t: number, centreHz: number, q: number, gain: number, decay: number) => {
+      // a pat: noise with its top cut off, a soft start and a short tail
+      const pat = (t: number, cutHz: number, gain: number, attack: number, decay: number) => {
         const src = ctx.createBufferSource();
         src.buffer = noise;
-        src.playbackRate.value = 0.9 + Math.random() * 0.2;
-        const bp = ctx.createBiquadFilter();
-        bp.type = "bandpass";
-        bp.frequency.value = centreHz * tune;
-        bp.Q.value = q;
+        src.playbackRate.value = 0.8 + Math.random() * 0.2;
+        const lp = ctx.createBiquadFilter();
+        lp.type = "lowpass";
+        lp.frequency.value = cutHz * tune;
+        lp.Q.value = 0.6;
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(gain, t + 0.002);
+        g.gain.exponentialRampToValueAtTime(gain, t + attack);
         g.gain.exponentialRampToValueAtTime(0.0001, t + decay);
-        src.connect(bp).connect(g).connect(out);
+        src.connect(lp).connect(g).connect(out);
         src.start(t, Math.random() * 0.05);
         src.stop(t + decay + 0.02);
       };
-      thud(t0, 0.75 * s);
-      click(t0, 2400, 1.4, 0.55 * s, 0.035); // heel on tile
-      click(t0 + 0.002, 900, 0.9, 0.25 * s, 0.06); // body of the impact
-      const toe = t0 + 0.075 + Math.random() * 0.02;
-      click(toe, 3200, 1.8, 0.28 * s, 0.03); // toe
-      click(toe + 0.01, 1600, 0.7, 0.12 * s, 0.09); // sole scuff
+      thud(t0, 0.5 * s);
+      pat(t0, 650, 0.3 * s, 0.008, 0.09); // heel
+      const toe = t0 + 0.085 + Math.random() * 0.025;
+      pat(toe, 900, 0.14 * s, 0.01, 0.07); // toe
+      pat(toe + 0.01, 1300, 0.05 * s, 0.02, 0.12); // the sole's brush
     },
     resume: () => ctx.resume(),
     suspend: () => ctx.suspend(),
