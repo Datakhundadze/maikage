@@ -120,6 +120,8 @@ export interface GarmentSpec {
   colorPhoto?: Record<string, Partial<Record<Side, string>>>;
   /** The colour the designer opens in (the one on the rack photo); default: the brand's first. */
   start?: string;
+  /** What it is folded as at the end of the print film; default a tee. */
+  kind?: "tee" | "hoodie";
 }
 export const GARMENTS: Record<string, GarmentSpec> = {
   oversize: {
@@ -165,6 +167,7 @@ export const GARMENTS: Record<string, GarmentSpec> = {
     },
     colorPhoto: { Black: { front: "/tour/racks/gildan-hoodie.webp" } },
     start: "Black",
+    kind: "hoodie",
   },
 };
 

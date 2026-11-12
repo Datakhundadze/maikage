@@ -195,6 +195,7 @@ export default function ShowroomLabPage() {
       garmentBlankSrc: blank.toDataURL("image/png"),
       garmentPrintedSrc: done.toDataURL("image/png"),
       printLayerSrc: crop(tmpB.current).toDataURL("image/png"),
+      garmentColor: hexOf(color),
     });
   };
 

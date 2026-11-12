@@ -204,7 +204,7 @@ export default function RackPhotoDesigner({ alt, garment, brand, width, onOrder 
     const L = layers.current[side];
     if (!L || !scratch.current) return;
     const f = garmentFilm(L, garment.sides[side]?.box ?? WHOLE, recolor, scratch.current, base);
-    if (f) setFilm(f);
+    if (f) setFilm({ ...f, garmentColor: hexOf(color), folded: garment.kind ?? "tee" });
   };
 
   // the order: the same handoff the site chat uses — the constructor opens with
