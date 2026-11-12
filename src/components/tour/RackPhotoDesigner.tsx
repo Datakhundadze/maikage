@@ -17,9 +17,9 @@ import { drawGarment, garmentFilm, garmentScratch, H, loadImg, loadSide, W, type
 //   drag = move the print, slider = its size, "ბეჭდვა" = the print film
 // LOOK ONLY: nothing is ordered, priced, saved or uploaded anywhere — the
 // photo never leaves the visitor's device. The order still goes through
-// "არჩევა" (the constructor). Racks listed in GARMENTS (garmentPhoto.ts):
-// Oversize (front + a stand-in back), GIORDANO, the washed tee and the GILDAN
-// hoodie (front only so far).
+// "არჩევა" (the constructor). Racks listed in GARMENTS (garmentPhoto.ts) —
+// every rack with one garment in front (16 of 18; not the tote stand and the
+// catalog rack). Oversize also has a made back; the others front only.
 
 // the constructor's own fonts (SimplePage FONT_GROUPS), the ones the site loads
 const FONTS = [

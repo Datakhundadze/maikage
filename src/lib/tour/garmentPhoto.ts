@@ -109,8 +109,8 @@ export interface GarmentSide {
  * on the canvas with the cloth's own folds. `colorPhoto` = ready photos for
  * colours that look better photographed than tinted (black above all).
  *
- * Where the rack photo shows a dark garment (GIORDANO, the washed tee, the
- * GILDAN hoodie) the white photo was made offline from it (2026-11-11: mask
+ * Where the rack photo shows a dark garment the white photo was made offline
+ * from it (tools/showroom/make_garments.py) (2026-11-11: mask
  * by GrabCut, the cloth's light taken from the dark cloth and compressed,
  * print area and box from the mask's bounds), and the rack photo itself is
  * the ready photo of that colour.
@@ -168,6 +168,150 @@ export const GARMENTS: Record<string, GarmentSpec> = {
     colorPhoto: { Black: { front: "/tour/racks/gildan-hoodie.webp" } },
     start: "Black",
     kind: "hoodie",
+  },
+  // 2026-11-12: the rest of the racks with one garment in front (same offline method)
+  gildan: {
+    sides: {
+      front: {
+        photo: "/tour/garments/gildan-front.webp",
+        mask: "/tour/garments/gildan-front-mask.png",
+        area: { x: 389, y: 553, w: 427, h: 488 },
+        box: { x: 101, y: 352, w: 993, h: 1061 },
+      },
+    },
+    colorPhoto: { "Black": { front: "/tour/racks/gildan.webp" } },
+    start: "Black",
+  },
+  "gildan-kids": {
+    sides: {
+      front: {
+        photo: "/tour/garments/gildan-kids-front.webp",
+        mask: "/tour/garments/gildan-kids-front-mask.png",
+        area: { x: 394, y: 626, w: 381, h: 382 },
+        box: { x: 136, y: 466, w: 887, h: 837 },
+      },
+    },
+  },
+  hummer: {
+    sides: {
+      front: {
+        photo: "/tour/garments/hummer-front.webp",
+        mask: "/tour/garments/hummer-front-mask.png",
+        area: { x: 400, y: 593, w: 408, h: 476 },
+        box: { x: 125, y: 397, w: 948, h: 1036 },
+      },
+    },
+  },
+  polo: {
+    sides: {
+      front: {
+        photo: "/tour/garments/polo-front.webp",
+        mask: "/tour/garments/polo-front-mask.png",
+        area: { x: 389, y: 680, w: 408, h: 422 },
+        box: { x: 93, y: 350, w: 1000, h: 1083 },
+      },
+    },
+    colorPhoto: { "Dark Navy": { front: "/tour/racks/polo.webp" } },
+    start: "Dark Navy",
+  },
+  sols: {
+    sides: {
+      front: {
+        photo: "/tour/garments/sols-front.webp",
+        mask: "/tour/garments/sols-front-mask.png",
+        area: { x: 401, y: 522, w: 389, h: 495 },
+        box: { x: 138, y: 318, w: 905, h: 1075 },
+      },
+    },
+    colorPhoto: { "Black": { front: "/tour/racks/sols.webp" } },
+    start: "Black",
+  },
+  th: {
+    sides: {
+      front: {
+        photo: "/tour/garments/th-front.webp",
+        mask: "/tour/garments/th-front-mask.png",
+        area: { x: 407, y: 589, w: 453, h: 491 },
+        box: { x: 103, y: 387, w: 1050, h: 1066 },
+      },
+    },
+    colorPhoto: { "Black": { front: "/tour/racks/th.webp" } },
+    start: "Black",
+  },
+  "washed-hoodie": {
+    sides: {
+      front: {
+        photo: "/tour/garments/washed-hoodie-front.webp",
+        mask: "/tour/garments/washed-hoodie-front-mask.png",
+        area: { x: 436, y: 546, w: 310, h: 258 },
+        box: { x: 190, y: 245, w: 803, h: 983 },
+      },
+    },
+    colorPhoto: { "Gray": { front: "/tour/racks/washed-hoodie.webp" } },
+    start: "Gray",
+    kind: "hoodie",
+  },
+  bomber: {
+    sides: {
+      front: {
+        photo: "/tour/garments/bomber-front.webp",
+        mask: "/tour/garments/bomber-front-mask.png",
+        area: { x: 356, y: 550, w: 416, h: 516 },
+        box: { x: 76, y: 339, w: 967, h: 1119 },
+      },
+    },
+    colorPhoto: { "Black": { front: "/tour/racks/bomber.webp" } },
+    start: "Black",
+  },
+  "jel-zipper": {
+    sides: {
+      front: {
+        photo: "/tour/garments/jel-zipper-front.webp",
+        mask: "/tour/garments/jel-zipper-front-mask.png",
+        area: { x: 682, y: 756, w: 178, h: 167 },
+        box: { x: 272, y: 492, w: 741, h: 861 },
+      },
+    },
+    colorPhoto: { "Dark Navy": { front: "/tour/racks/jel-zipper.webp" } },
+    start: "Dark Navy",
+    kind: "hoodie",
+  },
+  "jel-standard-zipper": {
+    sides: {
+      front: {
+        photo: "/tour/garments/jel-standard-zipper-front.webp",
+        mask: "/tour/garments/jel-standard-zipper-front-mask.png",
+        area: { x: 621, y: 662, w: 190, h: 185 },
+        box: { x: 186, y: 370, w: 787, h: 953 },
+      },
+    },
+    colorPhoto: { "Black": { front: "/tour/racks/jel-standard-zipper.webp" } },
+    start: "Black",
+    kind: "hoodie",
+  },
+  khundadze: {
+    sides: {
+      front: {
+        photo: "/tour/garments/khundadze-front.webp",
+        mask: "/tour/garments/khundadze-front-mask.png",
+        area: { x: 472, y: 374, w: 289, h: 371 },
+        box: { x: 273, y: 218, w: 680, h: 813 },
+      },
+    },
+    colorPhoto: { "Black": { front: "/tour/racks/khundadze.webp" } },
+    start: "Black",
+  },
+  nike: {
+    sides: {
+      front: {
+        photo: "/tour/garments/nike-front.webp",
+        mask: "/tour/garments/nike-front-mask.png",
+        area: { x: 389, y: 444, w: 303, h: 326 },
+        box: { x: 181, y: 305, w: 711, h: 718 },
+      },
+    },
+    colorPhoto: { "Dark Navy": { front: "/tour/racks/nike.webp" } },
+    start: "Dark Navy",
   },
 };
 
