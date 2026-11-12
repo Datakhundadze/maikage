@@ -478,11 +478,11 @@ export function corporateWorkHtml(w, images, { esc, link, style }) {
  * @param servicesHtml  the "ბეჭდვის სერვისები" block (printServicesHtml), last in <main>
  * @param corporateWork corporateWorkHtml(...) on /korporatiuli-sachukrebi, before the FAQ
  */
-export function servicePageHtml(page, { esc, link, style }, servicesHtml = "", corporateWork = "") {
+export function servicePageHtml(page, { esc, link, style }, servicesHtml = "", corporateWork = "", navHtml = null) {
   const links = (list) => `<p style="${style.p}">${list.map((l) => link(l.href, l.label)).join(" · ")}</p>`;
   return [
     `<main style="${style.main}">`,
-    `<nav style="${style.nav}">${link("/", LANDING_LABELS.home)} › ${esc(page.name)}</nav>`,
+    navHtml ?? `<nav style="${style.nav}">${link("/", LANDING_LABELS.home)} › ${esc(page.name)}</nav>`,
     `<h1 style="${style.h1}">${esc(page.h1)}</h1>`,
     `<p style="${style.p}">${esc(page.intro)}</p>`,
     page.heroLinks?.length ? links(page.heroLinks) : "",
@@ -652,7 +652,7 @@ export function jsonLdText(value) {
  * @param input.faqPage      FAQ_PAGE
  * @param input.servicePages lib/serviceCopy.ts SERVICE_PAGE_LIST (optional)
  */
-export function buildLlmsTxt({ routes, productKa, landingSeo, servicesKa, faqPage, servicePages = [] }) {
+export function buildLlmsTxt({ routes, productKa, landingSeo, servicesKa, faqPage, servicePages = [], enPages = [] }) {
   const c = CONTACT;
   const brandSuffix = " | maika.ge";
   const products = routes.filter((r) => !r.brandSlug);
@@ -672,6 +672,10 @@ export function buildLlmsTxt({ routes, productKa, landingSeo, servicesKa, faqPag
     "",
     ...(servicePages.length
       ? ["## სერვისები", "", ...servicePages.map((p) => `- [${p.h1}](${SITE_URL}${p.path}): ${p.seo.description}`), ""]
+      : []),
+    // English pages (lib/enPages.ts): for assistants answering in English.
+    ...(enPages.length
+      ? ["## In English", "", ...enPages.map((p) => `- [${p.h1}](${SITE_URL}${p.path}): ${p.seo.description}`), ""]
       : []),
     `## ${CORPORATE.h1}`,
     "",

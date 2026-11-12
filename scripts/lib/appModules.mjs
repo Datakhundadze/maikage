@@ -43,6 +43,7 @@ const MODULES = {
   blogSeo: "/src/lib/blogSeo.ts",
   portfolioCategories: "/src/lib/portfolioCategories.ts",
   corporateWork: "/src/lib/corporateWork.ts",
+  enPages: "/src/lib/enPages.ts",
 };
 
 /**
@@ -188,6 +189,14 @@ export async function loadAppModules(log) {
       selectCorporateWork: m.corporateWork.selectCorporateWork,
       corporateWorkImage: m.corporateWork.corporateWorkImage,
       corporateBrand: m.corporateWork.corporateBrand,
+      EN_PAGE_LIST: m.enPages.EN_PAGE_LIST,
+      EN_PATH_FOR_KA: m.enPages.EN_PATH_FOR_KA,
+      enSchemas: m.enPages.enSchemas,
+      enAlternates: m.enPages.enAlternates,
+      enServiceLinksFor: m.enPages.enServiceLinksFor,
+      EN_HOME_LABEL: m.enPages.EN_HOME_LABEL,
+      EN_SERVICES_HEADING: m.enPages.EN_SERVICES_HEADING,
+      EN_GEORGIAN_LINK_LABEL: m.enPages.EN_GEORGIAN_LINK_LABEL,
     };
   } catch (e) {
     console.warn(`${log} WARNING: could not load app modules from src/: ${e?.message ?? e}`);

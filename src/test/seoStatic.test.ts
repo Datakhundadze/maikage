@@ -7,6 +7,7 @@ import { FAQ_GROUPS, FAQ_PAGE, faqPageSchema } from "@/lib/faqContent";
 import { LANDING_TAIL_KA, landingSeo } from "@/lib/landingSeo";
 import { LEAD_TIME_KA } from "@/lib/leadTime";
 import { SERVICE_PAGE_LIST } from "@/lib/serviceCopy";
+import { EN_PAGE_LIST } from "@/lib/enPages";
 import {
   CONTACT,
   CORPORATE,
@@ -238,6 +239,7 @@ describe("public/llms.txt", () => {
     servicesKa: LANDING_TAIL_KA,
     faqPage: FAQ_PAGE,
     servicePages: SERVICE_PAGE_LIST,
+    enPages: EN_PAGE_LIST,
   });
 
   it("matches its builder (run `node scripts/generate-llms-txt.mjs` after changing a source)", () => {

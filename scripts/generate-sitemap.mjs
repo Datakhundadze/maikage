@@ -110,7 +110,7 @@ async function withAppRoutes(xml) {
       console.warn("[generate-sitemap] Landing routes not added (app modules unavailable). Build continues.");
       return null;
     }
-    const entries = [...landingSitemapEntries(landingRoutes(app)), ...serviceSitemapEntries(app.SERVICE_PAGE_LIST ?? [])];
+    const entries = [...landingSitemapEntries(landingRoutes(app)), ...serviceSitemapEntries(app.SERVICE_PAGE_LIST ?? []), ...serviceSitemapEntries(app.EN_PAGE_LIST ?? [])];
     if (app.SHOWROOM_INDEXABLE) entries.push({ loc: `${SITE_URL}/showroom`, priority: "0.6", changefreq: "monthly" });
     const before = countUrls(xml);
     const { xml: merged, added } = mergeSitemapEntries(xml, entries);

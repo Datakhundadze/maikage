@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { ArrowLeft } from "lucide-react";
 import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import NotFound from "@/pages/NotFound";
@@ -7,6 +8,7 @@ import CorporateWorkGallery from "@/components/CorporateWorkGallery";
 import { CORPORATE_WORK_PATHS } from "@/lib/corporateWork";
 import { SERVICE_PAGES, serviceSchemas, type ServiceLink, type ServicePageCopy } from "@/lib/serviceCopy";
 import type { ServicePageSlug } from "@/lib/serviceRouteSlugs";
+import { EN_PATH_FOR_KA } from "@/lib/enPages";
 
 // Service landing pages (/maisurebze-bechdva, /sportuli-formebi, …). Purely
 // presentational: every string, the title / description and the JSON-LD come
@@ -57,6 +59,14 @@ function ServicePageView({ page }: { page: ServicePageCopy }) {
         url={`${SITE_URL}${page.path}`}
         schemas={serviceSchemas(page)}
       />
+      {/* hreflang ↔ the /en twin (lib/enPages.ts); same tags in the static file. */}
+      {EN_PATH_FOR_KA[page.path] && (
+        <Helmet>
+          <link rel="alternate" hrefLang="ka" href={`${SITE_URL}${page.path}`} />
+          <link rel="alternate" hrefLang="en" href={`${SITE_URL}${EN_PATH_FOR_KA[page.path]}`} />
+          <link rel="alternate" hrefLang="x-default" href={`${SITE_URL}${page.path}`} />
+        </Helmet>
+      )}
       <main className="max-w-3xl mx-auto px-4 py-12">
         <nav aria-label="breadcrumb" className="mb-8 text-sm text-gray-500 dark:text-white/40">
           <Link to="/" className="inline-flex items-center gap-2 hover:text-gray-900 dark:hover:text-white transition-colors">

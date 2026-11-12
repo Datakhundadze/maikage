@@ -27,6 +27,7 @@ if (!app) {
     servicesKa: app.LANDING_TAIL_KA,
     faqPage: app.FAQ_PAGE,
     servicePages: app.SERVICE_PAGE_LIST,
+    enPages: app.EN_PAGE_LIST,
   });
   await writeFile(OUTPUT, text, "utf8");
   console.log(`[llms.txt] wrote public/llms.txt (${Buffer.byteLength(text, "utf8")} bytes).`);
