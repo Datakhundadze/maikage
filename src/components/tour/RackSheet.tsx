@@ -40,6 +40,10 @@ interface RackSheetProps {
 
 const media = (q: string) => typeof window !== "undefined" && window.matchMedia(q).matches;
 
+// pause at a rack before its large view opens; the walk has already held ~0.7 s
+// after its turn (VideoWalk "arrived"), so the rack is seen for ~1.6 s in all
+const ARRIVE_MS = 900;
+
 export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProps) {
   const navigate = useNavigate();
   const photo = rackPhoto(rack);
@@ -48,7 +52,14 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
   // is skipped, and closing the large view closes the rack.
   const garment = RACK_GARMENTS[rack.id];
   const direct = !!garment && rack.items !== "catalog";
-  const [big, setBig] = useState(direct);
+  // ...but not the instant the walk stops: the visitor first sees the rack they came
+  // to for a moment, then it opens (David 2026-11-13: "wait 1-2 s, then open").
+  const [big, setBig] = useState(false);
+  useEffect(() => {
+    if (!direct) return;
+    const t = window.setTimeout(() => setBig(true), ARRIVE_MS);
+    return () => window.clearTimeout(t);
+  }, [direct]);
   // large view: first the product alone, "დაწყება" brings the tools (David 2026-11-10)
   const [designing, setDesigning] = useState(false);
   // the plain large photo: zoomed by its loupe button, moved by a drag
