@@ -131,7 +131,7 @@ const PICKER_GROUPS: { title: string; dests: WalkDest[] }[] = [
   { title: "ჰუდები", dests: dests.filter((d) => d.rack && d.rack.items !== "catalog" && d.rack.items[0].product === "Hoodie") },
   {
     title: "სხვა",
-    dests: dests.filter((d) => !d.operator && d.rack && (d.rack.items === "catalog" || !["T-Shirt", "Hoodie"].includes(d.rack.items[0].product))),
+    dests: dests.filter((d) => !d.operator && d.rack && d.rack.id !== "catalog-2" && (d.rack.items === "catalog" || !["T-Shirt", "Hoodie"].includes(d.rack.items[0].product))),
   },
 ];
 

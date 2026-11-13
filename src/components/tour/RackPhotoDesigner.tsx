@@ -228,7 +228,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   const startPrint = () => {
     if (!site || !scratch.current) return;
     const f = garmentFilm(site.layers, site.box, false, scratch.current);
-    if (f) setFilm({ ...f, garmentColor: hexOf(color), folded: garment.kind ?? "tee" });
+    if (f) setFilm({ ...f, folded: garment.kind ?? "tee" });
   };
 
   // the order: the same handoff the site chat uses — the constructor opens with

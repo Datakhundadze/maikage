@@ -30,7 +30,8 @@ export function rackItemName(it: RackItem): string {
  * magnifies it.
  */
 export function rackPhoto(rack: ShowroomRack): string {
-  return `/tour/racks/${rack.id}.webp`;
+  // both catalog racks show the one catalog photo (see showroomRacks)
+  return `/tour/racks/${rack.items === "catalog" ? "catalog" : rack.id}.webp`;
 }
 
 /** Start downloading the rack's photo (fire and forget) — called when the walk there starts. */

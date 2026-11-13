@@ -65,7 +65,12 @@ export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
   // the wall hooks beside the skeleton, the yellow rack, the hooks under the jerseys
   one("jel-zipper", "JEL Washed Zipper", "Hoodie", "JEL Zipper", 238.6, -38),
   one("jel-standard-zipper", "JEL Standard Zipper", "Hoodie", "JEL Standard Zipper", 53.6, -23),
-  { id: "catalog", title: "მთელი კატალოგი", items: "catalog", stop: { t: 55.2, yawDeg: 3 } },
+  // Two racks carry the "catalog" name (David 2026-11-13): the yellow rack, and the
+  // rack beside it. The second holds replicas of official team kits, which the shop
+  // does not show openly, so it gets the same name, card and photo as the first and
+  // nothing that says what hangs there.
+  { id: "catalog", title: "კატალოგი", items: "catalog", stop: { t: 55.2, yawDeg: 3 } },
+  { id: "catalog-2", title: "კატალოგი", items: "catalog", stop: { t: 55.2, yawDeg: 26 } },
   one("bomber", "GILDAN Bomber", "Hoodie", "GILDAN Bomber", 226.2, -61),
   // the yellow coat stand beside the blue door
   one("tote", "ნაჭრის ჩანთები", "Tote Bag", "Tote Bag", 148, 48),

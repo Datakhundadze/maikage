@@ -187,7 +187,7 @@ export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, A: Rect,
 }
 
 /** The four pictures the print film needs, from what drawGarment() left in the scratch canvases; null = nothing printed. */
-export function garmentFilm(L: SideLayers, B: Rect, recolor: boolean, s: GarmentScratch, base?: HTMLImageElement | null): { designSrc: string; garmentBlankSrc: string; garmentPrintedSrc: string; printLayerSrc: string } | null {
+export function garmentFilm(L: SideLayers, B: Rect, recolor: boolean, s: GarmentScratch, base?: HTMLImageElement | null): { designSrc: string; garmentBlankSrc: string; garmentPrintedSrc: string; printLayerSrc: string; garmentColor: string } | null {
   const crop = (src: HTMLCanvasElement, x = B.x, y = B.y, w = B.w, h = B.h) => {
     const c = canvas(w, h);
     c.getContext("2d")!.drawImage(src, x, y, w, h, 0, 0, w, h);
@@ -214,6 +214,29 @@ export function garmentFilm(L: SideLayers, B: Rect, recolor: boolean, s: Garment
   g.globalCompositeOperation = "destination-in";
   g.drawImage(L.mask, 0, 0);
   const blank = crop(garment);
+  // The cloth's own colour, read from the picture (its lit part: the 75th percentile
+  // of each channel over the garment) — for the folded garment at the end. A catalog
+  // hex is not it: "Khaki" is tan in the palette and a washed olive in the photo, and
+  // the folded tee came out brown (David 2026-11-13: "fold it in the colour we print").
+  const bd = blank.getContext("2d", { willReadFrequently: true })!.getImageData(0, 0, blank.width, blank.height).data;
+  const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+  let n = 0;
+  for (let i = 0; i < bd.length; i += 16)
+    if (bd[i + 3] > 250) {
+      hist[0][bd[i]]++;
+      hist[1][bd[i + 1]]++;
+      hist[2][bd[i + 2]]++;
+      n++;
+    }
+  const p75 = (h: Uint32Array) => {
+    let acc = 0;
+    for (let v = 0; v < 256; v++) {
+      acc += h[v];
+      if (acc >= n * 0.75) return v;
+    }
+    return 255;
+  };
+  const garmentColor = n ? `rgb(${p75(hist[0])}, ${p75(hist[1])}, ${p75(hist[2])})` : "#f4f4f2";
   g.globalCompositeOperation = "source-over";
   g.globalAlpha = 0.95;
   g.drawImage(s.b, 0, 0);
@@ -222,5 +245,6 @@ export function garmentFilm(L: SideLayers, B: Rect, recolor: boolean, s: Garment
     garmentBlankSrc: blank.toDataURL("image/png"),
     garmentPrintedSrc: crop(garment).toDataURL("image/png"),
     printLayerSrc: crop(s.b).toDataURL("image/png"),
+    garmentColor,
   };
 }
