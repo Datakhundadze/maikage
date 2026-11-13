@@ -6,7 +6,7 @@ describe("rack labels", () => {
   const labels = rackLabels();
 
   it("one label per rack, inside the shop", () => {
-    expect(labels).toHaveLength(18);
+    expect(labels).toHaveLength(19);
     for (const l of labels) {
       expect(Number.isFinite(l.x) && Number.isFinite(l.z)).toBe(true);
       expect(Math.hypot(l.x, l.z)).toBeLessThan(25);

@@ -19,8 +19,11 @@ describe("showroom racks", () => {
     }
   });
 
-  it("exactly one rack opens the whole catalog; no football kits", () => {
-    expect(SHOWROOM_RACKS.filter((r) => r.items === "catalog")).toHaveLength(1);
+  it("two racks open the catalog, under the same name; no football kits", () => {
+    const cat = SHOWROOM_RACKS.filter((r) => r.items === "catalog");
+    expect(cat.map((r) => r.id)).toEqual(["catalog", "catalog-2"]);
+    expect(new Set(cat.map((r) => r.title))).toEqual(new Set(["კატალოგი"]));
+    expect(new Set(cat.map(rackPhoto)).size).toBe(1);
     for (const r of SHOWROOM_RACKS) if (r.items !== "catalog") for (const it of r.items) expect(it.product).not.toBe("Sport");
   });
 
