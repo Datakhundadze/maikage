@@ -142,9 +142,12 @@ describe("extract: block parsing and plans", () => {
     expect(t && t.kind !== "unsupported" && isExtractPlan(t)).toBe(false);
   });
 
-  it("the website ignores the field", () => {
-    expect(parseMockupSuggestion(MOCK(HOODIE_BACK))).toEqual(parseMockupSuggestion(MOCK({ ...HOODIE_BACK, extract: undefined })));
-    expect(parseMockupSuggestion(MOCK(HOODIE_BACK))).not.toHaveProperty("extract");
+  // Until 2026-11-13 the website ignored the field. It now reads it (owner GO:
+  // the site chat takes the print alone too — src/test/extractPrintWeb.test.ts).
+  it("the website reads the field and nothing else changes", () => {
+    const withIt = parseMockupSuggestion(MOCK(HOODIE_BACK));
+    const without = parseMockupSuggestion(MOCK({ ...HOODIE_BACK, extract: undefined }));
+    expect(withIt).toEqual({ ...without, extract: true });
   });
 });
 

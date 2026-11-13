@@ -60,10 +60,11 @@ describe("gemini-proxy cutout actions (add-only)", () => {
     expect(setMembers("BILLABLE_ACTIONS")).toEqual([
       "generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image",
       "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt", "generate-design-gpt",
+      "extract-print-web",
     ]);
     expect(setMembers("PRO_TIER_GUEST_ACTIONS")).toEqual([
       "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout",
-      "isolate-subject-gpt", "restyle-gpt",
+      "isolate-subject-gpt", "restyle-gpt", "extract-print-web",
     ]);
   });
 

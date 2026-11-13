@@ -49,6 +49,12 @@ export interface MockupSuggestion {
   /** Remove the background from the attached photo once it is placed. */
   removeBackground?: boolean;
   /**
+   * The attached photo shows a READY GARMENT: take its print alone and place
+   * that (KB example 5c). Meaningful only with a photo; supersedes
+   * removeBackground, which would keep the whole garment.
+   */
+  extract?: boolean;
+  /**
    * A free-text edit to apply to the ATTACHED photo — "add black round glasses
    * to the dog". Meaningful only with a photo, which the caller checks.
    *
@@ -289,6 +295,12 @@ export function parseMockupSuggestion(raw: string): MockupSuggestion | null {
       out.removeBackground = true;
     }
 
+    // extract — same tolerance. Add-only field (2026-11-13).
+    if (parsed.extract === true ||
+        (typeof parsed.extract === "string" && norm(parsed.extract) === "true")) {
+      out.extract = true;
+    }
+
     // removeWhite — same tolerance as removeBackground. Add-only field.
     if (parsed.removeWhite === true ||
         (typeof parsed.removeWhite === "string" && norm(parsed.removeWhite) === "true")) {
@@ -360,7 +372,9 @@ function buildMockupSeed(m: MockupSuggestion, attachment?: string | null): Const
     textColor: m.textColor,
     image: attachment ?? undefined,
     // Only with a photo to act on.
-    removeBackground: attachment && m.removeBackground ? true : undefined,
+    // extract wins over removeBackground: the print alone is already cut out.
+    removeBackground: attachment && m.removeBackground && !m.extract ? true : undefined,
+    extractPrint: attachment && m.extract ? true : undefined,
     // Same rule: an edit with no photo to act on is noise.
     editPrompt: attachment && m.editPrompt ? m.editPrompt : undefined,
     // NOT attachment-gated: without one it targets the constructor's current design.

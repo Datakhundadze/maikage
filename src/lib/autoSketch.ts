@@ -25,6 +25,13 @@
 import type { ChatSuggestion } from "@/lib/generateSuggestion";
 import { applyMockupToLiveConstructor } from "@/lib/mockupSuggestion";
 
+// ── extract IS AUTOMATIC (owner, 2026-11-13) ──────────────────────────────
+// "extract" (the print alone off a garment photo) also spends from the
+// allowance, yet it is NOT excluded below. David: "we agreed there is no link —
+// the sketch goes in directly", after a customer who asked for exactly this
+// got a button four times. The customer asked for the sketch in so many words;
+// the constructor's own gate still shows the login modal when the allowance is
+// spent. editPrompt / removeBackground / removeWhite keep the button, unchanged.
 /**
  * Is this suggestion the free, automatic kind?
  *

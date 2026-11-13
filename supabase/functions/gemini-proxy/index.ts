@@ -35,7 +35,7 @@ const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 // generate-design-gpt (2026-10-30) is the GPT Image version of generate-design
 // and gets exactly its treatment: 1 guest unit (not pro tier), and the same
 // check_generation_block rule (see GENERATION_BLOCK_ACTION below).
-const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt", "generate-design-gpt"]);
+const BILLABLE_ACTIONS = new Set(["generate-design", "virtual-tryon", "upscale", "isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt", "generate-design-gpt", "extract-print-web"]);
 
 // The p_action sent to check_generation_block. The RPC applies its
 // generations-count anti-abuse rule only when p_action = 'generate-design', so
@@ -71,7 +71,7 @@ const GENERATION_BLOCK_ACTION: Record<string, string> = { "generate-design-gpt":
 // check_and_increment_rate_limit RPC — no schema or signature change.
 const GUEST_HOUR_LIMIT = 4;
 const GUEST_DAY_LIMIT = 4;
-const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt"]);
+const PRO_TIER_GUEST_ACTIONS = new Set(["isolate-subject", "restyle", "edit-image", "isolate-design", "edit-image-cutout", "isolate-subject-gpt", "restyle-gpt", "extract-print-web"]);
 const PRO_TIER_GUEST_UNITS = 2;
 
 // Text-only actions: they skip the image modality, run a single attempt, and
@@ -92,6 +92,8 @@ const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
 # v2.5 (2026-10-24 — live-stock exception)
 # v2.6 (2026-10-30 — sketch-block audit: no colour/two-sided/garment-photo guessing, no empty or kit blocks;
 #   photo + price example, single-sided only)
+# v2.8 (2026-11-13 — website chat: a photo of a READY garment → "extract": true, the print alone;
+#   never the whole photo, never "removeBackground" for it)
 
 ═══════════════════════════════════════════════════════════════
 ## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
@@ -840,6 +842,22 @@ WORKED EXAMPLES — copy this shape; include EVERY field the customer indicated:
    Set "removeBackground" ONLY when a photo is attached AND they asked for the background
    gone („ფონი მოაშორე", „გაასუფთავე", "without background").
 
+5c. ᲛᲖᲐ ᲢᲐᲜᲡᲐᲪᲛᲚᲘᲡ ᲤᲝᲢᲝ / A PHOTO OF A READY GARMENT — კლიენტმა ატვირთა ფოტო, რომელზეც უკვე
+   დაბეჭდილი მაისური / ჰუდი ჩანს, და წერს: „ეს წარწერა დამადე ლურჯ ჰუდზე" / „ესეთს დაამზადებთ?"
+\`\`\`maika-mockup
+{"product":"Hoodie","subProduct":"GILDAN Hoodie","color":"Standard Blue","side":"front","extract":true}
+\`\`\`
+   "extract": true = the system takes ONLY THE PRINT (the lettering / picture) off the garment
+   in the photo and puts that on our product. Use it whenever the attached photo shows a
+   finished garment with a print on it. For such a photo NEVER emit the block without
+   "extract" (that prints a shirt on a shirt) and NEVER "removeBackground" (that keeps the
+   whole garment and only removes what is behind it). Do NOT retype the lettering as "text"
+   unless they ask for plain text — the print keeps its own fonts and layout only through
+   "extract". Take product type and side from the photo when they did not say; the colour
+   only from their words. Costs one generation, like removeBackground.
+   If they answer that the sketch is wrong and attach a screenshot of it, the screenshot is
+   NOT a new design: keep working from their original garment photo and ask what is wrong.
+
 5b. ᲗᲔᲗᲠᲘᲡ ᲐᲛᲝᲦᲔᲑᲐ / REMOVE THE WHITE — კლიენტი წერს: „დიზაინიდან ამოიღე ყველა თეთრი ფერი"
    (მაგ. ხაზოვანი ნახატი, რომლის თეთრი ნაწილებიც თეთრ მაისურზე გამჭვირვალე უნდა იყოს)
 \`\`\`maika-mockup
@@ -956,15 +974,16 @@ KA: თუ კლიენტმა დაასახელა ფერი —
 ⚠️ WHEN THERE IS NOTHING TO SHOW — NO BLOCK. A maika-mockup block needs EITHER the customer's
 actual words to print ("text") OR a photo attached in THIS conversation (or "removeWhite", example 5b).
 With neither → NO block: ask ONE short question — what should be written, or attach the design.
-"removeBackground" and "editPrompt" REQUIRE a photo in this conversation — without one, never set them.
+"removeBackground", "extract" and "editPrompt" REQUIRE a photo in this conversation — without one, never set them.
 An empty block shows the customer nothing, and they come back asking „სად ვნახო?".
 KA: ბლოკს სჭირდება ან კლიენტის ზუსტი ტექსტი, ან ამ საუბარში ატვირთული ფოტო. არც ერთი → ბლოკი
 არა, ერთი მოკლე კითხვა: „რა დავწეროთ?" ან „ატვირთეთ დიზაინი".
 
 ⚠️ A WHOLE GARMENT ON THE PHOTO IS NOT THE PRINT. If the attached photo shows a whole finished
 t-shirt / hoodie / garment (not a design, logo or picture), do NOT place it as-is — that prints a
-shirt on a shirt. Ask one short question: „ამ ნახატს/ლოგოს ჩვენს მაისურზე დაბეჭდვა გნებავთ?" —
-or, ONLY when the print on it is clearly the subject, emit the block with "removeBackground":true.
+shirt on a shirt — and do NOT use "removeBackground" for it. Emit the block with "extract":true
+(example 5c): the system puts the print alone on our product. Only when it is unclear WHICH
+part they want printed, ask one short question first: „ამ ნახატს/წარწერას ჩვენს მაისურზე დაბეჭდვა გნებავთ?"
 
 ⚠️ ONE SIDE UNLESS THEY SAY BOTH. A photo alone never means two-sided printing — "side" is one
 side, and any price you give is single-sided, unless the customer says front + back (§2a).
@@ -1009,6 +1028,7 @@ JEL Standard Hoodie — არასოდეს. კეპის საუბ�
 side: front | back — "back" exists ONLY for garments and the tote bag. წინსაფარს (Apron), კეპს (Cap), ჭიქას (Mug) და მობილურის ქეისს (Phone Case) ზურგი არ აქვთ — for those four, never emit "back": omit the field or use "front".
 placement: center | small | left-chest | right-chest — გულთან / მარცხენა მკერდი → left-chest; მარჯვენა მკერდი → right-chest; შუაში / ცენტრში → center; "small" = centred like "center" but a SMALLER print, sitting a little lower — use it ONLY when they ask for a small one („პატარა", „პატარა წარწერა", "small print"), never as a default
 removeBackground: true | omit — true ONLY with an attached photo the customer wants cut out.
+extract: true | omit — true ONLY with an attached photo of a READY GARMENT whose print they want (example 5c). Never together with removeBackground.
 removeWhite: true | omit — true when they ask to remove the WHITE from the design (example 5b); attached photo OR the design already in the constructor.
 textColor (the LETTERING): Black | White | Red | Blue | Green | Yellow | Orange | Purple | Pink | Gray | Gold | Navy — თეთრად → White; შავად → Black; წითლად → Red; ლურჯად → Blue; მწვანედ → Green; ყვითლად → Yellow; ნარინჯისფრად → Orange; იისფრად → Purple; ვარდისფრად → Pink; ნაცრისფრად → Gray; ოქროსფრად → Gold; მუქი ლურჯი → Navy
 
@@ -2582,6 +2602,97 @@ CRITICAL:
         if (attempt < xMaxAttempts - 1) await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
       }
       return xJson(500, { error: `AI generation failed: ${xLastError}` });
+    }
+
+    // ── ADD-ONLY (2026-11-13): extract-print-web (website chat, owner GO) ──
+    // The website's version of extract-print-gpt above, which stays trusted-
+    // social only and is unchanged. A customer attaches a photo of a READY
+    // garment in the site chat and asks for "this lettering on a tee"; the
+    // site chat could only place the whole photo (12.11: four wrong sketches
+    // in one session). Same model, prompt (EXTRACT_PRINT_PROMPT, no recolour,
+    // no edit), request, retries and ai_calls rows; the client keys the
+    // magenta out (src/lib/flagKey.ts keyOutMagenta).
+    // LIMITS: in BILLABLE_ACTIONS and PRO_TIER_GUEST_ACTIONS — a guest pays 2
+    // units, exactly like background removal (owner 2026-11-13: "counts in the
+    // generation limit"); the block check and rate limit above apply as for
+    // every billable website action. ≈ $0.15 per call.
+    // Response { image, text }.
+    if (action === "extract-print-web") {
+      const wJson = (status: number, body: Record<string, unknown>): Response =>
+        new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const wImage = typeof params.image === "string" ? params.image : "";
+      const wMatch = /^data:(image\/(?:png|jpeg|webp));base64,(.*)$/s.exec(wImage);
+      if (!wMatch || wImage.length > 12_000_000) {
+        return wJson(400, { error: "Image must be a PNG/JPEG/WEBP data URL under ~9 MB", code: "BAD_REQUEST" });
+      }
+      const wKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!wKey) return wJson(500, { error: "LOVABLE_API_KEY is not configured", code: "CONFIG" });
+
+      const wModel = "openai/gpt-image-2.5-sunburst";
+      const wBin = Uint8Array.from(atob(wMatch[2]), (c: string): number => c.charCodeAt(0));
+      const wExt = wMatch[1] === "image/png" ? "png" : wMatch[1] === "image/webp" ? "webp" : "jpg";
+      const wEditsUrl = GATEWAY_URL.replace("/chat/completions", "/images/edits");
+      const wMaxAttempts = 2;
+      let wLastError = "";
+      // The print as it is: no recolour and no edit line from the website.
+      const wPrompt = extractPrintPrompt(undefined, undefined);
+      console.log(`[gemini-proxy] extract-print-web: model=${wModel}`);
+
+      for (let attempt = 0; attempt < wMaxAttempts; attempt++) {
+        const startedAt = Date.now();
+        const wLog = (success: boolean, errorCode: string | null): void =>
+          logAiCall({
+            action, model: wModel,
+            userId: callerUserId,
+            sessionId: callerSessionId,
+            isGuest: callerIsGuest,
+            success,
+            durationMs: Date.now() - startedAt,
+            errorCode,
+          });
+        try {
+          const form = new FormData();
+          form.append("model", wModel);
+          form.append("prompt", wPrompt);
+          form.append("image", new Blob([wBin], { type: wMatch[1] }), `input.${wExt}`);
+          form.append("n", "1");
+          form.append("size", "1024x1024");
+          form.append("quality", "medium");
+          form.append("output_format", "png");
+          form.append("background", "auto");
+          const res = await fetch(wEditsUrl, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${wKey}` },
+            body: form,
+          });
+          if (!res.ok) {
+            const status = res.status;
+            const text = await res.text();
+            wLog(false, `http_${status}`);
+            console.error(`[gemini-proxy] ${action} HTTP ${status} (attempt ${attempt + 1}):`, text.slice(0, 300));
+            if (status === 429) return wJson(429, { error: "Rate limit exceeded. Please wait a moment and try again.", code: "RATE_LIMITED" });
+            if (status === 402) return wJson(402, { error: "Service temporarily unavailable", code: "SERVICE_UNAVAILABLE" });
+            if (status >= 400 && status < 500) return wJson(500, { error: "AI generation failed. Please try again." });
+            wLastError = `Gateway returned ${status}`;
+          } else {
+            const data: unknown = await res.json();
+            const img = extractImage(data);
+            if (img) {
+              wLog(true, null);
+              console.log(`[gemini-proxy] Success: action=${action}, attempt=${attempt + 1}`);
+              return wJson(200, { image: img, text: "" });
+            }
+            wLog(false, "no_image");
+            wLastError = "No image in response";
+          }
+        } catch (wErr) {
+          wLog(false, "exception");
+          wLastError = wErr instanceof Error ? wErr.name : "error";
+          console.error(`[gemini-proxy] ${action} attempt ${attempt + 1} exception:`, wLastError);
+        }
+        if (attempt < wMaxAttempts - 1) await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
+      }
+      return wJson(500, { error: `AI generation failed: ${wLastError}` });
     }
 
     // ── ADD-ONLY (2026-10-30): generate-design-gpt ─────────────────────────

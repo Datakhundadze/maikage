@@ -77,6 +77,15 @@ export interface ConstructorSeed {
    */
   removeBackground?: boolean;
   /**
+   * The seeded `image` is a photo of a READY GARMENT: replace it with its print
+   * alone once it is on the garment (add-only, 2026-11-13).
+   *
+   * A REQUEST, not a pipeline call, like removeBackground: the constructor hands
+   * it to its own handleExtractPrint, which owns the quota gate, the
+   * extract-print-web call and the contain-refit. Ignored without `image`.
+   */
+  extractPrint?: boolean;
+  /**
    * Edit the seeded `image` with this free-text instruction once it is on the
    * garment — "add black round glasses to the dog", "put a coffee in the cat's
    * hand".
@@ -280,6 +289,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const image = typeof parsed.image === "string" ? parsed.image : undefined;
     // Only ever true alongside a photo — a flag with nothing to act on is noise.
     const removeBackground = image ? parsed.removeBackground === true : undefined;
+    const extractPrint = image && parsed.extractPrint === true ? true : undefined;
     // Same rule for the edit instruction, and bounded by the PROMPT cap rather
     // than the text cap: this describes a change to a picture, it is not words
     // printed on a garment. Re-validated here as well as at write time because
@@ -327,7 +337,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const removeWhite = parsed.removeWhite === true ? true : undefined;
 
     if (!text && !image && !product && !color && !generate && !removeWhite) return null;
-    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}) };
+    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}) };
   } catch {
     return null;
   }

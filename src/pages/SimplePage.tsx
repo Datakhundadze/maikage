@@ -46,6 +46,7 @@ import { useDesignStorage } from "@/hooks/useDesignStorage";
 import { getStyleOptions } from "@/lib/designStyles";
 import { chromaKeyGreen, chromaKeyGreenDesign } from "@/lib/chromaKey";
 import { USE_GPT_PHOTO_BG, transparentShare } from "@/lib/aiModelSwitch";
+import { extractPrintFromPhoto, ExtractPrintError } from "@/lib/extractPrint";
 import { cutoutIntent } from "@/lib/cutoutIntent";
 import { keyDesignCutout, flattenOnWhite, MIN_KEYED_FRACTION } from "@/lib/designCutout";
 import { t, colorKa } from "@/lib/i18n";
@@ -1860,6 +1861,58 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     }
   }, [editingPhotoId, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, toast, lang]);
 
+  // ── The print alone, off a photo of a READY garment (add-only, 2026-11-13) ──
+  //
+  // The site chat's "extract": true (KB example 5c). A sibling of
+  // handleRemoveBgPhoto above, which is untouched: the same guest gate pair, the
+  // same replace-the-layer-image + applyContainFit, the same 429 handling. What
+  // differs is the call (extractPrintFromPhoto → gemini-proxy
+  // "extract-print-web", GPT redraws the print flat on a magenta key, keyed out
+  // and trimmed client-side) and the failure rule: a result that is not a print
+  // on the key throws, and the layer keeps the customer's photo — never a
+  // "done" toast over an unchanged image.
+  const handleExtractPrint = useCallback(async (photo: PhotoLayer) => {
+    if (editingPhotoId) return;
+    const limit = checkAiLimit();
+    if (!limit.allowed) {
+      if ("reason" in limit && limit.reason === "guest_limit") {
+        setLoginModalMessage("message" in limit ? limit.message : undefined);
+        setShowLoginModal(true);
+      }
+      return;
+    }
+    setEditingPhotoId(photo.id);
+    try {
+      recordAiGeneration();
+      const print = await extractPrintFromPhoto(photo.image);
+      setSideData(prev => ({
+        ...prev,
+        photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: print } : p)),
+      }));
+      applyContainFit(photo.id, print);
+      toast({ title: lang === "en" ? "Print taken from the photo ✓" : "პრინტი ფოტოდან ამოვიღეთ ✓" });
+    } catch (err) {
+      if (err instanceof RateLimitError) {
+        if (err.requiresLogin) {
+          setLoginModalMessage(t(lang, "rateLimit.signIn"));
+          setShowLoginModal(true);
+        } else {
+          toast({ title: t(lang, "rateLimit.slowDownTitle"), description: t(lang, "rateLimit.slowDown") });
+        }
+      } else {
+        toast({
+          title: lang === "en" ? "Couldn't take the print from the photo" : "პრინტის ამოღება ფოტოდან ვერ მოხერხდა",
+          description: err instanceof ExtractPrintError
+            ? (lang === "en" ? "The photo is still on the garment as it was. Please try again." : "ფოტო პროდუქტზე უცვლელად დარჩა. სცადე ხელახლა.")
+            : err instanceof Error ? err.message : undefined,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setEditingPhotoId(null);
+    }
+  }, [editingPhotoId, checkAiLimit, recordAiGeneration, applyContainFit, setSideData, toast, lang]);
+
   // Background removal for an AI DESIGN layer (origin "ai") — ADD-ONLY sibling
   // of handleRemoveBgPhoto above, which stays exactly as it was for uploaded
   // photos. isolate-subject keeps only a photo's MAIN SUBJECT and, handed a
@@ -2443,7 +2496,12 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       // So the edit OWNS the chain when both are set: it queues the removal
       // itself once it has finished, keyed by layer id rather than data URL
       // because the edit replaces the image the URL refers to.
-      if (seed.editPrompt) {
+      if (seed.extractPrint) {
+        // ADD-ONLY (2026-11-13): a photo of a ready garment → its print alone.
+        // Alone in its chain: an edit or a background removal after it has
+        // nothing left to do (buildMockupSeed already drops removeBackground).
+        setPendingExtract(targetId);
+      } else if (seed.editPrompt) {
         setPendingEdit({
           layerId: targetId,
           prompt: seed.editPrompt,
@@ -2782,6 +2840,20 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     setSeededRemoveBgActive(true);
     void handleRemoveBgPhoto(layer).finally(() => setSeededRemoveBgActive(false));
   }, [pendingRemoveBg, sideData.photos, handleRemoveBgPhoto]);
+
+  // ── Seeded print extraction: through handleExtractPrint (add-only) ─────────
+  // The same queue-until-committed shape as pendingRemoveBg above, by layer id.
+  // Shares its progress overlay. A refused quota or a failed call leaves the
+  // photo on the garment as it was; handleExtractPrint says so.
+  const [pendingExtract, setPendingExtract] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingExtract) return;
+    const layer = sideData.photos.find((p) => p.id === pendingExtract);
+    if (!layer) return; // the add has not committed yet; this effect re-runs
+    setPendingExtract(null);
+    setSeededRemoveBgActive(true);
+    void handleExtractPrint(layer).finally(() => setSeededRemoveBgActive(false));
+  }, [pendingExtract, sideData.photos, handleExtractPrint]);
 
   // ── Seeded photo EDIT: through handleChatEdit, never past it ───────────────
   //

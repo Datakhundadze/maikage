@@ -99,7 +99,7 @@ const FALLBACKS = new Set([SKETCH_FALLBACK_KA, SKETCH_FALLBACK_EN, GENERATE_FALL
  * Apply the two block rules:
  *  1. "color" is set to "White" in either block unless a customer turn names a
  *     colour ("textColor" is never touched);
- *  2. without an image on this request, "removeBackground" / "editPrompt" are
+ *  2. without an image on this request, "removeBackground" / "editPrompt" / "extract" are
  *     removed from a mockup block, and a mockup block left with no real "text"
  *     and no "removeWhite" is removed entirely.
  * Unparsable fences are left as they are (the client already ignores them).
@@ -149,6 +149,8 @@ export function guardSketchBlocks(text: string, ctx: BlockGuardContext): string 
     if (kind === "mockup" && !ctx.hasImage && !dmPhoto) {
       if ("removeBackground" in obj) { delete obj.removeBackground; edited = true; }
       if ("editPrompt" in obj) { delete obj.editPrompt; edited = true; }
+      // website "extract" (2026-11-13) needs the photo just like the two above
+      if ("extract" in obj) { delete obj.extract; edited = true; }
       if (!isRealText(obj.text) && !isTrue(obj.removeWhite)) {
         changed = true;
         dropped.push(whole);
