@@ -403,6 +403,8 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     now: () => new Date(),
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
     tokenSet: META_PAGE_TOKEN.length > 0,
+    // INTRO (add-only, owner 2026-11-14): the bot introduces itself first.
+    introOnFirstReply: true,
     loadSettings: async () => {
       const { data, error } = await admin.from("social_bot_settings").select("enabled, schedule, allow_keys").limit(1).maybeSingle();
       warn("settings read", error);

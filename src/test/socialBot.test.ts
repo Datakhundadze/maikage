@@ -20,6 +20,7 @@ import {
   decideAutoReply,
   handoffMessage,
   humanTookOver,
+  introMessage,
   isBotCandidate,
   isBotEcho,
   photoMessage,
@@ -411,6 +412,38 @@ describe("runAutoReply", () => {
 });
 
 // ── gemini-proxy social channel ────────────────────────────────────────────
+
+describe("intro message (owner 2026-11-14)", () => {
+  beforeEach(() => _resetTokenWarning());
+
+  it("first bot send in the conversation: the intro goes out first, as its own message", async () => {
+    const f = fakeDeps({ introOnFirstReply: true });
+    expect(await runAutoReply(trigger, f.deps)).toBe("reply");
+    expect(f.sent.map((s) => s.text)).toEqual([introMessage("sunday"), `მაისური 25₾-დან.\n${DESIGN_LINK_LINE}`]);
+    expect(f.records.map((r) => r.kind)).toEqual(["reply", "reply"]);
+    expect(introMessage("sunday")).toContain("ახალი თანამშრომელი");
+    expect(introMessage("sunday")).toContain("ორშაბათს, 11:00-დან");
+  });
+
+  it("the bot already wrote in the window: no intro", async () => {
+    const prior: BotSendRecord = { meta_message_id: "b0", text: "ადრე", kind: "reply", created_at: "2026-11-01T07:30:00.000Z" };
+    const f = fakeDeps({ introOnFirstReply: true, loadBotSends: async () => [prior] });
+    expect(await runAutoReply(trigger, f.deps)).toBe("reply");
+    expect(f.sent.map((s) => s.text)).toEqual([`მაისური 25₾-დან.\n${DESIGN_LINK_LINE}`]);
+  });
+
+  it("never before the handoff text", async () => {
+    const f = fakeDeps({ introOnFirstReply: true, thread: [row({ meta_message_id: "m1", text: "ოპერატორი", sent_at: trigger.sent_at })] });
+    expect(await runAutoReply({ ...trigger, text: "ოპერატორი" }, f.deps)).toBe("handoff");
+    expect(f.sent.map((s) => s.text)).toEqual([handoffMessage("sunday")]);
+  });
+
+  it("flag absent: exactly as before", async () => {
+    const f = fakeDeps();
+    await runAutoReply(trigger, f.deps);
+    expect(f.sent).toHaveLength(1);
+  });
+});
 
 describe("gemini-proxy social channel", () => {
   const KEY = "service-role-key-not-real";

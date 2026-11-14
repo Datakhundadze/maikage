@@ -94,6 +94,20 @@ export function photoMessage(schedule: BotSchedule): string {
   return `ფოტო მივიღეთ, მადლობა 📷 ოპერატორი ნახავს და გიპასუხებთ ${operatorBack(schedule)}.`;
 }
 
+/**
+ * INTRO (add-only, owner 2026-11-14): the bot introduces itself as maika.ge's
+ * new AI colleague before its first message to a conversation (see
+ * autoReply.ts, deps.introOnFirstReply). Replaces the Business Suite away
+ * message, which was turned off the same day.
+ */
+export function introMessage(schedule: BotSchedule): string {
+  return [
+    "გამარჯობა! 👋 მე ვარ maika.ge-ს ახალი თანამშრომელი, თანაც AI 🤖😊",
+    "ახლა არასამუშაო დროა, ამიტომ მე გიპასუხებთ. თუ რამე შემეშლება, გვაპატიეთ 🙏",
+    `თუ ოპერატორი გჭირდებათ, დაწერეთ „ოპერატორი" და ოპერატორი ${operatorBack(schedule)} მოგწერთ.`,
+  ].join("\n");
+}
+
 export function emptyReplyFallback(schedule: BotSchedule): string {
   return `ამ კითხვაზე ოპერატორი გიპასუხებთ ${operatorBack(schedule)}. ოპერატორთან დასაკავშირებლად დაწერეთ „ოპერატორი".`;
 }
