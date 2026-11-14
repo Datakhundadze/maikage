@@ -102,6 +102,7 @@ import {
   blogIndexHtml,
   jsonLdText,
   markdownHtml,
+  preloadScript,
   printServicesHtml,
   servicePageHtml,
   landingCopyHtml,
@@ -308,7 +309,7 @@ const wrapStatic = (html) => `<div id="seo-static">${html}</div>${HIDE_STATIC}`;
  * Shell + per-page head tags + root content. `robots` and `jsonLd` are the
  * SeoHead noindex tag and `schemas` scripts, emitted only when given.
  */
-function renderPage(template, { title, description, canonical, image, rootHtml, robots, jsonLd, ogType, lang, alternates }) {
+function renderPage(template, { title, description, canonical, image, rootHtml, robots, jsonLd, ogType, lang, alternates, preload }) {
   const tags = [
     `<meta data-rh="true" name="description" content="${esc(description)}" />`,
     `<link data-rh="true" rel="canonical" href="${esc(canonical)}" />`,
@@ -333,6 +334,9 @@ function renderPage(template, { title, description, canonical, image, rootHtml, 
   html = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${esc(title)}</title>`);
   html = html.replace(/<\/head>/i, () => `    ${tags}\n  </head>`);
   html = html.replace(/<div id="root"><\/div>/, () => `<div id="root">${wrapStatic(rootHtml)}</div>`);
+  // { kind, slug, data } for lib/pagePreload.ts — outside #root, so React's
+  // mount never touches it.
+  if (preload) html = html.replace(/<\/body>/i, () => `${preloadScript(preload.kind, preload.slug, preload.data)}\n  </body>`);
   return html;
 }
 
@@ -943,6 +947,18 @@ async function writePages() {
   return app;
 }
 
+/** The blog_posts columns BlogPostPage selects — its preloaded `post`. */
+const blogPreloadRow = (p) => ({
+  slug: p.slug,
+  title_ka: p.title_ka,
+  body_md: p.body_md ?? "",
+  cover_path: p.cover_path ?? null,
+  meta_description_ka: p.meta_description_ka ?? null,
+  published_at: p.published_at ?? null,
+  created_at: p.created_at,
+  updated_at: p.updated_at,
+});
+
 /** /design/*, /designs, /blog/*, /blog — Supabase rows. */
 async function writeDataPages(template, cfg, stats, app) {
   // Designs
@@ -957,13 +973,28 @@ async function writeDataPages(template, cfg, stats, app) {
     await emit("design", designs, (d) => {
       const description = designDescription(d, app);
       const label = d.category ? CATEGORY_LABEL[d.category] ?? d.category : null;
+      // lib/designSeo.ts — DesignDetailPage's SeoHead title.
+      const title = app ? app.designSeoTitle(d.title_ka, label) : `${d.title_ka} — Maika.ge`;
+      const image = d.thumbnail_url || d.print_file_url;
       return renderPage(template, {
-        // lib/designSeo.ts — DesignDetailPage's SeoHead title.
-        title: app ? app.designSeoTitle(d.title_ka, label) : `${d.title_ka} — Maika.ge`,
+        title,
         description,
         canonical: `${SITE_URL}/design/${d.slug}`,
-        image: d.thumbnail_url || d.print_file_url,
+        image,
         rootHtml: designRoot(d, description, app),
+        // DesignPreloadView: shown while the live page loads its design/product.
+        preload: {
+          kind: "design",
+          slug: d.slug,
+          data: {
+            title,
+            description,
+            image: image || null,
+            name: d.title_ka,
+            body: d.description_ka?.trim() || description,
+            categoryLabel: label,
+          },
+        },
       });
     }, stats);
 
@@ -1028,6 +1059,7 @@ async function writeDataPages(template, cfg, stats, app) {
           image: coverUrl,
           ogType: "article",
           rootHtml: blogRoot(p, coverUrl),
+          preload: { kind: "blog", slug: p.slug, data: blogPreloadRow(p) },
         });
       }
       const page = blogPostPage(p, coverUrl, blogApp, { esc, link, style: STYLE }, {
@@ -1042,6 +1074,7 @@ async function writeDataPages(template, cfg, stats, app) {
         ogType: "article",
         jsonLd: page.jsonLd,
         rootHtml: page.rootHtml,
+        preload: { kind: "blog", slug: p.slug, data: blogPreloadRow(p) },
       });
     }, stats);
     // /blog — the list page. dist/blog/ is a real directory once any post

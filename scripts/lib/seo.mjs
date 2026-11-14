@@ -636,6 +636,18 @@ export function jsonLdText(value) {
   return JSON.stringify(value).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
 }
 
+/**
+ * The page's data for the live app, so /blog/:slug and /design/:slug render
+ * real content on first paint instead of a spinner while Supabase answers
+ * (lib/pagePreload.ts reads it). Googlebot's renderer snapshots the page; a
+ * spinner + default title on every post/design made them look identical and
+ * Google folded them into one canonical. Same escaping as JSON-LD.
+ */
+export const PAGE_PRELOAD_ID = "page-preload";
+export function preloadScript(kind, slug, data) {
+  return `<script id="${PAGE_PRELOAD_ID}" type="application/json">${jsonLdText({ kind, slug, data })}</script>`;
+}
+
 // ── llms.txt ────────────────────────────────────────────────────────────────
 
 /**
