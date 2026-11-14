@@ -421,6 +421,24 @@ export function applyMockupToLiveConstructor(m: MockupSuggestion, attachment?: s
 }
 
 /**
+ * Write the design as the constructor's seed and open NOTHING (add-only,
+ * 2026-11-14). For the chat's automatic handoff from a page that has no
+ * constructor: the caller then navigates its own tab to CONSTRUCTOR_URL, where
+ * the constructor consumes the seed like any other. No window.open, so it does
+ * not need a click.
+ *
+ * @returns false when the seed could not be stored (a photo too large for
+ *   localStorage) — the caller keeps its button.
+ */
+export function seedMockupForConstructor(m: MockupSuggestion, attachment?: string | null): boolean {
+  try {
+    return writeConstructorSeed(buildMockupSeed(m, attachment));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Hand the design to the constructor in a NEW TAB, keeping the caller's
  * conversation intact (no state here is mutated).
  *

@@ -44,6 +44,13 @@ export interface PersistedChatMsg {
    * already on the garment — the very stacking this flag exists to stop.
    */
   applied?: boolean;
+  /**
+   * The design was handed to the constructor and its picture has not come back
+   * yet (add-only, 2026-11-14). Persisted because the handoff can land in a
+   * new tab, which restores this conversation and must still receive the
+   * picture. The picture itself is never persisted, like every image here.
+   */
+  sketchPending?: boolean;
 }
 
 interface PersistedChat {

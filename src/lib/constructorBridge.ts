@@ -64,3 +64,24 @@ export function offerToLiveConstructor(seed: ConstructorSeed): boolean {
     return false;
   }
 }
+
+// ── The sketch, back to the chat (add-only, 2026-11-14) ─────────────────────
+//
+// David: "I don't want this button or 'see the sketch' — drop the picture
+// straight into the chat." The chat hands a design to the constructor (the
+// event above, or the seed after a navigation); when it is really on the
+// garment — photo measured, lettering rasterised, any print extraction done —
+// the constructor composes its own mockup and says so with this event. The
+// chat shows that picture in the bubble. `image` absent = it could not be made
+// (the extraction failed, or nothing settled in time): the chat says so.
+export const SKETCH_READY_EVENT = "maika:sketch-ready";
+export type SketchReadyEvent = CustomEvent<{ image?: string }>;
+
+export function announceSketch(image?: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent<{ image?: string }>(SKETCH_READY_EVENT, { detail: image ? { image } : {} }));
+  } catch {
+    /* a chat that never hears of it keeps its "preparing" line; nothing breaks */
+  }
+}

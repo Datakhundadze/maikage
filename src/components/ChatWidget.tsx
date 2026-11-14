@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useLocation, useNavigate } from "react-router-dom";
-import { MessageCircle, X, Minus, ChevronUp, Send, ImagePlus } from "lucide-react";
+import { MessageCircle, X, Minus, ChevronUp, Send, ImagePlus, Loader2 } from "lucide-react";
 import { useAppState } from "@/hooks/useAppState";
 import { t } from "@/lib/i18n";
 import { faqChat, type FaqMessage } from "@/lib/faqChat";
@@ -10,11 +10,13 @@ import { loadChat, saveChat, type PersistedChatMsg } from "@/lib/chatPersistence
 import {
   type MockupSuggestion,
   openMockupInConstructor,
+  seedMockupForConstructor,
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
 // The one place that decides whether a sketch may skip its button — shared by
 // this chat and the other so the two can never diverge.
-import { tryAutoOpenSketch } from "@/lib/autoSketch";
+import { isAutoSketchEligible, tryAutoOpenSketch } from "@/lib/autoSketch";
+import { SKETCH_READY_EVENT, type SketchReadyEvent } from "@/lib/constructorBridge";
 // The photo-upload nudge: the event name, the once-per-session flag and the
 // wording all live together, away from this component.
 import {
@@ -72,6 +74,15 @@ interface ChatMsg {
    * alive across reloads: the spent mark must live exactly as long.
    */
   applied?: boolean;
+  /**
+   * THE SKETCH IN THE BUBBLE (2026-11-14). The design was handed to the
+   * constructor; `sketchPending` until its picture comes back
+   * (SKETCH_READY_EVENT), then `sketch` is that picture — or `sketchFailed`
+   * when the constructor could not make one. The picture is not persisted.
+   */
+  sketchPending?: boolean;
+  sketch?: string;
+  sketchFailed?: boolean;
   /**
    * The photo the customer attached to THIS turn, as the same downscaled data
    * URL that was sent. Display only — it is not resent as history, and it is
@@ -166,6 +177,7 @@ export default function ChatWidget() {
       suggestion: m.suggestion as ChatMsg["suggestion"],
       autoApplied: m.autoApplied,
       applied: m.applied,
+      sketchPending: m.sketchPending,
     })),
   );
   const [input, setInput] = useState("");
@@ -207,6 +219,7 @@ export default function ChatWidget() {
       suggestion: m.suggestion,
       autoApplied: m.autoApplied,
       applied: m.applied,
+      sketchPending: m.sketchPending,
     }));
     saveChat("widget", sessionIdRef.current, slim, open);
   }, [messages, open]);
@@ -338,9 +351,56 @@ export default function ChatWidget() {
     // FREE SKETCH → SHOW IT, don't ask for a click. Returns true only when a
     // constructor is mounted in THIS tab AND the block spends no generation;
     // every other case is false and the button below renders as it always has.
-    const autoApplied = tryAutoOpenSketch(suggestion, sentAttachment) || undefined;
-    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion, autoApplied }]);
-  }, [input, loading, messages, lang, attachment]);
+    let autoApplied = tryAutoOpenSketch(suggestion, sentAttachment) || undefined;
+    // NO CONSTRUCTOR ON THIS PAGE (2026-11-14) → go to it, in this tab, without
+    // a click. David: "I don't want this button and 'see the sketch'". The same
+    // free / asked-for blocks as the auto path above; the design travels as the
+    // usual seed and this widget stays mounted across the navigation, so the
+    // conversation is not interrupted. This includes the home page: "/" shows
+    // the LANDING page until constructor mode is set, and that is where David
+    // got the button (2026-11-14). Not from the showroom — leaving it would end
+    // the visit. A seed that does not fit storage leaves the button, as before.
+    if (
+      !autoApplied && suggestion?.kind === "mockup" && isAutoSketchEligible(suggestion) &&
+      !location.pathname.startsWith("/showroom") &&
+      seedMockupForConstructor(suggestion.mockup, sentAttachment)
+    ) {
+      autoApplied = true;
+      setMode("simple");
+      navigate(CONSTRUCTOR_URL);
+    }
+    // handed over → its picture will come back into this bubble
+    const sketchPending = (autoApplied && suggestion?.kind === "mockup") || undefined;
+    setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion, autoApplied, sketchPending }]);
+  }, [input, loading, messages, lang, attachment, location.pathname, setMode, navigate]);
+
+  // The constructor's finished sketch → the newest bubble still waiting for one.
+  useEffect(() => {
+    const onSketch = (e: Event) => {
+      const image = (e as SketchReadyEvent).detail?.image;
+      setMessages((prev) => {
+        let at = -1;
+        for (let i = prev.length - 1; i >= 0; i--) if (prev[i].sketchPending) { at = i; break; }
+        if (at < 0) return prev;
+        return prev.map((m, i) =>
+          i === at ? { ...m, sketchPending: undefined, ...(image ? { sketch: image } : { sketchFailed: true }) } : m.sketchPending ? { ...m, sketchPending: undefined } : m,
+        );
+      });
+    };
+    window.addEventListener(SKETCH_READY_EVENT, onSketch);
+    return () => window.removeEventListener(SKETCH_READY_EVENT, onSketch);
+  }, []);
+  // A picture that never comes (a reload mid-way, a tab that was closed) must
+  // not leave "preparing…" spinning forever: after 100 s it becomes the failure
+  // line. The constructor itself gives up at 90 s.
+  const waitingSketch = messages.some((m) => m.sketchPending);
+  useEffect(() => {
+    if (!waitingSketch) return;
+    const t = window.setTimeout(() => {
+      setMessages((prev) => prev.map((m) => (m.sketchPending ? { ...m, sketchPending: undefined, sketchFailed: true } : m)));
+    }, 100000);
+    return () => window.clearTimeout(t);
+  }, [waitingSketch]);
 
   // Same handoff as /chat: new tab on success, this tab only if popup-blocked.
   const openInConstructor = useCallback((m: MockupSuggestion) => {
@@ -355,7 +415,7 @@ export default function ChatWidget() {
     setMessages((prev) =>
       prev.map((msg) =>
         msg.suggestion?.kind === "mockup" && msg.suggestion.mockup === m
-          ? { ...msg, applied: true }
+          ? { ...msg, applied: true, sketchPending: true }
           : msg,
       ),
     );
@@ -556,6 +616,26 @@ export default function ChatWidget() {
                 <span className="mt-1.5 flex items-center gap-1 text-[11px] opacity-70">
                   <ImagePlus className="h-3 w-3" />
                   {lang === "en" ? "photo" : "ფოტო"}
+                </span>
+              )}
+              {/* The sketch itself, in the bubble (2026-11-14). */}
+              {m.role === "assistant" && m.sketch && (
+                <img
+                  src={m.sketch}
+                  alt={lang === "en" ? "Your sketch" : "თქვენი ესკიზი"}
+                  className="mt-2 w-full rounded-xl"
+                  draggable={false}
+                />
+              )}
+              {m.role === "assistant" && m.sketchPending && (
+                <span className="mt-2 flex items-center gap-1.5 text-xs opacity-80">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  {lang === "en" ? "Preparing your sketch…" : "ესკიზი მზადდება…"}
+                </span>
+              )}
+              {m.role === "assistant" && m.sketchFailed && (
+                <span className="mt-2 block text-xs opacity-80">
+                  {lang === "en" ? "The sketch could not be prepared. Please try again or write to us." : "ესკიზი ვერ მომზადდა. სცადეთ ხელახლა ან მოგვწერეთ."}
                 </span>
               )}
               {/* Only for a fully-validated suggestion; a failed parse leaves

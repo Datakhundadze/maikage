@@ -47,9 +47,29 @@ import { getStyleOptions } from "@/lib/designStyles";
 import { chromaKeyGreen, chromaKeyGreenDesign } from "@/lib/chromaKey";
 import { USE_GPT_PHOTO_BG, transparentShare } from "@/lib/aiModelSwitch";
 import { extractPrintFromPhoto, ExtractPrintError } from "@/lib/extractPrint";
+import { announceSketch } from "@/lib/constructorBridge";
 
 /** How long a seeded order waits for its design to be on the garment before giving up. */
 const ORDER_SEED_WAIT_MS = 12000;
+/** How long a chat sketch may take to settle (a print extraction alone is ~15–40 s) before the chat is told it failed. */
+const SKETCH_SHOT_WAIT_MS = 90000;
+/** The mockup as the chat shows it: a small JPEG on a neutral grey ground. */
+async function sketchForChat(png: string): Promise<string> {
+  const img = new Image();
+  await new Promise<void>((res, rej) => {
+    img.onload = () => res();
+    img.onerror = () => rej(new Error("mockup load failed"));
+    img.src = png;
+  });
+  const c = document.createElement("canvas");
+  c.width = 640;
+  c.height = Math.round((640 * img.naturalHeight) / Math.max(1, img.naturalWidth));
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#cfd2d6"; // light enough for a black garment, dark enough for a white one
+  g.fillRect(0, 0, c.width, c.height);
+  g.drawImage(img, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.86);
+}
 import { cutoutIntent } from "@/lib/cutoutIntent";
 import { keyDesignCutout, flattenOnWhite, MIN_KEYED_FRACTION } from "@/lib/designCutout";
 import { t, colorKa } from "@/lib/i18n";
@@ -1874,10 +1894,14 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // and trimmed client-side) and the failure rule: a result that is not a print
   // on the key throws, and the layer keeps the customer's photo — never a
   // "done" toast over an unchanged image.
+  // What the last seeded extraction came to — read by the chat-sketch effect, so
+  // a failed one is reported to the chat instead of a picture of the raw photo.
+  const extractResultRef = useRef<"ok" | "failed" | null>(null);
   const handleExtractPrint = useCallback(async (photo: PhotoLayer) => {
     if (editingPhotoId) return;
     const limit = checkAiLimit();
     if (!limit.allowed) {
+      extractResultRef.current = "failed";
       if ("reason" in limit && limit.reason === "guest_limit") {
         setLoginModalMessage("message" in limit ? limit.message : undefined);
         setShowLoginModal(true);
@@ -1893,8 +1917,10 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
         photos: prev.photos.map(p => (p.id === photo.id ? { ...p, image: print } : p)),
       }));
       applyContainFit(photo.id, print);
+      extractResultRef.current = "ok";
       toast({ title: lang === "en" ? "Print taken from the photo ✓" : "პრინტი ფოტოდან ამოვიღეთ ✓" });
     } catch (err) {
+      extractResultRef.current = "failed";
       if (err instanceof RateLimitError) {
         if (err.requiresLogin) {
           setLoginModalMessage(t(lang, "rateLimit.signIn"));
@@ -2452,6 +2478,12 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     if (seed.order) setPendingOrder({ size: seed.size, image: !!seed.image, text: !!seed.text?.trim() });
     // ADD-ONLY (2026-11-14): a chained seed — the showroom's other side — is
     // queued the same way and fed back through THIS drain once this one settled.
+    // ADD-ONLY (2026-11-14): a plain design seed (the chat's sketch) is also
+    // photographed for the chat once it has settled — see the pendingShot effect.
+    if (!seed.order && !seed.then && !seed.generate && (seed.image || seed.text?.trim())) {
+      extractResultRef.current = null;
+      setPendingShot({ image: !!seed.image, text: !!seed.text?.trim(), extract: !!seed.extractPrint });
+    }
     if (seed.then) setPendingNextSeed({ seed: seed.then, image: !!seed.image, text: !!seed.text?.trim() });
 
     // A seeded GENERATION is queued, not run, and queued only HERE — after the
@@ -3608,6 +3640,63 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // nothing AI is running, so the mockups it computes are not of an empty shirt.
   // Gives up quietly after ORDER_SEED_WAIT_MS: the visitor is then simply in
   // the constructor, as before.
+  // ── The sketch, back to the chat (add-only, 2026-11-14) ───────────────────
+  //
+  // The chat hands over a design and its panel then covers the garment (the
+  // whole screen on a phone), so the customer saw a button and no sketch. Once
+  // the seeded design is really on the garment and nothing is still working on
+  // it, compose the mockup with compositeSide — called, not changed — and
+  // announce it; the chat puts the picture in its bubble.
+  //   - waits for the photo's measurement, the lettering's raster, and every
+  //     seeded AI step (extraction, background removal, edit);
+  //   - then one more SETTLE_MS, because an AI step swaps the layer's image and
+  //     re-fits its box a moment later;
+  //   - a failed extraction, or SKETCH_SHOT_WAIT_MS without settling, is
+  //     announced WITHOUT a picture — the chat says so; never a picture of the
+  //     customer's raw photo on a garment presented as the sketch.
+  const [pendingShot, setPendingShot] = useState<{ image: boolean; text: boolean; extract: boolean } | null>(null);
+  const pendingShotSince = useRef(0);
+  const pendingShotSettled = useRef(0);
+  useEffect(() => {
+    if (!pendingShot) return;
+    const SETTLE_MS = 700;
+    if (!pendingShotSince.current) pendingShotSince.current = Date.now();
+    const give = (image?: string) => {
+      pendingShotSince.current = 0;
+      pendingShotSettled.current = 0;
+      setPendingShot(null);
+      announceSketch(image);
+    };
+    if (Date.now() - pendingShotSince.current > SKETCH_SHOT_WAIT_MS) return give();
+    if (pendingShot.extract && extractResultRef.current === "failed") return give();
+    const photoReady = !pendingShot.image || sideData.photos.some((p) => !!p.naturalAspect);
+    const textReady = !pendingShot.text || sideData.texts.some((tl) => !!tl.naturalAspect);
+    const busy =
+      !!editingPhotoId || !!chatEditingId || aiGenerating || seededRemoveBgActive ||
+      !!pendingExtract || !!pendingRemoveBg || !!pendingEdit ||
+      (pendingShot.extract && extractResultRef.current !== "ok");
+    const poke = (ms: number) => {
+      const again = window.setTimeout(() => setPendingShot((p) => (p ? { ...p } : p)), ms);
+      return () => window.clearTimeout(again);
+    };
+    if (!photoReady || !textReady || busy) {
+      pendingShotSettled.current = 0;
+      return poke(400);
+    }
+    if (!pendingShotSettled.current) {
+      pendingShotSettled.current = Date.now();
+      return poke(SETTLE_MS);
+    }
+    if (Date.now() - pendingShotSettled.current < SETTLE_MS) return poke(200);
+    pendingShotSince.current = 0;
+    pendingShotSettled.current = 0;
+    setPendingShot(null);
+    void compositeSide(sideData, currentView)
+      .then((png) => (png ? sketchForChat(png) : undefined))
+      .then((jpg) => announceSketch(jpg))
+      .catch(() => announceSketch());
+  }, [pendingShot, sideData, currentView, editingPhotoId, chatEditingId, aiGenerating, seededRemoveBgActive, pendingExtract, pendingRemoveBg, pendingEdit, compositeSide]);
+
   // ── Chained seed: the showroom's second side (add-only, 2026-11-14) ────────
   //
   // A design on both sides arrives as one seed with a `then`. The first side is
