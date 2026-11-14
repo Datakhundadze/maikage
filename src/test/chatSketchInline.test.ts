@@ -7,6 +7,7 @@ import { announceSketch, SKETCH_READY_EVENT } from "@/lib/constructorBridge";
 const read = (p: string) => readFileSync(path.resolve(__dirname, p), "utf8");
 const PAGE = read("../pages/SimplePage.tsx");
 const WIDGET = read("../components/ChatWidget.tsx");
+const CHATPAGE = read("../pages/ChatPage.tsx");
 
 describe("announceSketch", () => {
   it("carries the picture; without one the detail has no image (the chat then says it failed)", () => {
@@ -51,5 +52,15 @@ describe("chat widget (source)", () => {
     const slim = WIDGET.slice(WIDGET.indexOf("const slim: PersistedChatMsg[]"), WIDGET.indexOf('saveChat("widget"'));
     expect(slim).toContain("sketchPending: m.sketchPending,");
     expect(slim).not.toContain("sketch: m.sketch");
+  });
+});
+
+describe("/chat page (source)", () => {
+  it("hands its conversation to the widget's slot, open and waiting for the picture, then goes to the constructor", () => {
+    expect(CHATPAGE).toContain("seedMockupForConstructor(suggestion.mockup, sentAttachment)");
+    expect(CHATPAGE).toContain('{ role: "assistant" as const, content: reply, suggestion, autoApplied: true, sketchPending: true },');
+    expect(CHATPAGE).toContain('saveChat("widget", sessionIdRef.current, carried, true);');
+    const at = CHATPAGE.indexOf('saveChat("widget", sessionIdRef.current, carried, true);');
+    expect(CHATPAGE.indexOf("navigate(CONSTRUCTOR_URL);", at)).toBeGreaterThan(at);
   });
 });

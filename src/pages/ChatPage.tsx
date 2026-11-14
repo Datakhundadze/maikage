@@ -10,11 +10,12 @@ import { loadChat, saveChat, type PersistedChatMsg } from "@/lib/chatPersistence
 import {
   type MockupSuggestion,
   openMockupInConstructor,
+  seedMockupForConstructor,
   CONSTRUCTOR_URL,
 } from "@/lib/mockupSuggestion";
 // The one place that decides whether a sketch may skip its button — shared by
 // this chat and the other so the two can never diverge.
-import { tryAutoOpenSketch } from "@/lib/autoSketch";
+import { isAutoSketchEligible, tryAutoOpenSketch } from "@/lib/autoSketch";
 // Both chats parse and render through the shared module, so the fence
 // precedence, the validation and the button can never drift between them.
 import {
@@ -261,9 +262,41 @@ export default function ChatPage() {
     // FREE SKETCH → SHOW IT, don't ask for a click. Returns true only when a
     // constructor is mounted in THIS tab AND the block spends no generation;
     // every other case is false and the button below renders as it always has.
-    const autoApplied = tryAutoOpenSketch(suggestion, sentAttachment) || undefined;
+    let autoApplied = tryAutoOpenSketch(suggestion, sentAttachment) || undefined;
+    // THE SKETCH WITHOUT A BUTTON, FROM THIS PAGE TOO (owner, 2026-11-14).
+    // No constructor lives on /chat, and the picture of a sketch is made by the
+    // constructor (ChatWidget shows it in its bubble). So for the same free /
+    // asked-for blocks: seed the design, hand THIS conversation to the site's
+    // chat widget — its own storage slot, marked open, the new reply waiting
+    // for its picture — and go to the constructor. The widget mounts there
+    // (it is not mounted on /chat), restores this conversation and receives
+    // the sketch. Same session id, so the admin log stays one conversation.
+    // A seed that does not fit storage leaves the button, as before.
+    if (
+      !autoApplied && suggestion?.kind === "mockup" && isAutoSketchEligible(suggestion) &&
+      seedMockupForConstructor(suggestion.mockup, sentAttachment)
+    ) {
+      autoApplied = true;
+      const carried: PersistedChatMsg[] = [
+        ...next.map((m) => ({
+          role: m.role,
+          content: m.content,
+          local: m.local,
+          hadImage: !!m.image || m.hadImage,
+          suggestion: m.suggestion,
+          autoApplied: m.autoApplied,
+          applied: m.applied,
+        })),
+        { role: "assistant" as const, content: reply, suggestion, autoApplied: true, sketchPending: true },
+      ];
+      saveChat("widget", sessionIdRef.current, carried, true);
+      setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion, autoApplied }]);
+      setMode("simple");
+      navigate(CONSTRUCTOR_URL);
+      return;
+    }
     setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion, autoApplied }]);
-  }, [input, loading, messages, lang, attachment]);
+  }, [input, loading, messages, lang, attachment, setMode, navigate]);
 
   // Hand the design to the constructor: merge ONLY the fields the model
   // actually specified over the stored product config (never overwrite what it
