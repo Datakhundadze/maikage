@@ -51,6 +51,7 @@ import {
   cleanBotReply,
   decideAutoReply,
   handoffMessage,
+  introMessage,
   pendingInbound,
   photoMessage,
   sketchCapMessage,
@@ -157,6 +158,12 @@ export interface AutoReplyDeps {
    * `order`. Absent → an image after the order goes to the model as before.
    */
   receipt?: ReceiptDeps;
+  /**
+   * INTRO (add-only, owner 2026-11-14): true → the bot's first send to a
+   * conversation (no bot send in the 13 h window) is preceded by
+   * introMessage. Never before the handoff text. Absent → as before.
+   */
+  introOnFirstReply?: boolean;
 }
 
 /** In-memory extras of the trigger row that are never stored on it. */
@@ -399,6 +406,12 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
           allowPriceList: pendingInbound(thread).some((r) => typeof r.text === "string" && ASKS_FOR_MODELS_RE.test(r.text)),
         },
       )];
+    }
+
+    // INTRO (add-only, owner 2026-11-14): first bot send in this conversation
+    // within the window → the introduction goes out first, as its own message.
+    if (deps.introOnFirstReply === true && kind !== "handoff" && botSends.length === 0) {
+      texts = [introMessage(schedule), ...texts];
     }
 
     let sent = 0;
