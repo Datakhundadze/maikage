@@ -98,6 +98,16 @@ export interface ConstructorSeed {
   order?: boolean;
   size?: string;
   /**
+   * EXACT placement from the showroom designer (add-only, 2026-11-14): the
+   * constructor's own layer coords (fractions of the placement zone) for the
+   * seeded photo and lettering, and the lettering's font family. With them the
+   * order carries what the visitor laid out and saw printed; without them — every
+   * chat seed — the constructor's own layouts apply, unchanged.
+   */
+  photoCoords?: { x: number; y: number; scale: number; scaleY: number };
+  textCoords?: { x: number; y: number; scale: number };
+  font?: string;
+  /**
    * Edit the seeded `image` with this free-text instruction once it is on the
    * garment — "add black round glasses to the dog", "put a coffee in the cat's
    * hand".
@@ -302,6 +312,20 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     // Only ever true alongside a photo — a flag with nothing to act on is noise.
     const removeBackground = image ? parsed.removeBackground === true : undefined;
     const extractPrint = image && parsed.extractPrint === true ? true : undefined;
+    // Exact coords: finite numbers in a sane range, or dropped whole.
+    const num = (v: unknown, lo: number, hi: number): number | null =>
+      typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : null;
+    const pc = parsed.photoCoords as Record<string, unknown> | null | undefined;
+    const pcx = pc && typeof pc === "object" ? [num(pc.x, -2, 3), num(pc.y, -2, 3), num(pc.scale, 0.01, 5), num(pc.scaleY, 0.01, 5)] : null;
+    const photoCoords = image && pcx && pcx.every((n) => n !== null)
+      ? { x: pcx[0] as number, y: pcx[1] as number, scale: pcx[2] as number, scaleY: pcx[3] as number }
+      : undefined;
+    const tc = parsed.textCoords as Record<string, unknown> | null | undefined;
+    const tcx = tc && typeof tc === "object" ? [num(tc.x, -2, 3), num(tc.y, -2, 3), num(tc.scale, 0.01, 5)] : null;
+    const textCoords = text && tcx && tcx.every((n) => n !== null)
+      ? { x: tcx[0] as number, y: tcx[1] as number, scale: tcx[2] as number }
+      : undefined;
+    const font = text && typeof parsed.font === "string" && /^[A-Za-z0-9 ',-]{1,80}$/.test(parsed.font) ? parsed.font : undefined;
     const order = parsed.order === true ? true : undefined;
     const size = order && typeof parsed.size === "string" && /^[A-Za-z0-9\u10A0-\u10FF+/. -]{1,14}$/.test(parsed.size.trim()) ? parsed.size.trim() : undefined;
     // Same rule for the edit instruction, and bounded by the PROMPT cap rather
@@ -351,7 +375,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const removeWhite = parsed.removeWhite === true ? true : undefined;
 
     if (!text && !image && !product && !color && !generate && !removeWhite) return null;
-    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}), ...(order ? { order } : {}), ...(size ? { size } : {}) };
+    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}), ...(order ? { order } : {}), ...(size ? { size } : {}), ...(photoCoords ? { photoCoords } : {}), ...(textCoords ? { textCoords } : {}), ...(font ? { font } : {}) };
   } catch {
     return null;
   }

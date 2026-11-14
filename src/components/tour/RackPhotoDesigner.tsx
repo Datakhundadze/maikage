@@ -5,6 +5,7 @@ import { BRAND_COLORS, BRAND_SIZES, COLORS, type ProductColor, type ProductType 
 import type { ConstructorSeed } from "@/lib/constructorSeed";
 import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
 import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, textSize, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
+import { photoLayerCoords, textLayerCoords } from "@/lib/tour/designHandoff";
 import { hasBack, loadSiteSide, type RackGarment, type SiteSide } from "@/lib/tour/siteGarment";
 
 // The rack's large photo as the place to design (David 2026-11-10/12). The
@@ -243,13 +244,34 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       setSizeAsk(true);
       return;
     }
+    // where and how big, in the constructor's own coordinates (designHandoff.ts) —
+    // so the order is the layout that was just printed here, not a re-centred one
+    const text = design.text.trim();
+    let photoCoords: ConstructorSeed["photoCoords"];
+    let textCoords: ConstructorSeed["textCoords"];
+    if (site) {
+      const aspect = design.img ? design.img.naturalWidth / design.img.naturalHeight : null;
+      if (design.img && aspect) {
+        const c = photoLayerCoords(design, aspect, site.area, site.box, site.zone);
+        photoCoords = { x: c.x, y: c.y, scale: c.scale, scaleY: c.scaleY ?? c.scale };
+      }
+      if (text) {
+        const m = document.createElement("canvas").getContext("2d")!;
+        m.font = `700 ${textSize(design, site.area)}px ${design.font}`;
+        const c = textLayerCoords(design, aspect, m.measureText(text).width, site.area, site.box, site.zone);
+        textCoords = { x: c.x, y: c.y, scale: c.scale };
+      }
+    }
+    const exact = !!photoCoords || !!textCoords;
     const base: ConstructorSeed = {
       color,
       side,
       // straight to the constructor's own order form, with this size (2026-11-14)
       order: true,
       ...(size ? { size } : {}),
-      ...(garment.placement && side === "front" ? { placement: garment.placement } : {}),
+      ...(photoCoords ? { photoCoords } : {}),
+      ...(textCoords ? { textCoords, font: design.font } : {}),
+      ...(!exact && garment.placement && side === "front" ? { placement: garment.placement } : {}),
       ...(design.text.trim() ? { text: design.text.trim() } : {}),
       ...(design.textColor ? { textColor: PALETTE.find((c) => c.hex === design.textColor)?.name } : {}),
     };

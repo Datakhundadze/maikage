@@ -59,6 +59,8 @@ export interface SiteSide {
   area: Rect;
   /** The hung garment's box (for the print film). */
   box: Rect;
+  /** The catalog placement zone of that product photo (fractions of it) — for the order handoff. */
+  zone: { x: number; y: number; scale: number; scaleY?: number };
 }
 
 const images = new Map<string, Promise<HTMLImageElement>>();
@@ -205,5 +207,5 @@ export async function loadSiteSide(g: RackGarment, product: ProductType, brand: 
   const area: Rect = fa
     ? { x: Math.round(box.x + fa[0] * box.w), y: Math.round(box.y + fa[1] * box.h), w: Math.round(fa[2] * box.w), h: Math.round(fa[3] * box.h) }
     : { x: Math.round(box.x + z.x * box.w - aw / 2), y: Math.round(box.y + z.y * box.h - ah / 2), w: Math.round(aw), h: Math.round(ah) };
-  return { layers: { photo, mask, shade }, area, box };
+  return { layers: { photo, mask, shade }, area, box, zone: { x: z.x, y: z.y, scale: z.scale, ...(z.scaleY ? { scaleY: z.scaleY } : {}) } };
 }

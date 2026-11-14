@@ -2370,7 +2370,20 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     // effect re-run and add the layer — deterministic, with no post-hoc patch
     // racing addPhotoLayer's async contain-fit probe (which preserves x/y and
     // recomputes scale from whatever base it finds).
-    const chest = seed.placement === "left-chest" || seed.placement === "right-chest"
+    // ADD-ONLY (2026-11-14): EXACT coords from the showroom designer win over
+    // every layout below — the visitor placed the print there and saw it printed.
+    // Same mechanism as the chest: set nextPhotoCoords, re-run, and addPhotoLayer
+    // lands the side's first photo on it verbatim. A chat seed has no
+    // photoCoords / textCoords, so `exact` is false and nothing below changes.
+    const exactPhoto = seed.image && seed.photoCoords ? seed.photoCoords : null;
+    const exact = !!exactPhoto || !!seed.textCoords;
+    if (exactPhoto) {
+      if (nextPhotoCoords.x !== exactPhoto.x || nextPhotoCoords.y !== exactPhoto.y || nextPhotoCoords.scale !== exactPhoto.scale || nextPhotoCoords.scaleY !== exactPhoto.scaleY) {
+        setNextPhotoCoords({ ...exactPhoto });
+        return;
+      }
+    }
+    const chest = !exact && (seed.placement === "left-chest" || seed.placement === "right-chest")
       ? seed.placement
       : null;
     if (seed.image && chest) {
@@ -2408,6 +2421,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
       !!seed.image &&
       !!seed.text?.trim() &&
       !chest &&
+      !exact &&
       seed.placement !== "jersey-back";
 
     // REPLACE / ADD. A photo arriving onto a side that already has one is held
@@ -2585,7 +2599,8 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
         const mkText = (id: string, content: string, coords: PlacementCoords): TextLayer => ({
           id,
           content,
-          font: FONTS[0],
+          // the showroom's font when it is one of the constructor's own (add-only)
+          font: (seed.font && FONTS.find((f) => f.family === seed.font)) || FONTS[0],
           // Palette-only: an unknown name resolves to null and falls back to
           // the default, so an arbitrary hex can never be injected.
           color: seedColor,
@@ -2605,7 +2620,9 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
         // (staggeredTextCoords(0) IS DEFAULT_TEXT_COORDS); anything else
         // centred — including no placement — gets the standard print, raised
         // on Sport so it sits on the jersey chest rather than its hem.
-        const baseTextCoords = chest
+        const baseTextCoords = seed.textCoords
+          ? { x: seed.textCoords.x, y: seed.textCoords.y, scale: seed.textCoords.scale }
+          : chest
           ? chestTextCoords(chest)
           : seed.placement === "small"
             ? staggeredTextCoords(prev.texts.length)
