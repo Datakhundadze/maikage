@@ -108,6 +108,13 @@ export interface ConstructorSeed {
   textCoords?: { x: number; y: number; scale: number };
   font?: string;
   /**
+   * A SECOND seed, applied after this one has settled on the garment (add-only,
+   * 2026-11-14): the showroom's other side. One level only — a `then` inside a
+   * `then` is dropped. `order` belongs on the LAST seed of the chain; on a seed
+   * that has a `then` it is dropped, so the form never opens half-way.
+   */
+  then?: ConstructorSeed;
+  /**
    * Edit the seeded `image` with this free-text instruction once it is on the
    * garment — "add black round glasses to the dog", "put a coffee in the cat's
    * hand".
@@ -326,7 +333,14 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
       ? { x: tcx[0] as number, y: tcx[1] as number, scale: tcx[2] as number }
       : undefined;
     const font = text && typeof parsed.font === "string" && /^[A-Za-z0-9 ',-]{1,80}$/.test(parsed.font) ? parsed.font : undefined;
-    const order = parsed.order === true ? true : undefined;
+    // One level of chaining: the nested seed gets this seed's timestamp and may
+    // not chain further.
+    let then: ConstructorSeed | undefined;
+    if (parsed.then && typeof parsed.then === "object") {
+      const inner = normalizeConstructorSeed({ ...(parsed.then as object), ts: parsed.ts, then: undefined });
+      if (inner) then = inner;
+    }
+    const order = !then && parsed.order === true ? true : undefined;
     const size = order && typeof parsed.size === "string" && /^[A-Za-z0-9\u10A0-\u10FF+/. -]{1,14}$/.test(parsed.size.trim()) ? parsed.size.trim() : undefined;
     // Same rule for the edit instruction, and bounded by the PROMPT cap rather
     // than the text cap: this describes a change to a picture, it is not words
@@ -375,7 +389,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const removeWhite = parsed.removeWhite === true ? true : undefined;
 
     if (!text && !image && !product && !color && !generate && !removeWhite) return null;
-    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}), ...(order ? { order } : {}), ...(size ? { size } : {}), ...(photoCoords ? { photoCoords } : {}), ...(textCoords ? { textCoords } : {}), ...(font ? { font } : {}) };
+    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}), ...(order ? { order } : {}), ...(size ? { size } : {}), ...(photoCoords ? { photoCoords } : {}), ...(textCoords ? { textCoords } : {}), ...(font ? { font } : {}), ...(then ? { then } : {}) };
   } catch {
     return null;
   }

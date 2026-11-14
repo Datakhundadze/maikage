@@ -2450,6 +2450,9 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     // Queued, not run: the layers below are not committed yet. Drained by the
     // pendingOrder effect further down.
     if (seed.order) setPendingOrder({ size: seed.size, image: !!seed.image, text: !!seed.text?.trim() });
+    // ADD-ONLY (2026-11-14): a chained seed — the showroom's other side — is
+    // queued the same way and fed back through THIS drain once this one settled.
+    if (seed.then) setPendingNextSeed({ seed: seed.then, image: !!seed.image, text: !!seed.text?.trim() });
 
     // A seeded GENERATION is queued, not run, and queued only HERE — after the
     // product ladder above has settled. handleAiGenerate reads
@@ -3605,6 +3608,36 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // nothing AI is running, so the mockups it computes are not of an empty shirt.
   // Gives up quietly after ORDER_SEED_WAIT_MS: the visitor is then simply in
   // the constructor, as before.
+  // ── Chained seed: the showroom's second side (add-only, 2026-11-14) ────────
+  //
+  // A design on both sides arrives as one seed with a `then`. The first side is
+  // applied by the drain as usual; when its photo is measured and its lettering
+  // rasterised (both happen only while that side is the current view), the
+  // second seed goes through the SAME drain, by the same three lines the chat
+  // widget's in-place handoff uses (onApply above). No second way to apply a
+  // seed. After ORDER_SEED_WAIT_MS it goes on regardless, so the second side
+  // and the order are not lost to a slow first one.
+  const [pendingNextSeed, setPendingNextSeed] = useState<{ seed: ConstructorSeed; image: boolean; text: boolean } | null>(null);
+  const pendingNextSince = useRef(0);
+  useEffect(() => {
+    if (!pendingNextSeed) return;
+    if (!pendingNextSince.current) pendingNextSince.current = Date.now();
+    const late = Date.now() - pendingNextSince.current > ORDER_SEED_WAIT_MS;
+    const photoReady = !pendingNextSeed.image || sideData.photos.some((p) => !!p.naturalAspect);
+    const textReady = !pendingNextSeed.text || sideData.texts.some((tl) => !!tl.naturalAspect);
+    const busy = !!editingPhotoId || aiGenerating || seededRemoveBgActive;
+    if (!late && (!photoReady || !textReady || busy)) {
+      const again = window.setTimeout(() => setPendingNextSeed((p) => (p ? { ...p } : p)), 400);
+      return () => window.clearTimeout(again);
+    }
+    pendingNextSince.current = 0;
+    const next = pendingNextSeed.seed;
+    setPendingNextSeed(null);
+    seedRef.current = next;
+    seedAppliedRef.current = false;
+    setSeedNonce((n) => n + 1);
+  }, [pendingNextSeed, sideData.photos, sideData.texts, editingPhotoId, aiGenerating, seededRemoveBgActive]);
+
   const [pendingOrder, setPendingOrder] = useState<{ size?: string; image: boolean; text: boolean } | null>(null);
   const pendingOrderSince = useRef(0);
   useEffect(() => {

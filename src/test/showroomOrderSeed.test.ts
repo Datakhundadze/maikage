@@ -22,6 +22,34 @@ describe("seed: order + size", () => {
   });
 });
 
+describe("seed: then (the second side)", () => {
+  const ts = Date.now();
+  const img = "data:image/png;base64,AA";
+  it("one nested seed, validated by the same rules; order survives only on the last", () => {
+    const s = normalizeConstructorSeed({ ts, side: "back", image: img, order: true, then: { side: "front", text: "x", order: true, size: "L" } });
+    expect(s).not.toHaveProperty("order");
+    expect(s?.then).toMatchObject({ side: "front", text: "x", order: true, size: "L" });
+  });
+  it("no chain inside a chain; a junk `then` is dropped", () => {
+    const s = normalizeConstructorSeed({ ts, text: "a", then: { text: "b", then: { text: "c" } } });
+    expect(s?.then?.text).toBe("b");
+    expect(s?.then).not.toHaveProperty("then");
+    expect(normalizeConstructorSeed({ ts, text: "a", then: "x" })).not.toHaveProperty("then");
+    expect(normalizeConstructorSeed({ ts, text: "a", order: true })).toMatchObject({ order: true });
+  });
+});
+
+describe("constructor: chained seed (source)", () => {
+  it("goes back through the one drain, by the in-place handoff's three lines", () => {
+    const start = PAGE.indexOf("// ── Chained seed: the showroom's second side");
+    const body = PAGE.slice(start, PAGE.indexOf("const [pendingOrder, setPendingOrder]", start));
+    expect(start).toBeGreaterThan(0);
+    expect(body).toContain("seedRef.current = next;\n    seedAppliedRef.current = false;\n    setSeedNonce((n) => n + 1);");
+    expect(body).not.toContain("addPhotoLayer");
+    expect(body).not.toContain("setSideData");
+  });
+});
+
 describe("constructor (source)", () => {
   it("the seeded order only calls handleOrderClick; it opens no dialog itself", () => {
     const start = PAGE.indexOf("// ── Seeded order: press the order button for a showroom visitor");

@@ -101,6 +101,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   }, [design, color, side]);
   // the site's photo of this colour and side, hung in the rack photo (siteGarment.ts)
   const [site, setSite] = useState<SiteSide | null>(null);
+  const geoRef = useRef<Partial<Record<Side, Pick<SiteSide, "area" | "box" | "zone">>>>({});
   const ready = !!site;
   const A = site?.area ?? WHOLE;
   const canFlip = hasBack(product, brand);
@@ -109,7 +110,11 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     if (!scratch.current) scratch.current = garmentScratch();
     void loadSiteSide(garment, product, brand, color as ProductColor, hexOf(color), side)
       .then((sd) => {
-        if (!off && sd) setSite(sd);
+        if (!off && sd) {
+          setSite(sd);
+          // kept per side: the order needs the other side's geometry without waiting
+          geoRef.current[side] = { area: sd.area, box: sd.box, zone: sd.zone };
+        }
       })
       .catch(() => {});
     return () => {
@@ -244,39 +249,51 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       setSizeAsk(true);
       return;
     }
-    // where and how big, in the constructor's own coordinates (designHandoff.ts) —
-    // so the order is the layout that was just printed here, not a re-centred one
-    const text = design.text.trim();
-    let photoCoords: ConstructorSeed["photoCoords"];
-    let textCoords: ConstructorSeed["textCoords"];
-    if (site) {
-      const aspect = design.img ? design.img.naturalWidth / design.img.naturalHeight : null;
-      if (design.img && aspect) {
-        const c = photoLayerCoords(design, aspect, site.area, site.box, site.zone);
-        photoCoords = { x: c.x, y: c.y, scale: c.scale, scaleY: c.scaleY ?? c.scale };
+    // One side as a seed: its photo, lettering and — in the constructor's own
+    // coordinates (designHandoff.ts) — where and how big, so the order is the
+    // layout that was just printed here, not a re-centred one.
+    const sideSeed = (sd: Side, d: GarmentDesign, max: number): ConstructorSeed | null => {
+      const text = d.text.trim();
+      if (!d.img && !text) return null;
+      const geo = geoRef.current[sd];
+      let photoCoords: ConstructorSeed["photoCoords"];
+      let textCoords: ConstructorSeed["textCoords"];
+      if (geo) {
+        const aspect = d.img ? d.img.naturalWidth / d.img.naturalHeight : null;
+        if (d.img && aspect) {
+          const c = photoLayerCoords(d, aspect, geo.area, geo.box, geo.zone);
+          photoCoords = { x: c.x, y: c.y, scale: c.scale, scaleY: c.scaleY ?? c.scale };
+        }
+        if (text) {
+          const m = document.createElement("canvas").getContext("2d")!;
+          m.font = `700 ${textSize(d, geo.area)}px ${d.font}`;
+          const c = textLayerCoords(d, aspect, m.measureText(text).width, geo.area, geo.box, geo.zone);
+          textCoords = { x: c.x, y: c.y, scale: c.scale };
+        }
       }
-      if (text) {
-        const m = document.createElement("canvas").getContext("2d")!;
-        m.font = `700 ${textSize(design, site.area)}px ${design.font}`;
-        const c = textLayerCoords(design, aspect, m.measureText(text).width, site.area, site.box, site.zone);
-        textCoords = { x: c.x, y: c.y, scale: c.scale };
-      }
-    }
-    const exact = !!photoCoords || !!textCoords;
-    const base: ConstructorSeed = {
-      color,
-      side,
-      // straight to the constructor's own order form, with this size (2026-11-14)
-      order: true,
-      ...(size ? { size } : {}),
-      ...(photoCoords ? { photoCoords } : {}),
-      ...(textCoords ? { textCoords, font: design.font } : {}),
-      ...(!exact && garment.placement && side === "front" ? { placement: garment.placement } : {}),
-      ...(design.text.trim() ? { text: design.text.trim() } : {}),
-      ...(design.textColor ? { textColor: PALETTE.find((c) => c.hex === design.textColor)?.name } : {}),
+      const exact = !!photoCoords || !!textCoords;
+      return {
+        color,
+        side: sd,
+        ...(photoCoords ? { photoCoords } : {}),
+        ...(textCoords ? { textCoords, font: d.font } : {}),
+        ...(!exact && garment.placement && sd === "front" ? { placement: garment.placement } : {}),
+        ...(text ? { text } : {}),
+        ...(d.textColor ? { textColor: PALETTE.find((c) => c.hex === d.textColor)?.name } : {}),
+        ...(d.img ? { image: photoDataUrl(d.img, max) } : {}),
+      };
     };
-    for (const max of design.img ? [2400, 1600, 1100] : [0]) {
-      if (onOrder(design.img ? { ...base, image: photoDataUrl(design.img, max) } : base)) return;
+    // BOTH sides (2026-11-14): the side not on screen goes first, the one on
+    // screen last (`then`) — the constructor ends on the side the visitor was
+    // looking at, and only then opens its order form with this size.
+    const other: Side = side === "front" ? "back" : "front";
+    const anyImg = !!design.img || !!designs[other].img;
+    for (const max of anyImg ? [2400, 1600, 1100, 800] : [0]) {
+      const here = sideSeed(side, design, max);
+      if (!here) break;
+      const last: ConstructorSeed = { ...here, order: true, ...(size ? { size } : {}) };
+      const first = sideSeed(other, designs[other], max);
+      if (onOrder(first ? { ...first, then: last } : last)) return;
     }
     setOrderFailed(true);
   };
