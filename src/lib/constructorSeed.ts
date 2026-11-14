@@ -86,6 +86,18 @@ export interface ConstructorSeed {
    */
   extractPrint?: boolean;
   /**
+   * Open the constructor's OWN order form once this seed is on the garment
+   * (add-only, 2026-11-14 — the showroom's "შეკვეთა": David pressed it, landed
+   * in the constructor and had to press order again).
+   *
+   * A REQUEST to press the constructor's order button, nothing more: the size
+   * gate, the mockups, the price and the form are handleOrderClick's, unchanged.
+   * `size` is the size picked in the showroom; a size the brand does not list is
+   * dropped by the constructor, whose size gate then asks for one.
+   */
+  order?: boolean;
+  size?: string;
+  /**
    * Edit the seeded `image` with this free-text instruction once it is on the
    * garment — "add black round glasses to the dog", "put a coffee in the cat's
    * hand".
@@ -290,6 +302,8 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     // Only ever true alongside a photo — a flag with nothing to act on is noise.
     const removeBackground = image ? parsed.removeBackground === true : undefined;
     const extractPrint = image && parsed.extractPrint === true ? true : undefined;
+    const order = parsed.order === true ? true : undefined;
+    const size = order && typeof parsed.size === "string" && /^[A-Za-z0-9\u10A0-\u10FF+/. -]{1,14}$/.test(parsed.size.trim()) ? parsed.size.trim() : undefined;
     // Same rule for the edit instruction, and bounded by the PROMPT cap rather
     // than the text cap: this describes a change to a picture, it is not words
     // printed on a garment. Re-validated here as well as at write time because
@@ -337,7 +351,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const removeWhite = parsed.removeWhite === true ? true : undefined;
 
     if (!text && !image && !product && !color && !generate && !removeWhite) return null;
-    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}) };
+    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}), ...(order ? { order } : {}), ...(size ? { size } : {}) };
   } catch {
     return null;
   }

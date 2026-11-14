@@ -47,6 +47,9 @@ import { getStyleOptions } from "@/lib/designStyles";
 import { chromaKeyGreen, chromaKeyGreenDesign } from "@/lib/chromaKey";
 import { USE_GPT_PHOTO_BG, transparentShare } from "@/lib/aiModelSwitch";
 import { extractPrintFromPhoto, ExtractPrintError } from "@/lib/extractPrint";
+
+/** How long a seeded order waits for its design to be on the garment before giving up. */
+const ORDER_SEED_WAIT_MS = 12000;
 import { cutoutIntent } from "@/lib/cutoutIntent";
 import { keyDesignCutout, flattenOnWhite, MIN_KEYED_FRACTION } from "@/lib/designCutout";
 import { t, colorKa } from "@/lib/i18n";
@@ -2429,6 +2432,11 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
 
     seedAppliedRef.current = true;
 
+    // ADD-ONLY (2026-11-14): the showroom's "შეკვეთა" asked for the order form.
+    // Queued, not run: the layers below are not committed yet. Drained by the
+    // pendingOrder effect further down.
+    if (seed.order) setPendingOrder({ size: seed.size, image: !!seed.image, text: !!seed.text?.trim() });
+
     // A seeded GENERATION is queued, not run, and queued only HERE — after the
     // product ladder above has settled. handleAiGenerate reads
     // productConfig.config to resolve the product image, exact-colour flag and
@@ -3566,6 +3574,48 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     if (fm || bm) saveToGenerations(fm, bm, fdo || bdo);
     setOrderDialogOpen(true);
   }, [needsSize, productConfig.config.size, computeFresh, saveToGenerations]);
+
+  // ── Seeded order: press the order button for a showroom visitor (add-only) ──
+  //
+  // The showroom designer ends in "შეკვეთა" (size picked there). Its seed lands
+  // here like a chat seed; without this the visitor saw the constructor and had
+  // to find and press the order button a second time (David, 2026-11-14).
+  //
+  // This only CALLS handleOrderClick above — the one function both order
+  // buttons call. Size gate, fresh mockups, saveToGenerations and the dialog
+  // are its own and are not copied here. It waits until what the seed asked for
+  // is really on the garment (the photo measured, the lettering rasterised) and
+  // nothing AI is running, so the mockups it computes are not of an empty shirt.
+  // Gives up quietly after ORDER_SEED_WAIT_MS: the visitor is then simply in
+  // the constructor, as before.
+  const [pendingOrder, setPendingOrder] = useState<{ size?: string; image: boolean; text: boolean } | null>(null);
+  const pendingOrderSince = useRef(0);
+  useEffect(() => {
+    if (!pendingOrder) return;
+    if (!pendingOrderSince.current) pendingOrderSince.current = Date.now();
+    if (Date.now() - pendingOrderSince.current > ORDER_SEED_WAIT_MS) {
+      pendingOrderSince.current = 0;
+      setPendingOrder(null);
+      return;
+    }
+    const photoReady = !pendingOrder.image || sideData.photos.some((p) => !!p.naturalAspect);
+    const textReady = !pendingOrder.text || sideData.texts.some((tl) => !!tl.naturalAspect);
+    const busy = !!editingPhotoId || aiGenerating || seededRemoveBgActive;
+    if (!photoReady || !textReady || busy) {
+      // re-checked on the next state change, and on this tick in case none comes
+      const again = window.setTimeout(() => setPendingOrder((p) => (p ? { ...p } : p)), 400);
+      return () => window.clearTimeout(again);
+    }
+    // the size picked in the showroom, when this brand lists it
+    const sizes = BRAND_SIZES[productConfig.config.subProduct] || [];
+    if (pendingOrder.size && sizes.includes(pendingOrder.size) && productConfig.config.size !== pendingOrder.size) {
+      productConfig.setSize(pendingOrder.size);
+      return; // re-runs with the size in place
+    }
+    pendingOrderSince.current = 0;
+    setPendingOrder(null);
+    void handleOrderClick();
+  }, [pendingOrder, sideData.photos, sideData.texts, editingPhotoId, aiGenerating, seededRemoveBgActive, productConfig, handleOrderClick]);
 
   // ── Swap: lettering above the photo, or below it ─────────────────────────
   //

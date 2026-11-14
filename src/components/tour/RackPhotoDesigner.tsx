@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, ImagePlus, MessageCircle, Printer, RefreshCw, Trash2, Type, X } from "lucide-react";
 import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnimation";
-import { BRAND_COLORS, COLORS, type ProductColor, type ProductType } from "@/lib/catalog";
+import { BRAND_COLORS, BRAND_SIZES, COLORS, type ProductColor, type ProductType } from "@/lib/catalog";
 import type { ConstructorSeed } from "@/lib/constructorSeed";
 import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
 import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, textSize, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
@@ -85,6 +85,10 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   const [fontTick, setFontTick] = useState(0);
   const [film, setFilm] = useState<Omit<PrintAnimationProps, "onDone" | "onSkip"> | null>(null);
   const [printed, setPrinted] = useState(false);
+  // the size is asked here, so "შეკვეთა" can open the order form itself
+  const sizes = BRAND_SIZES[brand] ?? [];
+  const [size, setSize] = useState("");
+  const [sizeAsk, setSizeAsk] = useState(false);
   const [orderFailed, setOrderFailed] = useState(false);
   const design = designs[side];
   const setDesign = useCallback((patch: Partial<GarmentDesign>) => setDesigns((d) => ({ ...d, [side]: { ...d[side], ...patch } })), [side]);
@@ -235,9 +239,16 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   // this colour, side, photo and text on the garment; price, order form and
   // payment are the constructor's own, untouched
   const order = () => {
+    if (sizes.length && !size) {
+      setSizeAsk(true);
+      return;
+    }
     const base: ConstructorSeed = {
       color,
       side,
+      // straight to the constructor's own order form, with this size (2026-11-14)
+      order: true,
+      ...(size ? { size } : {}),
       ...(garment.placement && side === "front" ? { placement: garment.placement } : {}),
       ...(design.text.trim() ? { text: design.text.trim() } : {}),
       ...(design.textColor ? { textColor: PALETTE.find((c) => c.hex === design.textColor)?.name } : {}),
@@ -431,13 +442,38 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         {orderFailed
           ? "ფოტო ძალიან დიდია გადასაცემად — დახურე და დააჭირე „არჩევა“, იქ ატვირთე"
           : printed
-            ? "მზადაა! „შეკვეთა“ გახსნის შეკვეთის გვერდს ამ დიზაინით"
+            ? sizes.length && !size
+              ? "მზადაა! აირჩიე ზომა — „შეკვეთა“ გახსნის შეკვეთის ფორმას"
+              : "მზადაა! „შეკვეთა“ გახსნის შეკვეთის ფორმას ამ დიზაინით"
             : has
               ? both
-                ? "ფოტო და წარწერა ცალ-ცალკე გადაადგილდება · მერე „ბეჭდვა“"
-                : "თითით გადაადგილე პრინტი, მერე დააჭირე „ბეჭდვა“"
+                ? "ფოტო და წარწერა ცალ-ცალკე გადაადგილდება"
+                : "თითით გადაადგილე პრინტი"
               : "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ მაისურზე"}
       </p>
+      {printed && has && sizes.length > 0 && (
+        <div
+          role="radiogroup"
+          aria-label="ზომა"
+          className={`mt-3 flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full px-2 py-1 ${sizeAsk && !size ? "ring-2 ring-amber-400" : ""}`}
+        >
+          {sizes.map((z) => (
+            <button
+              key={z}
+              type="button"
+              role="radio"
+              aria-checked={size === z}
+              onClick={() => {
+                setSize(z);
+                setSizeAsk(false);
+              }}
+              className={`h-9 min-w-9 rounded-full px-2.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${size === z ? "bg-white text-black" : "bg-white/10 text-white ring-1 ring-white/25 hover:bg-white/20"}`}
+            >
+              {z}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="mt-3 flex items-center gap-2">
         <button
           type="button"
