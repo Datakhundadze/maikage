@@ -15,6 +15,15 @@
 import type { Lang } from "@/lib/i18n";
 
 /** Dispatched by the constructor when a photo layer is added. No payload. */
+/**
+ * OFF (owner, 2026-11-14): "'Nice photo! I can redraw it in another style' —
+ * we don't want that phrase." It also landed right under a sketch the customer
+ * had just asked for. One switch: the chat's listener checks it and offers
+ * nothing — no message and no launcher dot. Everything else in this file is
+ * kept so turning it back on is this one line.
+ */
+export const RESTYLE_OFFER_ENABLED = false;
+
 export const PHOTO_UPLOADED_EVENT = "maika:photo-uploaded";
 
 /**

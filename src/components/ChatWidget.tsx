@@ -21,6 +21,7 @@ import { SKETCH_READY_EVENT, type SketchReadyEvent } from "@/lib/constructorBrid
 // wording all live together, away from this component.
 import {
   PHOTO_UPLOADED_EVENT,
+  RESTYLE_OFFER_ENABLED,
   restyleOfferAlreadyShown,
   markRestyleOfferShown,
   restyleOfferText,
@@ -252,6 +253,7 @@ export default function ChatWidget() {
 
   useEffect(() => {
     const onPhoto = () => {
+      if (!RESTYLE_OFFER_ENABLED) return; // switched off — see photoRestyleOffer.ts
       if (restyleOfferAlreadyShown()) return;
       markRestyleOfferShown();
       // PANEL ALREADY OPEN → no dot, because a badge on a launcher the customer
