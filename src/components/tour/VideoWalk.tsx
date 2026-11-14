@@ -47,6 +47,8 @@ import {
 import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
+import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
+import { peekShowroomDesign, SHOWROOM_DESIGN_EVENT } from "@/lib/tour/showroomChatDesign";
 import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
 import { personYawAt } from "@/lib/tour/personYaw";
 import { CAM_HEIGHT_M, labelView, posAt, rackLabels } from "@/lib/tour/rackLabels";
@@ -386,6 +388,9 @@ export default function VideoWalk() {
   const [entered, setEntered] = useState(false);
   const pendingEnterRef = useRef(false);
   const [openRack, setOpenRack] = useState<ShowroomRack | null>(null);
+  useEffect(() => {
+    openRackRef.current = openRack;
+  }, [openRack]);
   const labelRefs = useRef<(HTMLButtonElement | null)[]>([]);
   // read by the render loop: hide the labels behind the picker / the open rack's own label
   const labelHideRef = useRef<{ picker: boolean; rackId: string | null }>({ picker: false, rackId: null });
@@ -405,6 +410,40 @@ export default function VideoWalk() {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const opHitRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const goRef = useRef<(d: WalkDest) => void>(() => {});
+  // The chat's sketch (showroomChatDesign.ts): claimed only once the visitor is
+  // inside and walking is possible. The rack of the product the bot named is
+  // walked to (it opens on arrival and its designer takes the design); with no
+  // product named, or one without a designer rack, the rack already open is
+  // used; with none open the offer is left unclaimed and the chat keeps its
+  // button.
+  const openRackRef = useRef<ShowroomRack | null>(null);
+  const canRouteRef = useRef(false);
+  useEffect(() => {
+    canRouteRef.current = entered && status === "ready";
+  }, [entered, status]);
+  useEffect(() => {
+    const onDesign = (e: Event) => {
+      const d = peekShowroomDesign();
+      if (!d || !canRouteRef.current) return;
+      const open = openRackRef.current;
+      const openBrand = open && open.items !== "catalog" && RACK_GARMENTS[open.id] ? open.items[0].brand : null;
+      const dest = d.brand
+        ? dests.find((x) => x.rack && x.rack.items !== "catalog" && !!RACK_GARMENTS[x.rack.id] && x.rack.items[0].brand === d.brand)
+        : undefined;
+      if (dest && dest.rack && openBrand !== d.brand) {
+        e.preventDefault();
+        goRef.current(dest);
+        return;
+      }
+      // the named product is the one open, or nothing usable was named: the open rack takes it
+      if (openBrand) {
+        if (d.brand && d.brand !== openBrand) d.brand = undefined;
+        e.preventDefault();
+      }
+    };
+    window.addEventListener(SHOWROOM_DESIGN_EVENT, onDesign);
+    return () => window.removeEventListener(SHOWROOM_DESIGN_EVENT, onDesign);
+  }, []);
   const sheetOpenRef = useRef(false);
   useEffect(() => {
     sheetOpenRef.current = !!openRack;

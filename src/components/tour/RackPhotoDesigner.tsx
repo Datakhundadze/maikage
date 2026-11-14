@@ -7,6 +7,10 @@ import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
 import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, textSize, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
 import { photoLayerCoords, textLayerCoords } from "@/lib/tour/designHandoff";
 import { hasBack, loadSiteSide, type RackGarment, type SiteSide } from "@/lib/tour/siteGarment";
+import { SHOWROOM_DESIGN_EVENT, takeShowroomDesign } from "@/lib/tour/showroomChatDesign";
+import { announceSketch } from "@/lib/constructorBridge";
+import { extractPrintFromPhoto } from "@/lib/extractPrint";
+import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 // The rack's large photo as the place to design (David 2026-11-10/12). The
 // garment in it is the site's own product photo for the chosen colour and
@@ -207,6 +211,94 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     setSel("text");
     setTextOpen(true);
   };
+
+  // ── A sketch from the chat lands here (showroomChatDesign.ts, 2026-11-14) ──
+  // The bot's design — the customer's photo, or its print alone, and/or a line
+  // of text — is put on this garment the way a hand would put it: the photo
+  // inside the frame, the text under it. Colour and side as the bot's block
+  // says, when this product has them. Then the picture of the result goes back
+  // to the chat bubble (announceSketch). An extraction that fails or is refused
+  // (the guest allowance) is reported without a picture; nothing is placed.
+  const { checkLimit, recordGeneration } = useGenerationLimit();
+  const [chatTick, setChatTick] = useState(0);
+  const [shotOwed, setShotOwed] = useState(false);
+  useEffect(() => {
+    const on = () => setChatTick((t) => t + 1);
+    window.addEventListener(SHOWROOM_DESIGN_EVENT, on);
+    return () => window.removeEventListener(SHOWROOM_DESIGN_EVENT, on);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const d = takeShowroomDesign(brand);
+    if (!d) return;
+    let off = false;
+    void (async () => {
+      let img: HTMLImageElement | null = null;
+      if (d.image) {
+        let src = d.image;
+        if (d.extract) {
+          const lim = checkLimit();
+          if (!lim.allowed) throw new Error("limit");
+          recordGeneration();
+          src = await extractPrintFromPhoto(d.image);
+        }
+        img = await loadImg(src);
+      }
+      if (off) return;
+      const to: Side = d.side === "back" && canFlip ? "back" : "front";
+      const text = d.text?.trim() ?? "";
+      const patch: Partial<GarmentDesign> = {};
+      let ih = 0;
+      if (img) {
+        const tall = (img.naturalHeight / img.naturalWidth) * A.w;
+        const scale = Math.min(0.8, (0.9 * A.h) / tall);
+        const y = tall * scale > 0.7 * A.h ? 0.5 : 0.42;
+        Object.assign(patch, { img, scale, x: 0.5, y });
+        ih = (tall * scale) / A.h;
+      }
+      if (text) {
+        Object.assign(patch, {
+          text,
+          textColor: (d.textColor && PALETTE.find((c) => c.name === d.textColor)?.hex) || null,
+          tx: 0.5,
+          ty: img ? Math.min(1.02, (patch.y as number) + ih / 2 + 0.09) : 0.45,
+          ts: img ? (patch.scale as number) : 0.9,
+        });
+      }
+      if (d.color && (colors as readonly string[]).includes(d.color)) setColor(d.color);
+      setSide(to);
+      setDesigns((all) => ({ ...all, [to]: { ...all[to], ...patch } }));
+      setSel(img ? "img" : "text");
+      setTextOpen(false);
+      setShotOwed(true);
+    })().catch(() => {
+      if (!off) announceSketch();
+    });
+    return () => {
+      off = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when the garment is ready or a new design is offered
+  }, [ready, chatTick]);
+  // the picture for the chat: once the garment has stopped changing (colour and
+  // side load their own photo), what is on the canvas
+  useEffect(() => {
+    if (!shotOwed || !site || !has) return;
+    const t = window.setTimeout(() => {
+      const cv = ref.current;
+      if (!cv) return;
+      try {
+        const c = document.createElement("canvas");
+        c.width = 640;
+        c.height = Math.round((640 * cv.height) / cv.width);
+        c.getContext("2d")!.drawImage(cv, 0, 0, c.width, c.height);
+        announceSketch(c.toDataURL("image/jpeg", 0.86));
+      } catch {
+        announceSketch();
+      }
+      setShotOwed(false);
+    }, 900);
+    return () => window.clearTimeout(t);
+  }, [shotOwed, site, has, design, color, side]);
 
   const onFile = (f: File | undefined) => {
     if (!f) return;

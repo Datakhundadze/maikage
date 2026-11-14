@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, ChevronDown, Search, X, ZoomIn, ZoomOut } from "
 import MagnifierLens from "@/components/MagnifierLens";
 import RackPhotoDesigner from "@/components/tour/RackPhotoDesigner";
 import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
+import { SHOWROOM_DESIGN_EVENT, showroomDesignFits } from "@/lib/tour/showroomChatDesign";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 import { fromPrice } from "@/lib/landingPrice";
@@ -62,6 +63,21 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
   }, [direct]);
   // large view: first the product alone, "დაწყება" brings the tools (David 2026-11-10)
   const [designing, setDesigning] = useState(false);
+  // A sketch from the chat is waiting for this product (showroomChatDesign.ts):
+  // straight into the designer, which takes it — now if this rack is already
+  // open, or as soon as the walk arrives here.
+  useEffect(() => {
+    const brand = rack.items !== "catalog" && garment ? rack.items[0].brand : null;
+    if (!brand) return;
+    const start = () => {
+      if (!showroomDesignFits(brand)) return;
+      setBig(true);
+      setDesigning(true);
+    };
+    start();
+    window.addEventListener(SHOWROOM_DESIGN_EVENT, start);
+    return () => window.removeEventListener(SHOWROOM_DESIGN_EVENT, start);
+  }, [rack, garment]);
   // the plain large photo: zoomed by its loupe button, moved by a drag
   const ZOOM = 2.3;
   const [zoomed, setZoomed] = useState(false);

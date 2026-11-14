@@ -17,6 +17,7 @@ import {
 // this chat and the other so the two can never diverge.
 import { isAutoSketchEligible, tryAutoOpenSketch } from "@/lib/autoSketch";
 import { SKETCH_READY_EVENT, type SketchReadyEvent } from "@/lib/constructorBridge";
+import { offerShowroomDesign } from "@/lib/tour/showroomChatDesign";
 // The photo-upload nudge: the event name, the once-per-session flag and the
 // wording all live together, away from this component.
 import {
@@ -362,6 +363,29 @@ export default function ChatWidget() {
     // the LANDING page until constructor mode is set, and that is where David
     // got the button (2026-11-14). Not from the showroom — leaving it would end
     // the visit. A seed that does not fit storage leaves the button, as before.
+    // IN THE SHOWROOM the design goes onto the garment the visitor has open
+    // (or the walk goes to that product's rack first) — showroomChatDesign.ts.
+    // Leaving for the constructor would end the visit. Unclaimed (not inside
+    // yet, or a product with no rack) → the button, as before.
+    if (
+      !autoApplied && suggestion?.kind === "mockup" && isAutoSketchEligible(suggestion) &&
+      location.pathname.startsWith("/showroom")
+    ) {
+      const mk = suggestion.mockup;
+      const text = mk.text?.trim();
+      if (
+        offerShowroomDesign({
+          brand: mk.subProduct,
+          product: mk.product,
+          color: mk.color,
+          side: mk.side,
+          ...(text ? { text, textColor: mk.textColor } : {}),
+          ...(sentAttachment ? { image: sentAttachment, extract: mk.extract === true } : {}),
+        })
+      ) {
+        autoApplied = true;
+      }
+    }
     if (
       !autoApplied && suggestion?.kind === "mockup" && isAutoSketchEligible(suggestion) &&
       !location.pathname.startsWith("/showroom") &&
