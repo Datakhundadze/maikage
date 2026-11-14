@@ -10,6 +10,8 @@ import AppHeader from "@/components/AppHeader";
 import CatalogDesignCard from "@/components/CatalogDesignCard";
 import DesignDescription from "@/components/catalog/DesignDescription";
 import PrintServicesLinks from "@/components/PrintServicesLinks";
+import DesignPreloadView from "@/components/DesignPreloadView";
+import { readPagePreload, type DesignPreload } from "@/lib/pagePreload";
 const OrderDialog = lazy(() => import("@/components/OrderDialog"));
 import { Button } from "@/components/ui/button";
 import {
@@ -538,6 +540,17 @@ export default function DesignDetailPage() {
   // better than the old behaviour, where index.html's hardcoded tag told
   // Google that every unresolvable /design/:slug WAS the homepage.
   const requestedUrl = `${SITE_URL}/design/${slug}`;
+  // Prerendered data for this slug (lib/pagePreload.ts): shown instead of the
+  // bare spinner / load-error states, so they carry the design's own content.
+  const preload = readPagePreload<DesignPreload>("design", slug);
+
+  if (loading && preload) {
+    return <DesignPreloadView preload={preload} url={requestedUrl} />;
+  }
+
+  if (loadError && preload) {
+    return <DesignPreloadView preload={preload} url={requestedUrl} onRetry={() => setReloadKey((k) => k + 1)} />;
+  }
 
   if (loading) {
     return (

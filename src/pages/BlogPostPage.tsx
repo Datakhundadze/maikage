@@ -17,6 +17,7 @@ import {
   otherBlogPosts,
 } from "@/lib/blogSeo";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+import { readPagePreload } from "@/lib/pagePreload";
 import { format } from "date-fns";
 import { ArrowLeft, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,8 +53,10 @@ interface OtherPost {
 export default function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
+  // The prerendered page carries this post (lib/pagePreload.ts): render it
+  // at once — no spinner — and refresh it from Supabase below.
+  const [post, setPost] = useState<Post | null>(() => readPagePreload<Post>("blog", slug));
+  const [loading, setLoading] = useState(() => readPagePreload<Post>("blog", slug) === null);
   const [notFound, setNotFound] = useState(false);
   // A failed query is not a missing post — kept separate so a transient
   // failure never renders the noindex not-found state. Mirrors DesignDetailPage.
@@ -85,7 +88,9 @@ export default function BlogPostPage() {
     if (!slug) { setNotFound(true); setLoading(false); return; }
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    setLoading(true);
+    const preloaded = readPagePreload<Post>("blog", slug);
+    if (preloaded) setPost(preloaded);
+    setLoading(!preloaded);
     setNotFound(false);
     setLoadError(false);
     const fetchPost = async (attempt: number) => {
@@ -105,7 +110,8 @@ export default function BlogPostPage() {
           retryTimer = setTimeout(() => { void fetchPost(1); }, POST_RETRY_DELAY_MS);
           return;
         }
-        setLoadError(true);
+        // The preloaded post stays on screen; only without it is this an error.
+        if (!preloaded) setLoadError(true);
         setLoading(false);
         return;
       }
