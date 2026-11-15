@@ -555,19 +555,23 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
             </label>
           )}
           {!textOpen && (
-            <div className="flex items-center justify-center gap-1.5">
-              <button type="button" onClick={() => fileRef.current?.click()} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
-                <ImagePlus className="h-4 w-4" aria-hidden /> ფოტო
+            // Four buttons in one row on a phone (David 2026-11-15: "the bin is cut
+            // off a little on the iPhone once a photo is up" — it is the fourth).
+            // Tighter padding and gaps, nothing may shrink, and on the narrowest
+            // screens (≤ 360 px) the three labels go and the icons stay.
+            <div className="flex items-center justify-center gap-1">
+              <button type="button" onClick={() => fileRef.current?.click()} className={`inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-2.5 text-[13px] font-semibold ${glass}`}>
+                <ImagePlus className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">ფოტო</span>
               </button>
-              <button type="button" onClick={openText} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
-                <Type className="h-4 w-4" aria-hidden /> წარწერა
+              <button type="button" onClick={openText} className={`inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-2.5 text-[13px] font-semibold ${glass}`}>
+                <Type className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">წარწერა</span>
               </button>
               {/* the site's own chat, opened over this view (the operators answer there) */}
-              <button type="button" onClick={() => window.dispatchEvent(new Event("maika:open-chat"))} className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold ${glass}`}>
-                <MessageCircle className="h-4 w-4" aria-hidden /> ჩატი
+              <button type="button" onClick={() => window.dispatchEvent(new Event("maika:open-chat"))} className={`inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-2.5 text-[13px] font-semibold ${glass}`}>
+                <MessageCircle className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">ჩატი</span>
               </button>
               {has && (
-                <button type="button" onClick={() => setDesign(both ? (active === "text" ? { text: "" } : { img: null }) : emptyDesign())} aria-label={both ? (active === "text" ? "წარწერის წაშლა" : "ფოტოს წაშლა") : "პრინტის წაშლა"} className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${glass}`}>
+                <button type="button" onClick={() => setDesign(both ? (active === "text" ? { text: "" } : { img: null }) : emptyDesign())} aria-label={both ? (active === "text" ? "წარწერის წაშლა" : "ფოტოს წაშლა") : "პრინტის წაშლა"} className={`inline-flex h-10 shrink-0 w-10 items-center justify-center rounded-full ${glass}`}>
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               )}
