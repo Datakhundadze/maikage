@@ -61,7 +61,23 @@ export function socialOrderRules(back: string): string[] {
   ];
 }
 
-export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule, opts?: { orders?: boolean }): string {
+const GE_DAYS = ["კვირა", "ორშაბათი", "სამშაბათი", "ოთხშაბათი", "ხუთშაბათი", "პარასკევი", "შაბათი"];
+const EN_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * TODAY (add-only, owner 2026-11-15): the model had no clock and answered a
+ * Sunday „დღეს ღიაა?" as Saturday. Tbilisi is UTC+4 all year (no DST).
+ */
+export function tbilisiNowLine(now: Date): string {
+  const t = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = t.getUTCDay();
+  const date = `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
+  const time = `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`;
+  return `- NOW in Tbilisi: ${GE_DAYS[day]} (${EN_DAYS[day]}), ${date}, ${time}. „დღეს" = this day, „ხვალ" = the next day. Every answer about today, tomorrow, opening hours or whether the shop is open right now comes from THIS line — never guess the day or the time.`;
+}
+
+export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule, opts?: { orders?: boolean; now?: Date }): string {
   const where = channel === "instagram" ? "Instagram" : "Facebook Messenger";
   const off = schedule === "sunday" ? "(Sunday)" : "(outside working hours)";
   const back = schedule === "sunday"
@@ -71,6 +87,7 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "═══════════════════════════════════════════════════════════════",
     "SOCIAL DM MODE",
     `You are answering in ${where} on behalf of maika.ge while operators are off ${off}.`,
+    ...(opts?.now ? [tbilisiNowLine(opts.now)] : []),
     "- Keep replies short (max ~5 lines), Georgian unless the customer writes another language.",
     ...(opts?.orders
       ? socialOrderRules(back)
@@ -111,7 +128,7 @@ export function withSocialBlock(
   systemContent: string,
   channel: SocialChannel | null,
   schedule: SocialSchedule = "sunday",
-  opts?: { orders?: boolean },
+  opts?: { orders?: boolean; now?: Date },
 ): string {
   if (!channel) return systemContent;
   const block = socialPromptBlock(channel, schedule, opts);

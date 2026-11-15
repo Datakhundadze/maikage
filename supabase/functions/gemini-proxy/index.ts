@@ -3172,7 +3172,7 @@ Output: one photorealistic composite photo.`;
         messages[0] = {
           role: "system",
           // DM orders (add-only, 2026-11-01): params.dm_orders from the webhook adds the order rules.
-          content: withSocialBlock(messages[0].content as string, faqSocialChannel, socialSchedule(params?.schedule), { orders: socialOrdersOn(faqSocialChannel, params?.dm_orders) }),
+          content: withSocialBlock(messages[0].content as string, faqSocialChannel, socialSchedule(params?.schedule), { orders: socialOrdersOn(faqSocialChannel, params?.dm_orders), now: new Date() }),
         };
       }
 

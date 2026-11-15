@@ -41,6 +41,7 @@ import {
 import {
   resolveTrustedSocialChannel,
   socialPromptBlock,
+  tbilisiNowLine,
   withSocialBlock,
 } from "../../supabase/functions/gemini-proxy/socialChannel";
 
@@ -494,6 +495,22 @@ describe("gemini-proxy social channel", () => {
 
   it("chat_logs still uses params.session_id (the webhook sends conversation_key there)", () => {
     expect(SRC).toContain("const sessionId = typeof params.session_id === \"string\" ? params.session_id : null;");
+  });
+});
+
+describe("the DM bot knows today's Tbilisi day (owner 2026-11-15)", () => {
+  it("Sunday morning in Tbilisi is Sunday, even when UTC is still close to Saturday", () => {
+    const line = tbilisiNowLine(new Date("2026-11-15T07:30:00Z"));
+    expect(line).toContain("კვირა (Sunday), 2026-11-15, 11:30");
+    expect(tbilisiNowLine(new Date("2026-11-14T21:30:00Z"))).toContain("კვირა (Sunday), 2026-11-15, 01:30");
+    expect(tbilisiNowLine(new Date("2026-11-14T19:59:00Z"))).toContain("შაბათი (Saturday), 2026-11-14, 23:59");
+  });
+
+  it("goes into the social block only when now is passed; the website path stays unchanged", () => {
+    const now = new Date("2026-11-15T07:30:00Z");
+    expect(withSocialBlock("SYS\n\nCALLER: x", "messenger", "off_hours", { now })).toContain("NOW in Tbilisi: კვირა");
+    expect(withSocialBlock("SYS\n\nCALLER: x", "messenger", "off_hours")).not.toContain("NOW in Tbilisi");
+    expect(withSocialBlock("SYS\n\nCALLER: x", null, "off_hours", { now })).toBe("SYS\n\nCALLER: x");
   });
 });
 
