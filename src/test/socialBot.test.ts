@@ -21,6 +21,7 @@ import {
   handoffMessage,
   humanTookOver,
   introMessage,
+  isBareGreeting,
   isBotCandidate,
   isBotEcho,
   photoMessage,
@@ -431,6 +432,32 @@ describe("intro message (owner 2026-11-14)", () => {
     const f = fakeDeps({ introOnFirstReply: true, loadBotSends: async () => [prior] });
     expect(await runAutoReply(trigger, f.deps)).toBe("reply");
     expect(f.sent.map((s) => s.text)).toEqual([`მაისური 25₾-დან.\n${DESIGN_LINK_LINE}`]);
+  });
+
+  // Owner 2026-11-15: "the second message is extra — leave only the first".
+  it("a bare greeting as the first message: the intro alone, not the model's greeting after it", async () => {
+    const f = fakeDeps({ introOnFirstReply: true, thread: [row({ meta_message_id: "m1", text: "გამარჯობა", sent_at: trigger.sent_at })] });
+    expect(await runAutoReply({ ...trigger, text: "გამარჯობა" }, f.deps)).toBe("reply");
+    expect(f.sent.map((s) => s.text)).toEqual([introMessage("sunday")]);
+  });
+
+  it("a greeting WITH a question still gets its answer after the intro", async () => {
+    const f = fakeDeps({ introOnFirstReply: true, thread: [row({ meta_message_id: "m1", text: "გამარჯობა, მაისური რა ღირს?", sent_at: trigger.sent_at })] });
+    expect(await runAutoReply({ ...trigger, text: "გამარჯობა, მაისური რა ღირს?" }, f.deps)).toBe("reply");
+    expect(f.sent).toHaveLength(2);
+  });
+
+  it("a greeting later in a conversation the bot already answered: the normal reply, no intro", async () => {
+    const prior: BotSendRecord = { meta_message_id: "b0", text: "ადრე", kind: "reply", created_at: "2026-11-01T07:30:00.000Z" };
+    const f = fakeDeps({ introOnFirstReply: true, loadBotSends: async () => [prior], thread: [row({ meta_message_id: "m1", text: "გამარჯობა", sent_at: trigger.sent_at })] });
+    expect(await runAutoReply({ ...trigger, text: "გამარჯობა" }, f.deps)).toBe("reply");
+    expect(f.sent.map((s) => s.text)).not.toContain(introMessage("sunday"));
+    expect(f.sent).toHaveLength(1);
+  });
+
+  it("isBareGreeting: greeting words only, at most three", () => {
+    for (const t of ["გამარჯობა", "გამარჯობათ!", "  Hello 👋", "გამარჯობა მოგესალმებით", "gamarjoba", "Привет", "დილა მშვიდობისა"]) expect(isBareGreeting(t)).toBe(true);
+    for (const t of ["", null, "👋", "გამარჯობა, ფასი?", "გამარჯობა მაისური მინდა", "ოპერატორი", "გამარჯობა 599123456", "hi hi hi hi"]) expect(isBareGreeting(t)).toBe(false);
   });
 
   it("never before the handoff text", async () => {

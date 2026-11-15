@@ -108,6 +108,29 @@ export function introMessage(schedule: BotSchedule): string {
   ].join("\n");
 }
 
+/**
+ * A message that is ONLY a greeting ("გამარჯობა", "hello", "სალამი 👋").
+ * Owner 2026-11-15: to a first "გამარჯობა" the bot sent its introduction AND
+ * the model's "გამარჯობა! რით შემიძლია დაგეხმაროთ? …" — "the second message is
+ * extra, leave only the first". Used by autoReply: intro + greeting-only →
+ * the intro alone. Anything beyond greeting words (a question, a product, a
+ * digit) is not a bare greeting and gets its answer as before.
+ */
+const GREETING_WORDS = new Set([
+  "გამარჯობა", "გამარჯობათ", "გამარჯობაათ", "გაგიმარჯოთ", "გაგიმარჯოს", "გაუმარჯოს", "მოგესალმებით", "მოგესალმები",
+  "სალამი", "სალამ", "ჰეი", "ჰაი", "ჰელოუ", "დილა", "მშვიდობისა", "საღამო", "მშვიდობის",
+  "gamarjoba", "gamarjobat", "gamarjobaat", "gagimarjot", "mogesalmebit", "salami", "salam",
+  "hello", "hi", "hey", "hallo", "privet", "привет", "здравствуйте", "здрасте", "добрый", "день", "вечер",
+]);
+export function isBareGreeting(text: string | null | undefined): boolean {
+  const words = (text ?? "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((w) => w !== "");
+  return words.length > 0 && words.length <= 3 && words.every((w) => GREETING_WORDS.has(w));
+}
+
 export function emptyReplyFallback(schedule: BotSchedule): string {
   return `ამ კითხვაზე ოპერატორი გიპასუხებთ ${operatorBack(schedule)}. ოპერატორთან დასაკავშირებლად დაწერეთ „ოპერატორი".`;
 }

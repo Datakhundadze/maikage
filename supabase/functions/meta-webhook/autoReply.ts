@@ -52,6 +52,7 @@ import {
   decideAutoReply,
   handoffMessage,
   introMessage,
+  isBareGreeting,
   pendingInbound,
   photoMessage,
   sketchCapMessage,
@@ -410,8 +411,14 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
 
     // INTRO (add-only, owner 2026-11-14): first bot send in this conversation
     // within the window → the introduction goes out first, as its own message.
+    // GREETING ONLY (owner 2026-11-15): when everything the customer has written
+    // is a bare greeting, the introduction IS the answer — the model's "hello,
+    // how can I help?" after it was a second greeting. No sketch can hang on a
+    // greeting, but only a plain reply with none is replaced.
     if (deps.introOnFirstReply === true && kind !== "handoff" && botSends.length === 0) {
-      texts = [introMessage(schedule), ...texts];
+      const said = history.filter((t) => t.role === "user");
+      const greetingOnly = kind === "reply" && sketches.length === 0 && said.length > 0 && said.every((t) => isBareGreeting(t.content));
+      texts = greetingOnly ? [introMessage(schedule)] : [introMessage(schedule), ...texts];
     }
 
     let sent = 0;
