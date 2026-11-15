@@ -7,7 +7,8 @@ import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
 import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, textSize, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
 import { photoLayerCoords, textLayerCoords } from "@/lib/tour/designHandoff";
 import { hasBack, loadSiteSide, type RackGarment, type SiteSide } from "@/lib/tour/siteGarment";
-import { SHOWROOM_DESIGN_EVENT, takeShowroomDesign } from "@/lib/tour/showroomChatDesign";
+import { askShowroomLogin, SHOWROOM_DESIGN_EVENT, takeShowroomDesign } from "@/lib/tour/showroomChatDesign";
+import { RateLimitError } from "@/lib/generation";
 import { announceSketch } from "@/lib/constructorBridge";
 import { extractPrintFromPhoto } from "@/lib/extractPrint";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
@@ -238,7 +239,11 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         let src = d.image;
         if (d.extract) {
           const lim = checkLimit();
-          if (!lim.allowed) throw new Error("limit");
+          if (!lim.allowed) {
+            // a guest out of allowance: the site's sign-in window, here in the showroom
+            if ("reason" in lim && lim.reason === "guest_limit") askShowroomLogin("message" in lim ? lim.message : undefined);
+            throw new Error("limit");
+          }
           recordGeneration();
           src = await extractPrintFromPhoto(d.image);
         }
@@ -271,7 +276,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       setSel(img ? "img" : "text");
       setTextOpen(false);
       setShotOwed(true);
-    })().catch(() => {
+    })().catch((err) => {
+      // the server's own guest limit says the same thing
+      if (err instanceof RateLimitError && err.requiresLogin) askShowroomLogin();
       if (!off) announceSketch();
     });
     return () => {

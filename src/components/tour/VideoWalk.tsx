@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Footprints, Headset, Maximize2, Minimize2, Volume2, VolumeX } from "lucide-react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Footprints, Headset, Maximize2, Minimize2, UserRound, Volume2, VolumeX } from "lucide-react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
+import { useAuth } from "@/hooks/useAuth";
 import {
   CanvasTexture,
   CircleGeometry,
@@ -48,7 +50,10 @@ import { createFootsteps, type Footsteps } from "@/lib/tour/footsteps";
 import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
 import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
-import { peekShowroomDesign, SHOWROOM_DESIGN_EVENT } from "@/lib/tour/showroomChatDesign";
+import { peekShowroomDesign, SHOWROOM_DESIGN_EVENT, SHOWROOM_LOGIN_EVENT } from "@/lib/tour/showroomChatDesign";
+
+// The site's own sign-in / registration window; loaded only when asked for.
+const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
 import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
 import { personYawAt } from "@/lib/tour/personYaw";
 import { CAM_HEIGHT_M, labelView, posAt, rackLabels } from "@/lib/tour/rackLabels";
@@ -416,6 +421,21 @@ export default function VideoWalk() {
   // product named, or one without a designer rack, the rack already open is
   // used; with none open the offer is left unclaimed and the chat keeps its
   // button.
+  // OPTIONAL sign-in (owner 2026-11-15: "let it not be mandatory"). Nothing at
+  // the door; a small button in the corner and, from the designer, the moment a
+  // guest's AI allowance runs out. The window is the site's LoginModal.
+  const { user, isAnonymous, displayName } = useAuth();
+  const signedIn = !!user && !isAnonymous;
+  const [login, setLogin] = useState<{ message?: string } | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => setLogin({ message: (e as CustomEvent<{ message?: string }>).detail?.message });
+    window.addEventListener(SHOWROOM_LOGIN_EVENT, on);
+    return () => window.removeEventListener(SHOWROOM_LOGIN_EVENT, on);
+  }, []);
+  // signed in → the window has done its job
+  useEffect(() => {
+    if (signedIn) setLogin(null);
+  }, [signedIn]);
   const openRackRef = useRef<ShowroomRack | null>(null);
   const canRouteRef = useRef(false);
   useEffect(() => {
@@ -2111,6 +2131,27 @@ export default function VideoWalk() {
         >
           {fullscreen || covering ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}
         </button>
+      )}
+
+      {/* only where the site header (which has its own „შესვლა") is hidden: full screen */}
+      {status === "ready" && (fullscreen || covering) && (
+        <button
+          type="button"
+          onClick={() => {
+            if (!signedIn) setLogin({});
+          }}
+          aria-label={signedIn ? `შესული ხარ: ${displayName}` : "შესვლა ან რეგისტრაცია"}
+          title={signedIn ? displayName : "შესვლა"}
+          className={`absolute right-[7.25rem] top-3 z-20 flex h-11 items-center justify-center gap-1.5 rounded-full bg-black/55 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${signedIn ? "w-11" : "px-3.5"}`}
+        >
+          <UserRound className={`h-5 w-5 ${signedIn ? "text-emerald-400" : ""}`} aria-hidden />
+          {!signedIn && <span className="text-sm font-semibold">შესვლა</span>}
+        </button>
+      )}
+      {login && (
+        <Suspense fallback={null}>
+          <LoginModal open onClose={() => setLogin(null)} message={login.message} />
+        </Suspense>
       )}
 
       {status === "ready" && (

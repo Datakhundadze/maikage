@@ -67,3 +67,14 @@ export function takeShowroomDesign(brand: string): ShowroomChatDesign | null {
 export function dropShowroomDesign(): void {
   pending = null;
 }
+
+// ── Sign-in from inside the showroom (2026-11-15) ───────────────────────────
+// Optional, never asked at the door (owner: "not mandatory"). The walk hosts
+// the site's own LoginModal; anything in the showroom that needs it — the
+// corner button, a guest whose AI allowance ran out in the designer — asks
+// with this event.
+export const SHOWROOM_LOGIN_EVENT = "maika:showroom-login";
+export function askShowroomLogin(message?: string): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<{ message?: string }>(SHOWROOM_LOGIN_EVENT, { detail: message ? { message } : {} }));
+}

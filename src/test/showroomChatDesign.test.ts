@@ -57,8 +57,23 @@ describe("wiring (source)", () => {
   it("an extraction goes through the allowance; a failure is announced without a picture", () => {
     const at = DESIGNER.indexOf("const d = takeShowroomDesign(brand);");
     const body = DESIGNER.slice(at, DESIGNER.indexOf("// the picture for the chat", at));
-    expect(body).toContain('if (!lim.allowed) throw new Error("limit");');
+    expect(body).toContain("if (!lim.allowed) {");
+    expect(body).toContain('throw new Error("limit");');
     expect(body.indexOf("recordGeneration();")).toBeLessThan(body.indexOf("extractPrintFromPhoto(d.image)"));
     expect(body).toContain("if (!off) announceSketch();");
+  });
+});
+
+describe("optional sign-in in the showroom (2026-11-15)", () => {
+  const WALK = read("../components/tour/VideoWalk.tsx");
+  const DESIGNER = read("../components/tour/RackPhotoDesigner.tsx");
+  it("never at the door: the window opens only from the event or the corner button", () => {
+    expect(WALK).toContain("const [login, setLogin] = useState<{ message?: string } | null>(null);");
+    expect(WALK.match(/setLogin\(\{/g)?.length).toBe(2); // the event listener and the button
+    expect(WALK).toContain('{status === "ready" && (fullscreen || covering) && (');
+  });
+  it("a guest out of AI allowance in the designer is offered the sign-in window", () => {
+    expect(DESIGNER).toContain('if ("reason" in lim && lim.reason === "guest_limit") askShowroomLogin(');
+    expect(DESIGNER).toContain("if (err instanceof RateLimitError && err.requiresLogin) askShowroomLogin();");
   });
 });
