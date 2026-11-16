@@ -52,6 +52,7 @@ import {
   decideAutoReply,
   handoffMessage,
   introMessage,
+  stripLeadingGreeting,
   isBareGreeting,
   pendingInbound,
   photoMessage,
@@ -165,6 +166,8 @@ export interface AutoReplyDeps {
    * introMessage. Never before the handoff text. Absent → as before.
    */
   introOnFirstReply?: boolean;
+  /** Add-only (2026-11-16): true → an operator reply silences the bot only within the current bot hours. */
+  offPeriodTakeover?: boolean;
 }
 
 /** In-memory extras of the trigger row that are never stored on it. */
@@ -224,6 +227,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       settings, now, handedOff, outRows, botSends, tokenSet: deps.tokenSet,
       trigger: { meta_message_id: row.meta_message_id, sent_at: row.sent_at },
       thread,
+      offPeriodTakeover: deps.offPeriodTakeover === true,
     });
     if (decision.action === "skip") {
       deps.log("info", `auto-reply skip ${row.channel}: ${decision.reason}`);
@@ -418,7 +422,11 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
     if (deps.introOnFirstReply === true && kind !== "handoff" && botSends.length === 0) {
       const said = history.filter((t) => t.role === "user");
       const greetingOnly = kind === "reply" && sketches.length === 0 && said.length > 0 && said.every((t) => isBareGreeting(t.content));
-      texts = greetingOnly ? [introMessage(schedule)] : [introMessage(schedule), ...texts];
+      // ONE GREETING (add-only, 2026-11-16): the intro greets, so a greeting at
+      // the start of the model's reply to a real question is dropped too.
+      texts = greetingOnly
+        ? [introMessage(schedule)]
+        : [introMessage(schedule), ...texts.map((t, n) => (n === 0 ? stripLeadingGreeting(t) : t))];
     }
 
     let sent = 0;

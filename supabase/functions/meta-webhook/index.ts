@@ -405,6 +405,8 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     tokenSet: META_PAGE_TOKEN.length > 0,
     // INTRO (add-only, owner 2026-11-14): the bot introduces itself first.
     introOnFirstReply: true,
+    // OFF PERIOD (add-only, 2026-11-16): a daytime operator reply no longer mutes the night bot.
+    offPeriodTakeover: true,
     loadSettings: async () => {
       const { data, error } = await admin.from("social_bot_settings").select("enabled, schedule, allow_keys").limit(1).maybeSingle();
       warn("settings read", error);

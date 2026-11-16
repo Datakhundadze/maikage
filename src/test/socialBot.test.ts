@@ -20,6 +20,9 @@ import {
   decideAutoReply,
   handoffMessage,
   humanTookOver,
+  humanTookOverThisOffPeriod,
+  offPeriodStart,
+  stripLeadingGreeting,
   introMessage,
   isBareGreeting,
   isBotCandidate,
@@ -414,6 +417,51 @@ describe("runAutoReply", () => {
 });
 
 // ── gemini-proxy social channel ────────────────────────────────────────────
+
+describe("weekend lessons (owner 2026-11-16)", () => {
+  beforeEach(() => _resetTokenWarning());
+
+  it("stripLeadingGreeting drops only a leading greeting", () => {
+    expect(stripLeadingGreeting("გამარჯობა!\n\nTH-ის მაისურები 100% ბამბაა.")).toBe("TH-ის მაისურები 100% ბამბაა.");
+    expect(stripLeadingGreeting("გამარჯობა! დიახ, ვბეჭდავთ ჰუდებზე.")).toBe("დიახ, ვბეჭდავთ ჰუდებზე.");
+    expect(stripLeadingGreeting("მაისური 25₾-დან.")).toBe("მაისური 25₾-დან.");
+    expect(stripLeadingGreeting("გამარჯობა!")).toBe("გამარჯობა!");
+  });
+
+  it("after the intro the model's greeting is dropped", async () => {
+    const f = fakeDeps({ introOnFirstReply: true, askBot: async () => "გამარჯობა! მაისური 25₾-დან.\n```maika-mockup\n{}\n```" });
+    expect(await runAutoReply(trigger, f.deps)).toBe("reply");
+    expect(f.sent.map((s) => s.text)).toEqual([introMessage("sunday"), `მაისური 25₾-დან.\n${DESIGN_LINK_LINE}`]);
+  });
+
+  it("offPeriodStart: the current stretch of bot hours (Tbilisi)", () => {
+    // Sunday 11:30 and Monday 09:00 → the stretch began Saturday 18:00 (14:00Z).
+    expect(offPeriodStart("off_hours", new Date("2026-11-15T07:30:00Z"))).toBe(Date.parse("2026-11-14T14:00:00Z"));
+    expect(offPeriodStart("off_hours", new Date("2026-11-16T05:00:00Z"))).toBe(Date.parse("2026-11-14T14:00:00Z"));
+    // Wednesday 20:30 → Wednesday 19:00 (15:00Z).
+    expect(offPeriodStart("off_hours", new Date("2026-11-18T16:30:00Z"))).toBe(Date.parse("2026-11-18T15:00:00Z"));
+    // Working hours → null.
+    expect(offPeriodStart("off_hours", new Date("2026-11-18T10:00:00Z"))).toBeNull();
+  });
+
+  it("a daytime operator reply no longer mutes the night bot", () => {
+    const now = new Date("2026-11-14T20:00:00Z"); // Sunday 00:00 Tbilisi
+    const day = { meta_message_id: "op1", text: "ფოტოს გამოგიგზავნით", sent_at: "2026-11-14T13:00:00Z" }; // Sat 17:00
+    const night = { meta_message_id: "op2", text: "ფოტოს გამოგიგზავნით", sent_at: "2026-11-14T15:00:00Z" }; // Sat 19:00
+    expect(humanTookOver([day], [], now)).toBe(true);
+    expect(humanTookOverThisOffPeriod([day], [], now, "off_hours")).toBe(false);
+    expect(humanTookOverThisOffPeriod([night], [], now, "off_hours")).toBe(true);
+  });
+
+  it("the DM prompt: price once, own garment, whole burst, front/back photos", () => {
+    const dm = socialPromptBlock("instagram", "off_hours");
+    expect(dm).toContain("PRICE ONCE");
+    expect(dm).toContain("THEIR OWN GARMENT");
+    expect(dm).toContain("READ THE WHOLE BURST FIRST");
+    expect(dm).toContain("ასო N შეცვალე ასო M-ით");
+    expect(dm).toContain("FRONT AND BACK PHOTOS");
+  });
+});
 
 describe("intro message (owner 2026-11-14)", () => {
   beforeEach(() => _resetTokenWarning());

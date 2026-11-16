@@ -131,6 +131,18 @@ export function isBareGreeting(text: string | null | undefined): boolean {
   return words.length > 0 && words.length <= 3 && words.every((w) => GREETING_WORDS.has(w));
 }
 
+/**
+ * ONE GREETING (add-only, owner 2026-11-16): after the intro (which already
+ * says „გამარჯობა"), a greeting at the very start of the model's first reply
+ * is dropped. Text without a leading greeting, or only a greeting, is kept.
+ */
+export function stripLeadingGreeting(text: string): string {
+  const m = text.match(/^\s*(?:გამარჯობა|მოგესალმებით|სალამი|hello|hi)[^\n.!?]{0,40}[!.]?[ \t]*(?:\n+|\s+)/iu);
+  if (!m) return text;
+  const rest = text.slice(m[0].length);
+  return rest.trim() === "" ? text : rest;
+}
+
 export function emptyReplyFallback(schedule: BotSchedule): string {
   return `ამ კითხვაზე ოპერატორი გიპასუხებთ ${operatorBack(schedule)}. ოპერატორთან დასაკავშირებლად დაწერეთ „ოპერატორი".`;
 }
@@ -215,6 +227,38 @@ export function humanTookOver(outRows: OutRow[], sends: BotSendRecord[], now: Da
   return outRows.some((r) => Date.parse(r.sent_at) >= since && !isBotEcho(r, sends) && !isMetaAutomationEcho(r.text));
 }
 
+/**
+ * OFF PERIOD (add-only, owner 2026-11-16): start (ms) of the current stretch
+ * of bot hours — e.g. Saturday 18:00 for a Sunday run. null outside bot hours.
+ * Found by stepping back 15 min until working hours, then refining by minute.
+ */
+export function offPeriodStart(schedule: unknown, now: Date): number | null {
+  if (!isScheduleActive(schedule, now)) return null;
+  const MIN = 60 * 1000;
+  let t = Math.floor(now.getTime() / MIN) * MIN;
+  for (let i = 0; i < 4 * 24 * 4; i++) {
+    const prev = t - 15 * MIN;
+    if (!isScheduleActive(schedule, new Date(prev))) {
+      for (let m = prev + MIN; m < t; m += MIN) if (isScheduleActive(schedule, new Date(m))) return m;
+      return t;
+    }
+    t = prev;
+  }
+  return t;
+}
+
+/**
+ * HUMAN TAKEOVER THIS OFF PERIOD (add-only, owner 2026-11-16): an operator
+ * reply silences the bot only when it came in the CURRENT bot hours (or the
+ * last HUMAN_TAKEOVER_MS, whichever is shorter). An operator answer at 17:00
+ * no longer keeps the bot quiet the whole night (a customer waited ~38 h).
+ */
+export function humanTookOverThisOffPeriod(outRows: OutRow[], sends: BotSendRecord[], now: Date, schedule: unknown): boolean {
+  const start = offPeriodStart(schedule, now);
+  const since = Math.max(now.getTime() - HUMAN_TAKEOVER_MS, start ?? Number.NEGATIVE_INFINITY);
+  return outRows.some((r) => Date.parse(r.sent_at) >= since && !isBotEcho(r, sends) && !isMetaAutomationEcho(r.text));
+}
+
 // ── the decision ───────────────────────────────────────────────────────────
 
 export interface ThreadRow {
@@ -261,6 +305,8 @@ export interface DecideInput {
   trigger: { meta_message_id: string; sent_at: string };
   /** Last messages of the conversation, oldest-first (includes the trigger). */
   thread: ThreadRow[];
+  /** Add-only (2026-11-16): true → human takeover counts only within the current bot hours. */
+  offPeriodTakeover?: boolean;
 }
 
 export type Decision =
@@ -272,7 +318,11 @@ export function decideAutoReply(i: DecideInput): Decision {
   if (!i.settings || i.settings.enabled !== true) return { action: "skip", reason: "disabled" };
   if (!isScheduleActive(i.settings.schedule, i.now)) return { action: "skip", reason: "outside_schedule" };
   if (i.handedOff) return { action: "skip", reason: "handed_off" };
-  if (humanTookOver(i.outRows, i.botSends, i.now)) return { action: "skip", reason: "human_active" };
+  if (
+    i.offPeriodTakeover === true
+      ? humanTookOverThisOffPeriod(i.outRows, i.botSends, i.now, i.settings.schedule)
+      : humanTookOver(i.outRows, i.botSends, i.now)
+  ) return { action: "skip", reason: "human_active" };
   if (!i.tokenSet) return { action: "skip", reason: "no_token" };
 
   // A newer customer message exists: its own run answers the whole burst.
