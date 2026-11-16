@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +9,7 @@ import SeoHead, { SITE_URL } from "@/components/SeoHead";
 import OrderCard from "@/components/OrderCard";
 import OrderFeedback from "@/components/OrderFeedback";
 import { trackEvent } from "@/lib/gtag";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import {
   groupOrdersByCart,
   shortOrderId,
@@ -18,6 +19,9 @@ import {
 } from "@/lib/orderGrouping";
 
 type PaymentState = "checking" | "paid" | "processing" | "failed";
+
+// The site's sign-in / registration window; loaded only when the guest asks for it.
+const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
 
 // Persistent post-payment confirmation. Reached from the bank redirect
 // (/?payment=success&orderId=…) via the App-level redirect to this route.
@@ -30,6 +34,7 @@ export default function OrderConfirmationPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isLoggedIn = !!user && !isAnonymous;
+  const [showLogin, setShowLogin] = useState(false);
   // Any session, guest accounts included, may read its own order rows ("Users
   // can read own orders": auth.uid() = user_id — a guest account's orders
   // carry its uid). Used ONLY to give the purchase event its value; the
@@ -227,6 +232,15 @@ export default function OrderConfirmationPage() {
             <div className="rounded-2xl border border-border bg-card p-4 text-center space-y-1.5">
               <p className="text-sm text-foreground">{t(lang, "confirm.guestNote")}</p>
               <p className="text-xs text-muted-foreground">{t(lang, "confirm.guestCreateAccount")}</p>
+              {/* Optional sign-up, after the order (owner 2026-11-16). The site's own
+                  window; nothing here touches the order or its payment. */}
+              <button
+                type="button"
+                onClick={() => setShowLogin(true)}
+                className="mt-1 inline-flex h-10 items-center justify-center rounded-xl border border-border px-4 text-sm font-semibold hover:bg-muted transition-colors"
+              >
+                {t(lang, "confirm.guestSignUp")}
+              </button>
             </div>
           )}
 
@@ -265,6 +279,11 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
       </main>
+      {showLogin && !isLoggedIn && (
+        <Suspense fallback={null}>
+          <LoginModal open onClose={() => setShowLogin(false)} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -144,7 +144,10 @@ const translations = {
       // for guests and account holders alike; this box carries only what is
       // NOT said elsewhere: we'll be in touch, and an account shows the orders.
       guestNote: "We'll contact you shortly.",
-      guestCreateAccount: "Create an account to track your orders.",
+      // True as written (2026-11-16): nothing attaches THIS guest order to an
+      // account made afterwards, so the line promises only what comes next.
+      guestCreateAccount: "Sign up — your next orders and designs will be kept on your page.",
+      guestSignUp: "Sign up",
       orderNumber: "Order",
       viewOrders: "View my orders",
       backHome: "Back to home",
@@ -348,7 +351,8 @@ const translations = {
       // guests and account holders alike; this box carries only what is NOT
       // said elsewhere: we'll be in touch, and an account shows the orders.
       guestNote: "მალე დაგიკავშირდებით.",
-      guestCreateAccount: "შექმენით ანგარიში შეკვეთების სანახავად.",
+      guestCreateAccount: "დარეგისტრირდი — შემდეგი შეკვეთები და დიზაინები შენს გვერდზე შეინახება.",
+      guestSignUp: "რეგისტრაცია",
       orderNumber: "შეკვეთა",
       viewOrders: "ჩემი შეკვეთები",
       backHome: "მთავარ გვერდზე",
