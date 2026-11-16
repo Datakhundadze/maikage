@@ -17,7 +17,7 @@ const PAGE_SRC = readFileSync(path.resolve(__dirname, "../pages/CorporatePage.ts
 
 // Owner-approved text, verbatim.
 const APPROVED = {
-  title: "მაისურების ბრენდირება კომპანიის ლოგოთი — კორპორატიული შეკვეთები | Maika.ge",
+  title: "მაისურების ბრენდირება კომპანიის ლოგოთი | Maika.ge",
   description:
     "ბრენდირებული მაისურები, ჰუდები, ჩანთები და კეპები კომპანიებისა და გუნდებისთვის. DTF ბეჭდვა, შოლკოგრაფია, ქარგვა და FLEX. 10 ცალიდან ფასდაკლება. თბილისი, დინამოს სტადიონი.",
   h1: "მაისურების ბრენდირება კომპანიის ლოგოთი",

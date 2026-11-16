@@ -20,7 +20,9 @@ export const HOME_SEO = {
 } as const;
 
 export const CATALOG_SEO = {
-  title: "მაისურები ქართული წარწერით და დიზაინით | maika.ge",
+  // "მაისურები ქართული წარწერით" belongs to /maisurebi-kartuli-tsartserebit
+  // (no cannibalisation); /designs is the catalogue of ready designs.
+  title: "მზა დიზაინები მაისურებისა და ჰუდებისთვის | maika.ge",
   description:
     "ქართული მაისურები — ასობით მზა დიზაინი: ქართული წარწერები, პატრიოტული, იუმორი, მუსიკა, კინო. აირჩიე დიზაინი და დაბეჭდე მაისურზე ან ჰუდზე.",
 } as const;
