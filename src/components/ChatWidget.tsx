@@ -17,7 +17,7 @@ import {
 // this chat and the other so the two can never diverge.
 import { isAutoSketchEligible, tryAutoOpenSketch } from "@/lib/autoSketch";
 import { SKETCH_READY_EVENT, type SketchReadyEvent } from "@/lib/constructorBridge";
-import { offerShowroomDesign } from "@/lib/tour/showroomChatDesign";
+import { getShowroomPhoto, offerShowroomDesign } from "@/lib/tour/showroomChatDesign";
 // The photo-upload nudge: the event name, the once-per-session flag and the
 // wording all live together, away from this component.
 import {
@@ -311,7 +311,11 @@ export default function ChatWidget() {
     // handoff must carry the picture the model actually saw: a customer who
     // attaches a different photo while the reply is in flight would otherwise
     // have that newer one applied to a sketch it was never part of.
-    const sentAttachment = attachment;
+    // In the showroom, a visitor who attached nothing is talking about the photo
+    // on the garment in front of them ("make it black and white"): that photo
+    // goes with the message, so the bot sees it (showroomChatDesign.ts).
+    const onShowroom = location.pathname.startsWith("/showroom");
+    const sentAttachment = attachment ?? (onShowroom ? getShowroomPhoto() : null);
     // The attachment rides on the bubble purely so the customer can SEE what
     // they sent; what goes to the model is unchanged (faqChat still receives
     // `attachment` separately, below).
@@ -327,7 +331,7 @@ export default function ChatWidget() {
       .filter((m) => !m.local)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    const res = await faqChat(history, lang, sessionIdRef.current, attachment ?? undefined);
+    const res = await faqChat(history, lang, sessionIdRef.current, sentAttachment ?? undefined);
     setLoading(false);
 
     let reply: string;
@@ -347,7 +351,7 @@ export default function ChatWidget() {
     // then parse + validate separately. Same pipeline the /chat page uses.
     let suggestion: ChatSuggestion | undefined;
     if (!local) {
-      const parsed = parseChatSuggestion(reply, !!attachment);
+      const parsed = parseChatSuggestion(reply, !!sentAttachment);
       reply = parsed.text;
       suggestion = parsed.suggestion ?? undefined;
     }
@@ -367,20 +371,31 @@ export default function ChatWidget() {
     // (or the walk goes to that product's rack first) — showroomChatDesign.ts.
     // Leaving for the constructor would end the visit. Unclaimed (not inside
     // yet, or a product with no rack) → the button, as before.
-    if (
-      !autoApplied && suggestion?.kind === "mockup" && isAutoSketchEligible(suggestion) &&
-      location.pathname.startsWith("/showroom")
-    ) {
+    // EVERY design block stays in the showroom (owner 2026-11-16: "no link, and
+    // do not take me to the standard site — do it all in the showroom"),
+    // the ones that spend a generation included: the designer runs the edit /
+    // background removal / extraction itself, through the same allowance.
+    if (!autoApplied && suggestion?.kind === "mockup" && onShowroom && !suggestion.mockup.removeWhite) {
       const mk = suggestion.mockup;
       const text = mk.text?.trim();
       if (
         offerShowroomDesign({
-          brand: mk.subProduct,
+          // a message about the photo already on the open garment stays on that
+          // garment — the bot does not know which product is open and names a
+          // default one, which would walk the visitor away from it
+          brand: attachment ? mk.subProduct : sentAttachment ? undefined : mk.subProduct,
           product: mk.product,
           color: mk.color,
           side: mk.side,
           ...(text ? { text, textColor: mk.textColor } : {}),
-          ...(sentAttachment ? { image: sentAttachment, extract: mk.extract === true } : {}),
+          ...(sentAttachment
+            ? {
+                image: sentAttachment,
+                extract: mk.extract === true,
+                removeBackground: mk.removeBackground === true && mk.extract !== true,
+                ...(mk.editPrompt?.trim() ? { editPrompt: mk.editPrompt.trim() } : {}),
+              }
+            : {}),
         })
       ) {
         autoApplied = true;
@@ -579,7 +594,7 @@ export default function ChatWidget() {
   // ── Open: panel (desktop card bottom-right; mobile full-width bottom sheet) ──
   return (
     <div
-      className="maika-chat-panel fixed z-50 inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-6 sm:right-6 flex flex-col w-full sm:w-[360px] h-[80vh] sm:h-auto sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden"
+      className={`maika-chat-panel ${location.pathname.startsWith("/showroom") ? "maika-chat-glass " : ""}fixed z-50 inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-6 sm:right-6 flex flex-col w-full sm:w-[360px] h-[80vh] sm:h-auto sm:max-h-[70vh] rounded-t-2xl sm:rounded-2xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden`}
       role="dialog"
       aria-label={t(lang, "chat.title")}
     >

@@ -24,6 +24,10 @@ export interface ShowroomChatDesign {
   image?: string;
   /** The photo shows a ready garment: its print alone (extract-print-web). */
   extract?: boolean;
+  /** Cut the subject out of the photo (the constructor's background removal). */
+  removeBackground?: boolean;
+  /** A free-text edit of the photo ("make it black and white"). */
+  editPrompt?: string;
 }
 
 export const SHOWROOM_DESIGN_EVENT = "maika:showroom-design";
@@ -77,4 +81,17 @@ export const SHOWROOM_LOGIN_EVENT = "maika:showroom-login";
 export function askShowroomLogin(message?: string): void {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new CustomEvent<{ message?: string }>(SHOWROOM_LOGIN_EVENT, { detail: message ? { message } : {} }));
+}
+
+// ── The photo on the garment, for the chat (2026-11-16) ─────────────────────
+// David put a photo on the tee, opened the chat and wrote "make it black and
+// white": the bot answered "upload a photo" — it could not see the garment.
+// The designer keeps its current photo here; the chat sends it with a message
+// when the visitor attached nothing themselves.
+let garmentPhoto: string | null = null;
+export function setShowroomPhoto(dataUrl: string | null): void {
+  garmentPhoto = dataUrl;
+}
+export function getShowroomPhoto(): string | null {
+  return garmentPhoto;
 }

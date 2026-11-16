@@ -35,9 +35,11 @@ describe("removeWhite — site assistant → constructor seed (add-only field)",
     expect("removeWhite" in (seed as object)).toBe(false);
   });
 
-  it("spends an allowance → never auto-applied without a click", () => {
+  // Until 2026-11-16 this asserted `false` ("never without a click"). The owner
+  // then asked for no button at all — every design block is applied (autoSketch.ts).
+  it("is applied without a button, like every design block", () => {
     const s = parseChatSuggestion(block('{"text":"გიორგი","removeWhite":true}'), false).suggestion;
-    expect(isAutoSketchEligible(s)).toBe(false);
+    expect(isAutoSketchEligible(s)).toBe(true);
     const plain = parseChatSuggestion(block('{"text":"გიორგი"}'), false).suggestion;
     expect(isAutoSketchEligible(plain)).toBe(true);
   });

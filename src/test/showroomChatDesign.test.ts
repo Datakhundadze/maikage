@@ -46,7 +46,8 @@ describe("wiring (source)", () => {
   it("the widget offers it only in the showroom and never navigates away from there", () => {
     const at = WIDGET.indexOf("offerShowroomDesign({");
     expect(at).toBeGreaterThan(0);
-    expect(WIDGET.slice(at - 400, at)).toContain('location.pathname.startsWith("/showroom")');
+    expect(WIDGET.slice(at - 900, at)).toContain("onShowroom");
+    expect(WIDGET).toContain('const onShowroom = location.pathname.startsWith("/showroom");');
     expect(WIDGET).toContain('!location.pathname.startsWith("/showroom") &&\n      seedMockupForConstructor');
   });
   it("the walk claims it only once inside, and only for a rack that has a designer", () => {
@@ -59,7 +60,7 @@ describe("wiring (source)", () => {
     const body = DESIGNER.slice(at, DESIGNER.indexOf("// the picture for the chat", at));
     expect(body).toContain("if (!lim.allowed) {");
     expect(body).toContain('throw new Error("limit");');
-    expect(body.indexOf("recordGeneration();")).toBeLessThan(body.indexOf("extractPrintFromPhoto(d.image)"));
+    expect(body.indexOf("paid();\n            src = await extractPrintFromPhoto(src);")).toBeGreaterThan(0);
     expect(body).toContain("if (!off) announceSketch();");
   });
 });
@@ -75,5 +76,34 @@ describe("optional sign-in in the showroom (2026-11-15)", () => {
   it("a guest out of AI allowance in the designer is offered the sign-in window", () => {
     expect(DESIGNER).toContain('if ("reason" in lim && lim.reason === "guest_limit") askShowroomLogin(');
     expect(DESIGNER).toContain("if (err instanceof RateLimitError && err.requiresLogin) askShowroomLogin();");
+  });
+});
+
+describe("everything stays in the showroom (2026-11-16)", () => {
+  const WIDGET = read("../components/ChatWidget.tsx");
+  const DESIGNER = read("../components/tour/RackPhotoDesigner.tsx");
+  it("the garment's photo goes with a showroom message that has no attachment, and the bot's block is parsed with it", () => {
+    expect(WIDGET).toContain("const sentAttachment = attachment ?? (onShowroom ? getShowroomPhoto() : null);");
+    expect(WIDGET).toContain("faqChat(history, lang, sessionIdRef.current, sentAttachment ?? undefined)");
+    expect(WIDGET).toContain("parseChatSuggestion(reply, !!sentAttachment)");
+  });
+  it("every design block is offered to the showroom, edits included; a message about the garment's own photo names no product", () => {
+    expect(WIDGET).toContain('if (!autoApplied && suggestion?.kind === "mockup" && onShowroom && !suggestion.mockup.removeWhite) {');
+    expect(WIDGET).toContain("brand: attachment ? mk.subProduct : sentAttachment ? undefined : mk.subProduct,");
+    expect(WIDGET).toContain("...(mk.editPrompt?.trim() ? { editPrompt: mk.editPrompt.trim() } : {}),");
+  });
+  it("each AI step in the designer is paid from the allowance before it runs", () => {
+    const at = DESIGNER.indexOf("const paid = () => {");
+    const body = DESIGNER.slice(at, DESIGNER.indexOf("img = await loadImg(src);", at));
+    expect(body.match(/paid\(\);/g)?.length).toBe(3); // extract, background removal, edit
+    expect(body.indexOf("paid();\n            src = await editImage(")).toBeGreaterThan(0);
+    expect(body).toContain('if ((await transparentShare(cutout)) < 0.02) throw new Error("nothing removed");');
+  });
+  it("the garment photo store", async () => {
+    const m = await import("@/lib/tour/showroomChatDesign");
+    m.setShowroomPhoto("data:x");
+    expect(m.getShowroomPhoto()).toBe("data:x");
+    m.setShowroomPhoto(null);
+    expect(m.getShowroomPhoto()).toBeNull();
   });
 });

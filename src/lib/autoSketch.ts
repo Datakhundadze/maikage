@@ -39,11 +39,20 @@ import { applyMockupToLiveConstructor } from "@/lib/mockupSuggestion";
  * considered here — a generation always spends the allowance, and an order
  * lookup is a query the customer should choose to run.
  */
+// ── EVERY SKETCH IS AUTOMATIC (owner, 2026-11-16) ─────────────────────────
+// Until today a block with editPrompt / removeBackground / removeWhite kept the
+// "ესკიზის ნახვა" button, because each spends from the customer's allowance
+// and the comments above call spending it without a click wrong. David, after
+// asking the bot to make a photo black-and-white and getting that button: "I
+// want it to give no link and put the generated photo or sketch straight in."
+// The customer asked for the edit in words, and the constructor's own handlers
+// still run their gates (a guest out of allowance gets the sign-in window, not
+// a silent charge). So the rule is now: a design block is applied, whatever it
+// carries. The older reasoning above is kept as the record of why it was not.
+// Generation blocks ("maika-generate") and order lookups are still not sketches
+// and are not handled here.
 export function isAutoSketchEligible(suggestion: ChatSuggestion | null | undefined): boolean {
-  if (!suggestion || suggestion.kind !== "mockup") return false;
-  // removeWhite spends from the same allowance, so it keeps the button too.
-  const { editPrompt, removeBackground, removeWhite } = suggestion.mockup;
-  return !editPrompt && !removeBackground && !removeWhite;
+  return !!suggestion && suggestion.kind === "mockup";
 }
 
 // FIRE-ONCE, keyed on the suggestion OBJECT rather than on any index or id.

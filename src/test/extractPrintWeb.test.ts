@@ -62,10 +62,12 @@ describe("block → seed", () => {
     expect(src).toContain("removeBackground: attachment && m.removeBackground && !m.extract ? true : undefined,");
     expect(src).toContain("extractPrint: attachment && m.extract ? true : undefined,");
   });
-  it("an extract block is applied without a button; an edit / removal block still is not", () => {
+  it("an extract block is applied without a button — and so is an edit / removal block", () => {
     expect(isAutoSketchEligible({ kind: "mockup", mockup: { extract: true } } as never)).toBe(true);
-    expect(isAutoSketchEligible({ kind: "mockup", mockup: { extract: true, editPrompt: "x" } } as never)).toBe(false);
-    expect(isAutoSketchEligible({ kind: "mockup", mockup: { removeBackground: true } } as never)).toBe(false);
+    // since 2026-11-16 every design block is applied without a button
+    expect(isAutoSketchEligible({ kind: "mockup", mockup: { extract: true, editPrompt: "x" } } as never)).toBe(true);
+    expect(isAutoSketchEligible({ kind: "mockup", mockup: { removeBackground: true } } as never)).toBe(true);
+    expect(isAutoSketchEligible({ kind: "generate" } as never)).toBe(false);
   });
 });
 

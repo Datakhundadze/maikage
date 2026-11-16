@@ -7,8 +7,9 @@ import { TEXT_COLORS as PALETTE } from "@/lib/textColors";
 import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, textSize, W, type GarmentDesign, type GarmentScratch, type Side } from "@/lib/tour/garmentPhoto";
 import { photoLayerCoords, textLayerCoords } from "@/lib/tour/designHandoff";
 import { hasBack, loadSiteSide, type RackGarment, type SiteSide } from "@/lib/tour/siteGarment";
-import { askShowroomLogin, SHOWROOM_DESIGN_EVENT, takeShowroomDesign } from "@/lib/tour/showroomChatDesign";
-import { RateLimitError } from "@/lib/generation";
+import { askShowroomLogin, getShowroomPhoto, setShowroomPhoto, SHOWROOM_DESIGN_EVENT, takeShowroomDesign } from "@/lib/tour/showroomChatDesign";
+import { callGemini, editImage, RateLimitError } from "@/lib/generation";
+import { transparentShare } from "@/lib/aiModelSwitch";
 import { announceSketch } from "@/lib/constructorBridge";
 import { extractPrintFromPhoto } from "@/lib/extractPrint";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
@@ -223,6 +224,12 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   const { checkLimit, recordGeneration } = useGenerationLimit();
   const [chatTick, setChatTick] = useState(0);
   const [shotOwed, setShotOwed] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  // the chat may ask about the photo that is on the garment (showroomChatDesign)
+  useEffect(() => {
+    setShowroomPhoto(design.img ? photoDataUrl(design.img, 1600) : null);
+  }, [design.img]);
+  useEffect(() => () => setShowroomPhoto(null), []);
   useEffect(() => {
     const on = () => setChatTick((t) => t + 1);
     window.addEventListener(SHOWROOM_DESIGN_EVENT, on);
@@ -235,9 +242,13 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     let off = false;
     void (async () => {
       let img: HTMLImageElement | null = null;
+      // the photo already on this garment, sent back by the chat with an edit:
+      // it keeps its place and size, only the picture changes
+      const same = !!d.image && d.image === getShowroomPhoto();
       if (d.image) {
         let src = d.image;
-        if (d.extract) {
+        // every AI step is one generation from the allowance, checked then recorded
+        const paid = () => {
           const lim = checkLimit();
           if (!lim.allowed) {
             // a guest out of allowance: the site's sign-in window, here in the showroom
@@ -245,7 +256,27 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
             throw new Error("limit");
           }
           recordGeneration();
-          src = await extractPrintFromPhoto(d.image);
+        };
+        const wantsAi = d.extract || d.removeBackground || !!d.editPrompt?.trim();
+        if (wantsAi) setAiBusy(true);
+        try {
+          if (d.extract) {
+            paid();
+            src = await extractPrintFromPhoto(src);
+          } else if (d.removeBackground) {
+            // the constructor's own background removal call (handleRemoveBgPhoto,
+            // GPT path): a transparent cut-out, refused when nothing was removed
+            paid();
+            const { image: cutout } = await callGemini("isolate-subject-gpt", { image: src });
+            if ((await transparentShare(cutout)) < 0.02) throw new Error("nothing removed");
+            src = cutout;
+          }
+          if (d.editPrompt?.trim()) {
+            paid();
+            src = await editImage(src, d.editPrompt.trim());
+          }
+        } finally {
+          setAiBusy(false);
         }
         img = await loadImg(src);
       }
@@ -254,7 +285,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       const text = d.text?.trim() ?? "";
       const patch: Partial<GarmentDesign> = {};
       let ih = 0;
-      if (img) {
+      if (img && same) {
+        patch.img = img;
+      } else if (img) {
         const tall = (img.naturalHeight / img.naturalWidth) * A.w;
         const scale = Math.min(0.8, (0.9 * A.h) / tall);
         const y = tall * scale > 0.7 * A.h ? 0.5 : 0.42;
@@ -270,9 +303,13 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           ts: img ? (patch.scale as number) : 0.9,
         });
       }
-      if (d.color && (colors as readonly string[]).includes(d.color)) setColor(d.color);
-      setSide(to);
-      setDesigns((all) => ({ ...all, [to]: { ...all[to], ...patch } }));
+      // an edit of the photo already here leaves the garment's colour and side alone
+      if (!same && d.color && (colors as readonly string[]).includes(d.color)) setColor(d.color);
+      if (!same) setSide(to);
+      setDesigns((all) => {
+        const at: Side = same ? side : to;
+        return { ...all, [at]: { ...all[at], ...patch } };
+      });
       setSel(img ? "img" : "text");
       setTextOpen(false);
       setShotOwed(true);
@@ -417,6 +454,13 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         }} />
 
       <div className="relative aspect-[4/5]" style={{ width, perspective: "1400px" }}>
+        {aiBusy && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center" role="status">
+            <span className="inline-flex items-center gap-2 rounded-full bg-black/65 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+              <RefreshCw className="h-4 w-4 animate-spin" aria-hidden /> მუშავდება…
+            </span>
+          </div>
+        )}
         <canvas
           ref={ref}
           width={W}
