@@ -417,7 +417,10 @@ describe("rewritten titles — Helmet and static agree, ≤60 chars", () => {
     expect(landingSeo("T-Shirt", productTypeKa("T-Shirt"), null).title.startsWith("მაისური")).toBe(true);
     expect(landingSeo("T-Shirt", productTypeKa("T-Shirt"), null).title).toContain("მაისურების დამზადება და ბეჭდვა");
     expect(landingSeo("Hoodie", productTypeKa("Hoodie"), null).title.startsWith("ჰუდი")).toBe(true);
-    expect(CATALOG_SEO.title).toContain("მაისურები ქართული წარწერით");
+    // The phrase belongs to /maisurebi-kartuli-tsartserebit (16.11: /designs had
+    // 4 impressions for it in 90 days, the dedicated page position 1.7).
+    expect(CATALOG_SEO.title).not.toContain("მაისურები ქართული წარწერით");
+    expect(CATALOG_SEO.title).toContain("მზა დიზაინები");
     expect(CATALOG_SEO.description).toContain("ქართული მაისურები");
     expect(FAQ_PAGE.title).toContain("მაისურების ბეჭდვა — ხშირი კითხვები");
     expect(PORTFOLIO.description).toContain("ჩვენი ნამუშევრები");

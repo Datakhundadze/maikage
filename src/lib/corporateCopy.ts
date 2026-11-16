@@ -20,7 +20,8 @@ import { buildServiceSchemas } from "@/lib/serviceSchema";
 export const CORPORATE_H1 = "მაისურების ბრენდირება კომპანიის ლოგოთი";
 
 export const CORPORATE_SEO = {
-  title: "მაისურების ბრენდირება კომპანიის ლოგოთი — კორპორატიული შეკვეთები | Maika.ge",
+  // ≤60 characters (was 74, cut in results).
+  title: "მაისურების ბრენდირება კომპანიის ლოგოთი | Maika.ge",
   description:
     "ბრენდირებული მაისურები, ჰუდები, ჩანთები და კეპები კომპანიებისა და გუნდებისთვის. DTF ბეჭდვა, შოლკოგრაფია, ქარგვა და FLEX. 10 ცალიდან ფასდაკლება. თბილისი, დინამოს სტადიონი.",
 } as const;
