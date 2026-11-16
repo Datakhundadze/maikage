@@ -28,6 +28,14 @@ export interface ShowroomChatDesign {
   removeBackground?: boolean;
   /** A free-text edit of the photo ("make it black and white"). */
   editPrompt?: string;
+  /** A design the bot draws from words (showroomGenerate.ts). */
+  generate?: { prompt: string; style: string; withBackground: boolean };
+  /**
+   * Use the garment that is open, whatever product the bot named — the bot does
+   * not know what is open and names a default. The named product's rack is
+   * walked to only when nothing is open.
+   */
+  preferOpen?: boolean;
 }
 
 export const SHOWROOM_DESIGN_EVENT = "maika:showroom-design";
@@ -37,7 +45,7 @@ let pending: ShowroomChatDesign | null = null;
 /** Offer a design to the showroom. true = somebody is routing it. */
 export function offerShowroomDesign(d: ShowroomChatDesign): boolean {
   if (typeof window === "undefined") return false;
-  if (!d.text?.trim() && !d.image) return false;
+  if (!d.text?.trim() && !d.image && !d.generate?.prompt.trim()) return false;
   pending = d;
   let claimed = false;
   try {

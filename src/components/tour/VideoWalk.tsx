@@ -450,6 +450,11 @@ export default function VideoWalk() {
       const dest = d.brand
         ? dests.find((x) => x.rack && x.rack.items !== "catalog" && !!RACK_GARMENTS[x.rack.id] && x.rack.items[0].brand === d.brand)
         : undefined;
+      if (d.preferOpen && openBrand) {
+        d.brand = undefined;
+        e.preventDefault();
+        return;
+      }
       if (dest && dest.rack && openBrand !== d.brand) {
         e.preventDefault();
         goRef.current(dest);

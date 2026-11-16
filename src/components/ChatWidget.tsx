@@ -375,6 +375,25 @@ export default function ChatWidget() {
     // do not take me to the standard site — do it all in the showroom"),
     // the ones that spend a generation included: the designer runs the edit /
     // background removal / extraction itself, through the same allowance.
+    // A design the bot DRAWS ("maika-generate") is made in the showroom too
+    // (showroomGenerate.ts) and lands on the garment; unclaimed → its button.
+    // With no style named the customer still picks one from the chips first —
+    // that pick then goes to the showroom the same way (openGenerate below).
+    if (!autoApplied && suggestion?.kind === "generate" && onShowroom && suggestion.generate.style) {
+      const g = suggestion.generate;
+      if (
+        offerShowroomDesign({
+          brand: g.subProduct,
+          product: g.product,
+          color: g.color,
+          side: g.side,
+          generate: { prompt: g.prompt, style: g.style, withBackground: g.withBackground },
+          preferOpen: true,
+        })
+      ) {
+        autoApplied = true;
+      }
+    }
     if (!autoApplied && suggestion?.kind === "mockup" && onShowroom && !suggestion.mockup.removeWhite) {
       const mk = suggestion.mockup;
       const text = mk.text?.trim();
@@ -411,7 +430,7 @@ export default function ChatWidget() {
       navigate(CONSTRUCTOR_URL);
     }
     // handed over → its picture will come back into this bubble
-    const sketchPending = (autoApplied && suggestion?.kind === "mockup") || undefined;
+    const sketchPending = (autoApplied && (suggestion?.kind === "mockup" || suggestion?.kind === "generate")) || undefined;
     setMessages((prev) => [...prev, { role: "assistant", content: reply, local, suggestion, autoApplied, sketchPending }]);
   }, [input, loading, messages, lang, attachment, location.pathname, setMode, navigate]);
 
@@ -468,12 +487,29 @@ export default function ChatWidget() {
 
   // Same handoff for a generation request. No attachment — a generation starts
   // from words, not from the customer's photo.
-  const openGenerate = useCallback((g: GenerateSuggestion) => {
+  const openGenerate = useCallback((g: GenerateSuggestion, index?: number) => {
+    // In the showroom the drawing is made there (the style chips land here).
+    if (
+      location.pathname.startsWith("/showroom") &&
+      offerShowroomDesign({
+        brand: g.subProduct,
+        product: g.product,
+        color: g.color,
+        side: g.side,
+        generate: { prompt: g.prompt, style: g.style, withBackground: g.withBackground },
+        preferOpen: true,
+      })
+    ) {
+      if (index !== undefined) {
+        setMessages((prev) => prev.map((msg, i) => (i === index ? { ...msg, autoApplied: true, sketchPending: true } : msg)));
+      }
+      return;
+    }
     if (!openGenerateInConstructor(g)) {
       setMode("simple");
       navigate(CONSTRUCTOR_URL);
     }
-  }, [setMode, navigate]);
+  }, [setMode, navigate, location.pathname]);
 
   // Gate the pick BEFORE reading it: non-images and files over 10MB are
   // rejected so an oversized payload is never built. Bilingual message.
@@ -689,7 +725,7 @@ export default function ChatWidget() {
                 compact
                 onSignIn={() => setShowLogin(true)}
                 onMockup={openInConstructor}
-                onGenerate={openGenerate}
+                onGenerate={(g) => openGenerate(g, i)}
               />
             </div>
           </div>

@@ -71,6 +71,9 @@ export default function ChatSuggestionActions({
   const size = compact ? "sm" : "default";
 
   if (suggestion.kind === "generate") {
+    // Taken by the showroom (2026-11-16): it is being drawn there and its
+    // picture comes back into this bubble — no button to press.
+    if (autoApplied) return null;
     // No style named → let the customer pick from the client's own enum in one
     // tap rather than committing a generation to Auto. A style the model DID
     // name keeps the single button below, unchanged.
