@@ -757,12 +757,12 @@ describe("runSketch timing", () => {
 
 // ── debounce ───────────────────────────────────────────────────────────────
 
-describe("debounce 10 s, sliding", () => {
-  it("waits DEBOUNCE_MS = 10 000 before answering", async () => {
+describe("debounce 20 s (owner 2026-11-16), sliding", () => {
+  it("waits DEBOUNCE_MS = 20 000 before answering", async () => {
     const a = autoDeps("გამარჯობა! რით დაგეხმაროთ?");
     await runAutoReply(trigger, a.deps);
-    expect(DEBOUNCE_MS).toBe(10_000);
-    expect(a.sleeps).toEqual([10_000]);
+    expect(DEBOUNCE_MS).toBe(20_000);
+    expect(a.sleeps).toEqual([20_000]);
   });
 
   it("a burst of short lines gets ONE answer, 10 s after the LAST line", async () => {
