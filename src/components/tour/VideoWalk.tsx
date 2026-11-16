@@ -522,7 +522,36 @@ export default function VideoWalk() {
     }
   }, [ensureAudio]);
 
+  // ── Coming in from the street (David 2026-11-16: "it would be good to have
+  // the moment of entering from outside") ──────────────────────────────────
+  // A 10 s clip — the yard, the red door, through it into the hall — plays
+  // right after „მობრძანდით", over the showroom while that loads underneath.
+  // An ordinary video (cut and re-projected from his 360° footage, see
+  // tools/showroom/make_intro.py), not part of the walk: when it ends, or is
+  // skipped, or fails to play, it fades and the showroom is there. Once per
+  // browser session; not at all for visitors who ask for reduced motion.
+  const [intro, setIntro] = useState<"idle" | "playing" | "fading" | "done">("idle");
+  const [introSrc, setIntroSrc] = useState("");
+  const endIntro = useCallback(() => {
+    setIntro((s) => (s === "playing" ? "fading" : s));
+    window.setTimeout(() => setIntro("done"), 550);
+  }, []);
   const enter = useCallback(() => {
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("maika.tour.intro") === "1";
+      sessionStorage.setItem("maika.tour.intro", "1");
+    } catch {
+      /* no storage: the clip simply plays */
+    }
+    const calm = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (seen || calm) {
+      setIntro("done");
+    } else {
+      const tall = window.innerHeight > window.innerWidth;
+      setIntroSrc(`/tour/intro/${tall ? "portrait" : "landscape"}.mp4`);
+      setIntro("playing");
+    }
     setEntered(true);
     // this tap is the one and only "come in": no second button after it
     setNeedsTap(false);
@@ -532,12 +561,13 @@ export default function VideoWalk() {
     pendingEnterRef.current = true;
   }, [ensureAudio]);
   // after the entry tap: walk to the operators as soon as the video is ready
+  // …and only once the street clip is over, so the first walk is seen
   useEffect(() => {
-    if (status !== "ready" || !pendingEnterRef.current) return;
+    if (status !== "ready" || !pendingEnterRef.current || intro !== "done") return;
     pendingEnterRef.current = false;
     const id = window.setTimeout(() => goRef.current(dests[0]), 250);
     return () => window.clearTimeout(id);
-  }, [status, entered]);
+  }, [status, entered, intro]);
 
   useEffect(() => {
     if (status === "nowebgl") return;
@@ -1995,6 +2025,31 @@ export default function VideoWalk() {
             className="rounded-full bg-amber-400 px-10 py-4 text-lg font-bold text-black shadow-[0_10px_30px_-8px_rgba(251,191,36,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             მობრძანდით
+          </button>
+        </div>
+      )}
+
+      {(intro === "playing" || intro === "fading") && (
+        <div
+          className={`absolute inset-0 z-[58] bg-black transition-opacity duration-500 ${intro === "fading" ? "pointer-events-none opacity-0" : "opacity-100"}`}
+        >
+          <video
+            src={introSrc}
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={endIntro}
+            onError={endIntro}
+            className="h-full w-full object-cover"
+            aria-label="შესვლა maika.ge შოურუმში ქუჩიდან"
+          />
+          <button
+            type="button"
+            onClick={endIntro}
+            className="absolute bottom-6 right-4 rounded-full bg-black/55 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            გამოტოვება
           </button>
         </div>
       )}
