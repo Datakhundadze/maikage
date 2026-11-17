@@ -36,6 +36,26 @@ export interface ShowroomChatDesign {
    * walked to only when nothing is open.
    */
   preferOpen?: boolean;
+  /**
+   * The customer named a colour in their own message. Only then is the bot's
+   * `color` applied: the bot always fills one in (White by default), which
+   * used to repaint the garment the visitor had chosen (David 2026-11-17:
+   * "a black one hung first on the rack and it did it on white").
+   */
+  colorNamed?: boolean;
+}
+
+// What the customer's own words name. The bot's block always carries a product
+// and a colour — its defaults when the customer said neither — so in the
+// showroom, where a garment is already chosen by walking up to it, the block
+// alone cannot move the visitor to another rack or repaint the garment.
+const PRODUCT_WORDS = /მაისურ|მაიკა|ჰუდი|ჰუდზე|სვიტშოტ|სვიტშირტ|სვიტერ|პოლო|ჩანთა|ქუდ|კეპ|წინსაფარ|hood|sweatshirt|polo|t-?shirt|tee\b|tote|\bcap\b|футболк|худи|поло|свитшот/i;
+const COLOR_WORDS = /თეთრ|შავ|წითელ|ლურჯ|მწვანე|ყვითელ|ნაცრისფ|რუხ|ვარდისფ|იისფ|ნარინჯ|ყავისფ|ბეჟ|კრემისფ|ცისფ|შინდისფ|ბორდო|ხაკი|white|black|\bred\b|blue|green|yellow|gr[ae]y|pink|purple|orange|brown|beige|navy|бел|черн|чёрн|красн|син|зелен|желт|сер(ый|ая|ой|ую)|розов/i;
+/** "black and white" is an edit of the picture, not a garment colour. */
+const NOT_A_COLOR = /შავ[\s-]*თეთრ|black[\s-]*(and|&|n)?[\s-]*white|ч[её]рно[\s-]*бел/gi;
+export function namedInText(text: string | undefined | null): { product: boolean; color: boolean } {
+  const t = (text ?? "").toLowerCase();
+  return { product: PRODUCT_WORDS.test(t), color: COLOR_WORDS.test(t.replace(NOT_A_COLOR, " ")) };
 }
 
 export const SHOWROOM_DESIGN_EVENT = "maika:showroom-design";

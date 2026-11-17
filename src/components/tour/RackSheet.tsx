@@ -338,7 +338,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                     {zoomed ? <ZoomOut className="h-6 w-6" aria-hidden /> : <ZoomIn className="h-6 w-6" aria-hidden />}
                   </button>
                 </div>
-                <p className="mt-3 text-center text-xs text-white/70">{zoomed ? "გადაათრიე — დაათვალიერე ახლოდან" : "ლუპა — გადიდება"}</p>
+                {zoomed && <p className="mt-3 text-center text-xs text-white/70">გადაათრიე — დაათვალიერე ახლოდან</p>}
                 {designable && (
                   <button
                     type="button"

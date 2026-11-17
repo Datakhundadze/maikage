@@ -22,6 +22,6 @@ describe("showroom intro", () => {
   it("once per session, not for reduced motion, and the first walk waits for it", () => {
     expect(WALK).toContain('sessionStorage.getItem("maika.tour.intro") === "1"');
     expect(WALK).toContain('window.matchMedia("(prefers-reduced-motion: reduce)").matches');
-    expect(WALK).toContain('if (status !== "ready" || !pendingEnterRef.current || intro !== "done") return;');
+    expect(WALK).toContain('if (status !== "ready" || !pendingEnterRef.current || (intro !== "done" && !introWalk)) return;');
   });
 });

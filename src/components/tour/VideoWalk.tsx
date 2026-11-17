@@ -532,6 +532,13 @@ export default function VideoWalk() {
   // browser session; not at all for visitors who ask for reduced motion.
   const [intro, setIntro] = useState<"idle" | "playing" | "fading" | "done">("idle");
   const [introSrc, setIntroSrc] = useState("");
+  // David 2026-11-17: "it stood too long, then switched to the operators — as
+  // soon as the door opens the operator should appear". The clip's last three
+  // seconds stand in the hall, so it is cut just inside the door, and the walk
+  // to the desk starts underneath while the door is still opening.
+  const INTRO_WALK_AT = 5.0;
+  const INTRO_CUT_AT = 7.3;
+  const [introWalk, setIntroWalk] = useState(false);
   const endIntro = useCallback(() => {
     setIntro((s) => (s === "playing" ? "fading" : s));
     window.setTimeout(() => setIntro("done"), 550);
@@ -563,11 +570,11 @@ export default function VideoWalk() {
   // after the entry tap: walk to the operators as soon as the video is ready
   // …and only once the street clip is over, so the first walk is seen
   useEffect(() => {
-    if (status !== "ready" || !pendingEnterRef.current || intro !== "done") return;
+    if (status !== "ready" || !pendingEnterRef.current || (intro !== "done" && !introWalk)) return;
     pendingEnterRef.current = false;
     const id = window.setTimeout(() => goRef.current(dests[0]), 250);
     return () => window.clearTimeout(id);
-  }, [status, entered, intro]);
+  }, [status, entered, intro, introWalk]);
 
   useEffect(() => {
     if (status === "nowebgl") return;
@@ -2041,6 +2048,11 @@ export default function VideoWalk() {
             preload="auto"
             onEnded={endIntro}
             onError={endIntro}
+            onTimeUpdate={(e) => {
+              const t = e.currentTarget.currentTime;
+              if (t >= INTRO_WALK_AT) setIntroWalk(true);
+              if (t >= INTRO_CUT_AT) endIntro();
+            }}
             className="h-full w-full object-cover"
             aria-label="შესვლა maika.ge შოურუმში ქუჩიდან"
           />

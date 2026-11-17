@@ -17,7 +17,7 @@ import {
 // this chat and the other so the two can never diverge.
 import { isAutoSketchEligible, tryAutoOpenSketch } from "@/lib/autoSketch";
 import { SKETCH_READY_EVENT, type SketchReadyEvent } from "@/lib/constructorBridge";
-import { getShowroomPhoto, offerShowroomDesign } from "@/lib/tour/showroomChatDesign";
+import { getShowroomPhoto, namedInText, offerShowroomDesign } from "@/lib/tour/showroomChatDesign";
 // The photo-upload nudge: the event name, the once-per-session flag and the
 // wording all live together, away from this component.
 import {
@@ -304,6 +304,8 @@ export default function ChatWidget() {
     window.dispatchEvent(new CustomEvent("maika:chat-typing", { detail: loading }));
   }, [loading]);
 
+  // the customer's last message: what THEY named (showroomChatDesign.namedInText)
+  const lastUserTextRef = useRef("");
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -316,6 +318,8 @@ export default function ChatWidget() {
     // goes with the message, so the bot sees it (showroomChatDesign.ts).
     const onShowroom = location.pathname.startsWith("/showroom");
     const sentAttachment = attachment ?? (onShowroom ? getShowroomPhoto() : null);
+    lastUserTextRef.current = text;
+    const named = namedInText(text);
     // The attachment rides on the bubble purely so the customer can SEE what
     // they sent; what goes to the model is unchanged (faqChat still receives
     // `attachment` separately, below).
@@ -389,6 +393,7 @@ export default function ChatWidget() {
           side: g.side,
           generate: { prompt: g.prompt, style: g.style, withBackground: g.withBackground },
           preferOpen: true,
+          colorNamed: named.color,
         })
       ) {
         autoApplied = true;
@@ -406,6 +411,11 @@ export default function ChatWidget() {
           product: mk.product,
           color: mk.color,
           side: mk.side,
+          // the garment the visitor has open stays, in its colour, unless their
+          // own words named another product / a colour (David 2026-11-17: hoodie
+          // open → the sketch went to a white tee)
+          preferOpen: !named.product,
+          colorNamed: named.color,
           ...(text ? { text, textColor: mk.textColor } : {}),
           ...(sentAttachment
             ? {
@@ -498,6 +508,7 @@ export default function ChatWidget() {
         side: g.side,
         generate: { prompt: g.prompt, style: g.style, withBackground: g.withBackground },
         preferOpen: true,
+        colorNamed: namedInText(lastUserTextRef.current).color,
       })
     ) {
       if (index !== undefined) {

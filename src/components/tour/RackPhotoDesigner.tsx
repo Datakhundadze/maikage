@@ -320,7 +320,8 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         });
       }
       // an edit of the photo already here leaves the garment's colour and side alone
-      if (!same && d.color && (colors as readonly string[]).includes(d.color)) setColor(d.color);
+      // …and so does any design whose colour the customer did not name themselves
+      if (!same && d.colorNamed && d.color && (colors as readonly string[]).includes(d.color)) setColor(d.color);
       if (!same) setSide(to);
       setDesigns((all) => {
         const at: Side = same ? side : to;
@@ -651,7 +652,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
               ? both
                 ? "ფოტო და წარწერა ცალ-ცალკე გადაადგილდება"
                 : "თითით გადაადგილე პრინტი"
-              : "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ მაისურზე"}
+              : `დააჭირე ჩარჩოს — ნახე შენი ფოტო ${product === "Hoodie" ? "ამ ჰუდიზე" : "ამ მაისურზე"}`}
       </p>
       {printed && has && sizes.length > 0 && (
         <div
