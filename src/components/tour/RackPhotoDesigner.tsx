@@ -321,7 +321,8 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       }
       // an edit of the photo already here leaves the garment's colour and side alone
       // …and so does any design whose colour the customer did not name themselves
-      if (!same && d.colorNamed && d.color && (colors as readonly string[]).includes(d.color)) setColor(d.color);
+      // (a colour the customer did name is applied even with the same photo: "put it on red")
+      if (d.colorNamed && d.color && (colors as readonly string[]).includes(d.color)) setColor(d.color);
       if (!same) setSide(to);
       setDesigns((all) => {
         const at: Side = same ? side : to;

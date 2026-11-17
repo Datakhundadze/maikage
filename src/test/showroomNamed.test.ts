@@ -20,7 +20,7 @@ describe("what the customer named (showroom chat)", () => {
   });
   it("the designer repaints only for a named colour; the chat keeps the open garment otherwise", () => {
     const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
-    expect(D).toContain("if (!same && d.colorNamed && d.color &&");
+    expect(D).toContain("if (d.colorNamed && d.color &&");
     const W = readFileSync("src/components/ChatWidget.tsx", "utf8");
     expect(W).toContain("preferOpen: !named.product,");
     expect(W.match(/colorNamed: /g)?.length).toBe(3);
