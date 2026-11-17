@@ -418,6 +418,31 @@ describe("runAutoReply", () => {
 
 // ── gemini-proxy social channel ────────────────────────────────────────────
 
+describe("night of 2026-11-16", () => {
+  it("raw model tokens never reach a customer", () => {
+    expect(cleanBotReply("<bos>", "off_hours")).not.toContain("<bos>");
+    expect(cleanBotReply("<bos>გამარჯობა<eos>", "off_hours")).toBe("გამარჯობა");
+    expect(cleanBotReply("ფასი <|endoftext|>", "off_hours")).toBe("ფასი");
+  });
+
+  it("the DM prompt: corporate without prices, complaints, language", () => {
+    const dm = socialPromptBlock("messenger", "off_hours");
+    expect(dm).toContain("CORPORATE / BULK");
+    expect(dm).toContain("NO prices and NO discount numbers");
+    expect(dm).toContain("COMPLAINT about an order");
+    expect(dm).toContain("this chat IS our channel");
+    expect(dm).toContain("LANGUAGE: answer in the customer's language");
+  });
+
+  it("the DM prompt (2026-11-17): short, each caution once, no channel list, order status", () => {
+    const dm = socialPromptBlock("instagram", "off_hours");
+    expect(dm).toContain("SHORT (owner 2026-11-17");
+    expect(dm).toContain("SAY EACH CAUTION ONCE");
+    expect(dm).toContain("NO CHANNEL LIST IN DMs");
+    expect(dm).toContain("never ask them to log in");
+  });
+});
+
 describe("weekend lessons (owner 2026-11-16)", () => {
   beforeEach(() => _resetTokenWarning());
 

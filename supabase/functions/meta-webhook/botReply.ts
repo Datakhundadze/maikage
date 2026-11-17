@@ -422,6 +422,9 @@ const FENCE_RE = /```maika-([a-z0-9_-]+)[^\n]*\n?[\s\S]*?(```|$)/gi;
  * opts.designNotice (a sketch image will follow), that line instead. Cap the length.
  * The proxy already ran fixBankAccounts / sanitizeReply on this text.
  */
+/** Raw model control tokens that must never reach a customer (add-only, 2026-11-16). */
+export const MODEL_TOKEN_RE = /<\/?(?:bos|eos|pad|unk|start_of_turn|end_of_turn|start_of_image|end_of_image)>|<\|[a-z_]{1,30}\|>/gi;
+
 export function cleanBotReply(
   raw: string,
   schedule: BotSchedule = "sunday",
@@ -434,6 +437,8 @@ export function cleanBotReply(
     return "";
   });
   text = stripSketchSystemText(text)
+    // Owner 2026-11-16: a raw model token („<bos>") reached a customer.
+    .replace(MODEL_TOKEN_RE, "")
     .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, (_m, label: string, url: string) => (sameLink(label, url) ? url : `${label}: ${url}`))
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")
     .replace(/__([^_\n]+)__/g, "$1")

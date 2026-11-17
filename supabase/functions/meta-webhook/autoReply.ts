@@ -97,7 +97,9 @@ import { runReceiptStep, type ReceiptDeps, type ReceiptRun } from "./receiptFlow
 import { receiptSourcePaths } from "./receiptCheck.ts";
 
 /** 10 s (was 4 s, owner 2026-10-31): people type in many short lines. */
-export const DEBOUNCE_MS = 10_000;
+// Owner 2026-11-16: 10 s → 20 s — a text and a photo 12 s apart got two
+// different answers (two runs). One answer, 20 s after the last message.
+export const DEBOUNCE_MS = 20_000;
 /**
  * A pending photo not yet copied to social-uploads (index.ts does that in the
  * background) cannot be placed. Wait this long once and re-read the thread.
