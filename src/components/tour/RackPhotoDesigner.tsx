@@ -12,7 +12,7 @@ import { callGemini, editImage, RateLimitError } from "@/lib/generation";
 import { transparentShare } from "@/lib/aiModelSwitch";
 import { announceSketch } from "@/lib/constructorBridge";
 import { extractPrintFromPhoto } from "@/lib/extractPrint";
-import { generateForShowroom } from "@/lib/tour/showroomGenerate";
+import { drawnBefore, generateForShowroom, rememberDrawn } from "@/lib/tour/showroomGenerate";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
 // The rack's large photo as the place to design (David 2026-11-10/12). The
@@ -246,7 +246,12 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       // the photo already on this garment, sent back by the chat with an edit:
       // it keeps its place and size, only the picture changes
       const same = !!d.image && d.image === getShowroomPhoto();
-      if (d.generate && !d.image) {
+      // the same request the bot already had drawn (it re-emits the block for
+      // "move it to red"): the same picture, no new generation
+      const again = d.generate && !d.image ? drawnBefore(d.generate) : null;
+      if (again) {
+        img = await loadImg(again);
+      } else if (d.generate && !d.image) {
         // the bot draws it: one generation from the allowance, here in the showroom
         const lim = checkLimit();
         if (!lim.allowed) {
@@ -256,7 +261,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         recordGeneration();
         setAiBusy(true);
         try {
-          img = await loadImg(await generateForShowroom(d.generate, product, color));
+          const drawn = await generateForShowroom(d.generate, product, color);
+          rememberDrawn(d.generate, drawn);
+          img = await loadImg(drawn);
         } finally {
           setAiBusy(false);
         }

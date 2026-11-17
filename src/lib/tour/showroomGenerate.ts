@@ -52,6 +52,21 @@ export interface ShowroomGenerate {
   withBackground: boolean;
 }
 
+// The picture drawn last, kept for this visit. The bot answers "move it to red" /
+// "put it on the hoodie" by re-emitting the same maika-generate block with another
+// colour or product (its KB: "CHANGES — RE-EMIT THE BLOCK"). Run again, that would
+// cost a generation and draw a DIFFERENT picture than the one the customer liked
+// (seen live 2026-11-17). The same words, style and background → the same picture.
+let lastDrawn: { key: string; image: string } | null = null;
+const drawKey = (g: ShowroomGenerate) => `${g.prompt.trim().toLowerCase()}|${(g.style || "").toLowerCase()}|${g.withBackground ? 1 : 0}`;
+/** The picture already drawn for exactly this request, or null. Costs nothing. */
+export function drawnBefore(g: ShowroomGenerate): string | null {
+  return lastDrawn && lastDrawn.key === drawKey(g) ? lastDrawn.image : null;
+}
+export function rememberDrawn(g: ShowroomGenerate, image: string): void {
+  lastDrawn = { key: drawKey(g), image };
+}
+
 /** One generation (one unit of the allowance). Returns the picture to put on the garment. */
 export async function generateForShowroom(g: ShowroomGenerate, product: string, color: string): Promise<string> {
   const text = g.prompt.trim();

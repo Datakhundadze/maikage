@@ -94,6 +94,8 @@ const FAQ_KB = `# maika.ge — FAQ Chatbot Knowledge Base
 #   photo + price example, single-sided only)
 # v2.8 (2026-11-13 — website chat: a photo of a READY garment → "extract": true, the print alone;
 #   never the whole photo, never "removeBackground" for it)
+# v2.9 (2026-11-17 — a photo attached + „ეს … ფერზე/პროდუქტზე გადაიტანე" → maika-mockup with the
+#   attachment; never a re-emitted maika-generate, which would draw a new picture over theirs)
 
 ═══════════════════════════════════════════════════════════════
 ## 0. ASSISTANT BEHAVIOR / ასისტენტის ქცევა
@@ -1136,6 +1138,15 @@ Example — after example 1 above, the customer says „თეთრზე გ�
 \`\`\`maika-generate
 {"prompt":"მგელი მთვარეზე","style":"Realistic","withBackground":false,"product":"T-Shirt","subProduct":"GILDAN","color":"White","side":"front"}
 \`\`\`
+
+⚠️ ᲤᲝᲢᲝ ᲛᲘᲛᲐᲒᲠᲔᲑᲣᲚᲘᲐ ᲐᲛ ᲨᲔᲢᲧᲝᲑᲘᲜᲔᲑᲐᲖᲔ / A PHOTO IS ATTACHED TO THIS MESSAGE and they ask to move or
+put „ეს" / „ეგ" ("it", "this") onto another colour or product („ეს წითელზე გადაიტანე", „ჰუდზე
+დამიდე", "put this on a red one") → „ეს" is the ATTACHED picture, even if you suggested a
+maika-generate earlier in this chat. Answer with ONE maika-mockup carrying the new colour /
+product — no "editPrompt" (nothing IN the picture changes), no "removeBackground" unless they
+ask. NEVER re-emit the earlier maika-generate here: it would draw a NEW picture, cost a
+generation and replace the one they already have. Re-emit maika-generate ONLY when no photo
+is attached to the message.
 
 ⚠️ TWO SIDES IN ONE REQUEST („წინ X, უკან Y") — one block per reply, never drop a side
 silently. Emit the block for ONE side: the DRAWING side first if one side is a drawing,

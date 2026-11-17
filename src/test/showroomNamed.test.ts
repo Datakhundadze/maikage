@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { namedInText } from "@/lib/tour/showroomChatDesign";
+import { drawnBefore, rememberDrawn } from "@/lib/tour/showroomGenerate";
 
 // David 2026-11-17: boiled hoodie open + "make it black and white" → the sketch
 // went to a white tee; black GILDAN open → drawn on white. The bot's block
@@ -43,5 +44,20 @@ describe("what the customer named (showroom chat)", () => {
     expect(C).toContain("html.maika-order-glass body::before");
     const O = readFileSync("src/components/OrderDialog.tsx", "utf8");
     expect(O).not.toContain("maika-order-glass");
+  });
+  it("the same drawing request is not generated twice (the bot re-emits the block for a colour change)", () => {
+    const g = { prompt: "ლომი გვირგვინით", style: "Cartoon", withBackground: false };
+    expect(drawnBefore(g)).toBeNull();
+    rememberDrawn(g, "data:image/png;base64,AAA");
+    expect(drawnBefore({ ...g, prompt: " ლომი გვირგვინით " })).toBe("data:image/png;base64,AAA");
+    expect(drawnBefore({ ...g, style: "Anime" })).toBeNull();
+    expect(drawnBefore({ ...g, prompt: "მგელი" })).toBeNull();
+    const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
+    expect(D.indexOf("drawnBefore(d.generate)")).toBeLessThan(D.indexOf("recordGeneration();"));
+  });
+  it("KB v2.9: a photo attached + 'move it to red' is a mockup, not a re-drawn generate", () => {
+    const K = readFileSync("supabase/functions/gemini-proxy/index.ts", "utf8");
+    expect(K).toContain("# v2.9 (2026-11-17");
+    expect(K).toContain("NEVER re-emit the earlier maika-generate here");
   });
 });
