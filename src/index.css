@@ -297,3 +297,12 @@ html.maika-order-glass [role="dialog"] .text-card-foreground,
 html.maika-order-glass [role="dialog"] label {
   color: #fff;
 }
+/* seen live 17.11: a white scrollbar on the glass form, and the site chat (left
+   open in the showroom tab) standing black beside it */
+html.maika-order-glass [role="dialog"] {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+html.maika-order-glass .maika-chat-panel {
+  display: none;
+}

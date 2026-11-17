@@ -83,6 +83,11 @@ interface WalkDest {
  * walk stands at the desk. Frames: base, blink, talk1, talk2 (pixel-aligned,
  * swapped to blink and talk). Tapping one opens the site chat.
  */
+// The street clip (see "Coming in from the street" below): where it starts (after the
+// parked car has left the picture), when the walk starts under it, where it is cut.
+const INTRO_START = { portrait: 2.0, landscape: 3.6 };
+const INTRO_WALK_AT = 5.0;
+const INTRO_CUT_AT = 7.3;
 const OPERATOR_STOP = { t: 8, yawDeg: 1.5, pitchDeg: -7 };
 const SHOW_FLOOR_ARROWS = false;
 /** Brand names over the racks (see rackLabels.ts). */
@@ -539,10 +544,9 @@ export default function VideoWalk() {
   // …and it starts once the red car parked outside has left the picture
   // (David 2026-11-17: "can we remove the red car?" — it cannot be painted out
   // of moving footage cleanly, so the clip begins after it).
-  const INTRO_START = { portrait: 2.0, landscape: 3.6 };
-  const INTRO_WALK_AT = 5.0;
-  const INTRO_CUT_AT = 7.3;
   const [introWalk, setIntroWalk] = useState(false);
+  // the picture is shown only once the clip stands at its start second
+  const [introShown, setIntroShown] = useState(false);
   const endIntro = useCallback(() => {
     setIntro((s) => (s === "playing" ? "fading" : s));
     window.setTimeout(() => setIntro("done"), 550);
@@ -560,7 +564,9 @@ export default function VideoWalk() {
       setIntro("done");
     } else {
       const tall = window.innerHeight > window.innerWidth;
-      setIntroSrc(`/tour/intro/${tall ? "portrait" : "landscape"}.mp4`);
+      // "#t=" makes the browser open the file at that second: without it the
+      // very first frame (the car) flashed before the seek landed (seen live 17.11)
+      setIntroSrc(`/tour/intro/${tall ? "portrait" : "landscape"}.mp4#t=${tall ? INTRO_START.portrait : INTRO_START.landscape}`);
       setIntro("playing");
     }
     setEntered(true);
@@ -2053,8 +2059,12 @@ export default function VideoWalk() {
             onEnded={endIntro}
             onError={endIntro}
             onLoadedMetadata={(e) => {
-              e.currentTarget.currentTime = introSrc.includes("portrait") ? INTRO_START.portrait : INTRO_START.landscape;
+              const from = introSrc.includes("portrait") ? INTRO_START.portrait : INTRO_START.landscape;
+              if (e.currentTarget.currentTime < from - 0.1) e.currentTarget.currentTime = from;
             }}
+            onPlaying={() => setIntroShown(true)}
+            onSeeked={() => setIntroShown(true)}
+            style={{ opacity: introShown ? 1 : 0 }}
             onTimeUpdate={(e) => {
               const t = e.currentTarget.currentTime;
               if (t >= INTRO_WALK_AT) setIntroWalk(true);
