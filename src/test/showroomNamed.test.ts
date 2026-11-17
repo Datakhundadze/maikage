@@ -30,4 +30,18 @@ describe("what the customer named (showroom chat)", () => {
     expect(V).toContain("if (t >= INTRO_CUT_AT) endIntro();");
     expect(V).toContain('(intro !== "done" && !introWalk)');
   });
+  it("the clip starts after the parked car has left the picture", () => {
+    const V = readFileSync("src/components/tour/VideoWalk.tsx", "utf8");
+    expect(V).toContain("const INTRO_START = { portrait: 2.0, landscape: 3.6 };");
+    expect(V).toContain("onLoadedMetadata");
+  });
+  it("a showroom order's form is glass over a showroom still — look only, OrderDialog untouched", () => {
+    const P = readFileSync("src/pages/SimplePage.tsx", "utf8");
+    expect(P).toContain("if (seed.order) setShowroomOrder(true);");
+    expect(P).toContain('document.documentElement.classList.add("maika-order-glass")');
+    const C = readFileSync("src/index.css", "utf8");
+    expect(C).toContain("html.maika-order-glass body::before");
+    const O = readFileSync("src/components/OrderDialog.tsx", "utf8");
+    expect(O).not.toContain("maika-order-glass");
+  });
 });

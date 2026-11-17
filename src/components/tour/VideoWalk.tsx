@@ -536,6 +536,10 @@ export default function VideoWalk() {
   // soon as the door opens the operator should appear". The clip's last three
   // seconds stand in the hall, so it is cut just inside the door, and the walk
   // to the desk starts underneath while the door is still opening.
+  // …and it starts once the red car parked outside has left the picture
+  // (David 2026-11-17: "can we remove the red car?" — it cannot be painted out
+  // of moving footage cleanly, so the clip begins after it).
+  const INTRO_START = { portrait: 2.0, landscape: 3.6 };
   const INTRO_WALK_AT = 5.0;
   const INTRO_CUT_AT = 7.3;
   const [introWalk, setIntroWalk] = useState(false);
@@ -2048,6 +2052,9 @@ export default function VideoWalk() {
             preload="auto"
             onEnded={endIntro}
             onError={endIntro}
+            onLoadedMetadata={(e) => {
+              e.currentTarget.currentTime = introSrc.includes("portrait") ? INTRO_START.portrait : INTRO_START.landscape;
+            }}
             onTimeUpdate={(e) => {
               const t = e.currentTarget.currentTime;
               if (t >= INTRO_WALK_AT) setIntroWalk(true);

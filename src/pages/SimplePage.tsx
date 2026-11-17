@@ -2476,6 +2476,7 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     // Queued, not run: the layers below are not committed yet. Drained by the
     // pendingOrder effect further down.
     if (seed.order) setPendingOrder({ size: seed.size, image: !!seed.image, text: !!seed.text?.trim() });
+    if (seed.order) setShowroomOrder(true);
     // ADD-ONLY (2026-11-14): a chained seed — the showroom's other side — is
     // queued the same way and fed back through THIS drain once this one settled.
     // ADD-ONLY (2026-11-14): a plain design seed (the chat's sketch) is also
@@ -3728,6 +3729,37 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   }, [pendingNextSeed, sideData.photos, sideData.texts, editingPhotoId, aiGenerating, seededRemoveBgActive]);
 
   const [pendingOrder, setPendingOrder] = useState<{ size?: string; image: boolean; text: boolean } | null>(null);
+  // ── The showroom's order form keeps the showroom's look (add-only, look only) ──
+  // David 2026-11-17: "the order form opened on a black background — I want
+  // this on a transparent one too; the payment page can be the standard one".
+  // While an order that came from the showroom is being prepared and its form
+  // is open, a still of the showroom covers the constructor and the dialog is
+  // skinned as glass (index.css, html.maika-order-glass). OrderDialog itself,
+  // its wiring and everything about payment are untouched; closing the form
+  // drops the skin and the constructor is there as always.
+  const [showroomOrder, setShowroomOrder] = useState(false);
+  const showroomOrderSeenOpen = useRef(false);
+  useEffect(() => {
+    if (!showroomOrder) return;
+    if (orderDialogOpen) {
+      showroomOrderSeenOpen.current = true;
+      return;
+    }
+    if (showroomOrderSeenOpen.current) {
+      // the form was closed
+      showroomOrderSeenOpen.current = false;
+      setShowroomOrder(false);
+      return;
+    }
+    // never opened (the seeded order gave up): do not leave the constructor covered
+    const giveUp = window.setTimeout(() => setShowroomOrder(false), 20000);
+    return () => window.clearTimeout(giveUp);
+  }, [showroomOrder, orderDialogOpen]);
+  useEffect(() => {
+    if (!showroomOrder) return;
+    document.documentElement.classList.add("maika-order-glass");
+    return () => document.documentElement.classList.remove("maika-order-glass");
+  }, [showroomOrder]);
   const pendingOrderSince = useRef(0);
   useEffect(() => {
     if (!pendingOrder) return;

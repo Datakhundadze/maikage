@@ -251,3 +251,49 @@ html.maika-chat-over .maika-chat-panel {
 .maika-chat-glass textarea::placeholder {
   color: rgba(255, 255, 255, 0.6);
 }
+
+/* ── The showroom's order form (2026-11-17) ───────────────────────────────────
+   An order that came from the showroom (SimplePage sets html.maika-order-glass
+   while it is prepared and its form is open): a still of the showroom covers
+   the constructor and the form is glass, like the showroom chat. Look only —
+   OrderDialog's markup, wiring and the payment step are unchanged. */
+html.maika-order-glass body::before {
+  content: "";
+  position: fixed;
+  inset: -24px;
+  z-index: 49;
+  background: #17171a url("/tour/stills/80.webp") center / auto 185% no-repeat;
+  filter: blur(4px) brightness(0.8);
+}
+html.maika-order-glass div[data-state].fixed.inset-0.bg-black\/80 {
+  background: rgba(0, 0, 0, 0.12);
+}
+html.maika-order-glass [role="dialog"] {
+  background: rgba(20, 20, 24, 0.46);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  backdrop-filter: blur(22px) saturate(1.35);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+  border-radius: 18px;
+}
+html.maika-order-glass [role="dialog"] input,
+html.maika-order-glass [role="dialog"] textarea {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+html.maika-order-glass [role="dialog"] input::placeholder,
+html.maika-order-glass [role="dialog"] textarea::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+html.maika-order-glass [role="dialog"] .border-border {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+html.maika-order-glass [role="dialog"] .text-muted-foreground {
+  color: rgba(255, 255, 255, 0.72);
+}
+html.maika-order-glass [role="dialog"] .text-card-foreground,
+html.maika-order-glass [role="dialog"] label {
+  color: #fff;
+}
