@@ -102,6 +102,15 @@ export const HIDDEN_PRODUCTS: ReadonlySet<ProductType> = new Set<ProductType>([
   "Sport",
 ]);
 
+// TEMPORARY (owner, 17.11.2026): the mug press is under repair until the end of
+// November. Unlike HIDDEN_PRODUCTS this hides the product from the PICKER only —
+// the /mug landing route, its SEO, llms.txt and the service page all stay, and
+// the landing page shows a "paused" notice instead of preselecting a mug.
+// Remove "Mug" from this set in December to bring mugs back.
+export const TEMP_UNAVAILABLE_PRODUCTS: ReadonlySet<ProductType> = new Set<ProductType>([
+  "Mug",
+]);
+
 // Products that physically have no back to print on — one surface, one view.
 // Listed as the exceptions rather than as "products WITH a back" because the
 // back is the rule in this catalog (every garment and the tote have real back

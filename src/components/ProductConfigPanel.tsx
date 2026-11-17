@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PRODUCTS, SUB_PRODUCTS, NEW_BRANDS, HIDDEN_PRODUCTS, FRONT_ONLY_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_GROUPS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
+import { PRODUCTS, SUB_PRODUCTS, NEW_BRANDS, HIDDEN_PRODUCTS, TEMP_UNAVAILABLE_PRODUCTS, FRONT_ONLY_PRODUCTS, COLORS, catalog, BRAND_SIZES, PHONE_CASE_GROUPS, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
 import type { ProductConfig } from "@/hooks/useProductConfig";
 import { Button } from "@/components/ui/button";
 import { useAppState } from "@/hooks/useAppState";
@@ -70,7 +70,7 @@ export default function ProductConfigPanel({
               {/* HIDDEN_PRODUCTS is a temporary catalog-level hide (see
                   catalog.ts); `excludeProducts` stays the caller's own
                   per-surface exclusion and is unchanged. */}
-              {PRODUCTS.filter(p => !excludeProducts.includes(p.type) && !HIDDEN_PRODUCTS.has(p.type)).map((p) => (
+              {PRODUCTS.filter(p => !excludeProducts.includes(p.type) && !HIDDEN_PRODUCTS.has(p.type) && !TEMP_UNAVAILABLE_PRODUCTS.has(p.type)).map((p) => (
                 <button
                   key={p.type}
                   onClick={() => { onProductChange(p.type); setBrandOpen(true); }}

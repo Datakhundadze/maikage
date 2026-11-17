@@ -429,7 +429,8 @@ describe("night of 2026-11-16", () => {
     const dm = socialPromptBlock("messenger", "off_hours");
     expect(dm).toContain("CORPORATE / BULK");
     expect(dm).toContain("NO prices and NO discount numbers");
-    expect(dm).toContain("COMPLAINT about an order");
+    expect(dm).toContain("COMPLAINT or ANY UNHAPPY CUSTOMER");
+    expect(dm).toContain("ოპერატორი სამუშაო საათებში დაგიკავშირდებათ");
     expect(dm).toContain("this chat IS our channel");
     expect(dm).toContain("LANGUAGE: answer in the customer's language");
   });

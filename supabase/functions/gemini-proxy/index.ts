@@ -434,11 +434,11 @@ KA:
 - სპორტული ფორმა (მაისური + შორტი): 65₾ · ორმხრივი 80₾
 - ნაჭრის ჩანთა (Tote): 35₾
 - წინსაფარი (Apron): 45₾
-- ჭიქა (Mug): 25₾
 - კეპი (Cap): 25₾
 - მობილურის ქეისი (Phone Case): 20₾
 - გრძელმკლავიანი მაისური: 55₾ (ასახელებ მხოლოდ თუ კითხულობენ).
 - ბეჭდვის გარეშე (სადა) ნივთი: ნაბეჭდის ფასს − 20₾.
+- ⛔ დროებით (2026 წლის ნოემბრის ბოლომდე, მფლობელი 17.11): ჭიქაზე ბეჭდვა არ ხდება — აპარატი შეკეთებაზეა. ჭიქა არ შესთავაზო, ფასი არ თქვა, ესკიზი არ გააკეთო. თუ იკითხავენ: „ჭიქაზე ბეჭდვა დროებით შეჩერებულია, დეკემბრიდან განახლდება." / TEMPORARILY (until the end of November 2026): NO mug printing — the machine is being repaired. Never offer, price or sketch a mug; if asked, say mug printing is paused and returns in December.
 - ჭიქა მხოლოდ თეთრია. 25₾ = ჭიქა + ბეჭდვა („ჭიქიანად ხომ?" / „თავისი ჭიქით ხომ?" → პასუხი
   იწყება „დიახ"-ით: „დიახ, 25₾ ჭიქასთან ერთად" — არასოდეს „არა"-თი).
 
@@ -446,7 +446,6 @@ EN:
 - Sport set (shirt + shorts): 65₾ · two-sided 80₾
 - Tote bag: 35₾
 - Apron: 45₾
-- Mug: 25₾
 - Cap: 25₾
 - Phone case: 20₾
 - Long-sleeve t-shirt: 55₾ (mention only when asked).
@@ -696,7 +695,7 @@ RULES:
 ═══════════════════════════════════════════════════════════════
 
 KA:
-- ასორტიმენტი: მაისური · პოლო · ჰუდი · წინსაფარი · სპორტული ფორმა · კეპი · ნაჭრის ჩანთა · ჭიქა · მობილურის ქეისი.
+- ასორტიმენტი: მაისური · პოლო · ჰუდი · წინსაფარი · სპორტული ფორმა · კეპი · ნაჭრის ჩანთა · მობილურის ქეისი.
 - ბრენდები: GILDAN (სტანდარტი), GILDAN HUMMER (პრემიუმ), TH, JEL (მოხარშული), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; ჰუდები: GILDAN, JEL, Premium Washed, Bomber, Zipper-ები.
 - ბეჭდვა: DTF · ვინილი.
 - ზომები (საიტის მიხედვით): საბავშვო 3/4 წლიდან 12/14 წლამდე; GILDAN მაისური S–4XL; JEL, GIORDANO,
@@ -734,7 +733,7 @@ KA:
 - „გარკვეულ ფერებში შესაძლოა ბამბისა და პოლიესტერის ნაზავი იყოს" — ეს დაამატე, თუ ზუსტ ფერზე კითხულობენ.
 
 EN:
-- Range: t-shirt · polo · hoodie · apron · sport set · cap · tote bag · mug · phone case.
+- Range: t-shirt · polo · hoodie · apron · sport set · cap · tote bag · phone case.
 - Brands: GILDAN (standard), GILDAN HUMMER (premium), TH, JEL (washed), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; hoodies: GILDAN, JEL, Premium Washed, Bomber, Zippers.
 - Printing: DTF · vinyl.
 - Sizes (as on the site): kids 3/4 to 12/14 years; GILDAN t-shirt S–4XL; JEL, GIORDANO, Polo S–3XL;
@@ -995,7 +994,7 @@ the constructor — NO new block. KA: „ესკიზი კონსტრ�
 Use these values EXACTLY, including capitalisation. "product" is the TYPE, never a brand —
 brands go in "subProduct". "text" is the customer's ACTUAL words, never a placeholder —
 and it is OMITTED ENTIRELY when they attached a photo instead of asking for lettering.
-product: T-Shirt | Hoodie | Tote Bag | Cap | Apron | Phone Case | Mug
+product: T-Shirt | Hoodie | Tote Bag | Cap | Apron | Phone Case
 subProduct (T-Shirt): GILDAN | Sol's | GILDAN HUMMER | TH | JEL T-Shirt | GIORDANO | Khundadze | NIKE | Polo | Oversize | GILDAN KIDS
   (the premium model is spelled "GILDAN HUMMER" — never "Hammer")
 subProduct (Hoodie): GILDAN Hoodie | Premium Washed Hoodie | JEL Standard Hoodie | JEL Zipper | JEL Standard Zipper | GILDAN Bomber
@@ -1254,12 +1253,10 @@ EN:
 
 KA:
 - ქეისზე ბეჭდვა: 20₾ (სასურველი პრინტით).
-- ჭიქაზე ბეჭდვა: 25₾.
 - ნაჭრის ჩანთაზე ბეჭდვა: 35₾.
 
 EN:
 - Phone case printing: 20₾ (with your chosen print).
-- Mug printing: 25₾.
 - Tote bag printing: 35₾.
 
 ═══════════════════════════════════════════════════════════════
