@@ -14,6 +14,7 @@ import { landingSeo } from "@/lib/landingSeo";
 import { landingCopyFor, landingCopySchemas } from "@/lib/landingCopy";
 import { fromPrice } from "@/lib/landingPrice";
 import { BRAND_SLUGS, defaultBrandFor, resolveBrandSlug, resolveProductSlug } from "@/lib/productSlugs";
+import { TEMP_UNAVAILABLE_PRODUCTS } from "@/lib/catalog";
 
 // Product landing routes (/hoodie, /hoodie/premium-washed, …) — ENTRY POINTS
 // for ad clicks. They render the ordinary constructor with a product (and
@@ -113,7 +114,8 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
     seededRef.current = true;
     const arrival = isArrival(navigationType, pathname);
     initialEntryHandled = true;
-    if (arrival && !returningFromSignIn()) {
+    // A temporarily unavailable product (catalog.ts) is never preselected.
+    if (arrival && !returningFromSignIn() && !TEMP_UNAVAILABLE_PRODUCTS.has(product)) {
       writeConstructorSeed({ product, subProduct: brand ?? defaultBrandFor(product) });
     }
   }
@@ -164,7 +166,14 @@ export default function ProductLandingPage({ productSlug }: { productSlug: strin
           </>
         }
         hero={({ onUploadClick }) => (
-          <LandingHero product={product} brand={brand} title={heroTitle(productKa, brand, product)} onUploadClick={onUploadClick} />
+          <>
+            {TEMP_UNAVAILABLE_PRODUCTS.has(product) && (
+              <div role="status" className="mx-auto mb-3 max-w-3xl rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm">
+                {productKa}ზე ბეჭდვა დროებით შეჩერებულია — დეკემბრიდან განახლდება. ამ დროს სხვა პროდუქტზე შეგიძლია დიზაინის შექმნა.
+              </div>
+            )}
+            <LandingHero product={product} brand={brand} title={heroTitle(productKa, brand, product)} onUploadClick={onUploadClick} />
+          </>
         )}
       />
     </>
