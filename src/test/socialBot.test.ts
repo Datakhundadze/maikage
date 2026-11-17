@@ -433,6 +433,14 @@ describe("night of 2026-11-16", () => {
     expect(dm).toContain("this chat IS our channel");
     expect(dm).toContain("LANGUAGE: answer in the customer's language");
   });
+
+  it("the DM prompt (2026-11-17): short, each caution once, no channel list, order status", () => {
+    const dm = socialPromptBlock("instagram", "off_hours");
+    expect(dm).toContain("SHORT (owner 2026-11-17");
+    expect(dm).toContain("SAY EACH CAUTION ONCE");
+    expect(dm).toContain("NO CHANNEL LIST IN DMs");
+    expect(dm).toContain("never ask them to log in");
+  });
 });
 
 describe("weekend lessons (owner 2026-11-16)", () => {
