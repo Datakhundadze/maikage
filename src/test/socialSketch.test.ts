@@ -254,6 +254,10 @@ describe("placement fit maths", () => {
     expect(textCoords(undefined, "T-Shirt")).toEqual({ x: 0.5, y: 0.65, scale: 0.8, scaleY: 0.24 });
     expect(textCoords("small", "T-Shirt")).toEqual({ x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 });
     expect(textCoords(undefined, "Sport").y).toBe(0.38);
+    // Owner 2026-11-18: hoodie text lifted to the chest; t-shirt unchanged.
+    expect(textCoords(undefined, "Hoodie")).toEqual({ x: 0.5, y: 0.4, scale: 0.8, scaleY: 0.24 });
+    expect(textCoords("small", "Hoodie").y).toBe(0.4);
+    expect(textCoords("left-chest", "Hoodie").y).toBe(0.3);
     expect(textCoords("left-chest", "T-Shirt").x).toBeCloseTo(0.72);
     expect(designCoords("small")).toEqual({ x: 0.5, y: 0.5, scale: 0.425, scaleY: 0.425 });
   });

@@ -66,6 +66,8 @@ const DEFAULT_PHOTO_COORDS: Coords = { x: 0.5, y: 0.5, scale: 1, scaleY: 1 };
 const DEFAULT_TEXT_COORDS: Coords = { x: 0.5, y: 0.65, scale: 0.4, scaleY: 0.12 };
 const SEED_TEXT_SCALE_FACTOR = 2;
 const SPORT_SEED_TEXT_Y = 0.38;
+/** Hoodie text centre inside the zone (0.65 → 0.40 ≈ 0.48 of the photo height on GILDAN). */
+const HOODIE_TEXT_Y = 0.40;
 export const JERSEY_NAME_COORDS: Coords = { x: 0.5, y: 0.13, scale: 0.60, scaleY: 0.10 };
 export const JERSEY_NUMBER_COORDS: Coords = { x: 0.5, y: 0.50, scale: 0.30, scaleY: 0.34 };
 
@@ -92,7 +94,17 @@ export function textCoords(placement: Placement | undefined, product: string): C
       scaleY: (DEFAULT_TEXT_COORDS.scaleY ?? DEFAULT_TEXT_COORDS.scale) * CHEST_SCALE_FACTOR,
     };
   }
-  if (placement === "small") return { ...DEFAULT_TEXT_COORDS };
+  // Owner 2026-11-18: on a hoodie the text sat too low (near the pocket).
+  // Hoodies only: lift the centre to the chest; t-shirts and the rest unchanged.
+  if (placement === "small") return product === "Hoodie" ? { ...DEFAULT_TEXT_COORDS, y: HOODIE_TEXT_Y } : { ...DEFAULT_TEXT_COORDS };
+  if (product === "Hoodie") {
+    return {
+      ...DEFAULT_TEXT_COORDS,
+      y: HOODIE_TEXT_Y,
+      scale: DEFAULT_TEXT_COORDS.scale * SEED_TEXT_SCALE_FACTOR,
+      scaleY: (DEFAULT_TEXT_COORDS.scaleY ?? DEFAULT_TEXT_COORDS.scale) * SEED_TEXT_SCALE_FACTOR,
+    };
+  }
   const seeded: Coords = {
     ...DEFAULT_TEXT_COORDS,
     scale: DEFAULT_TEXT_COORDS.scale * SEED_TEXT_SCALE_FACTOR,
