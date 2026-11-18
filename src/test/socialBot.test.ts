@@ -24,6 +24,7 @@ import {
   offPeriodStart,
   stripLeadingGreeting,
   introMessage,
+  isMetaAutomationEcho,
   isBareGreeting,
   isBotCandidate,
   isBotEcho,
@@ -251,6 +252,10 @@ describe("buildHistory", () => {
 });
 
 describe("cleanBotReply", () => {
+  it("turns markdown bullets into plain • lines (owner 2026-11-18)", () => {
+    const out = cleanBotReply("ჰუდები:\n*   GILDAN — 80₾\n- JEL — 85₾\n−10% არა");
+    expect(out).toBe("ჰუდები:\n• GILDAN — 80₾\n• JEL — 85₾\n−10% არა");
+  });
   const fence = (kind: string, body = '{"a":1}') => "```maika-" + kind + "\n" + body + "\n```";
   it("strips a mockup fence and adds the design link line", () => {
     const out = cleanBotReply(`აი ესკიზი:\n${fence("mockup")}`);
@@ -498,6 +503,10 @@ describe("intro message (owner 2026-11-14)", () => {
     expect(f.sent.map((s) => s.text)).toEqual([introMessage("sunday"), `მაისური 25₾-დან.\n${DESIGN_LINK_LINE}`]);
     expect(f.records.map((r) => r.kind)).toEqual(["reply", "reply"]);
     expect(introMessage("sunday")).toContain("ახალი თანამშრომელი");
+    // Owner 2026-11-18: „ოპერატორი" once, two lines.
+    expect(introMessage("off_hours").match(/ოპერატორ/g)?.length).toBe(1);
+    expect(introMessage("off_hours").split("\n")).toHaveLength(2);
+    expect(isMetaAutomationEcho(introMessage("off_hours"))).toBe(true);
     expect(introMessage("sunday")).toContain("ორშაბათს, 11:00-დან");
   });
 

@@ -102,9 +102,9 @@ export function photoMessage(schedule: BotSchedule): string {
  */
 export function introMessage(schedule: BotSchedule): string {
   return [
-    "გამარჯობა! 👋 მე ვარ maika.ge-ს ახალი თანამშრომელი, თანაც AI 🤖😊",
-    "ახლა არასამუშაო დროა, ამიტომ მე გიპასუხებთ. თუ რამე შემეშლება, გვაპატიეთ 🙏",
-    `თუ ოპერატორი გჭირდებათ, დაწერეთ „ოპერატორი" და ოპერატორი ${operatorBack(schedule)} მოგწერთ.`,
+    // Owner 2026-11-18: „ოპერატორი" was said three times — now once, shorter.
+    "გამარჯობა! 👋 მე ვარ maika.ge-ს ახალი თანამშრომელი, თანაც AI 🤖 თუ რამე შემეშლება, გვაპატიეთ 🙏",
+    `ადამიანთან საუბარი თუ გინდათ, დაწერეთ „ოპერატორი" და ${operatorBack(schedule)} მოგწერთ.`,
   ].join("\n");
 }
 
@@ -214,6 +214,7 @@ const META_AUTOMATION_FRAGMENTS = [
   "maika.ge-ის გუნდი მალე გიპასუხებთ",
   "დაგვიკავშირდით არასამუშაო დროს",
   "ახლა არასამუშაო დროა",
+  "maika.ge-ს ახალი თანამშრომელი, თანაც AI",
   "ოპერატორი უახლოეს სამუშაო საათებში",
 ];
 export function isMetaAutomationEcho(text: string | null): boolean {
@@ -443,6 +444,8 @@ export function cleanBotReply(
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")
     .replace(/__([^_\n]+)__/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
+    // Owner 2026-11-18: Messenger shows markdown bullets raw („*   GILDAN…").
+    .replace(/^[ \t]*[*-][ \t]+(?=\S)/gm, "• ")
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
