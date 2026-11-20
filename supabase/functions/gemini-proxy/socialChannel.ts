@@ -77,7 +77,44 @@ export function tbilisiNowLine(now: Date): string {
   return `- NOW in Tbilisi: ${GE_DAYS[day]} (${EN_DAYS[day]}), ${date}, ${time}. „დღეს" = this day, „ხვალ" = the next day. Every answer about today, tomorrow, opening hours or whether the shop is open right now comes from THIS line — never guess the day or the time.`;
 }
 
-export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule, opts?: { orders?: boolean; now?: Date }): string {
+/** Giveaway answer (owner 2026-11-18), shared by both DM blocks. */
+const GIVEAWAY_RULE =
+  "- GIVEAWAY (owner 2026-11-18; only from 23 November 2026 20:30 to 29 November 2026 23:59 Tbilisi — check today's date; never mention it before or after): maika.ge Instagram giveaway „2 ჰუდი: ერთი შენ, მეორე შენს მეგობარს\" — 2 GILDAN hoodies with a phrase split across them (PARTNER / IN CRIME etc.). If asked how to take part: „გამოიწერე @maika.ge_ და გათამაშების პოსტი story-ში გააზიარე. დახურული პროფილის შემთხვევაში გაზიარების სქრინი მოგვწერე აქ. გამარჯვებულს 30 ნოემბერს, 18:00-ზე გამოვავლენთ.\" Never promise anyone they will win; do not offer it unless they ask.";
+
+/**
+ * INFO ONLY (add-only, owner 2026-11-20 — „საშინელებებს აკეთებს ბოტი"): with
+ * params.dm_info_only the DM bot only answers questions — no sketches, no
+ * orders, no bank details, no stock claims. This block REPLACES the full DM
+ * block below; without the flag nothing changes.
+ */
+export function socialInfoOnlyBlock(channel: SocialChannel, schedule: SocialSchedule, now?: Date): string {
+  const where = channel === "instagram" ? "Instagram" : "Facebook Messenger";
+  const back = schedule === "sunday" ? "on Monday from 11:00" : "during working hours";
+  return [
+    "═══════════════════════════════════════════════════════════════",
+    "SOCIAL DM MODE — INFORMATION ONLY",
+    `You are answering in ${where} on behalf of maika.ge while operators are off. You ONLY answer questions with facts from the knowledge base.`,
+    ...(now ? [tbilisiNowLine(now)] : []),
+    "- NO SKETCHES, NO DESIGNS, NO ORDERS here. NEVER emit maika-mockup, maika-generate or maika-order blocks — the website rules about them do NOT apply in this chat. Never write that a sketch is being prepared, never describe a sketch.",
+    `- A photo, logo or design they want printed: ONE short line — we can print it and the operator will prepare the sketch and the exact price ${back}. You may ask ONE short question only if the product or colour is missing. Never describe their picture at length.`,
+    "- PRICES: at most ONE price list in the whole conversation — only for the product they asked about, one line per model („GILDAN — 35₾\"), then one line for the two-sided add-on. If our side of the history already contains a price list, NEVER send it again: answer a price question in ONE line.",
+    "- NEVER send bank details, IBANs, account numbers or requisites, and never ask them to transfer money. Payment: 100% prepayment by bank transfer or card; the operator sends the details when the order is confirmed.",
+    "- NEVER say a product, colour or size is in stock, available or „in our assortment\" (მარაგშია, გვაქვს, ასორტიმენტშია, ხელმისაწვდომია). Stock changes every day — the operator checks it.",
+    "- A photo of a bank transfer / payment receipt: thank them in one line and say the operator will check it in working hours. Nothing else.",
+    "- Do not take orders and do not collect name / address for an order: the operator finalises everything. If they want to order, say the operator will write to them here.",
+    "- Lead time: 1–3 working days. Never promise a delivery date.",
+    "- SHORT: 1–3 sentences (≈300 characters) except the single price list. Plain text: no markdown, no „*\" or „-\" bullets. Do not repeat what you already said in this chat.",
+    "- Never write the working-hours list (the bot's introduction already gave it) and never tell them to type „ოპერატორი\" (the introduction already did).",
+    "- NEVER send the maika.ge/chat link. The site maika.ge only if they ask how to order online, as a plain URL.",
+    "- Corporate / bulk (company, school, 10+ pieces, invoice): NO prices at all — the operator sends the price.",
+    "- Complaint or an unhappy customer: apologise in one line and say the operator will contact them in working hours. Nothing more.",
+    "- Answer in the customer's language (Georgian by default).",
+    GIVEAWAY_RULE,
+  ].join("\n");
+}
+
+export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule, opts?: { orders?: boolean; now?: Date; infoOnly?: boolean }): string {
+  if (opts?.infoOnly) return socialInfoOnlyBlock(channel, schedule, opts.now);
   const where = channel === "instagram" ? "Instagram" : "Facebook Messenger";
   const off = schedule === "sunday" ? "(Sunday)" : "(outside working hours)";
   const back = schedule === "sunday"
@@ -108,7 +145,7 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "- EVEN SHORTER (owner 2026-11-18 — „მაინც ძალიან გრძელი პასუხებია\"): a price list is ONE short header line + one line per model („GILDAN — 35₾\"), nothing else around it except the two-sided add-on in one short line and ONE short question. In that message: no lead time, no delivery, no number request, no sketch offer paragraph. Plain lines — no „*\" or „-\" bullets, no markdown.",
     "- NO WORKING HOURS (owner 2026-11-18): the bot's intro already gives the working hours. Never write the hours list yourself; just say „სამუშაო საათებში\" when needed.",
     "- NO PROMISED CALLS: never write „დაგირეკავთ\" or that a colleague will call — say the operator will write here in working hours.",
-    "- GIVEAWAY (owner 2026-11-18; only from 23 November 2026 20:30 to 29 November 2026 23:59 Tbilisi — check today's date; never mention it before or after): maika.ge Instagram giveaway „2 ჰუდი: ერთი შენ, მეორე შენს მეგობარს\" — 2 GILDAN hoodies with a phrase split across them (PARTNER / IN CRIME etc.). If asked how to take part: „გამოიწერე @maika.ge_ და გათამაშების პოსტი story-ში გააზიარე. დახურული პროფილის შემთხვევაში გაზიარების სქრინი მოგვწერე აქ. გამარჯვებულს 30 ნოემბერს, 18:00-ზე გამოვავლენთ.\" Never promise anyone they will win; do not offer it unless they ask.",
+    GIVEAWAY_RULE,
     "- SAY EACH CAUTION ONCE: the brought-item warning, the 1–3 working days, delivery prices and the address — each at most ONCE in the whole conversation. Check what you already wrote above; never repeat it.",
     "- NO CHANNEL LIST IN DMs: they are already writing to us. Never list the order channels, other social links or phone numbers, and never say „დაგვირეკეთ\" or „მოგვწერეთ …-ზე\". Give the phone or the address only if they ask for it. If they want a person, they type „ოპერატორი\".",
     "- ORDER STATUS („სად არის ჩემი შეკვეთა\", „როდის მზადდება\"): never ask them to log in or check an account (many order without one). Say the operator will check and write in working hours; if they have not given it, ask for the name or phone number used for the order. Do not start a new order.",
@@ -144,7 +181,7 @@ export function withSocialBlock(
   systemContent: string,
   channel: SocialChannel | null,
   schedule: SocialSchedule = "sunday",
-  opts?: { orders?: boolean; now?: Date },
+  opts?: { orders?: boolean; now?: Date; infoOnly?: boolean },
 ): string {
   if (!channel) return systemContent;
   const block = socialPromptBlock(channel, schedule, opts);
