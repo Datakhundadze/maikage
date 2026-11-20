@@ -71,10 +71,11 @@ describe("operator conversation after hours", () => {
 
 describe("info-only DM prompt", () => {
   const block = socialPromptBlock("messenger", "off_hours", { infoOnly: true, now: FRI_1903 });
-  it("forbids sketches, orders, bank details and stock claims", () => {
+  it("forbids sketches, orders and stock claims; exact bank details; unsure → operator", () => {
     expect(block).toContain("INFORMATION ONLY");
     expect(block).toContain("NEVER emit maika-mockup, maika-generate or maika-order");
-    expect(block).toContain("NEVER send bank details");
+    expect(block).toContain("Copy the knowledge-base requisites lines EXACTLY");
+    expect(block).toContain("NOT SURE?");
     expect(block).toContain("მარაგშია");
     expect(block).toContain("at most ONE price list");
     expect(block).not.toContain("ORDERS HERE");
