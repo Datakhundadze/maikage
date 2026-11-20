@@ -76,6 +76,7 @@ describe("info-only DM prompt", () => {
     expect(block).toContain("NEVER emit maika-mockup, maika-generate or maika-order");
     expect(block).toContain("Copy the knowledge-base requisites lines EXACTLY");
     expect(block).toContain("NOT SURE?");
+    expect(block).toContain("NEVER a plain „yes / დიახ");
     expect(block).toContain("მარაგშია");
     expect(block).toContain("at most ONE price list");
     expect(block).not.toContain("ORDERS HERE");

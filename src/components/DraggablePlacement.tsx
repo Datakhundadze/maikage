@@ -1,6 +1,6 @@
 import { useRef, useCallback, useState, type ReactNode } from "react";
 import type { PlacementCoords } from "@/lib/catalog";
-import { RotateCw } from "lucide-react";
+import { AlignHorizontalJustifyCenter, AlignVerticalJustifyCenter, RotateCw } from "lucide-react";
 
 // Floor and ceiling for the design-layer scale relative to the placement
 // zone. 0.1 keeps the layer from collapsing to invisible; 3 lets the user
@@ -24,6 +24,14 @@ const MAX_SCALE = 3;
  * When absent (legacy photos / text layers), edges still do 1-axis resize and
  * corners do free 2-axis resize as before.
  */
+/**
+ * CENTERING (add-only, customer feedback 2026-11-20 — „მაუსით და თვალის ზომით
+ * გიწევს გაცენტრვა"): while moving, the layer snaps to the print-zone centre
+ * line within this distance (zone fractions) and a guide line shows; the
+ * selected layer also gets two buttons that centre it horizontally / vertically.
+ */
+export const CENTER_SNAP = 0.025;
+
 export interface SourceState {
   scale: number;
   offsetX: number;
@@ -84,6 +92,7 @@ export default function DraggablePlacement({
 }: DraggablePlacementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>(null);
+  const [snap, setSnap] = useState<{ x: boolean; y: boolean }>({ x: false, y: false });
   // Drag start cache includes the source state so multi-update drags (corner
   // proportional resize) can derive new values from the start state rather
   // than the in-flight update. `altKey` is snapshotted on pointerDown so
@@ -193,10 +202,18 @@ export default function DraggablePlacement({
       // Source state stays unchanged — `offsetX/Y` are relative to the
       // window center, so the source absolute position naturally tracks
       // the window when the window moves.
+      let nx = startRef.current.cx + dx;
+      let ny = startRef.current.cy + dy;
+      // CENTERING: snap to the print-zone centre lines (Alt = free move).
+      const sx = !e.altKey && Math.abs(nx - 0.5) < CENTER_SNAP;
+      const sy = !e.altKey && Math.abs(ny - 0.5) < CENTER_SNAP;
+      if (sx) nx = 0.5;
+      if (sy) ny = 0.5;
+      if (sx !== snap.x || sy !== snap.y) setSnap({ x: sx, y: sy });
       onCoordsChange({
         ...coords,
-        x: startRef.current.cx + dx,
-        y: startRef.current.cy + dy,
+        x: nx,
+        y: ny,
       });
     } else if (dragMode === "resize-t" || dragMode === "resize-b" || dragMode === "resize-l" || dragMode === "resize-r") {
       // Edge handle: one-axis resize, with the opposite edge anchored so
@@ -314,10 +331,11 @@ export default function DraggablePlacement({
         });
       }
     }
-  }, [dragMode, coords, source, onSourceChange, onCoordsChange, getCenterPoint, zoneW, zoneH, aspectLock]);
+  }, [dragMode, coords, source, onSourceChange, onCoordsChange, getCenterPoint, zoneW, zoneH, aspectLock, snap]);
 
   const handlePointerUp = useCallback(() => {
     setDragMode(null);
+    setSnap({ x: false, y: false });
   }, []);
 
   const scaleX = coords.scale;
@@ -352,7 +370,24 @@ export default function DraggablePlacement({
   const showHandles = isManaged ? selected && !disabled : !disabled;
   const showBorder = isManaged ? selected : true;
 
+  const centerBtn = "w-6 h-6 rounded-full border border-primary-foreground flex items-center justify-center shadow " + (accentClass ? accentClass : "bg-primary");
+  const showGuides = dragMode === "move";
+
   return (
+    <>
+    {/* CENTERING guide lines (print-zone centre), only while snapped. */}
+    {showGuides && snap.x && (
+      <div
+        className="absolute pointer-events-none z-20 border-l border-dashed border-pink-500"
+        style={{ left: `${zoneCx * 100}%`, top: `${zoneTop * 100}%`, height: `${zoneH * 100}%` }}
+      />
+    )}
+    {showGuides && snap.y && (
+      <div
+        className="absolute pointer-events-none z-20 border-t border-dashed border-pink-500"
+        style={{ top: `${zoneCy * 100}%`, left: `${zoneLeft * 100}%`, width: `${zoneW * 100}%` }}
+      />
+    )}
     <div
       ref={containerRef}
       className={`absolute rounded-md transition-colors ${
@@ -408,6 +443,32 @@ export default function DraggablePlacement({
             onPointerDown={(e) => handlePointerDown(e, "resize-r")}
           />
 
+          {/* CENTERING buttons: horizontal / vertical centre of the print zone. */}
+          {!dragMode && (
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              <button
+                type="button"
+                className={centerBtn}
+                title="ჰორიზონტალურად ცენტრში / Center horizontally"
+                aria-label="ჰორიზონტალურად ცენტრში / Center horizontally"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onCoordsChange({ ...coords, x: 0.5 }); }}
+              >
+                <AlignHorizontalJustifyCenter className="w-3.5 h-3.5 text-white" />
+              </button>
+              <button
+                type="button"
+                className={centerBtn}
+                title="ვერტიკალურად ცენტრში / Center vertically"
+                aria-label="ვერტიკალურად ცენტრში / Center vertically"
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onCoordsChange({ ...coords, y: 0.5 }); }}
+              >
+                <AlignVerticalJustifyCenter className="w-3.5 h-3.5 text-white" />
+              </button>
+            </div>
+          )}
+
           <div
             className="absolute -bottom-14 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing z-10"
             onPointerDown={(e) => handlePointerDown(e, "rotate")}
@@ -422,5 +483,6 @@ export default function DraggablePlacement({
         </>
       )}
     </div>
+    </>
   );
 }
