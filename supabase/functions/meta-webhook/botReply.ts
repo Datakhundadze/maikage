@@ -499,7 +499,7 @@ const FENCE_RE = /```maika-([a-z0-9_-]+)[^\n]*\n?[\s\S]*?(```|$)/gi;
 export const MODEL_TOKEN_RE = /<\/?(?:bos|eos|pad|unk|start_of_turn|end_of_turn|start_of_image|end_of_image)>|<\|[a-z_]{1,30}\|>/gi;
 
 /** A reply line the bot must never send (owner 2026-11-20). */
-export const UNSAFE_LINE_RE = /GE\s?\d{2}\s?[A-Z]{2}|\[(?:phone|email|iban)[^\]]*\]|მარაგშია/i;
+export const UNSAFE_LINE_RE = /\[(?:phone|email|iban)[^\]]*\]|მარაგშია/i;
 
 export function cleanBotReply(
   raw: string,
@@ -530,8 +530,9 @@ export function cleanBotReply(
   if (opts?.trimPriceList) text = trimPriceList(text);
   // Owner 2026-11-01: never the website-chat link in a DM — drop any line with it.
   text = text.split("\n").filter((l) => !/maika\.ge\/chat/i.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  // Owner 2026-11-20: bank details went out mangled („GE89BG[phone:***75]") and
-  // stock was „confirmed". Lines with an IBAN, a masked number or „მარაგშია" are dropped.
+  // Owner 2026-11-20: a masked number from the stored history („[phone:***75]")
+  // must never be copied into a reply, and stock is never „confirmed". The real
+  // IBANs (fixed by gemini-proxy bankAccounts.ts) pass.
   text = text.split("\n").filter((l) => !UNSAFE_LINE_RE.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
   // A sketch image is on its way (sketchFlow.ts): say so instead of the link.

@@ -287,8 +287,8 @@ describe("cleanBotReply", () => {
   it("never returns an empty message", () => {
     expect(cleanBotReply(fence("callback")).length).toBeGreaterThan(10);
   });
-  it("drops bank details, masked numbers and stock claims (owner 2026-11-20)", () => {
-    expect(cleanBotReply("გადახდა წინასწარ.\nანგარიში: GE13TB7099236020100012")).toBe("გადახდა წინასწარ.");
+  it("keeps real IBANs, drops masked numbers and stock claims (owner 2026-11-20)", () => {
+    expect(cleanBotReply("ანგარიში: GE13TB7099236020100012")).toBe("ანგარიში: GE13TB7099236020100012");
     expect(cleanBotReply("ფასი 35₾.\nBOG: GE89BG[phone:***75]")).toBe("ფასი 35₾.");
     expect(cleanBotReply("მარაგშია: თეთრი GILDAN, S და M.\nფასი 35₾.")).toBe("ფასი 35₾.");
   });
