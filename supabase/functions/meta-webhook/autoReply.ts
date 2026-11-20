@@ -52,6 +52,8 @@ import {
   decideAutoReply,
   handoffMessage,
   introMessage,
+  OPERATOR_THREAD_MS,
+  operatorClosedMessage,
   stripLeadingGreeting,
   isBareGreeting,
   pendingInbound,
@@ -168,6 +170,12 @@ export interface AutoReplyDeps {
    * introMessage. Never before the handoff text. Absent → as before.
    */
   introOnFirstReply?: boolean;
+  /**
+   * OPERATOR CLOSING (add-only, owner 2026-11-20): a conversation an operator
+   * wrote in during the 24 h before the bot hours gets ONE closing note
+   * (operatorClosedMessage) and no bot answers. Absent → as before.
+   */
+  operatorClosing?: boolean;
   /** Add-only (2026-11-16): true → an operator reply silences the bot only within the current bot hours. */
   offPeriodTakeover?: boolean;
 }
@@ -225,15 +233,40 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       thread = await deps.loadThread(key, 8);
     }
 
+    // OPERATOR CLOSING (add-only, 2026-11-20): 24 h of history for the operator check.
+    const closing = deps.operatorClosing === true
+      ? await (async () => {
+        const since24 = new Date(now.getTime() - OPERATOR_THREAD_MS).toISOString();
+        const [o, b] = await Promise.all([deps.loadOutRows(key, since24), deps.loadBotSends(key, since24)]);
+        return { outRows: o, botSends: b };
+      })()
+      : undefined;
     const decision = decideAutoReply({
       settings, now, handedOff, outRows, botSends, tokenSet: deps.tokenSet,
       trigger: { meta_message_id: row.meta_message_id, sent_at: row.sent_at },
       thread,
       offPeriodTakeover: deps.offPeriodTakeover === true,
+      ...(closing ? { operatorClosing: closing } : {}),
     });
     if (decision.action === "skip") {
       deps.log("info", `auto-reply skip ${row.channel}: ${decision.reason}`);
       return decision.reason;
+    }
+    if (decision.action === "closed") {
+      const note = operatorClosedMessage(schedule, now);
+      const recordId = await deps.recordSend(key, "reply", note);
+      if (!recordId) {
+        deps.log("error", `auto-reply: send record failed, not sending (${row.channel})`);
+        return "record_failed";
+      }
+      const res = await deps.send(row.channel, row.customer_id, note);
+      if (!res.ok) {
+        deps.log("error", `auto-reply send failed ${row.channel}: status=${res.status} code=${res.code}`);
+        return "send_failed";
+      }
+      if (res.messageId) await deps.markSent(recordId, res.messageId);
+      deps.log("info", `auto-reply sent ${row.channel}: operator_closed`);
+      return "operator_closed";
     }
 
     let kind: "reply" | "handoff" | "photo";

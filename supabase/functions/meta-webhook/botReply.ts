@@ -260,6 +260,69 @@ export function humanTookOverThisOffPeriod(outRows: OutRow[], sends: BotSendReco
   return outRows.some((r) => Date.parse(r.sent_at) >= since && !isBotEcho(r, sends) && !isMetaAutomationEcho(r.text));
 }
 
+// ── operator conversations after hours (add-only, owner 2026-11-20) ────────
+//
+// „ოპერატორის საუბარი არ გააგრძელოს ხოლმე სამუშაო დროის მერე, უთხრას რო
+// მორჩა სამუშაო დრო და ხვალ მივწერთ": an operator wrote in this conversation
+// in the last 24 h BEFORE the current bot hours → the bot does not continue
+// it. It sends ONE fixed note per bot-hours stretch and stays silent.
+
+export const OPERATOR_THREAD_MS = 24 * 60 * 60 * 1000;
+export const OPERATOR_CLOSED_PREFIX = "სამუშაო დრო დასრულდა";
+const GE_DATIVE_DAYS = ["კვირას", "ორშაბათს", "სამშაბათს", "ოთხშაბათს", "ხუთშაბათს", "პარასკევს", "შაბათს"];
+
+/** First minute (ms) after `now` outside the bot hours = the next opening. */
+export function nextWorkStart(schedule: unknown, now: Date): number | null {
+  if (!isScheduleActive(schedule, now)) return now.getTime();
+  const MIN = 60 * 1000;
+  let t = Math.floor(now.getTime() / MIN) * MIN;
+  for (let i = 0; i < 8 * 24 * 4; i++) {
+    const next = t + 15 * MIN;
+    if (!isScheduleActive(schedule, new Date(next))) {
+      for (let m = t + MIN; m <= next; m += MIN) if (!isScheduleActive(schedule, new Date(m))) return m;
+      return next;
+    }
+    t = next;
+  }
+  return null;
+}
+
+/** „დღეს 11:00-დან" / „ხვალ 11:00-დან" / „ორშაბათს 11:00-დან" (Tbilisi, UTC+4). */
+export function nextOpenPhrase(schedule: unknown, now: Date): string {
+  const at = nextWorkStart(schedule, now);
+  if (at === null) return WORKING_HOURS;
+  const local = (ms: number) => new Date(ms + 4 * 60 * 60 * 1000);
+  const a = local(now.getTime());
+  const b = local(at);
+  const day = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const diff = Math.round((day(b) - day(a)) / 86_400_000);
+  const hhmm = `${String(b.getUTCHours()).padStart(2, "0")}:${String(b.getUTCMinutes()).padStart(2, "0")}`;
+  const when = diff === 0 ? "დღეს" : diff === 1 ? "ხვალ" : GE_DATIVE_DAYS[b.getUTCDay()];
+  return `${when} ${hhmm}-დან`;
+}
+
+export function operatorClosedMessage(schedule: unknown, now: Date): string {
+  return `${OPERATOR_CLOSED_PREFIX} 🙏 ოპერატორი ${nextOpenPhrase(schedule, now)} მოგწერთ.`;
+}
+
+/** An operator wrote in the 24 h before the current bot hours began. */
+export function operatorThreadBeforeOffPeriod(outRows: OutRow[], sends: BotSendRecord[], now: Date, schedule: unknown): boolean {
+  const start = offPeriodStart(schedule, now);
+  if (start === null) return false;
+  const since = now.getTime() - OPERATOR_THREAD_MS;
+  return outRows.some((r) => {
+    const t = Date.parse(r.sent_at);
+    return t >= since && t < start && !isBotEcho(r, sends) && !isMetaAutomationEcho(r.text);
+  });
+}
+
+/** The closing note already went out in the current bot hours. */
+export function operatorClosedSentThisOffPeriod(sends: BotSendRecord[], now: Date, schedule: unknown): boolean {
+  const start = offPeriodStart(schedule, now);
+  if (start === null) return false;
+  return sends.some((s) => Date.parse(s.created_at) >= start && (s.text ?? "").startsWith(OPERATOR_CLOSED_PREFIX));
+}
+
 // ── the decision ───────────────────────────────────────────────────────────
 
 export interface ThreadRow {
@@ -308,11 +371,14 @@ export interface DecideInput {
   thread: ThreadRow[];
   /** Add-only (2026-11-16): true → human takeover counts only within the current bot hours. */
   offPeriodTakeover?: boolean;
+  /** Add-only (2026-11-20): 24 h of outbound rows + bot sends → operator conversations get one closing note. */
+  operatorClosing?: { outRows: OutRow[]; botSends: BotSendRecord[] };
 }
 
 export type Decision =
   | { action: "skip"; reason: string }
   | { action: "handoff" }
+  | { action: "closed" }
   | { action: "reply" };
 
 export function decideAutoReply(i: DecideInput): Decision {
@@ -338,6 +404,12 @@ export function decideAutoReply(i: DecideInput): Decision {
 
   const pending = pendingInbound(i.thread);
   if (pending.length === 0) return { action: "skip", reason: "nothing_pending" };
+  // OPERATOR CONVERSATION (owner 2026-11-20): not continued after hours — one note, then silence.
+  if (i.operatorClosing && operatorThreadBeforeOffPeriod(i.operatorClosing.outRows, i.operatorClosing.botSends, i.now, i.settings.schedule)) {
+    return operatorClosedSentThisOffPeriod(i.operatorClosing.botSends, i.now, i.settings.schedule)
+      ? { action: "skip", reason: "operator_thread" }
+      : { action: "closed" };
+  }
   if (pending.some((r) => wantsHuman(r.text))) return { action: "handoff" };
   // Photos go to the AI reply like text (2026-10-31): the model sees them as
   // „[ფოტო N]" and answers with one sketch block per photo. photoMessage is
@@ -426,6 +498,9 @@ const FENCE_RE = /```maika-([a-z0-9_-]+)[^\n]*\n?[\s\S]*?(```|$)/gi;
 /** Raw model control tokens that must never reach a customer (add-only, 2026-11-16). */
 export const MODEL_TOKEN_RE = /<\/?(?:bos|eos|pad|unk|start_of_turn|end_of_turn|start_of_image|end_of_image)>|<\|[a-z_]{1,30}\|>/gi;
 
+/** A reply line the bot must never send (owner 2026-11-20). */
+export const UNSAFE_LINE_RE = /GE\s?\d{2}\s?[A-Z]{2}|\[(?:phone|email|iban)[^\]]*\]|მარაგშია/i;
+
 export function cleanBotReply(
   raw: string,
   schedule: BotSchedule = "sunday",
@@ -455,6 +530,9 @@ export function cleanBotReply(
   if (opts?.trimPriceList) text = trimPriceList(text);
   // Owner 2026-11-01: never the website-chat link in a DM — drop any line with it.
   text = text.split("\n").filter((l) => !/maika\.ge\/chat/i.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  // Owner 2026-11-20: bank details went out mangled („GE89BG[phone:***75]") and
+  // stock was „confirmed". Lines with an IBAN, a masked number or „მარაგშია" are dropped.
+  text = text.split("\n").filter((l) => !UNSAFE_LINE_RE.test(l)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
 
   // A sketch image is on its way (sketchFlow.ts): say so instead of the link.
   const link = hadDesign && opts?.designNotice

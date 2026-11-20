@@ -374,7 +374,7 @@ async function askBot(
         action: "faq-chat",
         // dm_orders: the DM order rules (socialChannel.ts) — only when the draft table is readable.
         // images: the customer's photos of this burst (data URLs), so the model sees them.
-        params: { messages: history, lang: "ka", session_id: conversationKey, channel, schedule, ...(opts?.orders ? { dm_orders: true } : {}), ...(opts?.images && opts.images.length > 0 ? { images: opts.images } : {}) },
+        params: { messages: history, lang: "ka", session_id: conversationKey, channel, schedule, ...(DM_INFO_ONLY ? { dm_info_only: true } : {}), ...(opts?.orders ? { dm_orders: true } : {}), ...(opts?.images && opts.images.length > 0 ? { images: opts.images } : {}) },
       }),
       signal: AbortSignal.timeout(60_000),
     });
@@ -395,6 +395,9 @@ async function askBot(
   }
 }
 
+/** INFO ONLY (add-only, owner 2026-11-20): the DM bot answers questions only. */
+const DM_INFO_ONLY = true;
+
 function autoReplyDeps(admin: Admin): AutoReplyDeps {
   const warn = (what: string, error: { code?: string; message?: string } | null) => {
     if (error) log("warn", `auto-reply: ${what} failed (${error.code ?? "?"}): ${error.message ?? ""}`);
@@ -407,6 +410,8 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     introOnFirstReply: true,
     // OFF PERIOD (add-only, 2026-11-16): a daytime operator reply no longer mutes the night bot.
     offPeriodTakeover: true,
+    // OPERATOR CLOSING (add-only, owner 2026-11-20): no continuing an operator's conversation after hours.
+    operatorClosing: true,
     loadSettings: async () => {
       const { data, error } = await admin.from("social_bot_settings").select("enabled, schedule, allow_keys").limit(1).maybeSingle();
       warn("settings read", error);
@@ -479,8 +484,9 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     askBot: (channel, key, history, schedule, opts) => askBot(channel, key, history, schedule, opts),
     send: graphSend,
     log,
-    sketch: sketchDeps(admin),
-    order: orderDeps(admin),
+    // INFO ONLY (owner 2026-11-20): no DM sketches and no DM orders — the bot only
+    // answers questions (gemini-proxy dm_info_only). Flip DM_INFO_ONLY to restore.
+    ...(DM_INFO_ONLY ? {} : { sketch: sketchDeps(admin), order: orderDeps(admin) }),
     receipt: receiptDeps(admin),
   };
 }
