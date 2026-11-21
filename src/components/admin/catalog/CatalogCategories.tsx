@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const RECOMMENDED = [
+  { slug: "new-year", label: "საახალწლო" },
   { slug: "georgian", label: "ქართული" },
   { slug: "sports",   label: "სპორტი" },
   { slug: "humor",    label: "იუმორი" },
