@@ -3,6 +3,7 @@
 // DB. The slug is what we store in catalog_designs.category; label_ka /
 // label_en are the user-facing strings.
 export const CATEGORIES = [
+  { slug: "new-year",       label_ka: "საახალწლო",       label_en: "New Year" },
   { slug: "georgian",       label_ka: "ქართული",         label_en: "Georgian" },
   { slug: "patriotic",      label_ka: "პატრიოტული",     label_en: "Patriotic" },
   { slug: "humor",          label_ka: "სასაცილო",        label_en: "Humor" },
