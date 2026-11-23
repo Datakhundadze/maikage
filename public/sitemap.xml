@@ -3442,6 +3442,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://maika.ge/gvari-da-nomeri</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://maika.ge/en</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
@@ -3513,6 +3518,11 @@
   </url>
   <url>
     <loc>https://maika.ge/en/ai-t-shirt-design</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://maika.ge/en/name-and-number-printing</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

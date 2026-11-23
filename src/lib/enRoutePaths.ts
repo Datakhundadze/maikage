@@ -17,6 +17,7 @@ export const EN_ROUTE_PATHS = [
   "/en/event-t-shirts",
   "/en/photo-t-shirt-printing",
   "/en/ai-t-shirt-design",
+  "/en/name-and-number-printing",
 ] as const;
 
 /**
@@ -40,4 +41,5 @@ export const EN_SERVICE_MENU: readonly { href: string; label: string }[] = [
   { href: "/en/event-t-shirts", label: "Event T-shirts & merch" },
   { href: "/en/photo-t-shirt-printing", label: "Photo T-shirt printing" },
   { href: "/en/ai-t-shirt-design", label: "AI T-shirt design" },
+  { href: "/en/name-and-number-printing", label: "Name & number printing" },
 ];

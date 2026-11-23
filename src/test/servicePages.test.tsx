@@ -797,13 +797,14 @@ const PHASE4: Record<string, { h1: string; stem: string; en: string; order: stri
   "/ghonisdziebis-maisurebi": { h1: "მაისურები ღონისძიებისთვის ლოგოთი", stem: "ღონისძიებ", en: "/en/event-t-shirts", order: "/corporate" },
   "/maisurze-potos-dabechdva": { h1: "მაისურზე ფოტოს დაბეჭდვა", stem: "ფოტო", en: "/en/photo-t-shirt-printing", order: "/t-shirt" },
   "/ai-dizaini": { h1: "AI დიზაინი მაისურზე", stem: "AI", en: "/en/ai-t-shirt-design", order: "/t-shirt" },
+  "/gvari-da-nomeri": { h1: "მაისურზე გვარის და ნომრის დაბეჭდვა", stem: "ნომ", en: "/en/name-and-number-printing", order: "/fekhburtis-formebi" },
 };
 
 describe("phase 4 industry pages", () => {
   const pages = SERVICE_PAGE_LIST.filter((p) => p.path in PHASE4);
 
   it("registered last, in order, with a menu link and an English twin each", () => {
-    expect(SERVICE_PAGE_LIST.slice(-4).map((p) => p.path)).toEqual(Object.keys(PHASE4));
+    expect(SERVICE_PAGE_LIST.slice(-5).map((p) => p.path)).toEqual(Object.keys(PHASE4));
     for (const [path, { en }] of Object.entries(PHASE4)) {
       expect(ALL_SERVICE_LINKS.some((l) => l.href === path), path).toBe(true);
       expect(EN_PATH_FOR_KA[path], path).toBe(en);
