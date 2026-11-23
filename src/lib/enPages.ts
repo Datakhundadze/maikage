@@ -468,8 +468,8 @@ export const EN_TEAM_KITS: EnPageCopy = {
   intro: "We make custom kits for football and basketball teams — amateur, school, corporate and kids' teams. A kit is a jersey and shorts in your team's colours, with the team logo and each player's name and number. Adult sizes and kids' sizes for any age.",
   heroLinks: CONTACT_LINKS,
   images: [
-    { src: "/products/sport/jersey-3.webp", alt: "Football jersey with a number — custom team kit", width: 832, height: 1248 },
-    { src: "/products/sport/jersey-2.webp", alt: "Basketball jersey in team colours with lettering", width: 832, height: 1248 },
+    { src: "/products/sport/team-kit-black-green.webp", alt: "Football kits sewn at maika.ge — shirt and shorts with Georgian names and numbers on the back", width: 832, height: 1040 },
+    { src: "/products/sport/team-kit-yellow.webp", alt: "Yellow team kit — shirt and shorts with the team logo", width: 832, height: 1109 },
   ],
   sections: [
     {
