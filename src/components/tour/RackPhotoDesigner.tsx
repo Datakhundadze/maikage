@@ -507,7 +507,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   const glass = "bg-black/40 text-white ring-1 ring-white/30 backdrop-blur-md hover:bg-black/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400";
 
   return (
-    <div className="flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+    // never wider than the screen: a long hint or the three buttons used to widen
+    // this column past an iPhone's width, and everything in it slid off to the right
+    <div className="flex w-full max-w-[100vw] flex-col items-center overflow-hidden px-2" onClick={(e) => e.stopPropagation()}>
       {film && (
         <PrintAnimation
           {...film}
@@ -694,7 +696,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         </div>
       </div>
 
-      <p className="mt-3 text-center text-xs text-white/70">
+      <p className="mt-3 max-w-full text-balance px-2 text-center text-xs text-white/70">
         {orderFailed
           ? "ფოტო ძალიან დიდია გადასაცემად — დახურე და დააჭირე „არჩევა“, იქ ატვირთე"
           : printed
@@ -730,7 +732,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           ))}
         </div>
       )}
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex max-w-full flex-wrap items-center justify-center gap-2">
         <button
           type="button"
           disabled={!has}
@@ -748,7 +750,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           <button
             type="button"
             onClick={() => order("order")}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-6 text-base font-bold text-black hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-5 text-base font-bold text-black hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             შეკვეთა <ArrowRight className="h-5 w-5" aria-hidden />
           </button>
@@ -759,7 +761,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
             type="button"
             onClick={() => order("tryOn")}
             aria-label="ვირტუალური გასახდელი"
-            className="inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/25 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-white/10 px-3.5 text-sm font-semibold text-white ring-1 ring-white/25 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
             <Shirt className="h-5 w-5" aria-hidden /> გასახდელი
           </button>

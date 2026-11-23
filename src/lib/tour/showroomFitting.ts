@@ -53,4 +53,7 @@ export function takeRackDesign<T>(brand: string): T | null {
 }
 
 /** Where the walk stands to face the curtain (read off stills/1188.webp). */
-export const FITTING_STOP = { t: 118.8, yawDeg: -110, pitchDeg: -6 } as const;
+// 2026-11-23, from David's phone recording: at pitch −6 a tall screen showed the
+// jerseys on the wall and only the curtain's top edge. Lower (not below ~−20: the
+// floor under the camera is a soft patch), so the curtain is in the middle.
+export const FITTING_STOP = { t: 118.8, yawDeg: -108, pitchDeg: -16 } as const;

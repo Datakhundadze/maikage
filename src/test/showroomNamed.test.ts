@@ -28,13 +28,13 @@ describe("what the customer named (showroom chat)", () => {
   });
   it("the street clip is cut just inside the door and the walk starts under it", () => {
     const V = readFileSync("src/components/tour/VideoWalk.tsx", "utf8");
-    expect(V).toContain("if (t >= INTRO_CUT_AT) endIntro();");
+    expect(V).toContain("if (t >= times.cutAt) endIntro();");
     expect(V).toContain('(intro !== "done" && !introWalk)');
   });
   it("the clip starts after the parked car has left the picture", () => {
     const V = readFileSync("src/components/tour/VideoWalk.tsx", "utf8");
-    expect(V).toContain("const INTRO_START = { portrait: 3.6, landscape: 4.3 };");
-    expect(V).toContain("onLoadedMetadata");
+    expect(V).toContain("const INTRO_TIMES = { portrait: { walkAt: 1.4, cutAt: 3.7 }, landscape: { walkAt: 0.7, cutAt: 3.0 } } as const;");
+    expect(V).not.toContain(".mp4#t=");
   });
   it("a showroom order's form is glass over a showroom still — look only, OrderDialog untouched", () => {
     const P = readFileSync("src/pages/SimplePage.tsx", "utf8");
@@ -124,11 +124,24 @@ describe("the showroom's fitting room (David 2026-11-23: go to the real one, the
   });
   it("the walk stands at the NIKE end facing the curtain; the dialog is the site's own, in the showroom", () => {
     expect(FITTING_STOP.t).toBe(118.8);
-    expect(FITTING_STOP.yawDeg).toBe(-110);
+    expect(FITTING_STOP.yawDeg).toBe(-108);
+    expect(FITTING_STOP.pitchDeg).toBe(-16);
     const V = readFileSync("src/components/tour/VideoWalk.tsx", "utf8");
     expect(V).toContain('const TryOnModal = lazyWithRetry(() => import("@/components/TryOnModal"));');
     expect(V).toContain("if (d.fitting) setFittingOpen(true);");
     const R = readFileSync("src/components/tour/RackSheet.tsx", "utf8");
     expect(R).toContain("if (!showroomDesignFits(brand) && !hasRackDesign(brand)) return;");
+  });
+});
+
+describe("from David's phone recording, 2026-11-23", () => {
+  it("the try-on photo is redrawn upright before it is sent (EXIF rotation)", () => {
+    const T = readFileSync("src/components/TryOnModal.tsx", "utf8");
+    expect(T).toContain("void downscaleDataUrl(raw, 1600, 0.9).then((upright) => setPersonImage(upright));");
+  });
+  it("the designer column cannot be wider than the screen; its buttons wrap", () => {
+    const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
+    expect(D).toContain('className="flex w-full max-w-[100vw] flex-col items-center overflow-hidden px-2"');
+    expect(D).toContain('className="mt-3 flex max-w-full flex-wrap items-center justify-center gap-2"');
   });
 });

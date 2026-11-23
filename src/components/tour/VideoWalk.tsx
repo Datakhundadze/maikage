@@ -93,9 +93,11 @@ interface WalkDest {
  */
 // The street clip (see "Coming in from the street" below): where it starts (after the
 // parked car has left the picture), when the walk starts under it, where it is cut.
-const INTRO_START = { portrait: 3.6, landscape: 4.3 };
-const INTRO_WALK_AT = 5.0;
-const INTRO_CUT_AT = 7.3;
+// 2026-11-23: the files themselves now BEGIN after the car (cut, not seeked). On
+// iPhone the seek landed a frame late and the car showed for an instant
+// (David's screen recording); a file that starts there cannot show it.
+// Times below are seconds of each file: when the walk starts under it, where it ends.
+const INTRO_TIMES = { portrait: { walkAt: 1.4, cutAt: 3.7 }, landscape: { walkAt: 0.7, cutAt: 3.0 } } as const;
 const OPERATOR_STOP = { t: 8, yawDeg: 1.5, pitchDeg: -7 };
 const SHOW_FLOOR_ARROWS = false;
 /** Brand names over the racks (see rackLabels.ts). */
@@ -609,7 +611,7 @@ export default function VideoWalk() {
       const tall = window.innerHeight > window.innerWidth;
       // "#t=" makes the browser open the file at that second: without it the
       // very first frame (the car) flashed before the seek landed (seen live 17.11)
-      setIntroSrc(`/tour/intro/${tall ? "portrait" : "landscape"}.mp4#t=${tall ? INTRO_START.portrait : INTRO_START.landscape}`);
+      setIntroSrc(`/tour/intro/${tall ? "portrait" : "landscape"}.mp4`);
       setIntro("playing");
     }
     setEntered(true);
@@ -2102,17 +2104,13 @@ export default function VideoWalk() {
             preload="auto"
             onEnded={endIntro}
             onError={endIntro}
-            onLoadedMetadata={(e) => {
-              const from = introSrc.includes("portrait") ? INTRO_START.portrait : INTRO_START.landscape;
-              if (e.currentTarget.currentTime < from - 0.1) e.currentTarget.currentTime = from;
-            }}
             onPlaying={() => setIntroShown(true)}
-            onSeeked={() => setIntroShown(true)}
             style={{ opacity: introShown ? 1 : 0 }}
             onTimeUpdate={(e) => {
               const t = e.currentTarget.currentTime;
-              if (t >= INTRO_WALK_AT) setIntroWalk(true);
-              if (t >= INTRO_CUT_AT) endIntro();
+              const times = introSrc.includes("portrait") ? INTRO_TIMES.portrait : INTRO_TIMES.landscape;
+              if (t >= times.walkAt) setIntroWalk(true);
+              if (t >= times.cutAt) endIntro();
             }}
             className="h-full w-full object-cover"
             aria-label="შესვლა maika.ge შოურუმში ქუჩიდან"

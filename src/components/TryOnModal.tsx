@@ -87,8 +87,14 @@ export default function TryOnModal({ open, onClose, designImage, garmentImage, o
     }
     const reader = new FileReader();
     reader.onload = (e) => {
-      setPersonImage(e.target?.result as string);
+      const raw = e.target?.result as string;
       setResultImage(null);
+      // A phone photo is stored sideways with an EXIF "rotate" note. The browser
+      // shows it upright, but the bytes sent to the model are the sideways ones,
+      // and the try-on came back lying on its side (David's recording,
+      // 2026-11-23). Redrawing it bakes the rotation into the pixels (and keeps
+      // the upload small). downscaleDataUrl never throws; it returns `raw` on failure.
+      void downscaleDataUrl(raw, 1600, 0.9).then((upright) => setPersonImage(upright));
     };
     reader.readAsDataURL(file);
   };
