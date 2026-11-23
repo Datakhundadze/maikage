@@ -325,3 +325,13 @@ html.maika-fitting-glass [role="dialog"] {
 html.maika-fitting-glass [role="dialog"] img {
   max-height: 52dvh;
 }
+
+/* iOS zooms the page in when a focused field's text is under 16 px, and stays
+   zoomed: in the showroom that pushed the designer and the dialogs off the
+   screen (David's iPhone recordings, 2026-11-23). */
+@media (pointer: coarse) {
+  .maika-chat-panel input,
+  .maika-chat-panel textarea {
+    font-size: 16px;
+  }
+}

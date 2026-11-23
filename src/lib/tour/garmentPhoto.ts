@@ -125,6 +125,30 @@ export interface GarmentScratch {
 }
 export const garmentScratch = (): GarmentScratch => ({ a: canvas(), b: canvas(), c: canvas() });
 
+// A phone photo is 3000–4000 px; scaling that down on every frame of a drag is
+// what made the designer stutter. The garment canvas is 1200×1500, so a copy of
+// at most 1200 px is drawn instead. The ORIGINAL stays in the design: the order
+// and the print are made from it, not from this copy.
+const previews = new WeakMap<HTMLImageElement, HTMLCanvasElement | HTMLImageElement>();
+function previewOf(img: HTMLImageElement): HTMLCanvasElement | HTMLImageElement {
+  const hit = previews.get(img);
+  if (hit) return hit;
+  const long = Math.max(img.naturalWidth, img.naturalHeight);
+  let out: HTMLCanvasElement | HTMLImageElement = img;
+  if (long > 1200) {
+    const k = 1200 / long;
+    const c = canvas(Math.max(1, Math.round(img.naturalWidth * k)), Math.max(1, Math.round(img.naturalHeight * k)));
+    const g = c.getContext("2d");
+    if (g) {
+      g.imageSmoothingQuality = "high";
+      g.drawImage(img, 0, 0, c.width, c.height);
+      out = c;
+    }
+  }
+  previews.set(img, out);
+  return out;
+}
+
 /**
  * The photo with the garment in `hex` and the design on it. `recolor` false =
  * the photo's own (white) garment. Leaves the recoloured garment in s.a and
@@ -160,7 +184,7 @@ export function drawGarment(g: CanvasRenderingContext2D, L: SideLayers, A: Rect,
   const cy = A.y + d.y * A.h;
   const w = A.w * d.scale;
   const ih = d.img ? (w * d.img.naturalHeight) / d.img.naturalWidth : 0;
-  if (d.img) b.drawImage(d.img, cx - w / 2, cy - ih / 2, w, ih);
+  if (d.img) b.drawImage(previewOf(d.img), cx - w / 2, cy - ih / 2, w, ih);
   if (d.text) {
     const size = textSize(d, A);
     b.font = `700 ${size}px ${d.font}`;

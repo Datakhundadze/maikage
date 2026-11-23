@@ -157,3 +157,19 @@ describe("2026-11-23, second pass over David's recording", () => {
     expect(C).toContain("width: min(32rem, calc(100dvw - 24px));");
   });
 });
+
+describe("2026-11-23, David's second recording (Chrome on iPhone)", () => {
+  it("no field in the showroom is under 16 px (iOS zooms the page in and stays zoomed)", () => {
+    const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
+    expect(D).toContain("px-3 text-base text-white ring-1 ring-white/25 placeholder:text-white/50");
+    const C = readFileSync("src/index.css", "utf8");
+    expect(C).toContain(".maika-chat-panel input,");
+  });
+  it("the designer draws once per frame, from a light copy of the photo", () => {
+    const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
+    expect(D).toContain("if (!drawRaf.current) drawRaf.current = requestAnimationFrame(() => drawNow.current());");
+    expect(D.match(/flushDraw\(\);/g)?.length).toBe(2);
+    const G = readFileSync("src/lib/tour/garmentPhoto.ts", "utf8");
+    expect(G).toContain("b.drawImage(previewOf(d.img), cx - w / 2, cy - ih / 2, w, ih);");
+  });
+});

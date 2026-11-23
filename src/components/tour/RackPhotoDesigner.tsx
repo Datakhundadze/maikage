@@ -151,12 +151,29 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     };
   }, [garment, product, brand, color, side]);
 
+  // One drawing per screen frame. A finger sends moves faster than the screen
+  // refreshes, and each drawing is several full-size layers: drawn on every
+  // move, a photo plus lettering stuttered badly on iPhone (David 2026-11-23).
+  const drawRaf = useRef(0);
+  const drawNow = useRef<() => void>(() => {});
   useEffect(() => {
     const g = ref.current?.getContext("2d");
     if (!site || !g || !scratch.current) return;
-    drawGarment(g, site.layers, site.area, hexOf(color), false, design, scratch.current);
+    const sc = scratch.current;
+    drawNow.current = () => {
+      drawRaf.current = 0;
+      drawGarment(g, site.layers, site.area, hexOf(color), false, design, sc);
+    };
+    if (!drawRaf.current) drawRaf.current = requestAnimationFrame(() => drawNow.current());
     // (the colour only picks the automatic text colour here: the garment is already in it)
   }, [site, color, design, fontTick]);
+  useEffect(() => () => cancelAnimationFrame(drawRaf.current), []);
+  /** The canvas as of this instant (a drawing still waiting for its frame is done first). */
+  const flushDraw = () => {
+    if (!drawRaf.current) return;
+    cancelAnimationFrame(drawRaf.current);
+    drawNow.current();
+  };
 
   // a web font is only there once it has been asked for: draw again when it arrives
   useEffect(() => {
@@ -420,6 +437,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
 
   const startPrint = () => {
     if (!site || !scratch.current) return;
+    flushDraw();
     const f = garmentFilm(site.layers, site.box, false, scratch.current);
     if (f) setFilm({ ...f, folded: garment.kind ?? "tee" });
     // the order form's backdrop, so it is there the instant the form opens
@@ -481,6 +499,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       // printed garment for the dialog, the order for its "order" button, and
       // this designer's state for the way back
       if (!site || !scratch.current) return;
+      flushDraw();
       const f = garmentFilm(site.layers, site.box, false, scratch.current);
       if (!f) return;
       const here = sideSeed(side, design, anyImg ? 1600 : 0);
@@ -612,7 +631,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
                   }}
                   placeholder="დაწერე ტექსტი"
                   aria-label="წარწერა"
-                  className="h-9 min-w-0 flex-1 rounded-full bg-black/50 px-3 text-sm text-white ring-1 ring-white/25 placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  // 16 px: below that iOS zooms the page in when the field is focused and leaves it
+                  // zoomed — the designer then no longer fits the screen (David's recordings, 2026-11-23)
+                  className="h-9 min-w-0 flex-1 rounded-full bg-black/50 px-3 text-base text-white ring-1 ring-white/25 placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-amber-400"
                   style={{ fontFamily: design.font }}
                 />
                 <button type="button" onClick={() => setTextOpen(false)} aria-label="წარწერის დახურვა" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25">
