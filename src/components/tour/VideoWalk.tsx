@@ -2120,7 +2120,8 @@ export default function VideoWalk() {
           <button
             type="button"
             onClick={endIntro}
-            className="absolute bottom-6 right-4 rounded-full bg-black/55 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            // bottom centre: the chat button sits in the bottom-right corner and covered it on iPhone (David 2026-11-23)
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
             გამოტოვება
           </button>

@@ -53,8 +53,12 @@ export const SHOWROOM_RACKS: readonly ShowroomRack[] = [
   one("sols", "Sol's", "T-Shirt", "Sol's", 253.6, -110),
   one("th", "TH", "T-Shirt", "TH", 224.6, 128),
   // the window line, from the entrance door to the maika.ge sign
-  one("gildan-hoodie", "GILDAN ჰუდი", "Hoodie", "GILDAN Hoodie", 102.0, 154),
-  one("washed-hoodie", "Washed ჰუდი", "Hoodie", "Premium Washed Hoodie", 245.6, 159),
+  // 2026-11-23 (David: "at the washed / GILDAN hoodie it stands a bit far; and
+  // the GILDAN hoodie also hangs beside the skeleton — we can send it there"):
+  // the GILDAN hoodie is now the rail along the counter beside the skeleton
+  // (an arm's length away); the washed hoodie is a metre and a half closer.
+  one("gildan-hoodie", "GILDAN ჰუდი", "Hoodie", "GILDAN Hoodie", 239.8, -12, -14),
+  one("washed-hoodie", "Washed ჰუდი", "Hoodie", "Premium Washed Hoodie", 105.2, 126),
   one("washed-tee", "Washed მაისური", "T-Shirt", "JEL T-Shirt", 102.2, 166),
   one("oversize", "Oversize", "T-Shirt", "Oversize", 103.2, 179),
   one("giordano", "GIORDANO", "T-Shirt", "GIORDANO", 173.0, -163),
