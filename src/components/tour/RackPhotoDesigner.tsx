@@ -8,7 +8,9 @@ import { drawGarment, garmentFilm, garmentScratch, H, loadImg, lum, textSize, W,
 import { photoLayerCoords, textLayerCoords } from "@/lib/tour/designHandoff";
 import { hasBack, loadSiteSide, type RackGarment, type SiteSide } from "@/lib/tour/siteGarment";
 import { askShowroomLogin, getShowroomPhoto, setShowroomPhoto, SHOWROOM_DESIGN_EVENT, takeShowroomDesign } from "@/lib/tour/showroomChatDesign";
-import { callGemini, editImage, RateLimitError } from "@/lib/generation";
+import { callGemini, editImage, editImageCutout, isolateDesign, RateLimitError } from "@/lib/generation";
+import { flattenOnWhite, keyDesignCutout } from "@/lib/designCutout";
+import { chromaKeyGreenDesign } from "@/lib/chromaKey";
 import { transparentShare } from "@/lib/aiModelSwitch";
 import { announceSketch } from "@/lib/constructorBridge";
 import { extractPrintFromPhoto } from "@/lib/extractPrint";
@@ -335,7 +337,19 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           }
           if (d.editPrompt?.trim()) {
             paid();
-            src = await editImage(src, d.editPrompt.trim());
+            if ((await transparentShare(src)) >= 0.02) {
+              // A cut-out has no background to send: the plain edit call got the
+              // transparent picture and painted a grey CHECKERBOARD where it was
+              // see-through — it went on the tee and into the print film (David's
+              // recording, 2026-11-23). So: on white in, the site's own
+              // "edit, result on green" call, and the green keyed out again.
+              const green = await editImageCutout(await flattenOnWhite(src), d.editPrompt.trim());
+              const keyed = await keyDesignCutout(green, { key: chromaKeyGreenDesign, isolate: isolateDesign });
+              if (!keyed.image) throw new Error("edit cut-out failed");
+              src = keyed.image;
+            } else {
+              src = await editImage(src, d.editPrompt.trim());
+            }
           }
         } finally {
           setAiBusy(false);
@@ -507,12 +521,18 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       const last: ConstructorSeed | null = here ? { ...here, order: true, ...(size ? { size } : {}) } : null;
       const chain = last ? (first ? { ...first, then: last } : last) : null;
       keepRackDesign(brand, { designs, color, side, size } satisfies KeptDesign);
+      const plain = (d: GarmentDesign) => {
+        const { img, ...rest } = d;
+        return { ...rest, imgSrc: img ? photoDataUrl(img, 1600) : null };
+      };
       askShowroomFitting({
         rackId: rackId ?? "",
         brand,
         designImage: f.designSrc,
         garmentImage: f.garmentPrintedSrc,
         orderSeed: chain ? { ...chain, product, subProduct: brand } : null,
+        // for a sign-in that reloads the page while the fitting room is open
+        keptPlain: { color, side, size, designs: { front: plain(designs.front), back: plain(designs.back) } },
       });
       return;
     }

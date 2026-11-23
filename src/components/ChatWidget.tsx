@@ -757,7 +757,9 @@ export default function ChatWidget() {
           sessionId={sessionIdRef.current}
           lang={lang}
           assistantReplies={countAssistantReplies(messages)}
-          visible={!loading}
+          // …and while a sketch is still being made: it came up in the middle of
+          // the wait and pushed the sketch out of view (David's recording, 2026-11-23)
+          visible={!loading && !messages.some((m) => m.sketchPending)}
           page={location.pathname}
         />
       </div>

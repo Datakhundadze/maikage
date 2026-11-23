@@ -51,7 +51,7 @@ import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
 import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
 import { peekShowroomDesign, SHOWROOM_DESIGN_EVENT, SHOWROOM_LOGIN_EVENT } from "@/lib/tour/showroomChatDesign";
-import { FITTING_STOP, SHOWROOM_FITTING_EVENT, takeShowroomFitting, type ShowroomFitting } from "@/lib/tour/showroomFitting";
+import { dropFittingStash, FITTING_STOP, readFittingStash, restoreKeptDesign, SHOWROOM_FITTING_EVENT, stashFitting, takeShowroomFitting, type ShowroomFitting } from "@/lib/tour/showroomFitting";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 
@@ -407,6 +407,8 @@ export default function VideoWalk() {
   // music and the walk to the operators (David 2026-11-09)
   const [entered, setEntered] = useState(false);
   const pendingEnterRef = useRef(false);
+  /** This page load carried on from where the visitor stood (readResume). */
+  const resumedRef = useRef(false);
   const [openRack, setOpenRack] = useState<ShowroomRack | null>(null);
   useEffect(() => {
     openRackRef.current = openRack;
@@ -440,8 +442,19 @@ export default function VideoWalk() {
   // to the shop's red curtain; there the site's own fitting-room dialog opens
   // with that garment. Closing it walks back to the rack, where the design is
   // waiting (showroomFitting.ts); its "order" button opens the order form.
-  const [fitting, setFitting] = useState<ShowroomFitting | null>(null);
+  // A request left by a sign-in that reloaded the page (showroomFitting.ts):
+  // the visit carries on at the curtain instead of starting over.
+  const [fitting, setFitting] = useState<ShowroomFitting | null>(() => readFittingStash());
   const [fittingOpen, setFittingOpen] = useState(false);
+  const fittingRestored = useRef(!!fitting);
+  useEffect(() => {
+    if (fittingRestored.current && fitting) void restoreKeptDesign(fitting);
+    // once, for the stashed request this page loaded with
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (fittingOpen && fitting) stashFitting(fitting);
+  }, [fittingOpen, fitting]);
   useEffect(() => {
     const on = () => {
       const f = takeShowroomFitting();
@@ -462,6 +475,7 @@ export default function VideoWalk() {
     const f = fitting;
     setFittingOpen(false);
     setFitting(null);
+    dropFittingStash();
     if (!f) return;
     if (order && f.orderSeed && writeConstructorSeed(f.orderSeed)) {
       const w = window.open(CONSTRUCTOR_URL, "_blank");
@@ -627,6 +641,15 @@ export default function VideoWalk() {
   useEffect(() => {
     if (status !== "ready" || !pendingEnterRef.current || (intro !== "done" && !introWalk)) return;
     pendingEnterRef.current = false;
+    // Back in the middle of a fitting (sign-in): to the curtain. Back anywhere
+    // else in the shop (resumeRef): stay there — the walk to the desk from the
+    // far end was a string of odd close-ups (David's recording, 2026-11-23).
+    if (fittingRestored.current) {
+      fittingRestored.current = false;
+      const id = window.setTimeout(() => goRef.current(FITTING_DEST), 250);
+      return () => window.clearTimeout(id);
+    }
+    if (resumedRef.current) return;
     const id = window.setTimeout(() => goRef.current(dests[0]), 250);
     return () => window.clearTimeout(id);
   }, [status, entered, intro, introWalk]);
@@ -1643,6 +1666,7 @@ export default function VideoWalk() {
         // where the visitor was
         const saved = readResume();
         if (saved && Math.abs(saved.t - track.start) > 1) {
+          resumedRef.current = true;
           yawDeg = saved.yawDeg;
           void jumpTo(saved.t, saved.dir);
         }

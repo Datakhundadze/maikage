@@ -173,3 +173,38 @@ describe("2026-11-23, David's second recording (Chrome on iPhone)", () => {
     expect(G).toContain("b.drawImage(previewOf(d.img), cx - w / 2, cy - ih / 2, w, ih);");
   });
 });
+
+import { dropFittingStash, readFittingStash, restoreKeptDesign, stashFitting } from "@/lib/tour/showroomFitting";
+describe("2026-11-23 late: David's two recordings (chat edit, sign-in from the fitting room)", () => {
+  it("a fitting request survives a page load, and is gone once dropped", () => {
+    dropFittingStash();
+    expect(readFittingStash()).toBeNull();
+    stashFitting({ rackId: "oversize", brand: "Oversize", designImage: "data:d", garmentImage: "data:g", orderSeed: null });
+    expect(readFittingStash()?.rackId).toBe("oversize");
+    dropFittingStash();
+    expect(readFittingStash()).toBeNull();
+  });
+  it("the rack gets its design back from the stashed request", async () => {
+    await restoreKeptDesign({
+      rackId: "oversize", brand: "Oversize", designImage: "d", garmentImage: "g", orderSeed: null,
+      keptPlain: { color: "White", side: "front", size: "L", designs: { front: { imgSrc: null, text: "საქართველო", font: "x", textColor: null, x: 0.5, y: 0.4, scale: 0.6 }, back: { imgSrc: null, text: "", font: "x", textColor: null, x: 0.5, y: 0.4, scale: 0.6 } } },
+    });
+    expect(hasRackDesign("Oversize")).toBe(true);
+    const k = takeRackDesign<{ size: string; designs: { front: { text: string; img: unknown } } }>("Oversize");
+    expect(k?.size).toBe("L");
+    expect(k?.designs.front.text).toBe("საქართველო");
+    expect(k?.designs.front.img).toBeNull();
+  });
+  it("an edit of a cut-out goes on white and comes back keyed, never through the plain edit call", () => {
+    const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
+    expect(D).toContain("const green = await editImageCutout(await flattenOnWhite(src), d.editPrompt.trim());");
+    expect(D).toContain("const keyed = await keyDesignCutout(green, { key: chromaKeyGreenDesign, isolate: isolateDesign });");
+  });
+  it("the chat's rating row waits for the sketch; a resumed visit does not walk to the desk", () => {
+    const W = readFileSync("src/components/ChatWidget.tsx", "utf8");
+    expect(W).toContain("visible={!loading && !messages.some((m) => m.sketchPending)}");
+    const V = readFileSync("src/components/tour/VideoWalk.tsx", "utf8");
+    expect(V).toContain("if (resumedRef.current) return;");
+    expect(V).toContain("goRef.current(FITTING_DEST), 250);");
+  });
+});

@@ -96,7 +96,9 @@ describe("everything stays in the showroom (2026-11-16)", () => {
     const at = DESIGNER.indexOf("const paid = () => {");
     const body = DESIGNER.slice(at, DESIGNER.indexOf("img = await loadImg(src);", at));
     expect(body.match(/paid\(\);/g)?.length).toBe(3); // extract, background removal, edit
-    expect(body.indexOf("paid();\n            src = await editImage(")).toBeGreaterThan(0);
+    // the edit is paid once, then takes the cut-out path or the plain one (2026-11-23)
+    expect(body.indexOf("paid();\n            if ((await transparentShare(src)) >= 0.02) {")).toBeGreaterThan(0);
+    expect(body).toContain("src = await editImage(src, d.editPrompt.trim());");
     expect(body).toContain('if ((await transparentShare(cutout)) < 0.02) throw new Error("nothing removed");');
   });
   it("the garment photo store", async () => {
