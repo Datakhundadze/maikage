@@ -156,6 +156,7 @@ export const EN_HUB: EnPageCopy = {
         { href: "/en/restaurant-cafe-uniforms", label: "Restaurant & café uniforms" },
         { href: "/en/event-t-shirts", label: "Event T-shirts & merch" },
         { href: "/en/photo-t-shirt-printing", label: "Photo T-shirt printing" },
+        { href: "/en/ai-t-shirt-design", label: "AI T-shirt design" },
       ],
     },
     {
@@ -958,6 +959,72 @@ export const EN_PHOTO: EnPageCopy = {
   serviceType: "Photo printing on T-shirts",
 };
 
+// ── /en/ai-t-shirt-design ↔ /ai-dizaini ─────────────────────────────────────
+
+export const EN_AI_DESIGN: EnPageCopy = {
+  slug: "ai-t-shirt-design",
+  path: "/en/ai-t-shirt-design",
+  kaPath: "/ai-dizaini",
+  seo: {
+    title: "AI T-shirt Design — Create Free, Print in Tbilisi | maika.ge",
+    description: `Design a T-shirt with AI for free: describe an idea or upload a photo, see it on the T-shirt and print even a single piece in Tbilisi. Ready in ${LEAD_TIME_EN}.`,
+  },
+  name: "AI T-shirt design",
+  h1: "AI T-shirt design in Tbilisi",
+  intro: `On maika.ge an AI designer creates your design for free, right on the site. Describe what you want or upload a photo, and the AI makes the picture. Then put it on a T-shirt, hoodie, mug or phone case in one click, see on screen how it looks, and order even a single piece. Orders are ready in ${LEAD_TIME_EN}. We have been sewing and printing in Tbilisi for 15 years.`,
+  heroLinks: [DESIGNER, CONTACT_LINKS[0]],
+  images: [
+    { src: "/showroom/tee-white-front.webp", alt: "White T-shirt ready for your AI design — maika.ge", width: 646, height: 948 },
+  ],
+  sections: [
+    {
+      h2: "How AI design works",
+      steps: [
+        "Open the designer and describe your idea in the AI field, in English or Georgian. For example: \"a cat astronaut, the moon and stars\".",
+        "Optionally pick a style and a background: with a transparent background only the image prints, with a background the whole picture does.",
+        "The AI creates the design. Don't like it? Create it again or change the idea.",
+        "Put it on the T-shirt, pick the colour and size, and see the result on screen.",
+        "Pay online, or come to the showroom and order in person.",
+      ],
+      links: [DESIGNER],
+    },
+    {
+      h2: "Styles",
+      body: "You can give the AI a style: realistic, animated, illustration, oil art, anime, comics, line art, graphic or 3D cartoon. The same idea looks completely different in each style, so try a few.",
+    },
+    {
+      h2: "Your photo, reworked by AI",
+      body: "Upload a photo and the AI turns it into a 3D cartoon character, anime, watercolour, oil painting, pop art, pencil sketch or comic, or removes the background. You can also type your own instruction, such as \"add a hat\". It turns an ordinary photo into a one-of-a-kind gift.",
+      links: [{ href: "/en/photo-t-shirt-printing", label: "Photo T-shirt printing" }],
+    },
+    {
+      h2: "Ideas",
+      bullets: [
+        { term: "Pets", text: "your dog or cat as a cartoon hero." },
+        { term: "Gifts", text: "a loved one's photo as a 3D cartoon for a birthday or New Year." },
+        { term: "Friends", text: "designs made in one style for matching T-shirts." },
+        { term: "Teams", text: "your own emblem or illustration that nobody else has." },
+      ],
+    },
+    { h2: "Text on the design", body: "Want text in the AI design? Put it in quotes in your description. For exact Georgian lettering, add the text separately in the designer so the letters print exactly right." },
+    {
+      h2: "How it is printed",
+      body: "On T-shirts, hoodies and tote bags we print AI designs with DTF: there is no limit on colours, so colourful illustrations and fine detail come out well. Standard print size A4, maximum A3.",
+      links: [{ href: "/en/dtf-printing", label: "DTF printing" }],
+    },
+    VISIT,
+  ],
+  faqHeading: "AI design — FAQ",
+  faq: [
+    { q: "Is AI design free?", a: "Yes, creating the design is free — you only pay for the item you order." },
+    { q: "Will the maika.ge mark be printed?", a: "No. The on-screen preview carries a maika.ge mark; the T-shirt is printed with the clean design." },
+    { q: "Can I order just one T-shirt?", a: "Yes — we print an AI design on a single piece too." },
+    { q: "How long does it take?", a: `${LEAD_TIME_EN}. Need it for a specific day? Message us.` },
+  ],
+  cta: { h2: "Create a design with AI", body: "Describe an idea or upload a photo — you see on screen how it looks on the T-shirt.", links: [DESIGNER, ...CONTACT_LINKS] },
+  serviceType: "AI T-shirt design and printing",
+};
+
 // ── Lists, links, JSON-LD ───────────────────────────────────────────────────
 
 /** Every English page, hub first. */
@@ -976,6 +1043,7 @@ export const EN_PAGE_LIST: readonly EnPageCopy[] = [
   EN_RESTAURANT,
   EN_EVENTS,
   EN_PHOTO,
+  EN_AI_DESIGN,
 ];
 
 /** path → page, for the router. */
