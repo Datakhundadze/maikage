@@ -60,4 +60,10 @@ describe("what the customer named (showroom chat)", () => {
     expect(K).toContain("# v2.9 (2026-11-17");
     expect(K).toContain("NEVER re-emit the earlier maika-generate here");
   });
+  it("Polo: the print area is at the heart, beside the buttons (David 2026-11-23)", () => {
+    const G = readFileSync("src/lib/tour/siteGarment.ts", "utf8");
+    const polo = G.split("\n").find((l) => l.trim().startsWith("polo:")) ?? "";
+    expect(polo).toContain("frontArea: [0.56, 0.21, 0.22, 0.19]");
+    expect(polo).toContain('placement: "left-chest"');
+  });
 });

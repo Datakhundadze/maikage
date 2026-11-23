@@ -28,7 +28,7 @@ export interface RackGarment {
    * Front print area as fractions of the hung photo (x, y, w, h), instead of the
    * constructor's zone, and the placement handed to the constructor with it.
    * Zip hoodies: at the heart, beside the zip — a print cannot cross the zip
-   * (David 2026-11-12).
+   * (David 2026-11-12). Polo: beside the buttons (David 2026-11-23).
    */
   frontArea?: readonly [number, number, number, number];
   placement?: "left-chest";
@@ -42,7 +42,9 @@ export const RACK_GARMENTS: Record<string, RackGarment> = {
   gildan: { bg: "/tour/garments/gildan-bg.webp", box: { x: 112, y: 363, w: 971, h: 1039 }, start: "Black" },
   "gildan-kids": { bg: "/tour/garments/gildan-kids-bg.webp", box: { x: 147, y: 477, w: 865, h: 815 } },
   hummer: { bg: "/tour/garments/hummer-bg.webp", box: { x: 136, y: 408, w: 926, h: 1014 } },
-  polo: { bg: "/tour/garments/polo-bg.webp", box: { x: 104, y: 361, w: 978, h: 1061 }, start: "Dark Navy" },
+  // Polo: at the heart, beside the buttons — a big print in the middle would run
+  // over the placket (David 2026-11-23).
+  polo: { bg: "/tour/garments/polo-bg.webp", box: { x: 104, y: 361, w: 978, h: 1061 }, start: "Dark Navy", frontArea: [0.56, 0.21, 0.22, 0.19], placement: "left-chest" },
   sols: { bg: "/tour/garments/sols-bg.webp", box: { x: 149, y: 329, w: 883, h: 1053 }, start: "Black" },
   th: { bg: "/tour/garments/th-bg.webp", box: { x: 114, y: 398, w: 1028, h: 1044 }, start: "Black" },
   "washed-hoodie": { bg: "/tour/garments/washed-hoodie-bg.webp", box: { x: 201, y: 256, w: 781, h: 961 }, kind: "hoodie", start: "Gray" },
