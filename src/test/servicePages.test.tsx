@@ -101,7 +101,7 @@ const COPY_FILES = ["src/lib/serviceCopy.ts", "src/lib/serviceRouteSlugs.ts", "s
 // brand's own domain and the partner/social names. Anything else Latin in a
 // Georgian text is most likely transliterated Georgian.
 const LATIN_ALLOWED = new Set([
-  "DTF", "FLEX", "AI", "A3", "A4", "PNG", "maika", "Maika", "ge", "Nike", "oversize", "WhatsApp", "Facebook",
+  "DTF", "FLEX", "AI", "A3", "A4", "D" /* 3D */, "PNG", "maika", "Maika", "ge", "Nike", "oversize", "WhatsApp", "Facebook",
   // phone-case models (owner's list for /korporatiuli-sachukrebi)
   "iPhone", "Xiaomi", "Samsung",
 ]);
@@ -295,7 +295,7 @@ describe("service pages — language and brands", () => {
     for (const f of COPY_FILES) expect(source(f), f).not.toMatch(FORBIDDEN_BRANDS);
     for (const t of texts) {
       expect(t).not.toMatch(FORBIDDEN_BRANDS);
-      expect(t).not.toMatch(/PSG|Barça|Barca|Real Madrid|Barcelona|ბარსა|რეალი/i);
+      expect(t).not.toMatch(/PSG|Barça|Barca|Real Madrid|Barcelona|ბარსა|რეალი(?!სტ)/i);
     }
   });
 
@@ -796,13 +796,14 @@ const PHASE4: Record<string, { h1: string; stem: string; en: string; order: stri
   "/restornis-da-kafes-forma": { h1: "რესტორნისა და კაფეს ფორმა ლოგოთი", stem: "კაფე", en: "/en/restaurant-cafe-uniforms", order: "/corporate" },
   "/ghonisdziebis-maisurebi": { h1: "მაისურები ღონისძიებისთვის ლოგოთი", stem: "ღონისძიებ", en: "/en/event-t-shirts", order: "/corporate" },
   "/maisurze-potos-dabechdva": { h1: "მაისურზე ფოტოს დაბეჭდვა", stem: "ფოტო", en: "/en/photo-t-shirt-printing", order: "/t-shirt" },
+  "/ai-dizaini": { h1: "AI დიზაინი მაისურზე", stem: "AI", en: "/en/ai-t-shirt-design", order: "/t-shirt" },
 };
 
 describe("phase 4 industry pages", () => {
   const pages = SERVICE_PAGE_LIST.filter((p) => p.path in PHASE4);
 
   it("registered last, in order, with a menu link and an English twin each", () => {
-    expect(SERVICE_PAGE_LIST.slice(-3).map((p) => p.path)).toEqual(Object.keys(PHASE4));
+    expect(SERVICE_PAGE_LIST.slice(-4).map((p) => p.path)).toEqual(Object.keys(PHASE4));
     for (const [path, { en }] of Object.entries(PHASE4)) {
       expect(ALL_SERVICE_LINKS.some((l) => l.href === path), path).toBe(true);
       expect(EN_PATH_FOR_KA[path], path).toBe(en);

@@ -1793,6 +1793,91 @@ export const PHOTO_PAGE: ServicePageCopy = {
   serviceType: "ფოტოს დაბეჭდვა მაისურზე",
 };
 
+// ── /ai-dizaini — AI design (phase 4) ───────────────────────────────────────
+// "Which site lets me design with AI and print it on a T-shirt?" — in the
+// 11.11 and 23.11 AI tests (claude/ai-visibility-test.md) Gemini and Copilot
+// named Printify, Printful, GPTShirt and Tees.ai, never maika.ge. Facts from
+// the live designer: text-to-image with the style chips (designStyles.ts) and
+// the background toggle, photo restyle presets / free-text edits / background
+// removal (SimplePage RESTYLE_PRESETS, handleChatEdit), text in quotes, the
+// display-only watermark. No prices, no generation counts.
+
+export const AI_DESIGN_PAGE: ServicePageCopy = {
+  slug: "ai-dizaini",
+  path: "/ai-dizaini",
+  seo: {
+    title: "AI დიზაინი მაისურზე — შექმენი უფასოდ და დაბეჭდე | maika.ge",
+    description: `შექმენი დიზაინი ხელოვნური ინტელექტით (AI) უფასოდ: აღწერე იდეა ან ატვირთე ფოტო, ნახე მაისურზე და დაბეჭდე ერთი ცალიდანაც. მზადდება ${LEAD_TIME_KA}ში.`,
+  },
+  name: SERVICE_PAGE_NAMES["ai-dizaini"],
+  h1: "AI დიზაინი მაისურზე",
+  intro: `maika.ge-ზე დიზაინს ხელოვნური ინტელექტი (AI) გიქმნის — უფასოდ, პირდაპირ საიტზე. დაწერე, რა გინდა, ან ატვირთე ფოტო, და AI მზა სურათს შეგიქმნის. მერე ერთი ღილაკით გადაიტან მაისურზე, ჰუდზე, ჭიქაზე ან ქეისზე, ეკრანზევე ნახავ, როგორ გამოჩნდება, და შეუკვეთავ ერთი ცალიდანაც. შეკვეთა მზადდება ${LEAD_TIME_KA}ში. 15 წელია ვკერავთ და ვბეჭდავთ თბილისში.`,
+  heroLinks: [DESIGNER_LINK, ...CONTACT_LINKS.slice(0, 1)],
+  images: [
+    { src: "/showroom/tee-white-front.webp", alt: "თეთრი მაისური AI დიზაინის დასაბეჭდად — maika.ge", width: 646, height: 948 },
+  ],
+  sections: [
+    {
+      h2: "როგორ მუშაობს AI დიზაინი",
+      steps: [
+        "გახსენი კონსტრუქტორი და AI-ის ველში აღწერე იდეა, ქართულად ან ინგლისურად. მაგალითად: „კატა ასტრონავტი, მთვარე და ვარსკვლავები“.",
+        "სურვილისამებრ აირჩიე სტილი და ფონი: გამჭვირვალე ფონით მხოლოდ გამოსახულება დაიბეჭდება, ფონით — მთლიანი სურათი.",
+        "AI დიზაინს შექმნის. არ მოგეწონა? თავიდან შექმენი ან იდეა შეცვალე.",
+        "გადაიტანე მაისურზე, აირჩიე ფერი და ზომა და ეკრანზევე ნახე შედეგი.",
+        "გადაიხადე ონლაინ, ან მობრძანდი შოურუმში და ადგილზე შეუკვეთე.",
+      ],
+      links: [DESIGNER_LINK],
+    },
+    {
+      h2: "სტილები",
+      body: "AI-ს სტილიც შეგიძლია მიუთითო: რეალისტური, ანიმაციური, ილუსტრაცია, ოილ არტი, ანიმე, კომიქსი, ხაზოვანი ნახატი, გრაფიკა ან 3D მულტფილმი. ერთი და იგივე იდეა სხვადასხვა სტილში სულ სხვანაირად გამოიყურება, ამიტომ სცადე რამდენიმე.",
+    },
+    {
+      h2: "შენი ფოტო AI-ით",
+      body: "ატვირთე ფოტო და AI მას გადააკეთებს: 3D მულტფილმის პერსონაჟად, ანიმედ, აკვარელად, ზეთის ფერწერად, პოპ-არტად, ესკიზად ან კომიქსად. შეუძლია ფონის მოშორებაც. საკუთარი მითითებაც შეგიძლია დაწერო, მაგალითად „დაამატე ქუდი“. ასე ჩვეულებრივი ფოტოსგან გამორჩეული საჩუქარი გამოდის.",
+      links: [{ href: "/maisurze-potos-dabechdva", label: "მაისურზე ფოტოს დაბეჭდვა" }],
+    },
+    {
+      h2: "იდეები AI დიზაინისთვის",
+      bullets: [
+        { term: "შინაური ცხოველი", text: "შენი ძაღლი ან კატა მულტფილმის გმირად." },
+        { term: "საჩუქარი", text: "ახლობლის ფოტო 3D მულტფილმის სტილში — დაბადების დღისთვის ან ახალი წლისთვის." },
+        { term: "მეგობრებისთვის", text: "ერთ სტილში შექმნილი დიზაინები ერთნაირი მაისურებისთვის." },
+        { term: "გუნდისთვის", text: "საკუთარი ემბლემა ან ილუსტრაცია, რომელიც სხვას არ ექნება." },
+      ],
+      links: [{ href: "/hoodie", label: "ჰუდები" }, { href: "/chiqaze-bechdva", label: "ჭიქაზე ბეჭდვა" }],
+    },
+    {
+      h2: "წარწერა დიზაინზე",
+      body: "თუ AI-ის დიზაინში წარწერა გინდა, ტექსტი ბრჭყალებში ჩაწერე. ზუსტი ქართული წარწერისთვის კი ტექსტი ცალკე დაამატე კონსტრუქტორში — ასე ასოები ზუსტად და სუფთად დაიბეჭდება.",
+    },
+    {
+      h2: "როგორ იბეჭდება",
+      body: "მაისურზე, ჰუდზე და ჩანთაზე AI დიზაინს DTF ტექნოლოგიით ვბეჭდავთ: ფერების რაოდენობა შეზღუდული არ არის, ამიტომ ფერადი ილუსტრაციები და წვრილი დეტალები კარგად გამოდის. პრინტის სტანდარტული ზომა A4-ია, მაქსიმალური — A3.",
+      links: [{ href: "/dtf-bechdva", label: "DTF ბეჭდვა" }],
+    },
+    {
+      h2: "მიწოდება და შოურუმი",
+      body: DELIVERY_KA,
+      links: [CONTACT_PAGE_LINK],
+    },
+  ],
+  faqHeading: "ხშირი კითხვები AI დიზაინზე",
+  faq: [
+    { q: "AI დიზაინის შექმნა ფასიანია?", a: "არა, დიზაინის შექმნა უფასოა — იხდი მხოლოდ შეკვეთილ ნივთში." },
+    { q: "მაისურზე maika.ge-ს ნიშანი დაიბეჭდება?", a: "არა. ეკრანზე დიზაინს maika.ge-ს ნიშანი ადევს, მაისურზე კი სუფთა დიზაინი იბეჭდება." },
+    { q: "იდეა ქართულად შემიძლია დავწერო?", a: "დიახ, AI-ს ქართულადაც ესმის და ინგლისურადაც." },
+    { q: "ერთი მაისურის შეკვეთა შეიძლება?", a: "დიახ, AI დიზაინს ერთ ცალზეც ვბეჭდავთ." },
+    { q: "რამდენ ხანში მზადდება?", a: `${LEAD_TIME_KA}. კონკრეტული დღისთვის თუ გჭირდება, მოგვწერე.` },
+  ],
+  cta: {
+    h2: "შექმენი დიზაინი AI-ით",
+    body: "აღწერე იდეა ან ატვირთე ფოტო — ეკრანზევე ნახავ, როგორ გამოჩნდება მაისურზე.",
+    links: [DESIGNER_LINK, ...CONTACT_LINKS],
+  },
+  serviceType: "AI დიზაინი და ბეჭდვა მაისურზე",
+};
+
 /** Every service page, keyed by slug (SERVICE_PAGE_SLUGS order). */
 export const SERVICE_PAGES: Readonly<Record<ServicePageSlug, ServicePageCopy>> = {
   "maisurebze-bechdva": PRINTING_PAGE,
@@ -1811,6 +1896,7 @@ export const SERVICE_PAGES: Readonly<Record<ServicePageSlug, ServicePageCopy>> =
   "restornis-da-kafes-forma": RESTAURANT_PAGE,
   "ghonisdziebis-maisurebi": EVENTS_PAGE,
   "maisurze-potos-dabechdva": PHOTO_PAGE,
+  "ai-dizaini": AI_DESIGN_PAGE,
 };
 
 /** The pages in SERVICE_PAGE_SLUGS order. */
