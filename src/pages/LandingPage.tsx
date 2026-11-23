@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAppState } from "@/hooks/useAppState";
-import { Shirt, Mail, Phone, MapPin, ArrowRight, ChevronDown, Shield, Zap, Users, BadgeDollarSign, LayoutGrid } from "lucide-react";
+import { Shirt, Mail, Phone, MapPin, ArrowRight, ChevronDown, Shield, Zap, Users, BadgeDollarSign, LayoutGrid, Store } from "lucide-react";
 import CorporateInquiryModal from "@/components/CorporateInquiryModal";
 import FeedbackModal from "@/components/FeedbackModal";
 import PartnerLogosMarquee from "@/components/PartnerLogosMarquee";
@@ -182,6 +182,37 @@ export default function LandingPage() {
             generation tool; the separate AI Studio card was retired). */}
         <div className="grid w-full max-w-md sm:max-w-3xl sm:grid-cols-2 gap-5 mx-auto mb-16 sm:mb-20">
 
+          {/* Card 0 — the virtual showroom (2026-11-23). David: "the showroom and
+              the old site on top, the catalog lower". A plain link to /showroom;
+              the constructor card beside it is the site as it always was. */}
+          <Link
+            to="/showroom"
+            className="group relative flex min-h-[17rem] flex-col overflow-hidden rounded-2xl border border-white/[0.12] p-8 text-left shadow-lg transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-black/40 sm:p-10"
+          >
+            <img src="/tour/home-card.webp" alt="" width={960} height={595} loading="eager" decoding="async" className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/20" aria-hidden />
+            <div className="relative z-10 flex h-full flex-col">
+              <div className="mb-6 flex items-center gap-2">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/20 bg-black/35 backdrop-blur-sm">
+                  <Store className="h-6 w-6 text-white" />
+                </span>
+                <span className="rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-black">{lang === "en" ? "New" : "ახალი"}</span>
+              </div>
+              <h2 className="mb-3 text-2xl font-bold text-white">{lang === "en" ? "Walk into our showroom" : "შემოდი შოურუმში"}</h2>
+              <p className="mb-6 flex-1 text-sm leading-relaxed text-white/85">
+                {lang === "en"
+                  ? "Walk through our real shop in 360°, pick a garment off the rack and see your design on it."
+                  : "გაისეირნე ჩვენს ნამდვილ მაღაზიაში, აიღე ტანსაცმელი საკიდიდან და ნახე ზედ შენი დიზაინი."}
+              </p>
+              <div className="flex w-full items-center justify-between">
+                <span className="inline-flex items-center rounded-full border border-white/25 bg-black/30 px-3 py-1 text-xs font-medium text-white/85">{lang === "en" ? "360° · virtual shop" : "360° · ვირტუალური მაღაზია"}</span>
+                <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-300">
+                  {lang === "en" ? "Enter" : "შესვლა"} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </span>
+              </div>
+            </div>
+          </Link>
+
           {/* Card 1 — Simple Mode */}
           <button
             onClick={() => setMode("simple")}
@@ -217,10 +248,11 @@ export default function LandingPage() {
           </button>
 
           {/* Card 2 — ready-made catalog (/designs). Same visual language as
-              Card 1; a plain link, no mode switch. */}
+              Card 1; a plain link, no mode switch. Since 2026-11-23 it is the
+              full-width row UNDER the showroom + constructor pair. */}
           <Link
             to="/designs"
-            className={`group relative flex flex-col rounded-2xl border p-8 sm:p-10 text-left transition-all duration-300 hover:scale-[1.02] overflow-hidden ${
+            className={`group relative flex flex-col rounded-2xl border p-6 sm:col-span-2 sm:p-8 text-left transition-all duration-300 hover:scale-[1.01] overflow-hidden ${
               isGreen
                 ? "bg-white border-white/80 shadow-lg hover:shadow-xl"
                 : "border-white/[0.08] bg-card hover:border-white/[0.15] hover:shadow-xl hover:shadow-black/40"

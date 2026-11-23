@@ -4,7 +4,7 @@ import { useAppState } from "@/hooks/useAppState";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { t } from "@/lib/i18n";
-import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper, Menu, ChevronDown } from "lucide-react";
+import { FolderOpen, ShieldCheck, LogIn, LogOut, ShoppingCart, Images, GalleryVerticalEnd, MapPin, Newspaper, Menu, ChevronDown, Store } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 // LoginModal only opens when the user clicks "Sign in" — keep its
 // bundle separate so the header on logged-in pages stays cheap.
@@ -52,6 +52,8 @@ export default function AppHeader() {
   const isLoggedIn = !!user && !isAnonymous;
 
   const navItems = [
+    // the virtual showroom (2026-11-23), marked "new" below
+    { path: "/showroom", label: lang === "en" ? "Showroom" : "შოურუმი", icon: Store },
     { path: "/designs", label: t(lang, "nav.catalog"), icon: Images },
     { path: "/my-designs", label: t(lang, "nav.myDesigns"), icon: FolderOpen },
     { path: "/portfolio", label: t(lang, "nav.portfolio"), icon: GalleryVerticalEnd },
@@ -176,6 +178,9 @@ export default function AppHeader() {
                 >
                   <Icon className="h-3 w-3" />
                   <span>{label}</span>
+                  {path === "/showroom" && !active && (
+                    <span className="rounded bg-amber-400 px-1 text-[9px] font-bold leading-4 text-black">{lang === "en" ? "new" : "ახალი"}</span>
+                  )}
                 </Link>
               );
             })}
