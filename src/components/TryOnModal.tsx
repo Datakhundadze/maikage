@@ -286,7 +286,7 @@ export default function TryOnModal({ open, onClose, designImage, garmentImage, o
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="animate-spin h-4 w-4 border-2 border-black/30 border-t-black rounded-full" />
-                  მუშავდება...
+                  მუშავდება... ~20 წმ
                 </span>
               ) : (
                 <span className="flex items-center gap-2">

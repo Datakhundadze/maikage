@@ -307,3 +307,21 @@ html.maika-order-glass body::before {
 html.maika-order-glass .maika-chat-panel {
   display: none;
 }
+
+/* The fitting room's dialog in the showroom (2026-11-23, David's iPhone
+   recording: its right edge and the buttons on it were off the screen). Placed
+   by its left edge and an explicit width instead of 50% + translate, never
+   taller than the screen, the result picture never taller than half of it. */
+html.maika-fitting-glass [role="dialog"] {
+  left: max(12px, calc(50dvw - 16rem));
+  width: min(32rem, calc(100dvw - 24px));
+  max-width: none;
+  transform: translateY(-50%);
+  animation: none;
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+html.maika-fitting-glass [role="dialog"] img {
+  max-height: 52dvh;
+}

@@ -115,9 +115,12 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   const design = designs[side];
   const setDesign = useCallback((patch: Partial<GarmentDesign>) => setDesigns((d) => ({ ...d, [side]: { ...d[side], ...patch } })), [side]);
   const has = !!design.img || !!design.text;
-  // any change after the film: print again before ordering
+  // Once the film has been seen, "შეკვეთა" and "გასახდელი" stay through later
+  // changes (2026-11-23, David's recording: he made the lettering smaller, the
+  // buttons went away and the film had to run a second time). The order and
+  // the fitting room always take the design as it is at that moment. Only a
+  // NEW photo or different words ask for the film again.
   useEffect(() => {
-    setPrinted(false);
     setOrderFailed(false);
   }, [design, color, side]);
   // …but a design brought back from the fitting room was already printed

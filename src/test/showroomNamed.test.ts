@@ -145,3 +145,15 @@ describe("from David's phone recording, 2026-11-23", () => {
     expect(D).toContain('className="mt-3 flex max-w-full flex-wrap items-center justify-center gap-2"');
   });
 });
+
+describe("2026-11-23, second pass over David's recording", () => {
+  it("the order buttons stay after the first print", () => {
+    const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
+    // moving, resizing, recolouring keep them; only a new photo or new words ask for the film again
+    expect(D.match(/setPrinted\(false\)/g)?.length).toBe(2);
+  });
+  it("the fitting dialog is placed by its left edge and capped to the screen", () => {
+    const C = readFileSync("src/index.css", "utf8");
+    expect(C).toContain("width: min(32rem, calc(100dvw - 24px));");
+  });
+});
