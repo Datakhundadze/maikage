@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { SHOWROOM_ORDER_MARK } from "@/lib/attribution";
 
 // Admin-only: loads public.order_attribution rows for the orders currently
 // listed in AdminOrders and lets an admin tag the channel by hand. Separate
@@ -80,6 +81,10 @@ export function attributionSummary(rows: OrderAttributionRow[]): { label: string
   if (lt && lt !== ft) lines.push(`ბოლო შეხება: ${lt}${auto.lt_campaign ? ` · ${auto.lt_campaign}` : ""}`);
   if (inApp) lines.push(`ბრაუზერი: ${inApp}`);
 
+  // ordered from the virtual showroom (attribution.ts: SHOWROOM_ORDER_MARK)
+  const showroom = rows.some((r) => (r.lt_landing_page ?? "").includes(SHOWROOM_ORDER_MARK));
+  if (showroom) lines.unshift("ვირტუალური შოურუმიდან");
+
   if (manualRow?.manual_channel) {
     lines.unshift(`ხელით: ${MANUAL_CHANNEL_LABELS[manualRow.manual_channel] ?? manualRow.manual_channel}`);
     return {
@@ -88,7 +93,7 @@ export function attributionSummary(rows: OrderAttributionRow[]): { label: string
       manual: true,
     };
   }
-  return { label: autoLabel, title: lines.join("\n") || "წყარო უცნობია", manual: false };
+  return { label: showroom ? `შოურუმი · ${autoLabel}` : autoLabel, title: lines.join("\n") || "წყარო უცნობია", manual: false };
 }
 
 const CHUNK = 100;

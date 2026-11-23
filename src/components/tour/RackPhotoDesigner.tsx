@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, ImagePlus, MessageCircle, Printer, RefreshCw, Trash2, Type, X } from "lucide-react";
+import { ArrowRight, ImagePlus, MessageCircle, Printer, RefreshCw, Shirt, Trash2, Type, X } from "lucide-react";
 import PrintAnimation, { type PrintAnimationProps } from "@/components/PrintAnimation";
 import { BRAND_COLORS, BRAND_SIZES, COLORS, type ProductColor, type ProductType } from "@/lib/catalog";
 import type { ConstructorSeed } from "@/lib/constructorSeed";
@@ -400,13 +400,18 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     if (!site || !scratch.current) return;
     const f = garmentFilm(site.layers, site.box, false, scratch.current);
     if (f) setFilm({ ...f, folded: garment.kind ?? "tee" });
+    // the order form's backdrop, so it is there the instant the form opens
+    new Image().src = "/tour/order-backdrop.webp";
   };
 
   // the order: the same handoff the site chat uses — the constructor opens with
   // this colour, side, photo and text on the garment; price, order form and
   // payment are the constructor's own, untouched
-  const order = () => {
-    if (sizes.length && !size) {
+  // "ვირტუალური გასახდელი" (2026-11-23) is the same handoff with `tryOn` in
+  // place of `order`: the constructor opens its own fitting room with this
+  // design. No size is needed for it.
+  const order = (kind: "order" | "tryOn" = "order") => {
+    if (kind === "order" && sizes.length && !size) {
       setSizeAsk(true);
       return;
     }
@@ -452,7 +457,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     for (const max of anyImg ? [2400, 1600, 1100, 800] : [0]) {
       const here = sideSeed(side, design, max);
       if (!here) break;
-      const last: ConstructorSeed = { ...here, order: true, ...(size ? { size } : {}) };
+      const last: ConstructorSeed = kind === "tryOn" ? { ...here, tryOn: true } : { ...here, order: true, ...(size ? { size } : {}) };
       const first = sideSeed(other, designs[other], max);
       if (onOrder(first ? { ...first, then: last } : last)) return;
     }
@@ -702,10 +707,21 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         {printed && has && (
           <button
             type="button"
-            onClick={order}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-8 text-base font-bold text-black hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            onClick={() => order("order")}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-6 text-base font-bold text-black hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             შეკვეთა <ArrowRight className="h-5 w-5" aria-hidden />
+          </button>
+        )}
+        {/* the constructor's own fitting room, with this design (David 2026-11-23) */}
+        {printed && has && (
+          <button
+            type="button"
+            onClick={() => order("tryOn")}
+            aria-label="ვირტუალური გასახდელი"
+            className="inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold text-white ring-1 ring-white/25 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            <Shirt className="h-5 w-5" aria-hidden /> გასახდელი
           </button>
         )}
       </div>

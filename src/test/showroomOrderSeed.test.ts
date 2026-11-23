@@ -77,7 +77,7 @@ describe("constructor (source)", () => {
 
 describe("showroom designer (source)", () => {
   it("asks the size before ordering and sends order: true", () => {
-    expect(DESIGNER).toContain("if (sizes.length && !size) {");
+    expect(DESIGNER).toContain('if (kind === "order" && sizes.length && !size) {');
     expect(DESIGNER).toContain("order: true,");
     expect(DESIGNER).not.toContain("დააჭირე „ბეჭდვა“");
   });

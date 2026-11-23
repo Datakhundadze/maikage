@@ -33,12 +33,12 @@ describe("what the customer named (showroom chat)", () => {
   });
   it("the clip starts after the parked car has left the picture", () => {
     const V = readFileSync("src/components/tour/VideoWalk.tsx", "utf8");
-    expect(V).toContain("const INTRO_START = { portrait: 2.0, landscape: 3.6 };");
+    expect(V).toContain("const INTRO_START = { portrait: 3.6, landscape: 4.3 };");
     expect(V).toContain("onLoadedMetadata");
   });
   it("a showroom order's form is glass over a showroom still — look only, OrderDialog untouched", () => {
     const P = readFileSync("src/pages/SimplePage.tsx", "utf8");
-    expect(P).toContain("if (seed.order) setShowroomOrder(true);");
+    expect(P).toContain("if (seed.order || seed.tryOn) setShowroomOrder(true);");
     expect(P).toContain('document.documentElement.classList.add("maika-order-glass")');
     const C = readFileSync("src/index.css", "utf8");
     expect(C).toContain("html.maika-order-glass body::before");
@@ -65,5 +65,40 @@ describe("what the customer named (showroom chat)", () => {
     const polo = G.split("\n").find((l) => l.trim().startsWith("polo:")) ?? "";
     expect(polo).toContain("frontArea: [0.56, 0.21, 0.22, 0.19]");
     expect(polo).toContain('placement: "left-chest"');
+  });
+  it("2026-11-23: look from the first paint, back from the bank, fitting room, admin mark", () => {
+    const M = readFileSync("src/main.tsx", "utf8");
+    expect(M).toContain('if (seedWantsShowroomLook()) document.documentElement.classList.add("maika-order-glass");');
+    const P = readFileSync("src/pages/SimplePage.tsx", "utf8");
+    expect(P).toContain("seedRef.current = consumeConstructorSeed() ?? restoreShowroomSeedOnBack();");
+    expect(P).toContain("if (seed.tryOn) setPendingTryOn(true);");
+    const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
+    expect(D).toContain('onClick={() => order("tryOn")}');
+    expect(D).toContain("{ ...here, tryOn: true }");
+    const A = readFileSync("src/lib/attribution.ts", "utf8");
+    expect(A).toContain('export const SHOWROOM_ORDER_MARK = "/showroom#order";');
+    const S = readFileSync("src/lib/constructorSeed.ts", "utf8");
+    expect(S).toContain('export const FROM_SHOWROOM_KEY = "maika.order.fromShowroom";');
+    expect(A).toContain('export const SHOWROOM_ORDER_FLAG = "maika.order.fromShowroom";');
+  });
+});
+
+import { normalizeConstructorSeed } from "@/lib/constructorSeed";
+import { attributionSummary } from "@/hooks/useOrderAttribution";
+describe("showroom seed tryOn + admin mark (behaviour)", () => {
+  it("tryOn survives normalisation only on the last seed and never with order", () => {
+    const ts = Date.now();
+    expect(normalizeConstructorSeed({ ts, text: "a", tryOn: true })?.tryOn).toBe(true);
+    expect(normalizeConstructorSeed({ ts, text: "a", tryOn: true, order: true })?.tryOn).toBeUndefined();
+    const chained = normalizeConstructorSeed({ ts, text: "a", tryOn: true, then: { ts, text: "b", tryOn: true } });
+    expect(chained?.tryOn).toBeUndefined();
+    expect(chained?.then?.tryOn).toBe(true);
+  });
+  it("an order marked /showroom#order reads as a showroom order in the admin", () => {
+    const row = { order_id: "x", cart_id: null, lt_landing_page: "/showroom#order" } as never;
+    const s = attributionSummary([row]);
+    expect(s?.label.startsWith("შოურუმი")).toBe(true);
+    expect(s?.title).toContain("ვირტუალური შოურუმიდან");
+    expect(attributionSummary([{ order_id: "y", cart_id: null, lt_landing_page: "/catalog" } as never])?.label.startsWith("შოურუმი")).toBe(false);
   });
 });

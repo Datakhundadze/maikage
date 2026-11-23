@@ -85,7 +85,7 @@ interface WalkDest {
  */
 // The street clip (see "Coming in from the street" below): where it starts (after the
 // parked car has left the picture), when the walk starts under it, where it is cut.
-const INTRO_START = { portrait: 2.0, landscape: 3.6 };
+const INTRO_START = { portrait: 3.6, landscape: 4.3 };
 const INTRO_WALK_AT = 5.0;
 const INTRO_CUT_AT = 7.3;
 const OPERATOR_STOP = { t: 8, yawDeg: 1.5, pitchDeg: -7 };

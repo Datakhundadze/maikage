@@ -15,6 +15,10 @@
 // would otherwise overwrite the real last touch with "pay.flitt.com".
 
 export const ATTR_KEY = "maika_attr";
+/** sessionStorage flag of a tab whose order form was opened by the showroom (= constructorSeed.FROM_SHOWROOM_KEY). */
+export const SHOWROOM_ORDER_FLAG = "maika.order.fromShowroom";
+/** What such an order's last-touch landing page is recorded as; the admin reads it back. */
+export const SHOWROOM_ORDER_MARK = "/showroom#order";
 export const ATTR_SENT_KEY = "maika_attr_sent";
 export const PENDING_ORDER_KEY = "maika_pending_order_id";
 
@@ -218,7 +222,19 @@ export function sendOrderAttribution(orderId: string): void {
     const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
     const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
     if (!url || !key || typeof fetch === "undefined") return;
-    const p = readAttribution() ?? {};
+    let p: AttrBlob = readAttribution() ?? {};
+    // An order made from the virtual showroom (David 2026-11-23: "in the admin
+    // it should say it is from the showroom, not straight from the site"). The
+    // tab that opened the order form carries the mark (constructorSeed.ts);
+    // it travels as the last touch's landing page — no new column, no SQL.
+    try {
+      if (sessionStorage.getItem(SHOWROOM_ORDER_FLAG)) {
+        p = { ...p, lt: { ...(p.lt ?? { ts: Date.now() }), landing_page: SHOWROOM_ORDER_MARK } };
+        sessionStorage.removeItem(SHOWROOM_ORDER_FLAG);
+      }
+    } catch {
+      /* storage blocked — the order is simply not marked */
+    }
     void fetch(`${url}/rest/v1/rpc/record_order_attribution`, {
       method: "POST",
       keepalive: true,

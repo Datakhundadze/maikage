@@ -11,7 +11,7 @@ import { Upload, Type, X, ChevronDown, Palette, Plus, ShoppingBag, Shirt, ArrowU
 import QuantityStepper from "@/components/QuantityStepper";
 import type { PlacementCoords } from "@/lib/catalog";
 import { catalog, COLORS, BRAND_SIZES, type ProductType, type ProductColor, type ProductView } from "@/lib/catalog";
-import { consumeConstructorSeed, normalizeConstructorSeed, type ConstructorSeed, type SeedGenerate } from "@/lib/constructorSeed";
+import { FROM_SHOWROOM_KEY, restoreShowroomSeedOnBack, stashShowroomSeed, consumeConstructorSeed, normalizeConstructorSeed, type ConstructorSeed, type SeedGenerate } from "@/lib/constructorSeed";
 // In-place handoff from the floating chat widget when it is used on this page.
 import { CONSTRUCTOR_APPLY_EVENT, type ConstructorApplyEvent } from "@/lib/constructorBridge";
 // Style enum resolution for a seeded generation — shared with the chat side so
@@ -2364,7 +2364,10 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     if (seedAppliedRef.current) return;
     if (seedRef.current === undefined) {
       // Reads AND deletes in one step, before any of it is applied.
-      seedRef.current = consumeConstructorSeed();
+      // …or, coming BACK from the bank's page, the showroom order this tab had
+      // (constructorSeed.ts: restoreShowroomSeedOnBack)
+      seedRef.current = consumeConstructorSeed() ?? restoreShowroomSeedOnBack();
+      stashShowroomSeed(seedRef.current);
     }
     const seed = seedRef.current;
     if (!seed) {
@@ -2476,7 +2479,13 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     // Queued, not run: the layers below are not committed yet. Drained by the
     // pendingOrder effect further down.
     if (seed.order) setPendingOrder({ size: seed.size, image: !!seed.image, text: !!seed.text?.trim() });
-    if (seed.order) setShowroomOrder(true);
+    if (seed.order || seed.tryOn) setShowroomOrder(true);
+    if (seed.order) {
+      try { sessionStorage.setItem(FROM_SHOWROOM_KEY, "1"); } catch { /* ignore */ }
+    }
+    // ADD-ONLY (2026-11-23): the showroom's "ვირტუალური გასახდელი" asked for the
+    // fitting room. Queued like the order; drained by the pendingTryOn effect.
+    if (seed.tryOn) setPendingTryOn(true);
     // ADD-ONLY (2026-11-14): a chained seed — the showroom's other side — is
     // queued the same way and fed back through THIS drain once this one settled.
     // ADD-ONLY (2026-11-14): a plain design seed (the chat's sketch) is also
@@ -3737,26 +3746,37 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
   // skinned as glass (index.css, html.maika-order-glass). OrderDialog itself,
   // its wiring and everything about payment are untouched; closing the form
   // drops the skin and the constructor is there as always.
-  const [showroomOrder, setShowroomOrder] = useState(false);
+  // 2026-11-23: the look is on from the first paint (main.tsx set the class
+  // when a showroom seed was waiting), it also covers the fitting room, and it
+  // survives the instant between the fitting room closing and the order form
+  // opening.
+  const [showroomOrder, setShowroomOrder] = useState(() => document.documentElement.classList.contains("maika-order-glass"));
+  const [pendingTryOn, setPendingTryOn] = useState(false);
+  const [seedTryOnTick, setSeedTryOnTick] = useState(0);
   const showroomOrderSeenOpen = useRef(false);
+  const showroomLookOpen = orderDialogOpen || showTryOn;
   useEffect(() => {
     if (!showroomOrder) return;
-    if (orderDialogOpen) {
+    if (showroomLookOpen) {
       showroomOrderSeenOpen.current = true;
       return;
     }
-    if (showroomOrderSeenOpen.current) {
-      // the form was closed
+    const drop = () => {
       showroomOrderSeenOpen.current = false;
       setShowroomOrder(false);
+      // the form was closed without paying: the next order here is not the showroom's
+      try { sessionStorage.removeItem(FROM_SHOWROOM_KEY); } catch { /* ignore */ }
+    };
+    // closed (700 ms: the fitting room hands over to the order form), or never
+    // opened (the seeded order gave up): do not leave the constructor covered
+    const t = window.setTimeout(drop, showroomOrderSeenOpen.current ? 700 : 20000);
+    return () => window.clearTimeout(t);
+  }, [showroomOrder, showroomLookOpen]);
+  useEffect(() => {
+    if (!showroomOrder) {
+      document.documentElement.classList.remove("maika-order-glass");
       return;
     }
-    // never opened (the seeded order gave up): do not leave the constructor covered
-    const giveUp = window.setTimeout(() => setShowroomOrder(false), 20000);
-    return () => window.clearTimeout(giveUp);
-  }, [showroomOrder, orderDialogOpen]);
-  useEffect(() => {
-    if (!showroomOrder) return;
     document.documentElement.classList.add("maika-order-glass");
     return () => document.documentElement.classList.remove("maika-order-glass");
   }, [showroomOrder]);
@@ -3859,6 +3879,28 @@ export default function SimplePage({ seoTitle, seoDescription, hero, productPick
     if (!tryOnDesignImage) return;
     void openTryOnFresh();
   }, [tryOnDesignImage, openTryOnFresh]);
+
+  // ADD-ONLY (2026-11-23): the fitting room asked for by a showroom seed opens
+  // once the design is on the garment — the same button the customer presses.
+  const pendingTryOnSince = useRef(0);
+  useEffect(() => {
+    if (!pendingTryOn) return;
+    if (!pendingTryOnSince.current) pendingTryOnSince.current = Date.now();
+    const busy = !!editingPhotoId || aiGenerating || seededRemoveBgActive;
+    if (!tryOnDesignImage || busy) {
+      if (Date.now() - pendingTryOnSince.current > ORDER_SEED_WAIT_MS) {
+        pendingTryOnSince.current = 0;
+        setPendingTryOn(false);
+        return;
+      }
+      // re-checked on the next state change, and on a tick in case none comes
+      const tick = window.setTimeout(() => setSeedTryOnTick((n) => n + 1), 400);
+      return () => window.clearTimeout(tick);
+    }
+    pendingTryOnSince.current = 0;
+    setPendingTryOn(false);
+    handleTryOnOpen();
+  }, [pendingTryOn, seedTryOnTick, tryOnDesignImage, editingPhotoId, aiGenerating, seededRemoveBgActive, handleTryOnOpen]);
 
   // Order from a try-on: with an aiResult delegate to the untouched
   // handleAiOrder (which also places the generated design if needed);

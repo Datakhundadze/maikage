@@ -260,10 +260,11 @@ html.maika-chat-over .maika-chat-panel {
 html.maika-order-glass body::before {
   content: "";
   position: fixed;
-  inset: -24px;
+  inset: 0;
   z-index: 49;
-  background: #17171a url("/tour/stills/80.webp") center / auto 185% no-repeat;
-  filter: blur(4px) brightness(0.8);
+  /* a small picture made for this (16 KB, already blurred and dimmed): the big
+     still took a moment, and until it came the form stood on black (2026-11-23) */
+  background: #6b6257 url("/tour/order-backdrop.webp") center / cover no-repeat;
 }
 html.maika-order-glass div[data-state].fixed.inset-0.bg-black\/80 {
   background: rgba(0, 0, 0, 0.12);

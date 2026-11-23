@@ -98,6 +98,13 @@ export interface ConstructorSeed {
   order?: boolean;
   size?: string;
   /**
+   * Open the constructor's OWN virtual fitting room once this seed is on the
+   * garment (add-only, 2026-11-23 — the showroom's "ვირტუალური გასახდელი" next
+   * to "შეკვეთა"). A request to press the constructor's try-on button, nothing
+   * more; never together with `order`, and only on the last seed of a chain.
+   */
+  tryOn?: boolean;
+  /**
    * EXACT placement from the showroom designer (add-only, 2026-11-14): the
    * constructor's own layer coords (fractions of the placement zone) for the
    * seeded photo and lettering, and the lettering's font family. With them the
@@ -341,6 +348,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
       if (inner) then = inner;
     }
     const order = !then && parsed.order === true ? true : undefined;
+    const tryOn = !then && !order && parsed.tryOn === true ? true : undefined;
     const size = order && typeof parsed.size === "string" && /^[A-Za-z0-9\u10A0-\u10FF+/. -]{1,14}$/.test(parsed.size.trim()) ? parsed.size.trim() : undefined;
     // Same rule for the edit instruction, and bounded by the PROMPT cap rather
     // than the text cap: this describes a change to a picture, it is not words
@@ -389,7 +397,7 @@ export function normalizeConstructorSeed(input: unknown): ConstructorSeed | null
     const removeWhite = parsed.removeWhite === true ? true : undefined;
 
     if (!text && !image && !product && !color && !generate && !removeWhite) return null;
-    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}), ...(order ? { order } : {}), ...(size ? { size } : {}), ...(photoCoords ? { photoCoords } : {}), ...(textCoords ? { textCoords } : {}), ...(font ? { font } : {}), ...(then ? { then } : {}) };
+    return { text, textColor, image, removeBackground, editPrompt, side, placement, number, product, subProduct, color, generate, ...(removeWhite ? { removeWhite } : {}), ...(extractPrint ? { extractPrint } : {}), ...(order ? { order } : {}), ...(tryOn ? { tryOn } : {}), ...(size ? { size } : {}), ...(photoCoords ? { photoCoords } : {}), ...(textCoords ? { textCoords } : {}), ...(font ? { font } : {}), ...(then ? { then } : {}) };
   } catch {
     return null;
   }
@@ -427,4 +435,75 @@ export function hasPendingConstructorSeed(): boolean {
   } catch {
     return false;
   }
+}
+
+
+// ── The showroom's order: its look from the first paint, and "back" from the bank ──
+//
+// David 2026-11-23: (1) "before the order form it opened the site's own black
+// form for an instant, then the transparent one"; (2) "from the payment page I
+// pressed back and landed in an empty constructor".
+//
+// (1) main.tsx asks seedWantsShowroomLook() before React renders and sets
+//     html.maika-order-glass, so the showroom backdrop is there from the first
+//     paint (SimplePage takes the class over from there).
+// (2) the seed is consumed (deleted) when it is read, so a reload has nothing
+//     to show. A showroom ORDER seed is therefore kept for this tab
+//     (sessionStorage), and a back/forward navigation into the constructor
+//     gets it again: the same design, the same order form. A plain reload or a
+//     fresh visit does not.
+const SHOWROOM_SEED_KEY = "maika.showroom.orderSeed";
+/** This tab's order came from the showroom — read by attribution.ts for the admin. */
+export const FROM_SHOWROOM_KEY = "maika.order.fromShowroom";
+
+function chainWants(o: unknown): boolean {
+  for (let cur = o as { order?: unknown; tryOn?: unknown; then?: unknown } | null, i = 0; cur && typeof cur === "object" && i < 3; cur = cur.then as typeof cur, i++) {
+    if (cur.order === true || cur.tryOn === true) return true;
+  }
+  return false;
+}
+function isBackNavigation(): boolean {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return nav?.type === "back_forward";
+  } catch {
+    return false;
+  }
+}
+/** A showroom order / fitting-room seed is waiting (or will be restored): show the showroom look at once. */
+export function seedWantsShowroomLook(): boolean {
+  try {
+    if (!new URLSearchParams(window.location.search).has("constructor")) return false;
+    const raw = localStorage.getItem(SEED_KEY);
+    if (raw && chainWants(JSON.parse(raw))) return true;
+    return isBackNavigation() && !!sessionStorage.getItem(SHOWROOM_SEED_KEY);
+  } catch {
+    return false;
+  }
+}
+/** Keep a showroom ORDER seed for this tab (see above). Anything else clears the copy. */
+export function stashShowroomSeed(seed: ConstructorSeed | null): void {
+  try {
+    const last = seed?.then ?? seed;
+    if (seed && last?.order) sessionStorage.setItem(SHOWROOM_SEED_KEY, JSON.stringify(seed));
+  } catch {
+    try { sessionStorage.removeItem(SHOWROOM_SEED_KEY); } catch { /* ignore */ }
+  }
+}
+/** The kept seed, only for a back/forward navigation; null otherwise. */
+export function restoreShowroomSeedOnBack(): ConstructorSeed | null {
+  try {
+    if (!isBackNavigation()) return null;
+    const raw = sessionStorage.getItem(SHOWROOM_SEED_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ConstructorSeed & { ts?: number; then?: ConstructorSeed & { ts?: number } };
+    const now = Date.now();
+    return normalizeConstructorSeed({ ...parsed, ts: now, ...(parsed.then ? { then: { ...parsed.then, ts: now } } : {}) });
+  } catch {
+    return null;
+  }
+}
+/** Paid, or the customer is done with it: forget the kept seed. */
+export function forgetShowroomSeed(): void {
+  try { sessionStorage.removeItem(SHOWROOM_SEED_KEY); } catch { /* ignore */ }
 }
