@@ -74,7 +74,7 @@ describe("what the customer named (showroom chat)", () => {
     expect(P).toContain("if (seed.tryOn) setPendingTryOn(true);");
     const D = readFileSync("src/components/tour/RackPhotoDesigner.tsx", "utf8");
     expect(D).toContain('onClick={() => order("tryOn")}');
-    expect(D).toContain("{ ...here, tryOn: true }");
+    expect(D).toContain("askShowroomFitting({");
     const A = readFileSync("src/lib/attribution.ts", "utf8");
     expect(A).toContain('export const SHOWROOM_ORDER_MARK = "/showroom#order";');
     const S = readFileSync("src/lib/constructorSeed.ts", "utf8");
@@ -100,5 +100,35 @@ describe("showroom seed tryOn + admin mark (behaviour)", () => {
     expect(s?.label.startsWith("შოურუმი")).toBe(true);
     expect(s?.title).toContain("ვირტუალური შოურუმიდან");
     expect(attributionSummary([{ order_id: "y", cart_id: null, lt_landing_page: "/catalog" } as never])?.label.startsWith("შოურუმი")).toBe(false);
+  });
+});
+
+import { askShowroomFitting, hasRackDesign, keepRackDesign, takeRackDesign, takeShowroomFitting, FITTING_STOP, SHOWROOM_FITTING_EVENT } from "@/lib/tour/showroomFitting";
+describe("the showroom's fitting room (David 2026-11-23: go to the real one, the red curtain)", () => {
+  it("the request is handed over once, with an event", () => {
+    let fired = 0;
+    const on = () => fired++;
+    window.addEventListener(SHOWROOM_FITTING_EVENT, on);
+    askShowroomFitting({ rackId: "gildan", brand: "GILDAN", designImage: "d", garmentImage: "g", orderSeed: null });
+    window.removeEventListener(SHOWROOM_FITTING_EVENT, on);
+    expect(fired).toBe(1);
+    expect(takeShowroomFitting()?.rackId).toBe("gildan");
+    expect(takeShowroomFitting()).toBeNull();
+  });
+  it("the design left at the rack is taken back once", () => {
+    expect(hasRackDesign("GILDAN")).toBe(false);
+    keepRackDesign("GILDAN", { color: "Black" });
+    expect(hasRackDesign("GILDAN")).toBe(true);
+    expect(takeRackDesign<{ color: string }>("GILDAN")?.color).toBe("Black");
+    expect(hasRackDesign("GILDAN")).toBe(false);
+  });
+  it("the walk stands at the NIKE end facing the curtain; the dialog is the site's own, in the showroom", () => {
+    expect(FITTING_STOP.t).toBe(118.8);
+    expect(FITTING_STOP.yawDeg).toBe(-110);
+    const V = readFileSync("src/components/tour/VideoWalk.tsx", "utf8");
+    expect(V).toContain('const TryOnModal = lazyWithRetry(() => import("@/components/TryOnModal"));');
+    expect(V).toContain("if (d.fitting) setFittingOpen(true);");
+    const R = readFileSync("src/components/tour/RackSheet.tsx", "utf8");
+    expect(R).toContain("if (!showroomDesignFits(brand) && !hasRackDesign(brand)) return;");
   });
 });

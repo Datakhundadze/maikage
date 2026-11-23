@@ -12,6 +12,7 @@ import { callGemini, editImage, RateLimitError } from "@/lib/generation";
 import { transparentShare } from "@/lib/aiModelSwitch";
 import { announceSketch } from "@/lib/constructorBridge";
 import { extractPrintFromPhoto } from "@/lib/extractPrint";
+import { askShowroomFitting, keepRackDesign, takeRackDesign } from "@/lib/tour/showroomFitting";
 import { drawnBefore, generateForShowroom, rememberDrawn } from "@/lib/tour/showroomGenerate";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 
@@ -78,24 +79,37 @@ interface Props {
    * with a smaller photo.
    */
   onOrder: (seed: ConstructorSeed) => boolean;
+  /** The rack this designer hangs on — where the fitting room sends the visitor back. */
+  rackId?: string;
 }
 
-export default function RackPhotoDesigner({ alt, garment, product, brand, startColor, width, onOrder }: Props) {
+/** What the designer keeps while the visitor is at the fitting room. */
+interface KeptDesign {
+  designs: Record<Side, GarmentDesign>;
+  color: string;
+  side: Side;
+  size: string;
+}
+
+export default function RackPhotoDesigner({ alt, garment, product, brand, startColor, width, onOrder, rackId }: Props) {
+  // back from the fitting room: the design that was left here (showroomFitting.ts)
+  const keptRef = useRef(takeRackDesign<KeptDesign>(brand));
+  const kept0 = keptRef.current;
   const ref = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const scratch = useRef<GarmentScratch | null>(null);
   const colors = BRAND_COLORS[brand] ?? ["White"];
-  const [side, setSide] = useState<Side>("front");
+  const [side, setSide] = useState<Side>(kept0?.side ?? "front");
   const [turn, setTurn] = useState(0);
-  const [color, setColor] = useState<string>(startColor && (colors as readonly string[]).includes(startColor) ? startColor : colors[0]);
-  const [designs, setDesigns] = useState<Record<Side, GarmentDesign>>({ front: emptyDesign(), back: emptyDesign() });
+  const [color, setColor] = useState<string>(kept0?.color ?? (startColor && (colors as readonly string[]).includes(startColor) ? startColor : colors[0]));
+  const [designs, setDesigns] = useState<Record<Side, GarmentDesign>>(kept0?.designs ?? { front: emptyDesign(), back: emptyDesign() });
   const [textOpen, setTextOpen] = useState(false);
   const [fontTick, setFontTick] = useState(0);
   const [film, setFilm] = useState<Omit<PrintAnimationProps, "onDone" | "onSkip"> | null>(null);
   const [printed, setPrinted] = useState(false);
   // the size is asked here, so "შეკვეთა" can open the order form itself
   const sizes = BRAND_SIZES[brand] ?? [];
-  const [size, setSize] = useState("");
+  const [size, setSize] = useState(kept0?.size ?? "");
   const [sizeAsk, setSizeAsk] = useState(false);
   const [orderFailed, setOrderFailed] = useState(false);
   const design = designs[side];
@@ -106,6 +120,11 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     setPrinted(false);
     setOrderFailed(false);
   }, [design, color, side]);
+  // …but a design brought back from the fitting room was already printed
+  useEffect(() => {
+    if (keptRef.current) setPrinted(true);
+    keptRef.current = null;
+  }, []);
   // the site's photo of this colour and side, hung in the rack photo (siteGarment.ts)
   const [site, setSite] = useState<SiteSide | null>(null);
   const geoRef = useRef<Partial<Record<Side, Pick<SiteSide, "area" | "box" | "zone">>>>({});
@@ -407,9 +426,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
   // the order: the same handoff the site chat uses — the constructor opens with
   // this colour, side, photo and text on the garment; price, order form and
   // payment are the constructor's own, untouched
-  // "ვირტუალური გასახდელი" (2026-11-23) is the same handoff with `tryOn` in
-  // place of `order`: the constructor opens its own fitting room with this
-  // design. No size is needed for it.
+  // "ვირტუალური გასახდელი" (2026-11-23): the walk goes to the shop's fitting
+  // room and the site's fitting-room dialog opens there (showroomFitting.ts).
+  // No size is needed for it.
   const order = (kind: "order" | "tryOn" = "order") => {
     if (kind === "order" && sizes.length && !size) {
       setSizeAsk(true);
@@ -454,10 +473,31 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     // looking at, and only then opens its order form with this size.
     const other: Side = side === "front" ? "back" : "front";
     const anyImg = !!design.img || !!designs[other].img;
+    if (kind === "tryOn") {
+      // to the shop's real fitting room (showroomFitting.ts): the print and the
+      // printed garment for the dialog, the order for its "order" button, and
+      // this designer's state for the way back
+      if (!site || !scratch.current) return;
+      const f = garmentFilm(site.layers, site.box, false, scratch.current);
+      if (!f) return;
+      const here = sideSeed(side, design, anyImg ? 1600 : 0);
+      const first = sideSeed(other, designs[other], anyImg ? 1600 : 0);
+      const last: ConstructorSeed | null = here ? { ...here, order: true, ...(size ? { size } : {}) } : null;
+      const chain = last ? (first ? { ...first, then: last } : last) : null;
+      keepRackDesign(brand, { designs, color, side, size } satisfies KeptDesign);
+      askShowroomFitting({
+        rackId: rackId ?? "",
+        brand,
+        designImage: f.designSrc,
+        garmentImage: f.garmentPrintedSrc,
+        orderSeed: chain ? { ...chain, product, subProduct: brand } : null,
+      });
+      return;
+    }
     for (const max of anyImg ? [2400, 1600, 1100, 800] : [0]) {
       const here = sideSeed(side, design, max);
       if (!here) break;
-      const last: ConstructorSeed = kind === "tryOn" ? { ...here, tryOn: true } : { ...here, order: true, ...(size ? { size } : {}) };
+      const last: ConstructorSeed = { ...here, order: true, ...(size ? { size } : {}) };
       const first = sideSeed(other, designs[other], max);
       if (onOrder(first ? { ...first, then: last } : last)) return;
     }

@@ -6,6 +6,7 @@ import MagnifierLens from "@/components/MagnifierLens";
 import RackPhotoDesigner from "@/components/tour/RackPhotoDesigner";
 import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
 import { SHOWROOM_DESIGN_EVENT, showroomDesignFits } from "@/lib/tour/showroomChatDesign";
+import { hasRackDesign } from "@/lib/tour/showroomFitting";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
 import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 import { fromPrice } from "@/lib/landingPrice";
@@ -70,7 +71,8 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
     const brand = rack.items !== "catalog" && garment ? rack.items[0].brand : null;
     if (!brand) return;
     const start = () => {
-      if (!showroomDesignFits(brand)) return;
+      // …or the design left here for a visit to the fitting room (showroomFitting.ts)
+      if (!showroomDesignFits(brand) && !hasRackDesign(brand)) return;
       setBig(true);
       setDesigning(true);
     };
@@ -285,6 +287,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                 brand={item.brand}
                 startColor={garment.start}
                 width={bigWidth}
+                rackId={rack.id}
                 onOrder={(seed) => {
                   // the site chat's own handoff: one seed, then the constructor ("/?constructor=1")
                   if (!item || !writeConstructorSeed({ ...seed, product: item.product, subProduct: item.brand })) return false;

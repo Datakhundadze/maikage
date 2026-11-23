@@ -51,9 +51,15 @@ import { createAmbientMusic, type AmbientMusic } from "@/lib/tour/ambientMusic";
 import { SHOWROOM_RACKS, type ShowroomRack } from "@/lib/tour/showroomRacks";
 import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
 import { peekShowroomDesign, SHOWROOM_DESIGN_EVENT, SHOWROOM_LOGIN_EVENT } from "@/lib/tour/showroomChatDesign";
+import { FITTING_STOP, SHOWROOM_FITTING_EVENT, takeShowroomFitting, type ShowroomFitting } from "@/lib/tour/showroomFitting";
+import { writeConstructorSeed } from "@/lib/constructorSeed";
+import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 
 // The site's own sign-in / registration window; loaded only when asked for.
 const LoginModal = lazyWithRetry(() => import("@/components/LoginModal"));
+const TryOnModal = lazyWithRetry(() => import("@/components/TryOnModal"));
+/** The red curtain (showroomFitting.ts). Not in the picker: reached from a design's "გასახდელი". */
+const FITTING_DEST: WalkDest = { id: "fitting", title: "გასახდელი", t: FITTING_STOP.t, yawDeg: FITTING_STOP.yawDeg, pitchDeg: FITTING_STOP.pitchDeg, fitting: true };
 import { preloadRack, RACK_CARD_WIDE_PX, RACK_CARD_WIDE_QUERY } from "@/lib/tour/rackItem";
 import { personYawAt } from "@/lib/tour/personYaw";
 import { CAM_HEIGHT_M, labelView, posAt, rackLabels } from "@/lib/tour/rackLabels";
@@ -73,6 +79,8 @@ interface WalkDest {
   rack?: ShowroomRack;
   /** The operators' desk: on arrival the AI operators greet (and the racks open up). */
   operator?: boolean;
+  /** The shop's fitting room (the red curtain): on arrival the fitting-room dialog opens. */
+  fitting?: boolean;
 }
 
 /**
@@ -426,6 +434,41 @@ export default function VideoWalk() {
   // product named, or one without a designer rack, the rack already open is
   // used; with none open the offer is left unclaimed and the chat keeps its
   // button.
+  // THE FITTING ROOM (David 2026-11-23): "გასახდელი" on a printed design walks
+  // to the shop's red curtain; there the site's own fitting-room dialog opens
+  // with that garment. Closing it walks back to the rack, where the design is
+  // waiting (showroomFitting.ts); its "order" button opens the order form.
+  const [fitting, setFitting] = useState<ShowroomFitting | null>(null);
+  const [fittingOpen, setFittingOpen] = useState(false);
+  useEffect(() => {
+    const on = () => {
+      const f = takeShowroomFitting();
+      if (!f) return;
+      setFitting(f);
+      setFittingOpen(false);
+      goRef.current(FITTING_DEST);
+    };
+    window.addEventListener(SHOWROOM_FITTING_EVENT, on);
+    return () => window.removeEventListener(SHOWROOM_FITTING_EVENT, on);
+  }, []);
+  useEffect(() => {
+    if (!fittingOpen) return;
+    document.documentElement.classList.add("maika-fitting-glass");
+    return () => document.documentElement.classList.remove("maika-fitting-glass");
+  }, [fittingOpen]);
+  const leaveFitting = (order: boolean) => {
+    const f = fitting;
+    setFittingOpen(false);
+    setFitting(null);
+    if (!f) return;
+    if (order && f.orderSeed && writeConstructorSeed(f.orderSeed)) {
+      const w = window.open(CONSTRUCTOR_URL, "_blank");
+      if (w) w.opener = null;
+    }
+    // back to the garment: the designer takes its design again
+    const back = dests.find((x) => x.id === f.rackId);
+    if (back) goRef.current(back);
+  };
   // OPTIONAL sign-in (owner 2026-11-15: "let it not be mandatory"). Nothing at
   // the door; a small button in the corner and, from the designer, the moment a
   // guest's AI allowance runs out. The window is the site's LoginModal.
@@ -1822,6 +1865,7 @@ export default function VideoWalk() {
             arriving = null;
             setGoingTo(null);
             if (d.rack) setOpenRack(d.rack);
+            if (d.fitting) setFittingOpen(true);
             if (d.operator) {
               setMetOperators(true);
               try {
@@ -2236,6 +2280,11 @@ export default function VideoWalk() {
           <UserRound className={`h-5 w-5 ${signedIn ? "text-emerald-400" : ""}`} aria-hidden />
           {!signedIn && <span className="text-sm font-semibold">შესვლა</span>}
         </button>
+      )}
+      {fitting && fittingOpen && (
+        <Suspense fallback={null}>
+          <TryOnModal open onClose={() => leaveFitting(false)} designImage={fitting.designImage} garmentImage={fitting.garmentImage} onOrder={fitting.orderSeed ? () => leaveFitting(true) : undefined} />
+        </Suspense>
       )}
       {login && (
         <Suspense fallback={null}>

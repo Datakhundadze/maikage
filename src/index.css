@@ -266,10 +266,10 @@ html.maika-order-glass body::before {
      still took a moment, and until it came the form stood on black (2026-11-23) */
   background: #6b6257 url("/tour/order-backdrop.webp") center / cover no-repeat;
 }
-html.maika-order-glass div[data-state].fixed.inset-0.bg-black\/80 {
+:is(html.maika-order-glass, html.maika-fitting-glass) div[data-state].fixed.inset-0.bg-black\/80 {
   background: rgba(0, 0, 0, 0.12);
 }
-html.maika-order-glass [role="dialog"] {
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] {
   background: rgba(20, 20, 24, 0.46);
   -webkit-backdrop-filter: blur(22px) saturate(1.35);
   backdrop-filter: blur(22px) saturate(1.35);
@@ -278,29 +278,29 @@ html.maika-order-glass [role="dialog"] {
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
   border-radius: 18px;
 }
-html.maika-order-glass [role="dialog"] input,
-html.maika-order-glass [role="dialog"] textarea {
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] input,
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] textarea {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.22);
   color: #fff;
 }
-html.maika-order-glass [role="dialog"] input::placeholder,
-html.maika-order-glass [role="dialog"] textarea::placeholder {
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] input::placeholder,
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] textarea::placeholder {
   color: rgba(255, 255, 255, 0.55);
 }
-html.maika-order-glass [role="dialog"] .border-border {
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] .border-border {
   border-color: rgba(255, 255, 255, 0.2);
 }
-html.maika-order-glass [role="dialog"] .text-muted-foreground {
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] .text-muted-foreground {
   color: rgba(255, 255, 255, 0.72);
 }
-html.maika-order-glass [role="dialog"] .text-card-foreground,
-html.maika-order-glass [role="dialog"] label {
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] .text-card-foreground,
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] label {
   color: #fff;
 }
 /* seen live 17.11: a white scrollbar on the glass form, and the site chat (left
    open in the showroom tab) standing black beside it */
-html.maika-order-glass [role="dialog"] {
+:is(html.maika-order-glass, html.maika-fitting-glass) [role="dialog"] {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
 }
