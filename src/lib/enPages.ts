@@ -157,6 +157,7 @@ export const EN_HUB: EnPageCopy = {
         { href: "/en/event-t-shirts", label: "Event T-shirts & merch" },
         { href: "/en/photo-t-shirt-printing", label: "Photo T-shirt printing" },
         { href: "/en/ai-t-shirt-design", label: "AI T-shirt design" },
+        { href: "/en/name-and-number-printing", label: "Name & number printing" },
       ],
     },
     {
@@ -1025,6 +1026,60 @@ export const EN_AI_DESIGN: EnPageCopy = {
   serviceType: "AI T-shirt design and printing",
 };
 
+// ── /en/name-and-number-printing ↔ /gvari-da-nomeri ─────────────────────────
+
+export const EN_NAME_NUMBER: EnPageCopy = {
+  slug: "name-and-number-printing",
+  path: "/en/name-and-number-printing",
+  kaPath: "/gvari-da-nomeri",
+  seo: {
+    title: "Name & Number Printing on Jerseys in Tbilisi | maika.ge",
+    description: "Bring your football or basketball jersey and we print a name and number on the back in 30–40 minutes on average. Georgian or Latin letters. Dinamo Arena, Gate 10, Tbilisi.",
+  },
+  name: "Name and number printing",
+  h1: "Name and number printing on jerseys in Tbilisi",
+  intro: "Have a fan jersey or your team's kit and want a name and number on the back? Bring it to our showroom and we print it in 30–40 minutes on average, so you can wait on the spot. Georgian or Latin letters, on a single jersey or a whole team's kits. We have been sewing and printing in Tbilisi for 15 years.",
+  heroLinks: [CONTACT_LINKS[0], { href: "/contact", label: "Map and directions" }],
+  images: [
+    { src: "/products/sport/team-kit-black-green.webp", alt: "Jerseys with Georgian names and numbers on the back — maika.ge", width: 832, height: 1040 },
+  ],
+  sections: [
+    {
+      h2: "How it works",
+      steps: [
+        "Bring the jersey to the showroom — Dinamo Arena, Gate 10.",
+        "Tell us the name and number; we agree the size and placement on the back together.",
+        "We print it in 30–40 minutes on average. Many jerseys? We agree the timing on the spot.",
+      ],
+    },
+    {
+      h2: "Which jerseys",
+      bullets: [
+        { term: "Fan jerseys", text: "your favourite club or national-team jersey that you already own — with your name or a player's." },
+        { term: "Team kits", text: "amateur, school or company teams — a different name and number on each." },
+        { term: "Training jerseys", text: "football, basketball or other sports, adult and kids' sizes." },
+      ],
+    },
+    { h2: "How we print", body: "Names and numbers are printed with heat-transfer vinyl (FLEX), made for letters and digits: one solid colour, sharp and readable from a distance. A colour logo goes on with DTF." },
+    { h2: "Your own jersey", body: "Sports fabrics differ, so we check the jersey before printing. We cannot take responsibility for damage to the fabric of a brought item. Wash at 30°C at most, inside out." },
+    {
+      h2: "Need team kits?",
+      body: "We sew football and basketball kits for teams: shirt and shorts in your colours, with the logo, names and numbers, in any size. We never sew or sell famous clubs' or national teams' kits.",
+      links: [{ href: "/en/team-kits", label: "Team kits" }],
+    },
+    VISIT,
+  ],
+  faqHeading: "Name and number printing — FAQ",
+  faq: [
+    { q: "How long does it take?", a: "30–40 minutes on average — you can wait at the showroom." },
+    { q: "Will you print on my club's jersey?", a: "Yes, if you bring it. We do not sell or sew club or national-team kits ourselves." },
+    { q: "Georgian letters?", a: "Yes — Georgian or Latin, as you prefer." },
+    { q: "Do I need to book?", a: "Not for one jersey — just come during opening hours. For a team's jerseys, message us first." },
+  ],
+  cta: { h2: "Bring your jersey", body: "Dinamo Arena, Gate 10 — name and number in 30–40 minutes on average.", links: [...CONTACT_LINKS, { href: "/contact", label: "Map and directions" }] },
+  serviceType: "Name and number printing on sports jerseys",
+};
+
 // ── Lists, links, JSON-LD ───────────────────────────────────────────────────
 
 /** Every English page, hub first. */
@@ -1044,6 +1099,7 @@ export const EN_PAGE_LIST: readonly EnPageCopy[] = [
   EN_EVENTS,
   EN_PHOTO,
   EN_AI_DESIGN,
+  EN_NAME_NUMBER,
 ];
 
 /** path → page, for the router. */
