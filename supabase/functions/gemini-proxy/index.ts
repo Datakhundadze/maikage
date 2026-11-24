@@ -416,6 +416,7 @@ KA — ჰუდები (ცალმხრივი ბეჭდვა შე
 - GILDAN Bomber: 70₾ · ორმხრივი 85₾
 - GILDAN Hoodie: 80₾ · ორმხრივი 95₾
 - საბავშვო ჰუდი (GILDAN KIDS Hoodie): 80₾ · ორმხრივი 95₾
+  ⚠️ საბავშვო ჰუდი = 80₾ (ისევე, როგორც დიდების GILDAN Hoodie). 35₾ არის საბავშვო ᲛᲐᲘᲡᲣᲠᲘᲡ ფასი — ჰუდზე არასოდეს.
 - JEL Standard Hoodie: 85₾ · ორმხრივი 100₾
 - Premium Washed Hoodie: 95₾ · ორმხრივი 110₾
 - JEL Standard Zipper (ელვიანი): 95₾ · ორმხრივი 110₾
@@ -425,6 +426,7 @@ EN — Hoodies (single-side print included):
 - GILDAN Bomber: 70₾ · two-sided 85₾
 - GILDAN Hoodie: 80₾ · two-sided 95₾
 - Kids hoodie (GILDAN KIDS Hoodie): 80₾ · two-sided 95₾
+  ⚠️ The kids hoodie costs 80₾ like the adult GILDAN Hoodie. 35₾ is the kids T-SHIRT — never quote it for a hoodie.
 - JEL Standard Hoodie: 85₾ · two-sided 100₾
 - Premium Washed Hoodie: 95₾ · two-sided 110₾
 - JEL Standard Zipper: 95₾ · two-sided 110₾

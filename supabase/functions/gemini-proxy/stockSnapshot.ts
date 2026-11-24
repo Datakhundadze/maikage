@@ -108,6 +108,8 @@ This section REPLACES the §0 STOCK disclaimer for the models listed below.
   მუქი ლურჯი ≈ Dark Navy, იასამნისფერი ≈ იისფერი, მუქი წითელი / ალუბლისფერი ≈ ბორდოსფერი). If the exact shade is
   unclear, say the colour is in stock and the exact shade is confirmed when ordering.
 - 2XL = XXL. Kids sizes are given as ages.
+- „საბავშვო GILDAN მაისური" is the kids T-SHIRT only. The kids HOODIE (GILDAN KIDS Hoodie) is NOT in this
+  list — for it use the normal §0 STOCK rule, never the kids t-shirt's stock.
 - Answer only what was asked (the colour/size they named); do not dump this list and never copy its format.
   If they named no model, name at most 2–3 models that have it. Prices still come from §2–§4.
 - In maika-mockup / maika-generate blocks keep using the §12 English colour values.
