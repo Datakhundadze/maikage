@@ -24,6 +24,8 @@ import {
   offPeriodStart,
   stripLeadingGreeting,
   introMessage,
+  introMessageEn,
+  introLanguage,
   isMetaAutomationEcho,
   isBareGreeting,
   isBotCandidate,
@@ -510,6 +512,30 @@ describe("intro message (owner 2026-11-14)", () => {
     expect(introMessage("off_hours").split("\n")).toHaveLength(2);
     expect(isMetaAutomationEcho(introMessage("off_hours"))).toBe(true);
     expect(introMessage("sunday")).toContain("ორშაბათს, 11:00-დან");
+  });
+
+  it("English intro (owner 2026-11-24): English text → English intro, Georgian/translit → Georgian", () => {
+    expect(introLanguage(["Hello! \nDo you have blanc washed T-shirt xxxl?"])).toBe("en");
+    expect(introLanguage(["hi"])).toBe("en");
+    expect(introLanguage(["How much is a hoodie with print?"])).toBe("en");
+    expect(introLanguage(["გამარჯობა"])).toBe("ka");
+    expect(introLanguage(["Hello", "მაისური მინდა"])).toBe("ka");
+    expect(introLanguage(["gamarjoba"])).toBe("ka");
+    expect(introLanguage(["Fasi?"])).toBe("ka");
+    expect(introLanguage(["👍"])).toBe("ka");
+    expect(introLanguage([])).toBe("ka");
+    expect(introMessageEn("off_hours")).toContain("write \"operator\"");
+    expect(introMessageEn("off_hours").split("\n")).toHaveLength(2);
+    expect(introMessageEn("sunday")).toContain("on Monday from 11:00");
+    expect(isMetaAutomationEcho(introMessageEn("off_hours"))).toBe(true);
+    expect(isMetaAutomationEcho(introMessageEn("sunday"))).toBe(true);
+  });
+
+  it("English customer: English intro, then the model's answer", async () => {
+    const en = row({ meta_message_id: "m1", text: "Hello! Do you have blank washed T-shirt xxxl?", sent_at: "2026-11-01T08:00:00.000Z" });
+    const f = fakeDeps({ introOnFirstReply: true, thread: [en], askBot: async () => "Hello! Our team will check the stock." });
+    expect(await runAutoReply({ ...trigger, text: en.text }, f.deps)).toBe("reply");
+    expect(f.sent.map((s) => s.text)).toEqual([introMessageEn("sunday"), "Our team will check the stock."]);
   });
 
   it("the bot already wrote in the window: no intro", async () => {

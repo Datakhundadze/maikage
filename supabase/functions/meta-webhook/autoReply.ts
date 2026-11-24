@@ -52,6 +52,8 @@ import {
   decideAutoReply,
   handoffMessage,
   introMessage,
+  introMessageEn,
+  introLanguage,
   OPERATOR_THREAD_MS,
   operatorClosedMessage,
   stripLeadingGreeting,
@@ -459,9 +461,11 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
       const greetingOnly = kind === "reply" && sketches.length === 0 && said.length > 0 && said.every((t) => isBareGreeting(t.content));
       // ONE GREETING (add-only, 2026-11-16): the intro greets, so a greeting at
       // the start of the model's reply to a real question is dropped too.
+      // ENGLISH INTRO (add-only, owner 2026-11-24): English text → English intro.
+      const intro = introLanguage(said.map((t) => t.content)) === "en" ? introMessageEn(schedule) : introMessage(schedule);
       texts = greetingOnly
-        ? [introMessage(schedule)]
-        : [introMessage(schedule), ...texts.map((t, n) => (n === 0 ? stripLeadingGreeting(t) : t))];
+        ? [intro]
+        : [intro, ...texts.map((t, n) => (n === 0 ? stripLeadingGreeting(t) : t))];
     }
 
     let sent = 0;
