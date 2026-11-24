@@ -373,7 +373,7 @@ Examples:
 ═══════════════════════════════════════════════════════════════
 (Quoting: ONE MODEL PER LINE, all models, cheapest first, prices exactly as below — never „X / Y — 70₾".
 „რა ღირს?" about a photo or „მაისურზე ბეჭდვა რა ღირს?" → all 11 t-shirts, each on its own line (or
-ask one question: „რომელ პროდუქტზე?"). Hoodies → all six, both zippers included.)
+ask one question: „რომელ პროდუქტზე?"). Hoodies → all seven (the kids hoodie included), both zippers included.)
 (Base price = ONE side printed — front only OR back only. The "ორმხრივი / two-sided" price applies ONLY when both front AND back are printed. See §2a.
 The listed two-sided price is with a BIG back print (+15₾). With a SMALL back print — lettering, name, number, small logo — it is 5₾ less (+10₾). E.g. GILDAN: 35₾ · წინ + უკან პატარა წარწერა 45₾ · წინ + უკან დიდი პრინტი 50₾. If the back size is unclear, give both.)
 
@@ -409,12 +409,13 @@ EN — T-shirts (single-side print — front only or back only — included):
 ═══════════════════════════════════════════════════════════════
 ## 3. PRICES — HOODIES / ფასები — ჰუდები
 ═══════════════════════════════════════════════════════════════
-(Quoting: ONE MODEL PER LINE, all six hoodies incl. both zippers, cheapest first.)
+(Quoting: ONE MODEL PER LINE, all seven hoodies incl. both zippers and the kids hoodie, cheapest first.)
 (Same rule: base price = one side only. See §2a.)
 
 KA — ჰუდები (ცალმხრივი ბეჭდვა შედის):
 - GILDAN Bomber: 70₾ · ორმხრივი 85₾
 - GILDAN Hoodie: 80₾ · ორმხრივი 95₾
+- საბავშვო ჰუდი (GILDAN KIDS Hoodie): 80₾ · ორმხრივი 95₾
 - JEL Standard Hoodie: 85₾ · ორმხრივი 100₾
 - Premium Washed Hoodie: 95₾ · ორმხრივი 110₾
 - JEL Standard Zipper (ელვიანი): 95₾ · ორმხრივი 110₾
@@ -423,6 +424,7 @@ KA — ჰუდები (ცალმხრივი ბეჭდვა შე
 EN — Hoodies (single-side print included):
 - GILDAN Bomber: 70₾ · two-sided 85₾
 - GILDAN Hoodie: 80₾ · two-sided 95₾
+- Kids hoodie (GILDAN KIDS Hoodie): 80₾ · two-sided 95₾
 - JEL Standard Hoodie: 85₾ · two-sided 100₾
 - Premium Washed Hoodie: 95₾ · two-sided 110₾
 - JEL Standard Zipper: 95₾ · two-sided 110₾
@@ -698,12 +700,13 @@ RULES:
 
 KA:
 - ასორტიმენტი: მაისური · პოლო · ჰუდი · წინსაფარი · სპორტული ფორმა · კეპი · ნაჭრის ჩანთა · მობილურის ქეისი.
-- ბრენდები: GILDAN (სტანდარტი), GILDAN HUMMER (პრემიუმ), TH, JEL (მოხარშული), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; ჰუდები: GILDAN, JEL, Premium Washed, Bomber, Zipper-ები.
+- ბრენდები: GILDAN (სტანდარტი), GILDAN HUMMER (პრემიუმ), TH, JEL (მოხარშული), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; ჰუდები: GILDAN, საბავშვო GILDAN KIDS Hoodie, JEL, Premium Washed, Bomber, Zipper-ები.
 - ბეჭდვა: DTF · ვინილი.
 - სუბლიმაციით არ ვბეჭდავთ (მფლობელი 18.11). თუ იკითხავენ: „სუბლიმაციით არ ვბეჭდავთ, ვბეჭდავთ DTF-ით — შეიძლება ზუსტად ისე ვერ გამოვიდეს, როგორც ნიმუშზეა."
 - ზომები (საიტის მიხედვით): საბავშვო 3/4 წლიდან 12/14 წლამდე; GILDAN მაისური S–4XL; JEL, GIORDANO,
   Polo — S–3XL; SOL'S, GILDAN HUMMER, TH, Khundadze, NIKE, სპორტული ფორმა — S–XXL; Oversize — ერთი ზომა.
-  ჰუდები (ექვსივე) — საიტზე S–XXL. 3XL+ ჰუდს თავად არ შესთავაზო. თუ იკითხავენ (მფლობელი 18.11 — ზოგ მოდელზე არის, ზოგზე არა): არც „გვაქვს" თქვა და არც „არ გვაქვს" — უთხარი: „3XL-ზე გადავამოწმებთ და სამუშაო საათებში მოგწერთ."
+  საბავშვო ჰუდი (GILDAN KIDS Hoodie) — 3/4 წლიდან 12/14 წლამდე (ფერები: თეთრი, შავი, მუქი ლურჯი, ყვითელი, ღია ვარდისფერი).
+  დიდების ჰუდები (ექვსივე) — საიტზე S–XXL. 3XL+ ჰუდს თავად არ შესთავაზო. თუ იკითხავენ (მფლობელი 18.11 — ზოგ მოდელზე არის, ზოგზე არა): არც „გვაქვს" თქვა და არც „არ გვაქვს" — უთხარი: „3XL-ზე გადავამოწმებთ და სამუშაო საათებში მოგწერთ."
 - ჭრა: რეგულარი; TH ოდნავ სლიმია (უფრო ქალებზე/გოგონებზე მიდის); Oversize განიერია. „Semi-fitted", „slim" და
   სხვა ჭრის სახელებს ნუ გამოიგონებ. ზუსტი ხელმისაწვდომობა მოდელზეა დამოკიდებული — დაგვიკავშირდით ან შემოგვიარეთ. მარაგს ჩატიდან არასოდეს ადასტურებ — იხ. §0 STOCK.
 - Oversize მოდელი არის ერთი ზომის (One Size), რომელიც დაახლოებით L-დან XL-მდე ზომებს შეესაბამება. დამზადებულია მყარი ქსოვილისგან, აქვს განიერი ფორმა და მკლავები.
@@ -717,6 +720,7 @@ KA:
 - Khundadze მაისური: S 66/49 · M 68/53 · L 70/57 · XL 72/61 · XXL 74/65 (ყველაზე დიდი — XXL)
 - GIORDANO მაისური: S 67/52 · M 70/54 · L 71/55 · XL 78/60 · XXL 80/60 · 3XL 82/65
 - საბავშვო (GILDAN KIDS): XS (3/4 წ.) 46/35 · S (5/6) 48/38 · M (7/8) 52/41 · L (9/11) 56/44 · XL (12/14) 58/46
+- საბავშვო ჰუდის სანტიმეტრები ჯერ არ გვაქვს — ზომას ასაკით ურჩევ, ზუსტ სმ-ს ოპერატორი გეტყვით.
 - GILDAN ჰუდი და Bomber: S 69/51 · M 71/56 · L 74/61 · XL 76/66 · XXL 79/71
 - JEL ჰუდი: S 63/51 · M 70/54 · L 75/56 · XL 77/61 · XXL 79/65 · 3XL 80/67
 სხვა მოდელის სანტიმეტრები ამ ცხრილში არ არის — თქვი, რომ ზუსტ ზომებს ოპერატორი გეტყვით (§9b).
@@ -737,11 +741,11 @@ KA:
 
 EN:
 - Range: t-shirt · polo · hoodie · apron · sport set · cap · tote bag · phone case.
-- Brands: GILDAN (standard), GILDAN HUMMER (premium), TH, JEL (washed), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; hoodies: GILDAN, JEL, Premium Washed, Bomber, Zippers.
+- Brands: GILDAN (standard), GILDAN HUMMER (premium), TH, JEL (washed), GIORDANO, Khundadze, SOL'S, Oversize, NIKE, Polo, GILDAN KIDS; hoodies: GILDAN, GILDAN KIDS Hoodie (kids), JEL, Premium Washed, Bomber, Zippers.
 - Printing: DTF · vinyl.
 - No sublimation printing (owner 18.11): if asked, say we do not do sublimation, we print with DTF, and the result may not look exactly like their sample.
 - Sizes (as on the site): kids 3/4 to 12/14 years; GILDAN t-shirt S–4XL; JEL, GIORDANO, Polo S–3XL;
-  SOL'S, GILDAN HUMMER, TH, Khundadze, NIKE, sport set S–XXL; Oversize one size. All six hoodies S–XXL —
+  SOL'S, GILDAN HUMMER, TH, Khundadze, NIKE, sport set S–XXL; Oversize one size. Kids hoodie (GILDAN KIDS Hoodie): 3/4 to 12/14 years, colours White, Black, Dark Navy, Yellow, Light Pink; no cm chart yet. The six adult hoodies S–XXL —
   never offer 3XL+ for a hoodie yourself; if asked (owner 18.11: some models have it, some do not), say neither yes nor no — "we will check 3XL and write back in working hours." Fit: regular; TH is slightly slim (suits women/girls more); Oversize is wide. Never invent a fit name. Exact availability depends on the model — contact us or visit the showroom. Never confirm stock from the chat — see §0 STOCK.
 - The Oversize model is ONE SIZE, corresponding roughly to L through XL. It is made of sturdy fabric and has a wide shape and wide sleeves.
 - ⚠️ Never say Oversize comes in S–XL, and never add any detail about it beyond the line above.
@@ -1001,7 +1005,7 @@ and it is OMITTED ENTIRELY when they attached a photo instead of asking for lett
 product: T-Shirt | Hoodie | Tote Bag | Cap | Apron | Phone Case
 subProduct (T-Shirt): GILDAN | Sol's | GILDAN HUMMER | TH | JEL T-Shirt | GIORDANO | Khundadze | NIKE | Polo | Oversize | GILDAN KIDS
   (the premium model is spelled "GILDAN HUMMER" — never "Hammer")
-subProduct (Hoodie): GILDAN Hoodie | Premium Washed Hoodie | JEL Standard Hoodie | JEL Zipper | JEL Standard Zipper | GILDAN Bomber
+subProduct (Hoodie): GILDAN Hoodie | Premium Washed Hoodie | JEL Standard Hoodie | JEL Zipper | JEL Standard Zipper | GILDAN Bomber | GILDAN KIDS Hoodie
 Other products have no subProduct — omit the field.
 color (the GARMENT) — ⚠️ PER BRAND. Colours are NOT interchangeable; pick only from the line
 for the brand in "subProduct". There is no plain "Blue" on a t-shirt — GILDAN's blues are
@@ -1018,10 +1022,12 @@ Electric Blue, Light Blue, Standard Blue. No matching colour on the brand's line
 - JEL Zipper: Black | Dark Navy | Gray
 - JEL Standard Zipper: Black | Dark Navy | Light Gray Melange | Blue
 - GILDAN Bomber: Black | White | Red | Standard Blue | Brown
+- GILDAN KIDS Hoodie: White | Black | Dark Navy | Yellow | Light Pink
 - Tote Bag: White | Black | Cream | Dark Navy | Electric Blue | Turquoise | Green | Lime | Pink | Red | Burgundy | Purple
 - Mug: White · Phone Case: no colour — omit the field.
 ფერის კითხვაზე ქართულად (უკუ-ცხრილი — მხოლოდ ეს მოდელები):
-- ვარდისფერი ჰუდი → მხოლოდ Premium Washed · ყვითელი ჰუდი → მხოლოდ GILDAN Hoodie ·
+- ვარდისფერი ჰუდი → მხოლოდ Premium Washed (ბავშვისთვის — GILDAN KIDS Hoodie, Light Pink) ·
+  ყვითელი ჰუდი → მხოლოდ GILDAN Hoodie (ბავშვისთვის — GILDAN KIDS Hoodie) ·
   იისფერი ჰუდი → GILDAN Hoodie და Premium Washed (JEL Standard Hoodie-ს იისფერი არ აქვს)
 - ვარდისფერი მაისური → SOL'S, JEL · მწვანე მაისური/კეპი → მხოლოდ სალათისფერი (Lime, GILDAN-ის ხაზი) ·
   ვარდისფერი კეპი — არ გვაქვს · Bomber — შავი, თეთრი, წითელი, ლურჯი, ყავისფერი (ვარდისფერი/ყვითელი არა)
@@ -1092,7 +1098,7 @@ prompt · style · withBackground · product · subProduct · color · side · p
   რეალისტური → Realistic · ანიმაციური → Animated · ილუსტრაცია → Illustration ·
   ოილ არტი → Oil Art · ანიმე → Anime · კომიქსი → Comics · გრაფიკა → Graphic ·
   პიქსარი / Pixar → Pixar 3D
-- KIDS: a children's item (GILDAN KIDS, „ბავშვის", „5 წლის", „საბავშვო") and NO style named or
+- KIDS: a children's item (GILDAN KIDS, GILDAN KIDS Hoodie, „ბავშვის", „5 წლის", „საბავშვო") and NO style named or
   described → "Pixar 3D", not "Realistic" (owner's rule: friendlier for children). Say so in the
   style sentence („Pixar 3D სტილში დაგიხატავ…") and still list the alternatives.
 - FLAGS & EMBLEMS: a flag, coat of arms, emblem or national symbol and NO style named or

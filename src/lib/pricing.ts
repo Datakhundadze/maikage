@@ -39,6 +39,8 @@ export const PRICES: Record<string, PriceTier> = {
   "JEL Standard Zipper": { frontOnly: 95, backPhoto: 110, backText: 105 },
   "JEL Zipper":          { frontOnly: 105, backPhoto: 120, backText: 115 },
   "GILDAN Bomber":       { frontOnly: 70, backPhoto: 85, backText: 80 },
+  // Same price as the adult GILDAN Hoodie (owner, 24.11.2026).
+  "GILDAN KIDS Hoodie":  { frontOnly: 80, backPhoto: 95, backText: 90 },
 
   // Sport
   "Sport Set": { frontOnly: 65, backPhoto: 80, backText: 75 },

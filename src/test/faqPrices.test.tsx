@@ -102,6 +102,7 @@ describe("hoodie answer", () => {
       ["Premium Washed Hoodie", "მოხარშული ნაჭარი"],
       ["JEL Zipper", "ელვიანი მოხარშული"],
       ["GILDAN Bomber", "GILDAN Bomber"],
+      ["GILDAN KIDS Hoodie", "GILDAN KIDS (საბავშვო)"],
     ]);
   });
 });

@@ -41,6 +41,7 @@ export const BRAND_SLUGS: Readonly<Partial<Record<ProductType, Readonly<Record<s
     "jel-zipper": "JEL Zipper",
     "jel-standard-zipper": "JEL Standard Zipper",
     "gildan-bomber": "GILDAN Bomber",
+    "gildan-kids": "GILDAN KIDS Hoodie",
   },
 };
 

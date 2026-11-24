@@ -22,7 +22,7 @@ export const PRODUCT_TYPES: string[] = ["T-Shirt","Hoodie","Tote Bag","Cap","Apr
 
 export const SUB_PRODUCTS: Record<string, string[]> = {
   "T-Shirt": ["GILDAN","Sol's","GILDAN HUMMER","TH","JEL T-Shirt","GIORDANO","Khundadze","NIKE","Polo","Oversize","GILDAN KIDS"],
-  "Hoodie": ["GILDAN Hoodie","Premium Washed Hoodie","JEL Standard Hoodie","JEL Zipper","JEL Standard Zipper","GILDAN Bomber"],
+  "Hoodie": ["GILDAN Hoodie","Premium Washed Hoodie","JEL Standard Hoodie","JEL Zipper","JEL Standard Zipper","GILDAN Bomber","GILDAN KIDS Hoodie"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
@@ -64,6 +64,7 @@ export const COLORS: { name: string; hex: string }[] = [
   {"name":"Sol's Electric","hex":"#324F9A"},
   {"name":"Sol's Navy","hex":"#333949"},
   {"name":"Sol's Ultramarine","hex":"#141B5F"},
+  {"name":"Light Pink","hex":"#F3C3D5"},
 ];
 
 export const TEXT_COLORS: { name: string; hex: string }[] = [
@@ -315,6 +316,16 @@ export const ENTRIES: SnapshotEntry[] = [
   {"type":"Hoodie","sub":"GILDAN Bomber","color":"Standard Blue","view":"back","url":null,"zone":{"x":0.5,"y":0.48,"scale":0.28,"scaleY":0.28}},
   {"type":"Hoodie","sub":"GILDAN Bomber","color":"Brown","view":"front","url":null,"zone":{"x":0.5,"y":0.51,"scale":0.28,"scaleY":0.28}},
   {"type":"Hoodie","sub":"GILDAN Bomber","color":"Brown","view":"back","url":null,"zone":{"x":0.5,"y":0.48,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"White","view":"front","url":"https://maika.ge/products/hoodie/gildan-hoodie-white-front.png.png","zone":{"x":0.5,"y":0.51,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"White","view":"back","url":"https://maika.ge/products/hoodie/gildan-hoodie-white-back.png.png","zone":{"x":0.5,"y":0.48,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Black","view":"front","url":"https://maika.ge/products/hoodie/gildan-hoodie-black-front.png.png","zone":{"x":0.5,"y":0.51,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Black","view":"back","url":"https://maika.ge/products/hoodie/gildan-hoodie-black-back.png.png","zone":{"x":0.5,"y":0.48,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Dark Navy","view":"front","url":null,"zone":{"x":0.5,"y":0.51,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Dark Navy","view":"back","url":null,"zone":{"x":0.5,"y":0.48,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Yellow","view":"front","url":null,"zone":{"x":0.5,"y":0.51,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Yellow","view":"back","url":null,"zone":{"x":0.5,"y":0.48,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Light Pink","view":"front","url":null,"zone":{"x":0.5,"y":0.51,"scale":0.28,"scaleY":0.28}},
+  {"type":"Hoodie","sub":"GILDAN KIDS Hoodie","color":"Light Pink","view":"back","url":null,"zone":{"x":0.5,"y":0.48,"scale":0.28,"scaleY":0.28}},
   {"type":"Tote Bag","sub":"Tote Bag","color":"White","view":"front","url":"https://maika.ge/products/totebag/TOTE%20BAG.png","zone":{"x":0.5,"y":0.6,"scale":0.35}},
   {"type":"Tote Bag","sub":"Tote Bag","color":"White","view":"back","url":"https://maika.ge/products/totebag/TOTE%20BAG.png","zone":{"x":0.5,"y":0.6,"scale":0.35}},
   {"type":"Tote Bag","sub":"Tote Bag","color":"Black","view":"front","url":null,"zone":{"x":0.5,"y":0.6,"scale":0.35}},
