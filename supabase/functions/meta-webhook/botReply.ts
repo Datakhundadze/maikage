@@ -109,6 +109,30 @@ export function introMessage(schedule: BotSchedule): string {
 }
 
 /**
+ * ENGLISH INTRO (add-only, owner 2026-11-24): a customer who writes in English
+ * ("Hello! Do you have …") gets the introduction in English. English only when
+ * the customer's text has NO Georgian letters AND a common English word —
+ * Georgian written in Latin letters („gamarjoba", „fasi?") stays Georgian.
+ */
+const EN_HINT_RE =
+  /\b(?:hello|hi|hey|hiya|greetings|good (?:morning|afternoon|evening|day)|thanks|thank you|please|do you|can you|could you|can i|i want|i need|i'?d like|i would like|how much|what|where|when|which|is it|are you|have|price|t-?shirts?|hoodies?|printing)\b/i;
+const GEORGIAN_LETTER_RE = /[\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F]/;
+export function introLanguage(customerTexts: string[]): "ka" | "en" {
+  const all = customerTexts.join(" ");
+  if (GEORGIAN_LETTER_RE.test(all)) return "ka";
+  return EN_HINT_RE.test(all) ? "en" : "ka";
+}
+
+export const INTRO_EN_MARK = "I'm maika.ge's new team member, and I'm an AI";
+export function introMessageEn(schedule: BotSchedule): string {
+  const back = schedule === "sunday" ? "on Monday from 11:00" : "during working hours (Mon–Fri 11:00–19:00, Sat 11:00–18:00)";
+  return [
+    `Hello! 👋 ${INTRO_EN_MARK} 🤖 Sorry if I get something wrong 🙏`,
+    `If you'd like to talk to a person, write "operator" and we'll reply ${back}.`,
+  ].join("\n");
+}
+
+/**
  * A message that is ONLY a greeting ("გამარჯობა", "hello", "სალამი 👋").
  * Owner 2026-11-15: to a first "გამარჯობა" the bot sent its introduction AND
  * the model's "გამარჯობა! რით შემიძლია დაგეხმაროთ? …" — "the second message is
@@ -216,6 +240,8 @@ const META_AUTOMATION_FRAGMENTS = [
   "ახლა არასამუშაო დროა",
   "maika.ge-ს ახალი თანამშრომელი, თანაც AI",
   "ოპერატორი უახლოეს სამუშაო საათებში",
+  // ENGLISH INTRO (add-only, 2026-11-24)
+  "I'm maika.ge's new team member, and I'm an AI",
 ];
 export function isMetaAutomationEcho(text: string | null): boolean {
   if (!text) return false;
