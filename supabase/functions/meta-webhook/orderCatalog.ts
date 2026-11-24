@@ -28,6 +28,7 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "JEL Zipper": ["S", "M", "L", "XL", "XXL"],
   "JEL Standard Zipper": ["S", "M", "L", "XL", "XXL"],
   "GILDAN Bomber": ["S", "M", "L", "XL", "XXL"],
+  "GILDAN KIDS Hoodie": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი", "12/14 წელი"],
 };
 
 export const SIZE_REQUIRED_WITHOUT_LIST: string[] = ["Phone Case"];
@@ -63,6 +64,7 @@ export const COLOR_KA: Record<string, string> = {
   "Sol's Electric": "ელ ლურჯი",
   "Sol's Navy": "მუქი ლურჯი",
   "Sol's Ultramarine": "ულტრამარინი",
+  "Light Pink": "ღია ვარდისფერი",
 };
 
 export const PRODUCT_KA: Record<string, string> = {

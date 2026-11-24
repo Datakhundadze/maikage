@@ -51,6 +51,7 @@ export const CATALOG_COLOUR_NAMES = [
   "Red", "Burgundy", "Pink", "Orange", "Yellow", "Lime", "Green", "Turquoise", "Light Blue",
   "Blue", "Standard Blue", "Electric Blue", "Dark Navy", "Purple", "Khaki", "Brown",
   "Sol's Khaki", "Sol's Pink", "Sol's Emerald", "Sol's Electric", "Sol's Navy", "Sol's Ultramarine",
+  "Light Pink",
 ];
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

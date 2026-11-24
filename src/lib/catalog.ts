@@ -14,7 +14,9 @@ export type ProductColor =
   | "Cream" | "Light Cream" | "Pink" | "Khaki" | "Brown" | "Turquoise" | "Green" | "Blue"
   // Sol's-specific palette: distinct shades from the global names so GILDAN/JEL
   // keep their own Khaki/Pink/Electric Blue/Dark Navy hexes unchanged.
-  | "Sol's Khaki" | "Sol's Pink" | "Sol's Emerald" | "Sol's Electric" | "Sol's Navy" | "Sol's Ultramarine";
+  | "Sol's Khaki" | "Sol's Pink" | "Sol's Emerald" | "Sol's Electric" | "Sol's Navy" | "Sol's Ultramarine"
+  // GILDAN KIDS Hoodie's pastel pink (global "Pink" is a hot pink).
+  | "Light Pink";
 
 export type ProductView = "front" | "back";
 
@@ -57,7 +59,7 @@ export const PRODUCTS: ProductInfo[] = [
 // Brand (sub-product) definitions per product type
 export const SUB_PRODUCTS: Record<ProductType, string[]> = {
   "T-Shirt": ["GILDAN", "Sol's", "GILDAN HUMMER", "TH", "JEL T-Shirt", "GIORDANO", "Khundadze", "NIKE", "Polo", "Oversize", "GILDAN KIDS"],
-  "Hoodie": ["GILDAN Hoodie", "Premium Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber"],
+  "Hoodie": ["GILDAN Hoodie", "Premium Washed Hoodie", "JEL Standard Hoodie", "JEL Zipper", "JEL Standard Zipper", "GILDAN Bomber", "GILDAN KIDS Hoodie"],
   "Tote Bag": [],
   "Cap": [],
   "Apron": [],
@@ -154,6 +156,8 @@ export const BRAND_COLORS: Record<string, ProductColor[]> = {
   "JEL Zipper": ["Black", "Dark Navy", "Gray"],
   "JEL Standard Zipper": ["Black", "Dark Navy", "Light Gray Melange", "Blue"],
   "GILDAN Bomber": ["Black", "White", "Red", "Standard Blue", "Brown"],
+  // Kids hoodie: same cut as GILDAN Hoodie (owner, 24.11.2026) — only these five colours.
+  "GILDAN KIDS Hoodie": ["White", "Black", "Dark Navy", "Yellow", "Light Pink"],
 
   // Sport
   "Sport Set": ["White", "Black", "Beige", "Light Gray", "Red", "Electric Blue", "Dark Navy", "Yellow", "Orange", "Light Blue", "Standard Blue", "Burgundy", "Gray", "Lime", "Purple"],
@@ -189,6 +193,7 @@ export const BRAND_SIZES: Record<string, string[]> = {
   "JEL Zipper": ["S", "M", "L", "XL", "XXL"],
   "JEL Standard Zipper": ["S", "M", "L", "XL", "XXL"],
   "GILDAN Bomber": ["S", "M", "L", "XL", "XXL"],
+  "GILDAN KIDS Hoodie": ["3/4 წელი", "5/6 წელი", "7/8 წელი", "9/11 წელი", "12/14 წელი"],
 };
 
 // All colors with display hex values
@@ -224,6 +229,7 @@ export const COLORS: { name: ProductColor; hex: string }[] = [
   { name: "Sol's Electric", hex: "#324F9A" },
   { name: "Sol's Navy", hex: "#333949" },
   { name: "Sol's Ultramarine", hex: "#141B5F" },
+  { name: "Light Pink", hex: "#F3C3D5" },
 ];
 
 // Phone case model list (stored in the `size` field of orders)
@@ -450,6 +456,11 @@ const KNOWN_IMAGES: Record<string, string> = {
   "Hoodie|GILDAN Bomber|White|back": "/products/hoodie/gildan-bomber-white-back.png.png",
   "Hoodie|GILDAN Bomber|Black|front": "/products/hoodie/gildan-bomber-black-front.png.png",
   "Hoodie|GILDAN Bomber|Black|back": "/products/hoodie/gildan-bomber-black-back.png.png",
+  // GILDAN KIDS Hoodie: identical shape to the adult GILDAN Hoodie (owner) — same photos.
+  "Hoodie|GILDAN KIDS Hoodie|White|front": "/products/hoodie/gildan-hoodie-white-front.png.png",
+  "Hoodie|GILDAN KIDS Hoodie|White|back": "/products/hoodie/gildan-hoodie-white-back.png.png",
+  "Hoodie|GILDAN KIDS Hoodie|Black|front": "/products/hoodie/gildan-hoodie-black-front.png.png",
+  "Hoodie|GILDAN KIDS Hoodie|Black|back": "/products/hoodie/gildan-hoodie-black-back.png.png",
 
   // Standalone products
   "Cap|Cap|White|front": "/products/cap/CAP.png",
@@ -494,6 +505,7 @@ export const COLOR_FILTERS: Record<ProductColor, string> = {
   "Sol's Electric": "brightness(0.5) saturate(2) hue-rotate(220deg)",
   "Sol's Navy": "brightness(0.4) saturate(0.8) hue-rotate(220deg)",
   "Sol's Ultramarine": "brightness(0.35) saturate(3) hue-rotate(230deg)",
+  "Light Pink": "brightness(1.05) saturate(1) hue-rotate(320deg)",
 };
 
 // Generate catalog entries

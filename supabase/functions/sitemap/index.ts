@@ -90,6 +90,7 @@ const STATIC_URLS: { loc: string; priority: string; changefreq: string }[] = [
   { loc: "/hoodie/jel-zipper", priority: "0.7", changefreq: "monthly" },
   { loc: "/hoodie/jel-standard-zipper", priority: "0.7", changefreq: "monthly" },
   { loc: "/hoodie/gildan-bomber", priority: "0.7", changefreq: "monthly" },
+  { loc: "/hoodie/gildan-kids", priority: "0.7", changefreq: "monthly" },
   // END product-routes
 ];
 

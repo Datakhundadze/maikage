@@ -195,6 +195,7 @@ const translations = {
       "Sol's Electric": "Electric",
       "Sol's Navy": "Navy",
       "Sol's Ultramarine": "Ultramarine",
+      "Light Pink": "Light Pink",
     },
     products: {
       "T-Shirt": "T-Shirt",
@@ -400,6 +401,7 @@ const translations = {
       "Sol's Electric": "ელ ლურჯი",
       "Sol's Navy": "მუქი ლურჯი",
       "Sol's Ultramarine": "ულტრამარინი",
+      "Light Pink": "ღია ვარდისფერი",
     },
     products: {
       "T-Shirt": "მაისური",

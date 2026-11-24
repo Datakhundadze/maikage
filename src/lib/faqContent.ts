@@ -58,6 +58,7 @@ export const FAQ_HOODIE_BRANDS: readonly FaqBrand[] = [
   ["Premium Washed Hoodie", "მოხარშული ნაჭარი"],
   ["JEL Zipper", "ელვიანი მოხარშული"],
   ["GILDAN Bomber", "GILDAN Bomber"],
+  ["GILDAN KIDS Hoodie", "GILDAN KIDS (საბავშვო)"],
 ];
 
 /** pricing.ts PRICES keys of the single-price products the FAQ quotes. */

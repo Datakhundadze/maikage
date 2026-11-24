@@ -31,7 +31,7 @@ CREATE POLICY "Admins manage price floors" ON public.price_floors FOR ALL TO aut
   WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 INSERT INTO public.price_floors (price_key, min_price) VALUES
- ('GILDAN',26),('Sol''s',33),('GILDAN HUMMER',45),('TH',33),('GIORDANO',52),('JEL T-Shirt',52),('Khundadze',41),('Polo',33),('NIKE',75),('Oversize',52),('GILDAN KIDS',26),('GILDAN Hoodie',60),('Premium Washed Hoodie',71),('JEL Standard Hoodie',63),('JEL Standard Zipper',71),('JEL Zipper',78),('GILDAN Bomber',52),('Sport Set',48),('Tote Bag',26),('Apron',33),('Mug',18),('Cap',18),('Phone Case',15)
+ ('GILDAN',26),('Sol''s',33),('GILDAN HUMMER',45),('TH',33),('GIORDANO',52),('JEL T-Shirt',52),('Khundadze',41),('Polo',33),('NIKE',75),('Oversize',52),('GILDAN KIDS',26),('GILDAN Hoodie',60),('Premium Washed Hoodie',71),('JEL Standard Hoodie',63),('JEL Standard Zipper',71),('JEL Zipper',78),('GILDAN Bomber',52),('Sport Set',48),('Tote Bag',26),('Apron',33),('Mug',18),('Cap',18),('Phone Case',15),('GILDAN KIDS Hoodie',60)
 ON CONFLICT (price_key) DO UPDATE SET min_price = EXCLUDED.min_price, updated_at = now();
 
 CREATE OR REPLACE FUNCTION public.orders_guard_price()
