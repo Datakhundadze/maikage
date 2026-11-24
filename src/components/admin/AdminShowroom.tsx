@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Trash2, Eye, EyeOff, Loader2 } from "lucide-react";
 import { transformedDisplayUrl } from "@/lib/imageTransform";
+import AdminShowroomStats from "./AdminShowroomStats";
 
 interface ShowroomPhoto {
   id: string;
@@ -149,6 +150,7 @@ export default function AdminShowroom() {
 
   return (
     <div className="space-y-4">
+      <AdminShowroomStats />
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-lg font-semibold">შოურუმის ფოტოები ({photos.length})</h2>
         <div className="flex items-center gap-2">

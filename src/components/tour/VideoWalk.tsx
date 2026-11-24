@@ -53,6 +53,7 @@ import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
 import { peekShowroomDesign, SHOWROOM_DESIGN_EVENT, SHOWROOM_LOGIN_EVENT } from "@/lib/tour/showroomChatDesign";
 import { dropFittingStash, FITTING_STOP, readFittingStash, restoreKeptDesign, SHOWROOM_FITTING_EVENT, stashFitting, takeShowroomFitting, type ShowroomFitting } from "@/lib/tour/showroomFitting";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
+import { showroomStat, startStayClock } from "@/lib/tour/showroomStats";
 import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 
 // The site's own sign-in / registration window; loaded only when asked for.
@@ -413,6 +414,16 @@ export default function VideoWalk() {
   useEffect(() => {
     openRackRef.current = openRack;
   }, [openRack]);
+  // the showroom's own funnel (showroomStats.ts): came, came in, stayed, opened a rack
+  useEffect(() => showroomStat("open"), []);
+  useEffect(() => {
+    if (!entered) return;
+    showroomStat("enter");
+    return startStayClock();
+  }, [entered]);
+  useEffect(() => {
+    if (openRack) showroomStat("rack", openRack.id);
+  }, [openRack]);
   const labelRefs = useRef<(HTMLButtonElement | null)[]>([]);
   // read by the render loop: hide the labels behind the picker / the open rack's own label
   const labelHideRef = useRef<{ picker: boolean; rackId: string | null }>({ picker: false, rackId: null });
@@ -469,6 +480,7 @@ export default function VideoWalk() {
   useEffect(() => {
     if (!fittingOpen) return;
     document.documentElement.classList.add("maika-fitting-glass");
+    showroomStat("fitting");
     return () => document.documentElement.classList.remove("maika-fitting-glass");
   }, [fittingOpen]);
   const leaveFitting = (order: boolean) => {
@@ -480,6 +492,7 @@ export default function VideoWalk() {
     if (order && f.orderSeed && writeConstructorSeed(f.orderSeed)) {
       const w = window.open(CONSTRUCTOR_URL, "_blank");
       if (w) w.opener = null;
+      showroomStat("order");
     }
     // back to the garment: the designer takes its design again
     const back = dests.find((x) => x.id === f.rackId);

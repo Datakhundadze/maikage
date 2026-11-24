@@ -17,6 +17,7 @@ import { extractPrintFromPhoto } from "@/lib/extractPrint";
 import { askShowroomFitting, keepRackDesign, takeRackDesign } from "@/lib/tour/showroomFitting";
 import { drawnBefore, generateForShowroom, rememberDrawn } from "@/lib/tour/showroomGenerate";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
+import { showroomStat } from "@/lib/tour/showroomStats";
 
 // The rack's large photo as the place to design (David 2026-11-10/12). The
 // garment in it is the site's own product photo for the chosen colour and
@@ -424,6 +425,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
 
   const onFile = (f: File | undefined) => {
     if (!f) return;
+    showroomStat("photo");
     void loadImg(URL.createObjectURL(f)).then((img) => {
       // The picture goes INSIDE the frame, whatever its shape (David 2026-11-12: "the
       // uploaded photo missed the frame and sat on the neck" — a tall photo in a low
@@ -454,6 +456,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
     flushDraw();
     const f = garmentFilm(site.layers, site.box, false, scratch.current);
     if (f) setFilm({ ...f, folded: garment.kind ?? "tee" });
+    if (f) showroomStat("print");
     // the order form's backdrop, so it is there the instant the form opens
     new Image().src = "/tour/order-backdrop.webp";
   };
@@ -541,7 +544,10 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
       if (!here) break;
       const last: ConstructorSeed = { ...here, order: true, ...(size ? { size } : {}) };
       const first = sideSeed(other, designs[other], max);
-      if (onOrder(first ? { ...first, then: last } : last)) return;
+      if (onOrder(first ? { ...first, then: last } : last)) {
+        showroomStat("order");
+        return;
+      }
     }
     setOrderFailed(true);
   };
@@ -647,6 +653,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
                   autoFocus
                   onChange={(e) => {
                     setDesign({ text: e.target.value });
+                    if (e.target.value.trim()) showroomStat("text");
                     setPrinted(false);
                   }}
                   placeholder="დაწერე ტექსტი"
