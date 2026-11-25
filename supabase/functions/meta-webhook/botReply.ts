@@ -245,6 +245,11 @@ const META_AUTOMATION_FRAGMENTS = [
   "ოპერატორი უახლოეს სამუშაო საათებში",
   // ENGLISH INTRO (add-only, 2026-11-24)
   "I'm maika.ge's new team member, and I'm an AI",
+  // META AD FOLLOW-UP (add-only, owner 2026-11-25): Meta itself sends
+  // "Hi Giorgi! We wanted to follow up. Do you have any questions?" when a
+  // customer re-opens the thread from a Click-to-Messenger ad. It is not an
+  // operator — 24.11 20:25 the bot stayed silent until 11:07 because of it.
+  "We wanted to follow up. Do you have any questions?",
 ];
 export function isMetaAutomationEcho(text: string | null): boolean {
   if (!text) return false;
