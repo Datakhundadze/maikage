@@ -161,7 +161,10 @@ export function isBareGreeting(text: string | null | undefined): boolean {
  * is dropped. Text without a leading greeting, or only a greeting, is kept.
  */
 export function stripLeadingGreeting(text: string): string {
-  const m = text.match(/^\s*(?:გამარჯობა|მოგესალმებით|სალამი|hello|hi)[^\n.!?]{0,40}[!.]?[ \t]*(?:\n+|\s+)/iu);
+  // FIX (owner 2026-11-25): the greeting must END its own sentence („!", „."
+  // or a line break). „სალამი, შეკვეთის ვადა 1–3 სამუშაო დღე." used to lose
+  // everything up to „სამუშაო" — a comma now stops the match.
+  const m = text.match(/^\s*(?:გამარჯობა|მოგესალმებით|სალამი|hello|hi)(?![\p{L}\p{N}])[^\n.!?,]{0,25}(?:[!.]+[ \t]*\n*|[ \t]*\n+)/iu);
   if (!m) return text;
   const rest = text.slice(m[0].length);
   return rest.trim() === "" ? text : rest;
