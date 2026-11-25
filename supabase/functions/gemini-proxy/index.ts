@@ -3190,7 +3190,7 @@ Output: one photorealistic composite photo.`;
         messages[0] = {
           role: "system",
           // DM orders (add-only, 2026-11-01): params.dm_orders from the webhook adds the order rules.
-          content: withSocialBlock(messages[0].content as string, faqSocialChannel, socialSchedule(params?.schedule), { orders: socialOrdersOn(faqSocialChannel, params?.dm_orders), now: new Date(), infoOnly: !!faqSocialChannel && params?.dm_info_only === true }),
+          content: withSocialBlock(messages[0].content as string, faqSocialChannel, socialSchedule(params?.schedule), { orders: socialOrdersOn(faqSocialChannel, params?.dm_orders), now: new Date(), infoOnly: !!faqSocialChannel && params?.dm_info_only === true, sketches: !!faqSocialChannel && params?.dm_sketches === true, adTitle: faqSocialChannel && typeof params?.dm_ad_title === "string" ? params.dm_ad_title.slice(0, 200) : null }),
         };
       }
 

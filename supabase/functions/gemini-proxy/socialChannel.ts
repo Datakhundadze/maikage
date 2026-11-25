@@ -82,21 +82,84 @@ const GIVEAWAY_RULE =
   "- GIVEAWAY (owner 2026-11-18; only from 23 November 2026 20:30 to 29 November 2026 23:59 Tbilisi — check today's date; never mention it before or after): maika.ge Instagram giveaway „2 ჰუდი: ერთი შენ, მეორე შენს მეგობარს\" — 2 GILDAN hoodies with a phrase split across them (PARTNER / IN CRIME etc.). If asked how to take part: „გამოიწერე @maika.ge_ და გათამაშების პოსტი story-ში გააზიარე. დახურული პროფილის შემთხვევაში გაზიარების სქრინი მოგვწერე აქ. გამარჯვებულს 30 ნოემბერს, 18:00-ზე გამოვავლენთ.\" Never promise anyone they will win; do not offer it unless they ask.";
 
 /**
+ * ADS (add-only, owner 2026-11-25): the ads currently running, so the bot knows
+ * what a customer saw („რეკლამაში რაც იყო", „ეს ჰუდი"). `match` is a piece of
+ * the internal ad name that Meta sends with the conversation (ad_title).
+ * Update this list when the ads change.
+ */
+export const ACTIVE_ADS: { match: string; ka: string }[] = [
+  { match: "Washed hoodie", ka: "მოხარშული ქსოვილის ჰუდი (Premium Washed) — მათი წარწერით ან დიზაინით" },
+  { match: "Tower fleece hoodie", ka: "დათბილული ჰუდი თბილისის ტელეანძის დიზაინით ზურგზე — საჩუქრად" },
+  { match: "New Year", ka: "საახალწლო დიზაინები მაისურებსა და ჰუდებზე (maika.ge კატალოგი, კატეგორია „საახალწლო\")" },
+  { match: "Gamer", ka: "გეიმერული წარწერები, მაგ. „MY WIFE SAID: ME OR THE PLAYSTATION\" (maika.ge კატალოგი)" },
+  { match: "Phrase reel", ka: "მოკლე ფრაზები / წარწერები მაისურებსა და ჰუდებზე" },
+  { match: "Giveaway", ka: "Instagram-ის გათამაშება (2 ჰუდი)" },
+  { match: "howroom", ka: "ვირტუალური შოურუმი — maika.ge/showroom" },
+];
+
+export function adsLines(adTitle: string | null): string[] {
+  const hit = adTitle ? ACTIVE_ADS.find((a) => adTitle.toLowerCase().includes(a.match.toLowerCase())) : undefined;
+  return [
+    `- OUR CURRENT ADS (what customers may have seen): ${ACTIVE_ADS.map((a) => a.ka).join("; ")}. Prices only from the knowledge base.`,
+    ...(hit ? [`- THIS customer opened the chat from our ad: ${hit.ka}. „ეს", „რეკლამაში რაც იყო", „ეს ჰუდი" without other context = that item.`] : []),
+  ];
+}
+
+/**
+ * SKETCH OFFER (add-only, owner 2026-11-25): inside INFO ONLY the bot may TRY a
+ * sketch. The sketch rules are the full DM block's own lines (unchanged), the
+ * order rules are not. The system adds the honest caveat to the sketch notice.
+ */
+const SKETCH_RULE_PREFIXES = [
+  "- For a drawing or lettering",
+  "- TWO SIDES HERE",
+  "- Never write yourself that a sketch",
+  "- BIGGER / SMALLER",
+  "- FONTS:",
+  "- READ THE WHOLE BURST FIRST",
+  "- FRONT AND BACK PHOTOS",
+  "- THEIR OWN PHOTOS",
+];
+export function sketchOfferLines(channel: SocialChannel, schedule: SocialSchedule): string[] {
+  const full = socialPromptBlock(channel, schedule).split("\n");
+  const out: string[] = [
+    "- SKETCH OFFER (owner 2026-11-25): when they want their own lettering, name, logo or photo printed and no sketch has been made yet, you may offer in ONE line to try a sketch („თუ გინდათ, ესკიზს მოგიმზადებთ — მომწერეთ წარწერა ან გამომიგზავნეთ ფოტო.\"). If they already gave the text / photo and the product, make the sketch right away (emit the block). If product or colour is missing, ask ONE short question first.",
+    "- A sketch is a preview, not an order: never a plain „yes, we will make it\" before the operator checks; the system itself adds a line that the operator helps in working hours if something is wrong. Do not write that line yourself.",
+  ];
+  let keep = false;
+  for (const line of full) {
+    if (line.startsWith("- ")) keep = SKETCH_RULE_PREFIXES.some((p) => line.startsWith(p));
+    else if (!line.startsWith("  ") && !line.startsWith("    ")) keep = false;
+    if (keep) out.push(line);
+  }
+  return out;
+}
+
+/**
  * INFO ONLY (add-only, owner 2026-11-20 — „საშინელებებს აკეთებს ბოტი"): with
  * params.dm_info_only the DM bot only answers questions — no sketches, no
  * orders, no bank details, no stock claims. This block REPLACES the full DM
  * block below; without the flag nothing changes.
  */
-export function socialInfoOnlyBlock(channel: SocialChannel, schedule: SocialSchedule, now?: Date): string {
+export function socialInfoOnlyBlock(channel: SocialChannel, schedule: SocialSchedule, now?: Date, extra?: { sketches?: boolean; adTitle?: string | null }): string {
   const where = channel === "instagram" ? "Instagram" : "Facebook Messenger";
   const back = schedule === "sunday" ? "on Monday from 11:00" : "during working hours";
+  const sketches = extra?.sketches === true;
   return [
     "═══════════════════════════════════════════════════════════════",
     "SOCIAL DM MODE — INFORMATION ONLY",
     `You are answering in ${where} on behalf of maika.ge while operators are off. You ONLY answer questions with facts from the knowledge base.`,
     ...(now ? [tbilisiNowLine(now)] : []),
-    "- NO SKETCHES, NO DESIGNS, NO ORDERS here. NEVER emit maika-mockup, maika-generate or maika-order blocks — the website rules about them do NOT apply in this chat. Never write that a sketch is being prepared, never describe a sketch.",
-    `- A photo, logo or design they want printed, or „ესეთს დაამზადებთ?" (owner 2026-11-20): NEVER a plain „yes / დიახ" — it may not work technically. Say we will make it, BUT the operator checks the details ${back} and prepares the sketch and the exact price (e.g. „დავამზადებთ, თუმცა დეტალებს ოპერატორი სამუშაო საათებში გადაამოწმებს, მოგიმზადებთ ესკიზს და ზუსტ ფასს გეტყვით."). You may ask ONE short question only if the product or colour is missing. Never describe their picture at length.`,
+    ...(sketches
+      ? [
+        "- NO ORDERS here: NEVER emit maika-order blocks, never take an order. Sketches ARE allowed (below).",
+        ...sketchOfferLines(channel, schedule),
+      ]
+      : [
+        "- NO SKETCHES, NO DESIGNS, NO ORDERS here. NEVER emit maika-mockup, maika-generate or maika-order blocks — the website rules about them do NOT apply in this chat. Never write that a sketch is being prepared, never describe a sketch.",
+        `- A photo, logo or design they want printed, or „ესეთს დაამზადებთ?" (owner 2026-11-20): NEVER a plain „yes / დიახ" — it may not work technically. Say we will make it, BUT the operator checks the details ${back} and prepares the sketch and the exact price (e.g. „დავამზადებთ, თუმცა დეტალებს ოპერატორი სამუშაო საათებში გადაამოწმებს, მოგიმზადებთ ესკიზს და ზუსტ ფასს გეტყვით."). You may ask ONE short question only if the product or colour is missing. Never describe their picture at length.`,
+      ]),
+    ...adsLines(extra?.adTitle ?? null),
     "- PRICES: at most ONE price list in the whole conversation — only for the product they asked about, one line per model („GILDAN — 35₾\"), then one line for the two-sided add-on. If our side of the history already contains a price list, NEVER send it again: answer a price question in ONE line.",
     "- BANK DETAILS (owner 2026-11-20 — learn them exactly): only when they ask where / how to pay or for the account. Copy the knowledge-base requisites lines EXACTLY — company, ID, TBC and BOG IBAN — never from memory and never from this chat's history (numbers there are masked like [phone:***75]). Then one line: send the transfer receipt here, the operator confirms the order in working hours. Payment is 100% prepayment (bank transfer or card); no cash to the courier. Never push them to pay before they asked.",
     "- NOT SURE? (owner 2026-11-20) If the knowledge base does not clearly answer it (a colour, a size, a technique, a date, whether something is possible), do NOT guess: say in one line that the operator will check it in working hours and write to them here.",
@@ -114,8 +177,8 @@ export function socialInfoOnlyBlock(channel: SocialChannel, schedule: SocialSche
   ].join("\n");
 }
 
-export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule, opts?: { orders?: boolean; now?: Date; infoOnly?: boolean }): string {
-  if (opts?.infoOnly) return socialInfoOnlyBlock(channel, schedule, opts.now);
+export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedule, opts?: { orders?: boolean; now?: Date; infoOnly?: boolean; sketches?: boolean; adTitle?: string | null }): string {
+  if (opts?.infoOnly) return socialInfoOnlyBlock(channel, schedule, opts.now, { sketches: opts.sketches, adTitle: opts.adTitle });
   const where = channel === "instagram" ? "Instagram" : "Facebook Messenger";
   const off = schedule === "sunday" ? "(Sunday)" : "(outside working hours)";
   const back = schedule === "sunday"
@@ -182,7 +245,7 @@ export function withSocialBlock(
   systemContent: string,
   channel: SocialChannel | null,
   schedule: SocialSchedule = "sunday",
-  opts?: { orders?: boolean; now?: Date; infoOnly?: boolean },
+  opts?: { orders?: boolean; now?: Date; infoOnly?: boolean; sketches?: boolean; adTitle?: string | null },
 ): string {
   if (!channel) return systemContent;
   const block = socialPromptBlock(channel, schedule, opts);

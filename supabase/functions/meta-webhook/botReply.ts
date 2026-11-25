@@ -34,9 +34,15 @@ export const SKETCH_NOTICE = "ესკიზს ვამზადებ, ც�
  * are stripped from the history and from the model's answer: left in, the model
  * copied them, wrote "I'm preparing a sketch" with no block, and nothing came.
  */
+/**
+ * SKETCH CAVEAT (add-only, owner 2026-11-25): the off-hours sketch comes with
+ * the honest note that the AI may have misunderstood and the operator helps.
+ */
+export const SKETCH_CAVEAT = "თუ რამე ზუსტად ვერ გავიგე ან დახატვა ვერ გამოვიდა, სამუშაო საათებში ოპერატორი დაგეხმარებათ 🙏";
 export const SKETCH_SYSTEM_LINES = [
   SKETCH_NOTICE,
   "ესკიზი 👆 შესაცვლელად ან შესაკვეთად მოგვწერეთ.",
+  SKETCH_CAVEAT,
 ] as const;
 /** The history's numbered image tag, „[ფოტო 2]" (photo sketches, 2026-10-31). */
 export const photoTag = (n: number) => `[ფოტო ${n}]`;

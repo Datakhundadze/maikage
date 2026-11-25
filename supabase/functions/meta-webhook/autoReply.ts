@@ -46,6 +46,7 @@ import { isScheduleActive } from "./botSchedule.ts";
 import {
   ASKS_FOR_MODELS_RE,
   DESIGN_LINK_LINE,
+  SKETCH_CAVEAT,
   HANDOFF_REASON_SKETCH_CAP,
   buildHistoryWithPhotos,
   cleanBotReply,
@@ -178,6 +179,8 @@ export interface AutoReplyDeps {
    * (operatorClosedMessage) and no bot answers. Absent → as before.
    */
   operatorClosing?: boolean;
+  /** SKETCH CAVEAT (add-only, owner 2026-11-25): true → the sketch notice carries SKETCH_CAVEAT. */
+  sketchCaveat?: boolean;
   /** Add-only (2026-11-16): true → an operator reply silences the bot only within the current bot hours. */
   offPeriodTakeover?: boolean;
 }
@@ -443,7 +446,7 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
         schedule,
         {
           ...(sketches.length > 0
-            ? { designNotice: SKETCH_NOTICE }
+            ? { designNotice: deps.sketchCaveat === true ? `${SKETCH_NOTICE}\n${SKETCH_CAVEAT}` : SKETCH_NOTICE }
             : capHit ? { designNotice: sketchCapMessage(schedule) } : {}),
           allowPriceList: pendingInbound(thread).some((r) => typeof r.text === "string" && ASKS_FOR_MODELS_RE.test(r.text)),
         },

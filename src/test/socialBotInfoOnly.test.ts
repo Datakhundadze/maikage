@@ -90,3 +90,44 @@ describe("info-only DM prompt", () => {
     expect(withSocialBlock("SYS\n\nCALLER: x", null, "off_hours", { infoOnly: true })).toBe("SYS\n\nCALLER: x");
   });
 });
+
+// Owner 2026-11-25: ads list + off-hours sketch offer inside info-only.
+import { adsLines, sketchOfferLines, ACTIVE_ADS } from "../../supabase/functions/gemini-proxy/socialChannel";
+import { SKETCH_CAVEAT, SKETCH_SYSTEM_LINES, stripSketchSystemText } from "../../supabase/functions/meta-webhook/botReply";
+
+describe("ads + sketch offer (owner 2026-11-25)", () => {
+  it("info-only without sketches is unchanged in spirit: no blocks allowed", () => {
+    const b = socialPromptBlock("instagram", "off_hours", { infoOnly: true });
+    expect(b).toContain("NO SKETCHES, NO DESIGNS, NO ORDERS");
+    expect(b).not.toContain("SKETCH OFFER");
+    expect(b).toContain("OUR CURRENT ADS");
+  });
+  it("info-only with sketches: sketch rules in, orders out", () => {
+    const b = socialPromptBlock("messenger", "off_hours", { infoOnly: true, sketches: true });
+    expect(b).not.toContain("NO SKETCHES, NO DESIGNS");
+    expect(b).toContain("SKETCH OFFER");
+    expect(b).toContain("NEVER emit maika-order");
+    expect(b).toContain("- For a drawing or lettering");
+    expect(b).toContain("- THEIR OWN PHOTOS");
+    expect(b).toContain("\"extract\":true");
+    expect(b).not.toContain("CORPORATE / BULK (owner 2026-11-16)");
+    // info-only rules stay
+    expect(b).toContain("NEVER say a product, colour or size is in stock");
+  });
+  it("sketch lines come only from the sketch rules", () => {
+    const lines = sketchOfferLines("instagram", "off_hours");
+    expect(lines.some((l) => l.startsWith("- PRICE HERE"))).toBe(false);
+    expect(lines.some((l) => l.startsWith("- COMPLAINT"))).toBe(false);
+  });
+  it("the opening ad is named when it matches", () => {
+    expect(adsLines("Washed hoodie video | Messenger v1").join("\n")).toContain("THIS customer opened the chat from our ad: მოხარშული");
+    expect(adsLines("Tower fleece hoodie | Messenger | B gift").join("\n")).toContain("ტელეანძის");
+    expect(adsLines("Something else").join("\n")).not.toContain("THIS customer");
+    expect(adsLines(null)).toHaveLength(1);
+    expect(ACTIVE_ADS.length).toBeGreaterThan(3);
+  });
+  it("the caveat is a system line, stripped from history", () => {
+    expect(SKETCH_SYSTEM_LINES).toContain(SKETCH_CAVEAT);
+    expect(stripSketchSystemText(`ტექსტი\n${SKETCH_CAVEAT}`)).toBe("ტექსტი");
+  });
+});
