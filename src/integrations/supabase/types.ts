@@ -1204,6 +1204,39 @@ export type Database = {
         }
         Relationships: []
       }
+      showroom_events: {
+        Row: {
+          campaign: string | null
+          created_at: string
+          detail: string | null
+          event: string
+          id: string
+          medium: string | null
+          session_id: string
+          source: string | null
+        }
+        Insert: {
+          campaign?: string | null
+          created_at?: string
+          detail?: string | null
+          event: string
+          id?: string
+          medium?: string | null
+          session_id: string
+          source?: string | null
+        }
+        Update: {
+          campaign?: string | null
+          created_at?: string
+          detail?: string | null
+          event?: string
+          id?: string
+          medium?: string | null
+          session_id?: string
+          source?: string | null
+        }
+        Relationships: []
+      }
       showroom_photos: {
         Row: {
           active: boolean | null
@@ -1588,6 +1621,16 @@ export type Database = {
           user_gen_count: number
           user_id: string
           user_paid_order_count: number
+        }[]
+      }
+      admin_showroom_funnel: {
+        Args: { p_days?: number }
+        Returns: {
+          day: string
+          event: string
+          medium: string
+          sessions: number
+          source: string
         }[]
       }
       admin_update_order: {
