@@ -536,6 +536,9 @@ describe("intro message (owner 2026-11-14)", () => {
     expect(introMessageEn("sunday")).toContain("on Monday from 11:00");
     expect(isMetaAutomationEcho(introMessageEn("off_hours"))).toBe(true);
     expect(isMetaAutomationEcho(introMessageEn("sunday"))).toBe(true);
+    // 2026-11-25: Meta's own ad follow-up is not an operator.
+    expect(isMetaAutomationEcho("Hi Giorgi! We wanted to follow up. Do you have any questions?")).toBe(true);
+    expect(humanTookOver([{ meta_message_id: "x", text: "Hi Giorgi! We wanted to follow up. Do you have any questions?", sent_at: "2026-11-24T16:25:00Z" }], [], new Date("2026-11-24T16:26:00Z"))).toBe(false);
   });
 
   it("English customer: English intro, then the model's answer", async () => {
