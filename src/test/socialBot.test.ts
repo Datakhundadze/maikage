@@ -461,6 +461,13 @@ describe("weekend lessons (owner 2026-11-16)", () => {
     expect(stripLeadingGreeting("გამარჯობა! დიახ, ვბეჭდავთ ჰუდებზე.")).toBe("დიახ, ვბეჭდავთ ჰუდებზე.");
     expect(stripLeadingGreeting("მაისური 25₾-დან.")).toBe("მაისური 25₾-დან.");
     expect(stripLeadingGreeting("გამარჯობა!")).toBe("გამარჯობა!");
+    // 2026-11-25: a greeting followed by a comma is the start of a sentence — keep it whole.
+    const real = "სალამი, შეკვეთის დამზადების სტანდარტული ვადა 1–3 სამუშაო დღე. ოპერატორი გადაამოწმებს.";
+    expect(stripLeadingGreeting(real)).toBe(real);
+    expect(stripLeadingGreeting("გამარჯობა, რით შემიძლია დაგეხმაროთ?")).toBe("გამარჯობა, რით შემიძლია დაგეხმაროთ?");
+    expect(stripLeadingGreeting("Hello! Our team will check the stock.")).toBe("Our team will check the stock.");
+    expect(stripLeadingGreeting("Hiring is open! Write to us.")).toBe("Hiring is open! Write to us.");
+    expect(stripLeadingGreeting("გამარჯობა\nდიახ, ვბეჭდავთ.")).toBe("დიახ, ვბეჭდავთ.");
   });
 
   it("after the intro the model's greeting is dropped", async () => {
