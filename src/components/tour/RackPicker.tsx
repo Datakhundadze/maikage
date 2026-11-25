@@ -3,6 +3,8 @@ import { ArrowLeft } from "lucide-react";
 import { fromPrice } from "@/lib/landingPrice";
 import { rackPhoto } from "@/lib/tour/rackItem";
 import type { ShowroomRack } from "@/lib/tour/showroomRacks";
+import { tx } from "@/lib/tour/tourText";
+import { useSiteLang } from "@/hooks/useSiteLang";
 
 // Choosing a rack at the operators' desk (/showroom). David 2026-11-10: the
 // list of 18 small name buttons was not it — the operator asks "which product
@@ -31,12 +33,13 @@ function priceOf(rack: ShowroomRack): number | null {
 }
 
 export default function RackPicker({ groups, onPick }: Props) {
+  const lang = useSiteLang();
   const [cat, setCat] = useState<number | null>(null);
   const g = cat === null ? null : groups[cat];
   return (
     <nav
       id="maika-rack-picker"
-      aria-label="რომელი პროდუქტი გაინტერესებთ?"
+      aria-label={tx(lang, "რომელი პროდუქტი გაინტერესებთ?")}
       className="pointer-events-none absolute inset-x-0 bottom-[4.5rem] z-50 mx-auto flex max-w-3xl flex-col px-3 text-white"
     >
       <style>{`
@@ -53,7 +56,7 @@ export default function RackPicker({ groups, onPick }: Props) {
                 onClick={() => setCat(i)}
                 className="h-12 w-full rounded-full bg-white/15 px-4 text-sm font-bold text-white shadow-[0_6px_22px_-6px_rgba(0,0,0,.7)] ring-1 ring-white/40 backdrop-blur-md transition-colors [text-shadow:0_1px_4px_rgba(0,0,0,.7)] hover:bg-white/25 active:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 md:w-auto md:px-8 md:text-base"
               >
-                {x.title}
+                {tx(lang, x.title)}
               </button>
             </li>
           ))}
@@ -64,12 +67,12 @@ export default function RackPicker({ groups, onPick }: Props) {
             <button
               type="button"
               onClick={() => setCat(null)}
-              aria-label="უკან"
+              aria-label={tx(lang, "უკან")}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
             </button>
-            <h3 className="text-sm font-bold">{g.title}</h3>
+            <h3 className="text-sm font-bold">{tx(lang, g.title)}</h3>
           </div>
           <ul className="grid grid-cols-4 gap-2 overflow-y-auto md:grid-cols-6">
             {g.dests.map((d) => {
@@ -92,8 +95,8 @@ export default function RackPicker({ groups, onPick }: Props) {
                         className="aspect-[4/5] w-full rounded-xl bg-white/10 object-cover ring-1 ring-white/15 transition-transform group-active:scale-95"
                       />
                     )}
-                    <span className="mt-1 block text-[10.5px] font-semibold leading-tight md:text-xs">{d.title}</span>
-                    {price !== null && <span className="block text-[10.5px] font-bold leading-tight text-amber-400 md:text-xs">{price} ₾-დან</span>}
+                    <span className="mt-1 block text-[10.5px] font-semibold leading-tight md:text-xs">{tx(lang, d.title)}</span>
+                    {price !== null && <span className="block text-[10.5px] font-bold leading-tight text-amber-400 md:text-xs">{lang === "en" ? `from ${price} ₾` : `${price} ₾-დან`}</span>}
                   </button>
                 </li>
               );

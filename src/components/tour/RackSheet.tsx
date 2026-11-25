@@ -12,6 +12,8 @@ import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 import { fromPrice } from "@/lib/landingPrice";
 import { RACK_CARD_WIDE_PX, rackItemName, rackLandingPath, rackPhoto } from "@/lib/tour/rackItem";
 import type { RackItem, ShowroomRack } from "@/lib/tour/showroomRacks";
+import { tx } from "@/lib/tour/tourText";
+import { useSiteLang } from "@/hooks/useSiteLang";
 
 // The card a rack opens in /showroom once the walk has stopped and turned to
 // it: beside the rack, never over it — on wide screens a panel on the right
@@ -47,6 +49,7 @@ const media = (q: string) => typeof window !== "undefined" && window.matchMedia(
 const ARRIVE_MS = 900;
 
 export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProps) {
+  const lang = useSiteLang();
   const navigate = useNavigate();
   const photo = rackPhoto(rack);
   // A rack that can be designed opens straight in the large view (David 2026-11-12:
@@ -128,8 +131,8 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
 
   const cta =
     "inline-flex items-center justify-center gap-1.5 rounded-full bg-amber-400 font-semibold text-black transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
-  const label = item ? rack.title : "ყვითელი საკიდი";
-  const heading = item ? item.name : rack.title;
+  const label = item ? tx(lang, rack.title) : tx(lang, "ყვითელი საკიდი");
+  const heading = item ? item.name : tx(lang, rack.title);
   // design on the photo (look only): the rack whose photo has a garment mask
   const designable = !!garment && !!item;
   // the large photo is the same size with and without the tools, so nothing jumps
@@ -140,7 +143,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
       {!direct && (
         <aside
           role="dialog"
-          aria-label={rack.title}
+          aria-label={tx(lang, rack.title)}
           style={{ ["--card-w" as string]: `${RACK_CARD_WIDE_PX}px` }}
           className="maika-rack-card absolute inset-x-3 bottom-[5.25rem] z-30 text-white md:inset-x-auto md:bottom-auto md:right-5 md:top-1/2 md:w-[var(--card-w)] md:-translate-y-1/2"
         >
@@ -157,7 +160,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
             <button
               type="button"
               onClick={onClose}
-              aria-label="დახურვა"
+              aria-label={tx(lang, "დახურვა")}
               className="absolute right-2 top-2 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white/90 backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <X className="h-4 w-4" aria-hidden />
@@ -171,7 +174,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                     <button
                       type="button"
                       onClick={() => setBig(true)}
-                      aria-label="ფოტოს გადიდება"
+                      aria-label={tx(lang, "ფოტოს გადიდება")}
                       className="block h-full w-full focus-visible:outline-none"
                       style={hover ? { cursor: "none" } : undefined}
                     >
@@ -181,7 +184,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                 </div>
                 <span className="pointer-events-none absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
                   <Search className="h-3 w-3" aria-hidden />
-                  {hover ? "გადიდება — მიიტანე მაუსი" : "გადიდება"}
+                  {hover ? tx(lang, "გადიდება — მიიტანე მაუსი") : tx(lang, "გადიდება")}
                 </span>
                 {/* fade into the text below (wide) */}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-16 bg-gradient-to-t from-[#111] to-transparent md:block" aria-hidden />
@@ -193,19 +196,21 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                   <h2 className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-tight md:text-xl">{heading}</h2>
                   {item ? (
                     <p className="mt-1 text-sm text-white/70">
-                      <span className="text-lg font-semibold text-white">{item.price} ₾</span>-დან
+                      {lang === "en" && "from "}
+                      <span className="text-lg font-semibold text-white">{item.price} ₾</span>
+                      {lang !== "en" && "-დან"}
                     </p>
                   ) : (
-                    <p className="mt-1 text-sm leading-snug text-white/70">აქ ყველა დიზაინი კიდია, რაც გვაქვს.</p>
+                    <p className="mt-1 text-sm leading-snug text-white/70">{tx(lang, "აქ ყველა დიზაინი კიდია, რაც გვაქვს.")}</p>
                   )}
                 </div>
                 {item ? (
                   <button type="button" onClick={() => choose(item)} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
-                    არჩევა<span className="hidden md:inline"> და დიზაინი</span> <ArrowRight className="h-4 w-4" aria-hidden />
+                    {tx(lang, "არჩევა")}<span className="hidden md:inline"> {tx(lang, "და დიზაინი")}</span> <ArrowRight className="h-4 w-4" aria-hidden />
                   </button>
                 ) : (
                   <button type="button" onClick={() => openPage("/designs")} className={`${cta} mt-2 self-start whitespace-nowrap px-4 py-2 text-sm md:mt-4 md:w-full md:py-2.5`}>
-                    კატალოგის ნახვა <ArrowRight className="h-4 w-4" aria-hidden />
+                    {tx(lang, "კატალოგის ნახვა")} <ArrowRight className="h-4 w-4" aria-hidden />
                   </button>
                 )}
               </div>
@@ -226,7 +231,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
             <button
               type="button"
               onClick={closeBig}
-              aria-label="დახურვა"
+              aria-label={tx(lang, "დახურვა")}
               className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <X className="h-5 w-5" aria-hidden />
@@ -236,7 +241,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                 <button
                   type="button"
                   onClick={() => setDesigning(false)}
-                  aria-label="უკან"
+                  aria-label={tx(lang, "უკან")}
                   className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
                   <ArrowLeft className="h-5 w-5" aria-hidden />
@@ -250,13 +255,13 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                     aria-expanded={menu}
                     className="flex h-11 items-center gap-1.5 rounded-full bg-white/10 px-4 text-sm font-semibold text-white hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   >
-                    სხვა პროდუქტი <ChevronDown className={`h-4 w-4 transition-transform ${menu ? "rotate-180" : ""}`} aria-hidden />
+                    {tx(lang, "სხვა პროდუქტი")} <ChevronDown className={`h-4 w-4 transition-transform ${menu ? "rotate-180" : ""}`} aria-hidden />
                   </button>
                   {menu && (
                     <div className="absolute left-0 top-12 max-h-[70dvh] w-60 overflow-y-auto rounded-2xl bg-zinc-900/95 p-1.5 shadow-2xl ring-1 ring-white/15 backdrop-blur-md">
                       {groups.map((g) => (
                         <div key={g.title}>
-                          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/45">{g.title}</p>
+                          <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/45">{tx(lang, g.title)}</p>
                           {g.dests.map((d) => (
                             <button
                               key={d.id}
@@ -268,7 +273,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                               }}
                               className="block w-full rounded-xl px-3 py-2 text-left text-sm text-white hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none disabled:text-amber-400 disabled:hover:bg-transparent"
                             >
-                              {d.title}
+                              {tx(lang, d.title)}
                             </button>
                           ))}
                         </div>
@@ -335,13 +340,13 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
                     aria-pressed={zoomed}
-                    aria-label={zoomed ? "დაპატარავება" : "გადიდება"}
+                    aria-label={zoomed ? tx(lang, "დაპატარავება") : tx(lang, "გადიდება")}
                     className={`absolute bottom-3 right-3 flex h-12 w-12 items-center justify-center rounded-full shadow-lg ring-1 ring-white/40 backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${zoomed ? "bg-amber-400 text-black" : "bg-black/55 text-white hover:bg-black/70"}`}
                   >
                     {zoomed ? <ZoomOut className="h-6 w-6" aria-hidden /> : <ZoomIn className="h-6 w-6" aria-hidden />}
                   </button>
                 </div>
-                {zoomed && <p className="mt-3 text-center text-xs text-white/70">გადაათრიე — დაათვალიერე ახლოდან</p>}
+                {zoomed && <p className="mt-3 text-center text-xs text-white/70">{tx(lang, "გადაათრიე — დაათვალიერე ახლოდან")}</p>}
                 {designable && (
                   <button
                     type="button"
@@ -351,7 +356,7 @@ export default function RackSheet({ rack, onClose, groups, onGo }: RackSheetProp
                     }}
                     className={`${cta} mt-3 h-12 px-8 text-base font-bold`}
                   >
-                    დაწყება <ArrowRight className="h-5 w-5" aria-hidden />
+                    {tx(lang, "დაწყება")} <ArrowRight className="h-5 w-5" aria-hidden />
                   </button>
                 )}
               </>

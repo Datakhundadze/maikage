@@ -18,6 +18,8 @@ import { askShowroomFitting, keepRackDesign, takeRackDesign } from "@/lib/tour/s
 import { drawnBefore, generateForShowroom, rememberDrawn } from "@/lib/tour/showroomGenerate";
 import { useGenerationLimit } from "@/hooks/useGenerationLimit";
 import { showroomStat } from "@/lib/tour/showroomStats";
+import { tx } from "@/lib/tour/tourText";
+import { useSiteLang } from "@/hooks/useSiteLang";
 
 // The rack's large photo as the place to design (David 2026-11-10/12). The
 // garment in it is the site's own product photo for the chosen colour and
@@ -95,6 +97,7 @@ interface KeptDesign {
 }
 
 export default function RackPhotoDesigner({ alt, garment, product, brand, startColor, width, onOrder, rackId }: Props) {
+  const lang = useSiteLang();
   // back from the fitting room: the design that was left here (showroomFitting.ts)
   const keptRef = useRef(takeRackDesign<KeptDesign>(brand));
   const kept0 = keptRef.current;
@@ -589,7 +592,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           onPointerMove={onMove}
           onPointerUp={onUp}
           onPointerCancel={onUp}
-          aria-label={`${alt} — ${side === "front" ? "წინა მხარე" : "ზურგი"}`}
+          aria-label={`${alt} — ${side === "front" ? tx(lang, "წინა მხარე") : tx(lang, "ზურგი")}`}
           className="h-full w-full touch-none select-none rounded-2xl bg-zinc-900 shadow-2xl"
           style={{
             cursor: has ? "grab" : "default",
@@ -611,12 +614,12 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           >
             <ImagePlus className={A.w < 300 ? "h-5 w-5" : "h-7 w-7"} aria-hidden />
             {/* a small frame (a zip hoodie's chest) has room for the sign only */}
-            {A.w >= 300 ? <span className="px-2 text-center text-sm font-bold leading-tight">ატვირთე ფოტო</span> : <span className="sr-only">ატვირთე ფოტო</span>}
+            {A.w >= 300 ? <span className="px-2 text-center text-sm font-bold leading-tight">{tx(lang, "ატვირთე ფოტო")}</span> : <span className="sr-only">{tx(lang, "ატვირთე ფოტო")}</span>}
           </button>
         )}
 
         {/* colours: the brand's own, as circles on the photo */}
-        <div className={`absolute left-2 top-2 grid gap-2 ${colors.length > 8 ? "grid-cols-2" : "grid-cols-1"}`} role="radiogroup" aria-label="ფერი">
+        <div className={`absolute left-2 top-2 grid gap-2 ${colors.length > 8 ? "grid-cols-2" : "grid-cols-1"}`} role="radiogroup" aria-label={tx(lang, "ფერი")}>
           {colors.map((name) => (
             <button
               key={name}
@@ -637,7 +640,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
         {/* the other side */}
         {canFlip && (
           <button type="button" onClick={flip} className={`absolute right-2 top-2 inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold ${glass}`}>
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> {side === "front" ? "ზურგი" : "წინა მხარე"}
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> {side === "front" ? tx(lang, "ზურგი") : tx(lang, "წინა მხარე")}
           </button>
         )}
 
@@ -656,18 +659,18 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
                     if (e.target.value.trim()) showroomStat("text");
                     setPrinted(false);
                   }}
-                  placeholder="დაწერე ტექსტი"
-                  aria-label="წარწერა"
+                  placeholder={tx(lang, "დაწერე ტექსტი")}
+                  aria-label={tx(lang, "წარწერა")}
                   // 16 px: below that iOS zooms the page in when the field is focused and leaves it
                   // zoomed — the designer then no longer fits the screen (David's recordings, 2026-11-23)
                   className="h-9 min-w-0 flex-1 rounded-full bg-black/50 px-3 text-base text-white ring-1 ring-white/25 placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-amber-400"
                   style={{ fontFamily: design.font }}
                 />
-                <button type="button" onClick={() => setTextOpen(false)} aria-label="წარწერის დახურვა" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25">
+                <button type="button" onClick={() => setTextOpen(false)} aria-label={tx(lang, "წარწერის დახურვა")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25">
                   <X className="h-4 w-4" aria-hidden />
                 </button>
               </div>
-              <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="radiogroup" aria-label="ფონტი">
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none]" role="radiogroup" aria-label={tx(lang, "ფონტი")}>
                 {FONTS.map((f) => (
                   <button
                     key={f.name}
@@ -682,14 +685,14 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2" role="radiogroup" aria-label="წარწერის ფერი">
+              <div className="flex items-center gap-2" role="radiogroup" aria-label={tx(lang, "წარწერის ფერი")}>
                 {TEXT_COLORS.map((c) => (
                   <button
                     key={c ?? "auto"}
                     type="button"
                     role="radio"
                     aria-checked={design.textColor === c}
-                    aria-label={c ?? "ავტომატური ფერი"}
+                    aria-label={c ?? tx(lang, "ავტომატური ფერი")}
                     onClick={() => setDesign({ textColor: c })}
                     className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${design.textColor === c ? "ring-2 ring-amber-400 ring-offset-1 ring-offset-black/40" : "ring-1 ring-white/50"}`}
                     style={c ? { backgroundColor: c } : { background: "linear-gradient(135deg,#141414 50%,#f6f6f6 50%)" }}
@@ -700,12 +703,12 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           )}
           {has && !textOpen && (
             <label className="flex items-center gap-2 rounded-full bg-black/40 px-3 py-1.5 text-[11px] text-white ring-1 ring-white/25 backdrop-blur-md">
-              ზომა
+              {tx(lang, "ზომა")}
               {both && (
-                <span className="flex shrink-0 overflow-hidden rounded-full ring-1 ring-white/30" role="radiogroup" aria-label="რას ვცვლით">
+                <span className="flex shrink-0 overflow-hidden rounded-full ring-1 ring-white/30" role="radiogroup" aria-label={tx(lang, "რას ვცვლით")}>
                   {(["img", "text"] as const).map((w) => (
                     <button key={w} type="button" role="radio" aria-checked={active === w} onClick={() => setSel(w)} className={`px-2 py-0.5 text-[11px] font-semibold ${active === w ? "bg-amber-400 text-black" : "text-white/80"}`}>
-                      {w === "img" ? "ფოტო" : "წარწერა"}
+                      {w === "img" ? tx(lang, "ფოტო") : tx(lang, "წარწერა")}
                     </button>
                   ))}
                 </span>
@@ -728,17 +731,17 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
             // screens (≤ 360 px) the three labels go and the icons stay.
             <div className="flex items-center justify-center gap-1">
               <button type="button" onClick={() => fileRef.current?.click()} className={`inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-2.5 text-[13px] font-semibold ${glass}`}>
-                <ImagePlus className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">ფოტო</span>
+                <ImagePlus className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">{tx(lang, "ფოტო")}</span>
               </button>
               <button type="button" onClick={openText} className={`inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-2.5 text-[13px] font-semibold ${glass}`}>
-                <Type className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">წარწერა</span>
+                <Type className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">{tx(lang, "წარწერა")}</span>
               </button>
               {/* the site's own chat, opened over this view (the operators answer there) */}
               <button type="button" onClick={() => window.dispatchEvent(new Event("maika:open-chat"))} className={`inline-flex h-10 shrink-0 items-center gap-1 rounded-full px-2.5 text-[13px] font-semibold ${glass}`}>
-                <MessageCircle className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">ჩატი</span>
+                <MessageCircle className="h-4 w-4 shrink-0" aria-hidden /> <span className="max-[360px]:sr-only">{tx(lang, "ჩატი")}</span>
               </button>
               {has && (
-                <button type="button" onClick={() => setDesign(both ? (active === "text" ? { text: "" } : { img: null }) : emptyDesign())} aria-label={both ? (active === "text" ? "წარწერის წაშლა" : "ფოტოს წაშლა") : "პრინტის წაშლა"} className={`inline-flex h-10 shrink-0 w-10 items-center justify-center rounded-full ${glass}`}>
+                <button type="button" onClick={() => setDesign(both ? (active === "text" ? { text: "" } : { img: null }) : emptyDesign())} aria-label={both ? (active === "text" ? tx(lang, "წარწერის წაშლა") : tx(lang, "ფოტოს წაშლა")) : tx(lang, "პრინტის წაშლა")} className={`inline-flex h-10 shrink-0 w-10 items-center justify-center rounded-full ${glass}`}>
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               )}
@@ -749,21 +752,21 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
 
       <p className="mt-3 max-w-full text-balance px-2 text-center text-xs text-white/70">
         {orderFailed
-          ? "ფოტო ძალიან დიდია გადასაცემად — დახურე და დააჭირე „არჩევა“, იქ ატვირთე"
+          ? tx(lang, "ფოტო ძალიან დიდია გადასაცემად — დახურე და დააჭირე „არჩევა“, იქ ატვირთე")
           : printed
             ? sizes.length && !size
-              ? "მზადაა! აირჩიე ზომა — „შეკვეთა“ გახსნის შეკვეთის ფორმას"
-              : "მზადაა! „შეკვეთა“ გახსნის შეკვეთის ფორმას ამ დიზაინით"
+              ? tx(lang, "მზადაა! აირჩიე ზომა — „შეკვეთა“ გახსნის შეკვეთის ფორმას")
+              : tx(lang, "მზადაა! „შეკვეთა“ გახსნის შეკვეთის ფორმას ამ დიზაინით")
             : has
               ? both
-                ? "ფოტო და წარწერა ცალ-ცალკე გადაადგილდება"
-                : "თითით გადაადგილე პრინტი"
-              : `დააჭირე ჩარჩოს — ნახე შენი ფოტო ${product === "Hoodie" ? "ამ ჰუდიზე" : "ამ მაისურზე"}`}
+                ? tx(lang, "ფოტო და წარწერა ცალ-ცალკე გადაადგილდება")
+                : tx(lang, "თითით გადაადგილე პრინტი")
+              : tx(lang, product === "Hoodie" ? "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ ჰუდიზე" : "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ მაისურზე")}
       </p>
       {printed && has && sizes.length > 0 && (
         <div
           role="radiogroup"
-          aria-label="ზომა"
+          aria-label={tx(lang, "ზომა")}
           className={`mt-3 flex max-w-full flex-wrap items-center justify-center gap-1.5 rounded-full px-2 py-1 ${sizeAsk && !size ? "ring-2 ring-amber-400" : ""}`}
         >
           {sizes.map((z) => (
@@ -793,9 +796,9 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
               ? "inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/25 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               : "inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-8 text-base font-bold text-black transition-opacity hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-45"
           }
-          aria-label={printed ? "ბეჭდვის ანიმაცია ხელახლა" : undefined}
+          aria-label={printed ? tx(lang, "ბეჭდვის ანიმაცია ხელახლა") : undefined}
         >
-          <Printer className="h-5 w-5" aria-hidden /> {!printed && "ბეჭდვა"}
+          <Printer className="h-5 w-5" aria-hidden /> {!printed && tx(lang, "ბეჭდვა")}
         </button>
         {printed && has && (
           <button
@@ -803,7 +806,7 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
             onClick={() => order("order")}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-amber-400 px-5 text-base font-bold text-black hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            შეკვეთა <ArrowRight className="h-5 w-5" aria-hidden />
+            {tx(lang, "შეკვეთა")} <ArrowRight className="h-5 w-5" aria-hidden />
           </button>
         )}
         {/* the constructor's own fitting room, with this design (David 2026-11-23) */}
@@ -811,10 +814,10 @@ export default function RackPhotoDesigner({ alt, garment, product, brand, startC
           <button
             type="button"
             onClick={() => order("tryOn")}
-            aria-label="ვირტუალური გასახდელი"
+            aria-label={tx(lang, "ვირტუალური გასახდელი")}
             className="inline-flex h-12 items-center justify-center gap-1.5 rounded-full bg-white/10 px-3.5 text-sm font-semibold text-white ring-1 ring-white/25 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
-            <Shirt className="h-5 w-5" aria-hidden /> გასახდელი
+            <Shirt className="h-5 w-5" aria-hidden /> {tx(lang, "გასახდელი")}
           </button>
         )}
       </div>

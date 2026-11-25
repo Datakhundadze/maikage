@@ -53,6 +53,8 @@ import { RACK_GARMENTS } from "@/lib/tour/siteGarment";
 import { peekShowroomDesign, SHOWROOM_DESIGN_EVENT, SHOWROOM_LOGIN_EVENT } from "@/lib/tour/showroomChatDesign";
 import { dropFittingStash, FITTING_STOP, readFittingStash, restoreKeptDesign, SHOWROOM_FITTING_EVENT, stashFitting, takeShowroomFitting, type ShowroomFitting } from "@/lib/tour/showroomFitting";
 import { writeConstructorSeed } from "@/lib/constructorSeed";
+import { tx } from "@/lib/tour/tourText";
+import { useSiteLang } from "@/hooks/useSiteLang";
 import { showroomStat, startStayClock } from "@/lib/tour/showroomStats";
 import { CONSTRUCTOR_URL } from "@/lib/mockupSuggestion";
 
@@ -336,6 +338,7 @@ function drawArrow(): HTMLCanvasElement {
 }
 
 export default function VideoWalk() {
+  const lang = useSiteLang();
   const hostRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef<StickAxes>({ x: 0, y: 0 });
   const footstepsRef = useRef<Footsteps | null>(null);
@@ -2101,7 +2104,7 @@ export default function VideoWalk() {
     return (
       <div className="relative isolate flex h-full w-full items-center justify-center overflow-hidden bg-[#101010] p-6">
         <p className="max-w-md rounded-lg bg-black/55 px-4 py-3 text-center text-sm text-white">
-          თქვენი ბრაუზერი 360° ხედს ვერ აჩვენებს (საჭიროა WebGL). სცადეთ სხვა ბრაუზერი ან განაახლეთ არსებული.
+          {tx(lang, "თქვენი ბრაუზერი 360° ხედს ვერ აჩვენებს (საჭიროა WebGL). სცადეთ სხვა ბრაუზერი ან განაახლეთ არსებული.")}
         </p>
       </div>
     );
@@ -2122,14 +2125,14 @@ export default function VideoWalk() {
             <img src="/tour/operators/boy-base.webp" alt="" width={112} height={168} className="h-36 w-auto drop-shadow-[0_10px_24px_rgba(0,0,0,.6)]" />
             <img src="/tour/operators/girl-base.webp" alt="" width={112} height={168} className="h-36 w-auto drop-shadow-[0_10px_24px_rgba(0,0,0,.6)]" />
           </div>
-          <h2 className="text-2xl font-extrabold">maika.ge შოურუმი</h2>
+          <h2 className="text-2xl font-extrabold">{tx(lang, "maika.ge შოურუმი")}</h2>
           {/* the only button on the way in (David 2026-11-11) */}
           <button
             type="button"
             onClick={enter}
             className="rounded-full bg-amber-400 px-10 py-4 text-lg font-bold text-black shadow-[0_10px_30px_-8px_rgba(251,191,36,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            მობრძანდით
+            {tx(lang, "მობრძანდით")}
           </button>
         </div>
       )}
@@ -2155,7 +2158,7 @@ export default function VideoWalk() {
               if (t >= times.cutAt) endIntro();
             }}
             className="h-full w-full object-cover"
-            aria-label="შესვლა maika.ge შოურუმში ქუჩიდან"
+            aria-label={tx(lang, "შესვლა maika.ge შოურუმში ქუჩიდან")}
           />
           <button
             type="button"
@@ -2163,7 +2166,7 @@ export default function VideoWalk() {
             // bottom centre: the chat button sits in the bottom-right corner and covered it on iPhone (David 2026-11-23)
             className="absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-black/55 px-4 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
-            გამოტოვება
+            {tx(lang, "გამოტოვება")}
           </button>
         </div>
       )}
@@ -2174,7 +2177,7 @@ export default function VideoWalk() {
           {!needsTap && (
             <>
               <p className="text-sm font-medium" aria-live="polite">
-                შოურუმი იტვირთება…
+                {tx(lang, "შოურუმი იტვირთება…")}
               </p>
               {/* no percentage: phones don't report video download progress reliably */}
               <style>{"@keyframes maika-walk-load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}"}</style>
@@ -2192,7 +2195,7 @@ export default function VideoWalk() {
               onClick={() => startRef.current()}
               className="pointer-events-auto mt-2 rounded-full bg-amber-400 px-6 py-3 text-sm font-semibold text-black shadow-lg transition-colors hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              შესვლა შოურუმში
+              {tx(lang, "შესვლა შოურუმში")}
             </button>
           )}
         </div>
@@ -2201,7 +2204,7 @@ export default function VideoWalk() {
       {status === "error" && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#101010]/90 p-6 text-center text-sm text-white">
           <p>
-            შოურუმის ვიდეო ვერ ჩაიტვირთა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.
+            {tx(lang, "შოურუმის ვიდეო ვერ ჩაიტვირთა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.")}
             {errDetail && <span className="mt-2 block text-xs text-white/60">({errDetail})</span>}
           </p>
         </div>
@@ -2214,7 +2217,7 @@ export default function VideoWalk() {
       )}
 
       {status === "ready" && (
-        <div className="pointer-events-none absolute inset-0 z-[9] overflow-hidden" aria-label="საკიდები">
+        <div className="pointer-events-none absolute inset-0 z-[9] overflow-hidden" aria-label={tx(lang, "საკიდები")}>
           {RACK_LABELS.map((l, i) => (
             <button
               key={l.rack.id}
@@ -2228,7 +2231,7 @@ export default function VideoWalk() {
               style={{ opacity: 0, transformOrigin: "50% 100%" }}
               className="absolute left-0 top-0 whitespace-nowrap rounded-full border border-white/25 bg-black/35 px-3 py-1 text-[14px] font-bold uppercase tracking-wide text-white shadow-[0_4px_14px_-4px_rgba(0,0,0,.6)] backdrop-blur-[3px] transition-opacity duration-300 will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
-              {l.rack.title}
+              {tx(lang, l.rack.title)}
             </button>
           ))}
         </div>
@@ -2242,7 +2245,7 @@ export default function VideoWalk() {
               key={o.id}
               ref={(el) => (opHitRefs.current[i] = el)}
               type="button"
-              aria-label="ოპერატორს მიწერა ჩატში"
+              aria-label={tx(lang, "ოპერატორს მიწერა ჩატში")}
               onClick={() => window.dispatchEvent(new Event("maika:open-chat"))}
               style={{ display: "none" }}
               className="absolute left-0 top-0 z-10 cursor-pointer rounded-[40%] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
@@ -2256,7 +2259,7 @@ export default function VideoWalk() {
               style={{ opacity: 0 }}
               className="pointer-events-none absolute left-0 top-0 z-10 max-w-[13rem] rounded-2xl bg-white px-3 py-2 text-[13px] font-medium leading-snug text-black shadow-[0_8px_24px_-6px_rgba(0,0,0,.6)] transition-opacity duration-200"
             >
-              {bubble.text}
+              {tx(lang, bubble.text)}
               <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-white" aria-hidden />
             </div>
           )}
@@ -2279,7 +2282,7 @@ export default function VideoWalk() {
 
       {status === "ready" && hintVisible && !pickerOpen && (
         <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-lg bg-black/55 px-3 py-2 text-xs leading-snug text-white">
-          {`${metOperators ? "ოპერატორის ღილაკით სიას დაუბრუნდებით" : "დააჭირეთ „ოპერატორი“ — მიგიყვანთ"}. ${touch ? "თითით" : "მაუსით"} გადაათრიეთ — მიმოხედვა.`}
+          {`${metOperators ? tx(lang, "ოპერატორის ღილაკით სიას დაუბრუნდებით") : tx(lang, "დააჭირეთ „ოპერატორი“ — მიგიყვანთ")}. ${touch ? tx(lang, "თითით გადაათრიეთ — მიმოხედვა.") : tx(lang, "მაუსით გადაათრიეთ — მიმოხედვა.")}`}
         </p>
       )}
 
@@ -2288,7 +2291,7 @@ export default function VideoWalk() {
           type="button"
           onClick={toggleSound}
           aria-pressed={soundOn}
-          aria-label={soundOn ? "ხმის გამორთვა" : "ხმის ჩართვა"}
+          aria-label={soundOn ? tx(lang, "ხმის გამორთვა") : tx(lang, "ხმის ჩართვა")}
           className="absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           {soundOn ? <Volume2 className="h-5 w-5" aria-hidden /> : <VolumeX className="h-5 w-5" aria-hidden />}
@@ -2300,7 +2303,7 @@ export default function VideoWalk() {
           type="button"
           onClick={toggleFullscreen}
           aria-pressed={fullscreen || covering}
-          aria-label={fullscreen || covering ? "სრული ეკრანიდან გასვლა" : "სრულ ეკრანზე"}
+          aria-label={fullscreen || covering ? tx(lang, "სრული ეკრანიდან გასვლა") : tx(lang, "სრულ ეკრანზე")}
           className="absolute right-16 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full bg-black/55 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           {fullscreen || covering ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}
@@ -2314,12 +2317,12 @@ export default function VideoWalk() {
           onClick={() => {
             if (!signedIn) setLogin({});
           }}
-          aria-label={signedIn ? `შესული ხარ: ${displayName}` : "შესვლა ან რეგისტრაცია"}
-          title={signedIn ? displayName : "შესვლა"}
+          aria-label={signedIn ? `${tx(lang, "შესული ხარ")}: ${displayName}` : tx(lang, "შესვლა ან რეგისტრაცია")}
+          title={signedIn ? displayName : tx(lang, "შესვლა")}
           className={`absolute right-[7.25rem] top-3 z-20 flex h-11 items-center justify-center gap-1.5 rounded-full bg-black/55 text-white transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${signedIn ? "w-11" : "px-3.5"}`}
         >
           <UserRound className={`h-5 w-5 ${signedIn ? "text-emerald-400" : ""}`} aria-hidden />
-          {!signedIn && <span className="text-sm font-semibold">შესვლა</span>}
+          {!signedIn && <span className="text-sm font-semibold">{tx(lang, "შესვლა")}</span>}
         </button>
       )}
       {fitting && fittingOpen && (
@@ -2348,10 +2351,10 @@ export default function VideoWalk() {
                 ? "pointer-events-auto inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition-transform hover:bg-black/70 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 : "pointer-events-auto inline-flex h-12 items-center gap-2 rounded-full bg-amber-400 px-5 text-sm font-bold text-black shadow-[0_8px_24px_-6px_rgba(0,0,0,.7)] transition-transform hover:bg-amber-300 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             }
-            aria-label={metOperators ? "ოპერატორი" : undefined}
+            aria-label={metOperators ? tx(lang, "ოპერატორი") : undefined}
           >
             <Headset className="h-5 w-5" aria-hidden />
-            {!metOperators && "ოპერატორი"}
+            {!metOperators && tx(lang, "ოპერატორი")}
           </button>
           {(preparing || goingTo) && (
             <span
@@ -2361,12 +2364,12 @@ export default function VideoWalk() {
               {preparing ? (
                 <>
                   <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-white/30 border-t-amber-400" aria-hidden />
-                  გზა მზადდება…
+                  {tx(lang, "გზა მზადდება…")}
                 </>
               ) : (
                 <>
                   <Footprints className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden />
-                  <span className="truncate">{dests.find((d) => d.id === goingTo)?.title}</span>
+                  <span className="truncate">{tx(lang, dests.find((d) => d.id === goingTo)?.title ?? "")}</span>
                 </>
               )}
             </span>

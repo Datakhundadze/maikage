@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import type { StickAxes } from "@/lib/tour/tourMath";
+import { tx } from "@/lib/tour/tourText";
+import { useSiteLang } from "@/hooks/useSiteLang";
 
 // Arrow buttons for the /showroom walk — the alternative to the joystick on
 // phones (the visitor picks one; VideoWalk remembers it). Hold ↑ to walk,
@@ -17,6 +19,7 @@ interface DPadProps {
 }
 
 export default function DPad({ onChange }: DPadProps) {
+  const lang = useSiteLang();
   const rootRef = useRef<HTMLDivElement>(null);
   const held = useRef(new Map<number, Dir>()); // pointerId → button
 
@@ -78,14 +81,14 @@ export default function DPad({ onChange }: DPadProps) {
     <div
       ref={rootRef}
       role="group"
-      aria-label="ისრები: ↑ სიარული, ↓ უკან, ← → მობრუნება"
+      aria-label={tx(lang, "ისრები: ↑ სიარული, ↓ უკან, ← → მობრუნება")}
       className="absolute bottom-4 left-4 z-20 select-none"
       style={{ width: size, height: size, WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
     >
-      {button("up", "წინ", ChevronUp, { left: BTN + 4, top: 0 })}
-      {button("left", "მარცხნივ", ChevronLeft, { left: 0, top: BTN + 4 })}
-      {button("right", "მარჯვნივ", ChevronRight, { left: 2 * BTN + 8, top: BTN + 4 })}
-      {button("down", "უკან", ChevronDown, { left: BTN + 4, top: 2 * BTN + 8 })}
+      {button("up", tx(lang, "წინ"), ChevronUp, { left: BTN + 4, top: 0 })}
+      {button("left", tx(lang, "მარცხნივ"), ChevronLeft, { left: 0, top: BTN + 4 })}
+      {button("right", tx(lang, "მარჯვნივ"), ChevronRight, { left: 2 * BTN + 8, top: BTN + 4 })}
+      {button("down", tx(lang, "უკან"), ChevronDown, { left: BTN + 4, top: 2 * BTN + 8 })}
     </div>
   );
 }

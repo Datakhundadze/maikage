@@ -1,0 +1,115 @@
+// English for the virtual showroom (David 2026-11-25: "the showroom's buttons and
+// the operators in English too — the chat already has it").
+//
+// The Georgian text stays where it is, in the components, and is the key: tx(lang,
+// "მობრძანდით") gives it back in Georgian and looks it up here in English. A
+// text with no English yet is shown in Georgian — never an empty button.
+// Product names come from the site's own data and are not translated here.
+// showroomText.test.ts checks that every text wrapped in tx() has its English.
+import type { Lang } from "@/lib/i18n";
+
+export const TOUR_EN: Record<string, string> = {
+  // the way in
+  "maika.ge შოურუმი": "maika.ge showroom",
+  "მობრძანდით": "Come in",
+  "შესვლა maika.ge შოურუმში ქუჩიდან": "Walking into the maika.ge showroom from the street",
+  "გამოტოვება": "Skip",
+  "შოურუმი იტვირთება…": "The showroom is loading…",
+  "შესვლა შოურუმში": "Enter the showroom",
+  "შოურუმის ვიდეო ვერ ჩაიტვირთა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.": "The showroom video did not load. Check your connection and try again.",
+  "თქვენი ბრაუზერი 360° ხედს ვერ აჩვენებს (საჭიროა WebGL). სცადეთ სხვა ბრაუზერი ან განაახლეთ არსებული.": "Your browser cannot show the 360° view (WebGL is needed). Try another browser or update this one.",
+  // the operators
+  "გამარჯობა! 👋 გისმენთ": "Hello! 👋 How can we help?",
+  "რომელი პროდუქტი გაინტერესებთ?": "Which product are you interested in?",
+  "ოპერატორი": "Operator",
+  "ოპერატორს მიწერა ჩატში": "Write to the operator in the chat",
+  "ოპერატორის ღილაკით სიას დაუბრუნდებით": "The operator button brings the list back",
+  "დააჭირეთ „ოპერატორი“ — მიგიყვანთ": "Tap “Operator” — we will take you there",
+  "თითით გადაათრიეთ — მიმოხედვა.": "Drag with your finger to look around.",
+  "მაუსით გადაათრიეთ — მიმოხედვა.": "Drag with the mouse to look around.",
+  // the walk
+  "გზა მზადდება…": "Getting the way ready…",
+  "საკიდები": "Racks",
+  "შესასვლელი": "Entrance",
+  "გასახდელი": "Fitting room",
+  "მაისურები": "T-shirts",
+  "ჰუდები": "Hoodies",
+  "სხვა": "Other",
+  "კატალოგი": "Catalog",
+  "GILDAN ჰუდი": "GILDAN Hoodie",
+  "Washed ჰუდი": "Washed Hoodie",
+  "Washed მაისური": "Washed T-shirt",
+  "ნაჭრის ჩანთები": "Tote bags",
+  "ხმის გამორთვა": "Sound off",
+  "ხმის ჩართვა": "Sound on",
+  "სრული ეკრანიდან გასვლა": "Leave full screen",
+  "სრულ ეკრანზე": "Full screen",
+  "შესული ხარ": "Signed in",
+  "შესვლა ან რეგისტრაცია": "Sign in or register",
+  "შესვლა": "Sign in",
+  "ისრები: ↑ სიარული, ↓ უკან, ← → მობრუნება": "Arrows: ↑ walk, ↓ back, ← → turn",
+  "წინ": "Forward",
+  "უკან": "Back",
+  "მარცხნივ": "Left",
+  "მარჯვნივ": "Right",
+  "ჯოისტიკი: მარცხნივ-მარჯვნივ — მობრუნება, წინ-უკან — გადასვლა": "Joystick: left and right turn, forward and back walk",
+  // a rack
+  "ყვითელი საკიდი": "Yellow rack",
+  "დახურვა": "Close",
+  "ფოტოს გადიდება": "Enlarge the photo",
+  "გადიდება — მიიტანე მაუსი": "Zoom — move the mouse over it",
+  "გადიდება": "Zoom",
+  "დაპატარავება": "Zoom out",
+  "გადაათრიე — დაათვალიერე ახლოდან": "Drag to look closely",
+  "აქ ყველა დიზაინი კიდია, რაც გვაქვს.": "Every design we have hangs here.",
+  "არჩევა": "Choose",
+  "და დიზაინი": "and design",
+  "კატალოგის ნახვა": "See the catalog",
+  "სხვა პროდუქტი": "Another product",
+  "დაწყება": "Start",
+  // the designer
+  "წინა მხარე": "Front",
+  "ზურგი": "Back",
+  "ატვირთე ფოტო": "Upload a photo",
+  "ფერი": "Colour",
+  "დაწერე ტექსტი": "Type your text",
+  "წარწერა": "Text",
+  "წარწერის დახურვა": "Close the text",
+  "ფონტი": "Font",
+  "წარწერის ფერი": "Text colour",
+  "ავტომატური ფერი": "Automatic colour",
+  "ზომა": "Size",
+  "რას ვცვლით": "What to resize",
+  "ფოტო": "Photo",
+  "ჩატი": "Chat",
+  "წარწერის წაშლა": "Remove the text",
+  "ფოტოს წაშლა": "Remove the photo",
+  "პრინტის წაშლა": "Remove the print",
+  "ფოტო ძალიან დიდია გადასაცემად — დახურე და დააჭირე „არჩევა“, იქ ატვირთე": "The photo is too large to hand over — close this, tap “Choose” and upload it there",
+  "მზადაა! აირჩიე ზომა — „შეკვეთა“ გახსნის შეკვეთის ფორმას": "Ready! Pick a size — “Order” opens the order form",
+  "მზადაა! „შეკვეთა“ გახსნის შეკვეთის ფორმას ამ დიზაინით": "Ready! “Order” opens the order form with this design",
+  "ფოტო და წარწერა ცალ-ცალკე გადაადგილდება": "The photo and the text move separately",
+  "თითით გადაადგილე პრინტი": "Move the print with your finger",
+  "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ ჰუდიზე": "Tap the frame — see your photo on this hoodie",
+  "დააჭირე ჩარჩოს — ნახე შენი ფოტო ამ მაისურზე": "Tap the frame — see your photo on this T-shirt",
+  "ბეჭდვის ანიმაცია ხელახლა": "Play the print animation again",
+  "ბეჭდვა": "Print",
+  "შეკვეთა": "Order",
+  "ვირტუალური გასახდელი": "Virtual fitting room",
+  "შოურუმში დაბრუნება": "Back to the showroom",
+  // the print animation
+  "პრინტი იბეჭდება ფირზე…": "Printing on film…",
+  "ფხვნილი და გაშრობა…": "Powder and curing…",
+  "ფირი მაისურზე…": "Film onto the garment…",
+  "თერმოპრესი…": "Heat press…",
+  "ფირი ძვრება…": "Peeling the film…",
+  "იკეცება…": "Folding…",
+  "იფუთება…": "Packing…",
+  "მზადაა!": "Ready!",
+  "✓ მზადაა": "✓ Ready",
+};
+
+/** The text in the site's language: Georgian as written, English from TOUR_EN (Georgian if missing). */
+export function tx(lang: Lang, ge: string): string {
+  return lang === "en" ? (TOUR_EN[ge] ?? ge) : ge;
+}

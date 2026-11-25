@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { tx } from "@/lib/tour/tourText";
+import { useSiteLang } from "@/hooks/useSiteLang";
 
 // "ბეჭდვა" — the order's print played as a short film (David 2026-11-10):
 // the chosen print comes out of a DTF printer on film, gets its powder and
@@ -62,6 +64,7 @@ const FOLDED = {
 } as const;
 
 export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrintedSrc, printLayerSrc, garmentColor = "#f4f4f2", folded = "tee", onDone, onSkip }: PrintAnimationProps) {
+  const lang = useSiteLang();
   const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const [phase, setPhase] = useState<Phase>(reduce ? "done" : "print");
   const [count, setCount] = useState(3);
@@ -97,7 +100,7 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
   const bagMove = { transform: "translate(-50%, 0)", animation: phase === "bag" ? "pa-bag-in 480ms cubic-bezier(.2,.8,.2,1) both, pa-bag-nod 380ms ease-out 1200ms" : undefined } as const;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="ბეჭდვა" className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_30%,#2b2620_0%,#0c0c0c_75%)] text-white">
+    <div role="dialog" aria-modal="true" aria-label={tx(lang, "ბეჭდვა")} className="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_30%,#2b2620_0%,#0c0c0c_75%)] text-white">
       <style>{`
         @keyframes pa-feed { from { transform: translateY(-100%) } to { transform: translateY(0) } }
         @keyframes pa-head { from { left: 0% } to { left: 84% } }
@@ -118,7 +121,7 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
       `}</style>
 
       <p key={CAPTION[phase]} aria-live="polite" className="mb-4 h-7 text-base font-bold tracking-wide" style={{ animation: "pa-in 260ms ease-out both" }}>
-        {CAPTION[phase]}
+        {tx(lang, CAPTION[phase])}
       </p>
 
       <div className="relative h-[450px] w-[320px] max-w-[92vw]">
@@ -253,7 +256,7 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
             )}
             {phase === "done" && (
               <div className="absolute left-1/2 top-[52px] z-40 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-500 px-5 py-2 text-lg font-extrabold text-white shadow-lg" style={{ animation: "pa-pop 420ms ease-out both" }}>
-                ✓ მზადაა
+                {tx(lang, "✓ მზადაა")}
               </div>
             )}
           </div>
@@ -266,7 +269,7 @@ export default function PrintAnimation({ designSrc, garmentBlankSrc, garmentPrin
           onClick={() => (onSkip ?? onDone)()}
           className="mt-6 rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white/85 ring-1 ring-white/20 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
-          გამოტოვება
+          {tx(lang, "გამოტოვება")}
         </button>
       )}
     </div>

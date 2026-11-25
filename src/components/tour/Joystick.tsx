@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { StickAxes } from "@/lib/tour/tourMath";
+import { tx } from "@/lib/tour/tourText";
+import { useSiteLang } from "@/hooks/useSiteLang";
 
 // On-screen thumb pad for turning and stepping through the tour. Bottom-LEFT,
 // clear of the chat launcher in the bottom-right corner. Reports the raw knob
@@ -19,6 +21,7 @@ interface JoystickProps {
 }
 
 export default function Joystick({ onChange }: JoystickProps) {
+  const lang = useSiteLang();
   const baseRef = useRef<HTMLDivElement>(null);
   const knobRef = useRef<HTMLDivElement>(null);
   const pointerId = useRef<number | null>(null);
@@ -58,7 +61,7 @@ export default function Joystick({ onChange }: JoystickProps) {
     <div
       ref={baseRef}
       role="application"
-      aria-label="ჯოისტიკი: მარცხნივ-მარჯვნივ — მობრუნება, წინ-უკან — გადასვლა"
+      aria-label={tx(lang, "ჯოისტიკი: მარცხნივ-მარჯვნივ — მობრუნება, წინ-უკან — გადასვლა")}
       className="absolute bottom-4 left-4 z-20 flex touch-none select-none items-center justify-center rounded-full border border-white/40 bg-black/25 backdrop-blur-[2px]"
       style={{ width: BASE_PX, height: BASE_PX, WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
       onPointerDown={(e) => {
