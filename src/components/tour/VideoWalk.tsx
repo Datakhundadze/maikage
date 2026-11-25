@@ -1692,10 +1692,15 @@ export default function VideoWalk() {
       setStatus("error");
     };
     // no data after a moment (iPhone): offer the start button
+    // …but never after the visitor has already tapped: opened from the home
+    // screen the tap on „მობრძანდით" comes within these 2.5 s, and the timer then
+    // asked for a second tap („შესვლა შოურუმში") after the door (David 2026-11-25)
+    let started = false;
     const tapTimer = window.setTimeout(() => {
-      if (!ready && !disposed) setNeedsTap(true);
+      if (!ready && !disposed && !started) setNeedsTap(true);
     }, 2500);
     startRef.current = () => {
+      started = true;
       setNeedsTap(false);
       unlockRef.current();
       // a play() refused for a reason other than "needs a gesture" is an error
