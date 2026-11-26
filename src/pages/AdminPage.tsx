@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare, MessageCircle, Newspaper, Inbox, PhoneCall, FlaskConical, Wallet } from "lucide-react";
+import { ArrowLeft, LayoutDashboard, ShoppingCart, Image, Users, BarChart3, Lock, Building2, Package, LogOut, Search, Sparkles, Handshake, Wand2, Store, Images, MessageSquare, MessageCircle, Newspaper, Inbox, PhoneCall, FlaskConical, Wallet, Bot } from "lucide-react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 // Each admin tab is large (full-page CRUD UIs with their own forms,
 // tables, and supabase fetchers). Lazy-load them so visiting /admin
@@ -26,6 +26,7 @@ const AdminBlog = lazyWithRetry(() => import("@/components/admin/AdminBlog"));
 const AdminFeedback = lazyWithRetry(() => import("@/components/admin/AdminFeedback"));
 const AdminChatHistory = lazyWithRetry(() => import("@/components/admin/AdminChatHistory"));
 const AdminSocialInbox = lazyWithRetry(() => import("@/components/admin/AdminSocialInbox"));
+const AdminBotSketches = lazyWithRetry(() => import("@/components/admin/AdminBotSketches"));
 const AdminCallbacks = lazyWithRetry(() => import("@/components/admin/AdminCallbacks"));
 const AiAgent = lazyWithRetry(() => import("@/components/admin/AiAgent"));
 const AdminModelLab = lazyWithRetry(() => import("@/components/admin/AdminModelLab"));
@@ -36,7 +37,7 @@ import { useAdminTabBadges, type BadgeTabId } from "@/hooks/useAdminTabBadges";
 import { supabase } from "@/integrations/supabase/client";
 import SeoHead from "@/components/SeoHead";
 
-type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "blog" | "feedback" | "chat-history" | "social-inbox" | "callbacks" | "model-lab" | "spend";
+type Tab = "dashboard" | "orders" | "designs" | "generations" | "users" | "analytics" | "corporate" | "catalog" | "seo" | "ai-agent" | "partners" | "showroom" | "portfolio" | "blog" | "feedback" | "chat-history" | "social-inbox" | "callbacks" | "model-lab" | "spend" | "bot-sketches";
 type Mode = "login" | "signup" | "forgot";
 
 // Cost control — flip to true to re-enable the AI Trend Agent tab. The tab
@@ -52,6 +53,7 @@ const ALL_TABS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "orders", label: "შეკვეთები", icon: ShoppingCart },
   { id: "callbacks", label: "დარეკვის მოთხოვნები", icon: PhoneCall },
   { id: "social-inbox", label: "შეტყობინებები", icon: Inbox },
+  { id: "bot-sketches", label: "ბოტის ესკიზები", icon: Bot },
   { id: "corporate", label: "კორპორატიული", icon: Building2 },
   { id: "users", label: "მომხმარებლები", icon: Users },
   { id: "designs", label: "დიზაინები", icon: Image },
@@ -78,14 +80,14 @@ const TABS = ALL_TABS.filter((t) => t.id !== "ai-agent" || AI_AGENT_ENABLED);
 // src/test/adminTabRows.test.ts checks both rules. A row entry missing from
 // TABS (ai-agent while disabled) is simply not rendered.
 const TAB_ROWS: Tab[][] = [
-  ["dashboard", "orders", "callbacks", "social-inbox", "corporate", "users", "designs", "catalog"],
+  ["dashboard", "orders", "callbacks", "social-inbox", "bot-sketches", "corporate", "users", "designs", "catalog"],
   ["chat-history", "feedback", "generations", "model-lab", "portfolio", "showroom", "blog", "partners", "seo", "ai-agent", "analytics", "spend"],
 ];
 
 function readTabFromUrl(): Tab {
   const params = new URLSearchParams(window.location.search);
   const v = params.get("tab");
-  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "blog" || v === "feedback" || v === "chat-history" || v === "social-inbox" || v === "callbacks" || v === "model-lab" || v === "spend") return v;
+  if (v === "orders" || v === "designs" || v === "generations" || v === "users" || v === "analytics" || v === "corporate" || v === "catalog" || v === "seo" || v === "ai-agent" || v === "partners" || v === "showroom" || v === "portfolio" || v === "blog" || v === "feedback" || v === "chat-history" || v === "social-inbox" || v === "callbacks" || v === "model-lab" || v === "spend" || v === "bot-sketches") return v;
   return "dashboard";
 }
 
@@ -119,7 +121,7 @@ export default function AdminPage() {
 
   // The tabs with badges. Other tabs (dashboard, analytics) are
   // aggregate views with no "new items" semantic and stay unchanged.
-  const BADGE_TABS = new Set<Tab>(["orders", "users", "designs", "catalog", "corporate", "callbacks"]);
+  const BADGE_TABS = new Set<Tab>(["orders", "users", "designs", "catalog", "corporate", "callbacks", "bot-sketches"]);
   const isBadgeTab = (t: Tab): t is BadgeTabId => BADGE_TABS.has(t);
 
   const handleTabClick = (tab: Tab) => {
@@ -467,6 +469,7 @@ export default function AdminPage() {
           {activeTab === "feedback" && <AdminFeedback />}
           {activeTab === "chat-history" && <AdminChatHistory />}
           {activeTab === "social-inbox" && <AdminSocialInbox />}
+          {activeTab === "bot-sketches" && <AdminBotSketches />}
           {activeTab === "callbacks" && <AdminCallbacks />}
           {activeTab === "spend" && <AdminSpend />}
         </Suspense>
