@@ -1489,6 +1489,39 @@ export type Database = {
         }
         Relationships: []
       }
+      social_sketch_files: {
+        Row: {
+          channel: string
+          conversation_key: string
+          created_at: string
+          id: string
+          kind: string
+          print_path: string | null
+          sketch_url: string
+          source_path: string | null
+        }
+        Insert: {
+          channel: string
+          conversation_key: string
+          created_at?: string
+          id?: string
+          kind: string
+          print_path?: string | null
+          sketch_url: string
+          source_path?: string | null
+        }
+        Update: {
+          channel?: string
+          conversation_key?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          print_path?: string | null
+          sketch_url?: string
+          source_path?: string | null
+        }
+        Relationships: []
+      }
       spend_settings: {
         Row: {
           id: boolean
