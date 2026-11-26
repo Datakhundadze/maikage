@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Tabs that get a Gmail-style "new since you last looked" badge. The
 // other admin tabs (dashboard, analytics) are aggregate views with no
 // natural per-row "new item" semantic.
-export type BadgeTabId = "orders" | "users" | "designs" | "catalog" | "corporate" | "callbacks";
+export type BadgeTabId = "orders" | "users" | "designs" | "catalog" | "corporate" | "callbacks" | "bot-sketches";
 
 const STORAGE_KEY = "maika-admin-tab-seen-v1";
 const POLL_INTERVAL_MS = 30_000;
@@ -23,7 +23,7 @@ type SourceTable =
 
 // callback_requests is schema-ahead-of-types, so it is counted on its own
 // path below rather than through this typed map.
-const TAB_SOURCE: Record<Exclude<BadgeTabId, "callbacks">, SourceTable> = {
+const TAB_SOURCE: Record<Exclude<BadgeTabId, "callbacks" | "bot-sketches">, SourceTable> = {
   orders: "orders",
   users: "profiles",
   designs: "generations",
@@ -31,12 +31,12 @@ const TAB_SOURCE: Record<Exclude<BadgeTabId, "callbacks">, SourceTable> = {
   corporate: "corporate_inquiries",
 };
 
-const TAB_IDS: BadgeTabId[] = ["orders", "users", "designs", "catalog", "corporate", "callbacks"];
+const TAB_IDS: BadgeTabId[] = ["orders", "users", "designs", "catalog", "corporate", "callbacks", "bot-sketches"];
 
 type SeenAtMap = Record<BadgeTabId, string>;
 type CountMap = Record<BadgeTabId, number>;
 
-const ZERO_COUNTS: CountMap = { orders: 0, users: 0, designs: 0, catalog: 0, corporate: 0, callbacks: 0 };
+const ZERO_COUNTS: CountMap = { orders: 0, users: 0, designs: 0, catalog: 0, corporate: 0, callbacks: 0, "bot-sketches": 0 };
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -59,6 +59,7 @@ function readSeenAt(): SeenAtMap {
         catalog: parsed.catalog ?? seed,
         corporate: parsed.corporate ?? seed,
         callbacks: parsed.callbacks ?? seed,
+        "bot-sketches": parsed["bot-sketches"] ?? seed,
       };
     }
   } catch {
@@ -72,6 +73,7 @@ function readSeenAt(): SeenAtMap {
     catalog: seed,
     corporate: seed,
     callbacks: seed,
+    "bot-sketches": seed,
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
@@ -119,6 +121,20 @@ export function useAdminTabBadges(): {
     const seenAt = seenAtRef.current;
     const results = await Promise.all(
       TAB_IDS.map(async (tab) => {
+        // BOT SKETCHES (2026-11-26): sketches whose print file nobody has
+        // downloaded yet — shared across the team, a visit does not clear it.
+        if (tab === "bot-sketches") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { count, error } = await (supabase as any)
+            .from("social_sketch_files")
+            .select("id", { count: "exact", head: true })
+            .is("downloaded_at", null);
+          if (error) {
+            console.warn("[useAdminTabBadges] count failed for social_sketch_files:", error.message);
+            return [tab, 0] as const;
+          }
+          return [tab, (count as number | null) ?? 0] as const;
+        }
         if (tab === "callbacks") {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { count, error } = await (supabase as any)
@@ -218,7 +234,7 @@ export function useAdminTabBadges(): {
     seenAtRef.current = next;
     writeSeenAt(next);
     // Orders stay counted until each one is taken („მივიღე") — a visit does not clear them.
-    if (tab === "orders") return;
+    if (tab === "orders" || tab === "bot-sketches") return;
     setCounts((prev) => (prev[tab] === 0 ? prev : { ...prev, [tab]: 0 }));
   }, []);
 

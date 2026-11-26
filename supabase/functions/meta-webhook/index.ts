@@ -103,6 +103,7 @@ import type { ReceiptDeps } from "./receiptFlow.ts";
 import { coerceReceiptFields, type ReceiptFields } from "./receiptCheck.ts";
 import type { Channel } from "./handler.ts";
 import { conversationKeyOf } from "./autoReply.ts";
+import { contactFromGraph, contactLookup } from "./contactName.ts";
 import { proxyChannelFor, waBotOutRow, type WaStoreExtras } from "./whatsapp.ts";
 import {
   downloadWaMedia,
@@ -418,6 +419,48 @@ async function latestAdTitle(admin: Admin, key: string): Promise<string | null> 
   return typeof t === "string" && t.trim() ? t.slice(0, 200) : null;
 }
 
+// CONTACT NAMES (add-only, 2026-11-26): after a sketch is saved, store the
+// customer's Meta profile name for the admin "ბოტის ესკიზები" page — this
+// conversation first, then up to 5 older sketch conversations still unnamed
+// (backfill). Best-effort: any failure only skips the name. No name is logged.
+async function rememberContactNames(admin: Admin, currentKey: string): Promise<void> {
+  const { data: sketchKeys } = await admin
+    .from("social_sketch_files")
+    .select("conversation_key")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const keys = [currentKey, ...((sketchKeys ?? []) as { conversation_key: string }[]).map((r) => r.conversation_key)]
+    .filter((k, i, a) => a.indexOf(k) === i);
+  const { data: known } = await admin.from("social_contacts").select("conversation_key").in("conversation_key", keys);
+  const have = new Set(((known ?? []) as { conversation_key: string }[]).map((r) => r.conversation_key));
+  const todo = keys.filter((k) => !have.has(k) && contactLookup(k)).slice(0, 6);
+  for (const key of todo) {
+    const look = contactLookup(key)!;
+    try {
+      const res = await fetch(`https://graph.facebook.com/v21.0/${look.customerId}?fields=${look.fields}`, {
+        headers: { Authorization: `Bearer ${await pageToken()}` },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!res.ok) {
+        log("warn", `contact name lookup failed (${look.channel}, HTTP ${res.status})`);
+        continue;
+      }
+      const name = contactFromGraph(look.channel, await res.json().catch(() => null));
+      if (!name) continue;
+      const { error } = await admin.from("social_contacts").upsert({
+        conversation_key: key,
+        channel: look.channel,
+        name: name.name,
+        username: name.username,
+        updated_at: new Date().toISOString(),
+      });
+      if (error) log("warn", `contact name save failed (${error.code ?? "?"})`);
+    } catch {
+      log("warn", `contact name lookup failed (${look.channel})`);
+    }
+  }
+}
+
 function autoReplyDeps(admin: Admin): AutoReplyDeps {
   const warn = (what: string, error: { code?: string; message?: string } | null) => {
     if (error) log("warn", `auto-reply: ${what} failed (${error.code ?? "?"}): ${error.message ?? ""}`);
@@ -513,6 +556,8 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
         if (rows.length === 0) return;
         const { error } = await admin.from("social_sketch_files").insert(rows);
         if (error) log("warn", `sketch files insert failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+        // CONTACT NAMES (add-only, 2026-11-26): who the sketch went to, for the admin page.
+        await rememberContactNames(admin, rows[0].conversation_key).catch(() => {});
       },
     },
     // INFO ONLY (owner 2026-11-20): no DM sketches and no DM orders — the bot only
