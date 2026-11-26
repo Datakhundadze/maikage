@@ -60,3 +60,8 @@ verify_jwt = false
 # only and copies nothing but those orders' own referenced files.
 [functions.mirror-order-originals]
 verify_jwt = false
+
+# E-mail to the shop for every paid order — invoked only by pg_cron with the
+# service-role Bearer (role claim checked in the function).
+[functions.notify-new-orders]
+verify_jwt = true
