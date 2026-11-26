@@ -901,6 +901,7 @@ export type Database = {
           product_price: number
           prompt: string | null
           size: string | null
+          staff_notified_at: string | null
           status: string
           sub_product: string | null
           total_price: number
@@ -933,6 +934,7 @@ export type Database = {
           product_price?: number
           prompt?: string | null
           size?: string | null
+          staff_notified_at?: string | null
           status?: string
           sub_product?: string | null
           total_price?: number
@@ -965,6 +967,7 @@ export type Database = {
           product_price?: number
           prompt?: string | null
           size?: string | null
+          staff_notified_at?: string | null
           status?: string
           sub_product?: string | null
           total_price?: number
