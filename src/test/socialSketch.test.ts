@@ -1350,3 +1350,23 @@ describe("owner 2026-11-01: the model SEES the customer's photos", () => {
     expect(dm).toContain('\\"extract\\": true');
   });
 });
+
+// Owner 2026-11-26: admin inbox sketch files.
+import { sketchFileRows } from "../../supabase/functions/meta-webhook/autoReply";
+describe("sketch file rows (2026-11-26)", () => {
+  const hash = async (s: string) => "h".repeat(40) + s.length;
+  it("extract → print PNG path from the cache key; photo → source path; text → none", async () => {
+    const rows = await sketchFileRows("messenger:1:2", "messenger", [
+      { plan: { kind: "photo", path: "messenger/2026-11/a.jpg", block: { extract: true } }, url: "https://x/s1.jpg" },
+      { plan: { kind: "photo", path: "messenger/2026-11/b.jpg", block: {} }, url: "https://x/s2.jpg" },
+      { plan: { kind: "text" }, url: "https://x/s3.jpg" },
+      { plan: { kind: "generate" }, url: "https://x/s4.jpg", cacheKey: "abc" },
+    ], hash);
+    expect(rows[0].kind).toBe("extract");
+    expect(rows[0].print_path).toMatch(/^social-sketches\/cache\/h{40}\.png$/);
+    expect(rows[0].source_path).toBeNull();
+    expect(rows[1]).toMatchObject({ kind: "photo", print_path: null, source_path: "messenger/2026-11/b.jpg" });
+    expect(rows[2]).toMatchObject({ kind: "text", print_path: null, source_path: null });
+    expect(rows[3].print_path).toBe("social-sketches/cache/abc.png");
+  });
+});

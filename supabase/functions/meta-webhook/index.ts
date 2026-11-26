@@ -507,6 +507,14 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
     send: graphSend,
     log,
     sketchCaveat: DM_INFO_ONLY && DM_SKETCHES,
+    // SKETCH FILES (add-only, 2026-11-26): the admin inbox lists them with download buttons.
+    sketchFiles: {
+      save: async (rows) => {
+        if (rows.length === 0) return;
+        const { error } = await admin.from("social_sketch_files").insert(rows);
+        if (error) log("warn", `sketch files insert failed (${error.code ?? "?"}): ${error.message ?? ""}`);
+      },
+    },
     // INFO ONLY (owner 2026-11-20): no DM sketches and no DM orders — the bot only
     // answers questions (gemini-proxy dm_info_only). Flip DM_INFO_ONLY to restore.
     ...(DM_INFO_ONLY ? (DM_SKETCHES ? { sketch: sketchDeps(admin) } : {}) : { sketch: sketchDeps(admin), order: orderDeps(admin) }),

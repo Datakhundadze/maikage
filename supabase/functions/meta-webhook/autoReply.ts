@@ -101,6 +101,43 @@ import type { OrderDraft } from "./orderDraft.ts";
 import { runReceiptStep, type ReceiptDeps, type ReceiptRun } from "./receiptFlow.ts";
 import { receiptSourcePaths } from "./receiptCheck.ts";
 
+/** One sent sketch for public.social_sketch_files (add-only, 2026-11-26). */
+export interface SketchFileRow {
+  conversation_key: string;
+  channel: string;
+  kind: string;
+  sketch_url: string;
+  /** designs bucket: the transparent print PNG (generate / extract). */
+  print_path: string | null;
+  /** social-uploads bucket: the customer's own photo (photo sketch). */
+  source_path: string | null;
+}
+
+/** The sketch files' rows for the sketches just sent (pure, add-only 2026-11-26). */
+export async function sketchFileRows(
+  key: string,
+  channel: string,
+  sent: { plan: { kind: string; path?: string; block?: { extract?: boolean; printColor?: string; editPrompt?: string } }; url: string; cacheKey?: string }[],
+  hashKey: (s: string) => Promise<string>,
+): Promise<SketchFileRow[]> {
+  const rows: SketchFileRow[] = [];
+  for (const s of sent) {
+    const extract = s.plan.kind === "photo" && s.plan.block?.extract === true;
+    let ck = s.cacheKey;
+    if (!ck && s.plan.kind === "generate") ck = await designCacheKey(s.plan as Parameters<typeof designCacheKey>[0], hashKey).catch((): undefined => undefined);
+    if (!ck && extract && s.plan.path) ck = await extractCacheKey(s.plan.path, hashKey, s.plan.block?.printColor, s.plan.block?.editPrompt).catch((): undefined => undefined);
+    rows.push({
+      conversation_key: key,
+      channel,
+      kind: extract ? "extract" : s.plan.kind,
+      sketch_url: s.url,
+      print_path: ck ? `social-sketches/cache/${ck}.png` : null,
+      source_path: s.plan.kind === "photo" && !extract && s.plan.path ? s.plan.path : null,
+    });
+  }
+  return rows;
+}
+
 /** 10 s (was 4 s, owner 2026-10-31): people type in many short lines. */
 // Owner 2026-11-16: 10 s → 20 s — a text and a photo 12 s apart got two
 // different answers (two runs). One answer, 20 s after the last message.
@@ -157,6 +194,11 @@ export interface AutoReplyDeps {
   log: (level: "info" | "warn" | "error", msg: string) => void;
   /** DM sketch images. Absent → design blocks get the link line, as before. */
   sketch?: SketchDeps;
+  /**
+   * SKETCH FILES (add-only, owner 2026-11-26): every sketch the bot sent, with
+   * the print file's path, for the admin inbox's download buttons.
+   */
+  sketchFiles?: { save: (rows: SketchFileRow[]) => Promise<void> };
   /**
    * DM orders (orderFlow.ts, add-only 2026-11-01). Absent, or the draft table
    * unreadable → no draft, no order rules for the model: exactly as before.
@@ -543,6 +585,15 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
         const r = await recordSketches(key, row.channel, deps.now(), sentSketches, deps.order, deps.log)
           .catch((): string => "error");
         deps.log("info", `order draft sketches ${row.channel}: ${r}`);
+      }
+      // SKETCH FILES (add-only, owner 2026-11-26): the admin inbox's download list.
+      if (deps.sketchFiles && deps.sketch && sentSketches.length > 0) {
+        try {
+          const rows = await sketchFileRows(key, row.channel, sentSketches as Parameters<typeof sketchFileRows>[2], deps.sketch.hashKey);
+          await deps.sketchFiles.save(rows);
+        } catch (e) {
+          deps.log("warn", `sketch files not saved: ${e instanceof Error ? e.message.slice(0, 120) : "error"}`);
+        }
       }
     }
     return kind;

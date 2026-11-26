@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { ArrowLeft, Copy, ImageOff, Inbox, Paperclip, Sparkles } from "lucide-react";
+import { ArrowLeft, Copy, Download, ImageOff, Inbox, Paperclip, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +86,75 @@ function ChannelBadge({ channel }: { channel: SocialChannel }) {
 function fmtTime(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "—" : format(d, "dd.MM.yyyy HH:mm");
+}
+
+// BOT SKETCH FILES (owner 2026-11-26): the sketches the DM bot sent in this
+// conversation (public.social_sketch_files), each with its print file —
+// transparent PNG from the public "designs" bucket, or the customer's own photo
+// from the private social-uploads bucket (signed URL). Read only.
+const SKETCH_PRINT_BUCKET = "designs";
+interface SketchFile { id: string; kind: string; sketch_url: string; print_path: string | null; source_path: string | null; created_at: string }
+
+function BotSketchFiles({ conversationKey }: { conversationKey: string }) {
+  const [files, setFiles] = useState<SketchFile[]>([]);
+  const [signed, setSigned] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let alive = true;
+    setFiles([]);
+    setSigned({});
+    (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("social_sketch_files")
+        .select("id, kind, sketch_url, print_path, source_path, created_at")
+        .eq("conversation_key", conversationKey)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (!alive || error || !data) return;
+      const rows = data as SketchFile[];
+      setFiles(rows);
+      const paths = rows.map((r) => r.source_path).filter((p): p is string => !!p);
+      if (paths.length > 0) {
+        const { data: urls } = await supabase.storage.from(SOCIAL_UPLOAD_BUCKET).createSignedUrls(paths, 60 * 60);
+        if (!alive || !urls) return;
+        const map: Record<string, string> = {};
+        for (const u of urls) if (u.path && u.signedUrl) map[u.path] = u.signedUrl;
+        setSigned(map);
+      }
+    })();
+    return () => { alive = false; };
+  }, [conversationKey]);
+  if (files.length === 0) return null;
+  return (
+    <div className="border-b border-border bg-muted/30 px-3 py-2">
+      <p className="mb-1.5 text-xs font-medium text-muted-foreground">🤖 ბოტის ესკიზები</p>
+      <div className="flex flex-wrap gap-3">
+        {files.map((f) => {
+          const printUrl = f.print_path
+            ? supabase.storage.from(SKETCH_PRINT_BUCKET).getPublicUrl(f.print_path).data.publicUrl
+            : f.source_path ? signed[f.source_path] : undefined;
+          return (
+            <div key={f.id} className="flex items-center gap-2 rounded-md border border-border bg-background p-1.5">
+              <a href={f.sketch_url} target="_blank" rel="noreferrer" title="ესკიზი">
+                <img src={f.sketch_url} alt="ესკიზი" className="h-14 w-11 rounded object-cover" loading="lazy" />
+              </a>
+              <div className="flex flex-col gap-1 text-xs">
+                <span className="text-muted-foreground">{format(new Date(f.created_at), "dd.MM HH:mm")}</span>
+                {printUrl ? (
+                  <a href={printUrl} target="_blank" rel="noreferrer" download className="inline-flex items-center gap-1 text-primary hover:underline">
+                    <Download className="h-3.5 w-3.5" />
+                    {f.print_path ? "საბეჭდი ფაილი (PNG)" : "კლიენტის ფოტო"}
+                  </a>
+                ) : (
+                  <span className="text-muted-foreground">{f.kind === "text" ? "წარწერა — ფაილი ოპერატორმა გააკეთოს" : "საბეჭდი ფაილი არ არის"}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function Spinner() {
@@ -407,6 +476,7 @@ export default function AdminSocialInbox() {
               {draftLoading ? "მზადდება…" : "პასუხის პროექტი"}
             </Button>
           </div>
+          <BotSketchFiles conversationKey={selected.key} />
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
             {threadLoading && thread.length === 0 ? (
               <Spinner />
