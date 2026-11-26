@@ -12,7 +12,9 @@
 // (typed in by the staff themselves), and anything before ACK_SINCE — older
 // paid orders were never moved off "confirmed" and would all light up at once.
 
-export const ACK_SINCE_ISO = "2026-11-18T20:00:00.000Z"; // 19.11.2026 00:00 Tbilisi
+// Owner 26.11.2026 13:23: start from now on — the older paid orders were
+// already handled by the team, only new ones are pinned.
+export const ACK_SINCE_ISO = "2026-11-26T09:00:00.000Z"; // 26.11.2026 13:00 Tbilisi
 export const ACK_STATUS = "in_production";
 export const SHOWROOM_PROVIDER_ID = "showroom";
 

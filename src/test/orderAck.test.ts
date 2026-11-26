@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { needsAck, ACK_STATUS } from "@/lib/orderAck";
 
-const base = { status: "confirmed", payment_status: "paid", payment_provider: "tbc", created_at: "2026-11-19T17:52:52.975989+00:00" };
+const base = { status: "confirmed", payment_status: "paid", payment_provider: "tbc", created_at: "2026-11-26T12:52:52.975989+00:00" };
 
 describe("needsAck — paid orders nobody has taken yet", () => {
   it("a paid, confirmed site order is pinned", () => expect(needsAck(base)).toBe(true));
@@ -12,8 +12,13 @@ describe("needsAck — paid orders nobody has taken yet", () => {
   });
   it("showroom orders (entered by staff) are not pinned", () =>
     expect(needsAck({ ...base, payment_provider: "showroom" })).toBe(false));
-  it("orders before the cut-off are not pinned", () =>
-    expect(needsAck({ ...base, created_at: "2026-11-18T12:00:00+00:00" })).toBe(false));
+  it("orders before the cut-off are not pinned", () => {
+    expect(needsAck({ ...base, created_at: "2026-11-18T12:00:00+00:00" })).toBe(false);
+    // owner 26.11: the week of 19–26.11 was already handled by the team
+    expect(needsAck({ ...base, created_at: "2026-11-19T17:52:52.975989+00:00" })).toBe(false);
+    expect(needsAck({ ...base, created_at: "2026-11-26T08:50:00+00:00" })).toBe(false);
+    expect(needsAck({ ...base, created_at: "2026-11-26T09:20:00+00:00" })).toBe(true); // 13:20 order stays pinned
+  });
   it("later statuses are not pinned", () => {
     for (const status of ["shipped", "delivered", "cancelled"]) expect(needsAck({ ...base, status })).toBe(false);
   });
