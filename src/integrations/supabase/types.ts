@@ -1390,6 +1390,30 @@ export type Database = {
         }
         Relationships: []
       }
+      social_contacts: {
+        Row: {
+          channel: string
+          conversation_key: string
+          name: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          channel: string
+          conversation_key: string
+          name?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          channel?: string
+          conversation_key?: string
+          name?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       social_messages: {
         Row: {
           attachments: Json
@@ -1494,6 +1518,7 @@ export type Database = {
           channel: string
           conversation_key: string
           created_at: string
+          downloaded_at: string | null
           id: string
           kind: string
           print_path: string | null
@@ -1504,6 +1529,7 @@ export type Database = {
           channel: string
           conversation_key: string
           created_at?: string
+          downloaded_at?: string | null
           id?: string
           kind: string
           print_path?: string | null
@@ -1514,6 +1540,7 @@ export type Database = {
           channel?: string
           conversation_key?: string
           created_at?: string
+          downloaded_at?: string | null
           id?: string
           kind?: string
           print_path?: string | null
