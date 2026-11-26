@@ -7,6 +7,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Checkout e-mail to the shop is OFF (owner, 26.11.2026): it fired when the
+// customer STARTED paying, so about one in four was for a payment that never
+// happened. The shop is now e-mailed only for PAID orders by the
+// notify-new-orders function (pg_cron, every 2 minutes). Flip to true to
+// restore the old behaviour; nothing else in this function changed.
+const CHECKOUT_EMAIL_ENABLED = false;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -176,7 +183,7 @@ serve(async (req) => {
     // 4. Email notification (fire-and-forget)
     try {
       const { data: orderRow } = await supabase.from("orders").select("*").eq("id", orderId).single();
-      if (orderRow) {
+      if (CHECKOUT_EMAIL_ENABLED && orderRow) {
         const htmlBody = `
 <h2>ახალი შეკვეთა (TBC${installment ? " განვადება" : ""}) — maika.ge</h2>
 <table style="border-collapse:collapse;width:100%;max-width:600px;">
