@@ -1,3 +1,4 @@
+import { ACK_SINCE_ISO, needsAck } from "@/lib/orderAck";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -138,10 +139,17 @@ export function useAdminTabBadges(): {
         // cart_ids and count groups client-side — the new-order volume in
         // a since-last-seen window is small, so this stays cheap.
         if (tab === "orders") {
-          const { data, error } = await supabase
+          // ORDERS BADGE = PAID ORDERS NOBODY HAS TAKEN YET (src/lib/orderAck.ts),
+          // not "new since this browser last opened the tab": that count went
+          // to zero on a mere visit, on one computer, whether or not anyone
+          // had dealt with the order.
+          const { data: ackRows, error } = await supabase
             .from("orders")
-            .select("id, cart_id")
-            .gt("created_at", seenAt[tab]);
+            .select("id, cart_id, status, payment_status, payment_provider, created_at")
+            .eq("payment_status", "paid")
+            .in("status", ["pending", "confirmed"])
+            .gte("created_at", ACK_SINCE_ISO);
+          const data = (ackRows ?? []).filter(needsAck);
           if (error) {
             console.warn(`[useAdminTabBadges] count failed for ${table}:`, error.message);
             return [tab, 0] as const;
@@ -209,6 +217,8 @@ export function useAdminTabBadges(): {
     const next: SeenAtMap = { ...seenAtRef.current, [tab]: nowIso() };
     seenAtRef.current = next;
     writeSeenAt(next);
+    // Orders stay counted until each one is taken („მივიღე") — a visit does not clear them.
+    if (tab === "orders") return;
     setCounts((prev) => (prev[tab] === 0 ? prev : { ...prev, [tab]: 0 }));
   }, []);
 
