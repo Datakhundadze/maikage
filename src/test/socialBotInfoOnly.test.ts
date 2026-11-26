@@ -131,3 +131,17 @@ describe("ads + sketch offer (owner 2026-11-25)", () => {
     expect(stripSketchSystemText(`ტექსტი\n${SKETCH_CAVEAT}`)).toBe("ტექსტი");
   });
 });
+
+describe("garment photo: washed look + big print (owner 2026-11-26)", () => {
+  it("the DM sketch rules carry both, with a valid example block", () => {
+    const b = socialPromptBlock("messenger", "off_hours", { infoOnly: true, sketches: true });
+    expect(b).toContain("WASHED LOOK");
+    expect(b).toContain("\"subProduct\":\"Premium Washed Hoodie\"");
+    expect(b).toContain("\"subProduct\":\"JEL T-Shirt\"");
+    expect(b).toContain("BIG PRINT");
+    const ex = b.split("\n").find((l) => l.includes("\"size\":\"large\"") && l.includes("Premium Washed Hoodie"));
+    expect(ex).toBeTruthy();
+    const json = ex!.slice(ex!.indexOf("{"), ex!.lastIndexOf("}") + 1);
+    expect(JSON.parse(json)).toEqual({ photo: 1, extract: true, product: "Hoodie", subProduct: "Premium Washed Hoodie", color: "Black", side: "back", size: "large" });
+  });
+});
