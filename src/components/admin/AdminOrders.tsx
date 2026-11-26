@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { needsAck, ACK_STATUS } from "@/lib/orderAck";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -300,6 +301,16 @@ export default function AdminOrders() {
       };
     });
   }, [orders]);
+
+  // UNHANDLED PAID ORDERS FIRST (see src/lib/orderAck.ts). The order number
+  // (#n) is taken from the chronological position, so pinning does not renumber.
+  const displayGroups = useMemo(() => {
+    const numbered = groups.map((g, i) => ({ ...g, number: groups.length - i, unhandled: g.rows.some(needsAck) }));
+    const pinned = numbered.filter((g) => g.unhandled).reverse(); // oldest waiting first
+    return [...pinned, ...numbered.filter((g) => !g.unhandled)];
+  }, [groups]);
+  const unhandledCount = displayGroups.filter((g) => g.unhandled).length;
+  const [acking, setAcking] = useState<string | null>(null);
 
   // Attribution rows for every listed order. A cart's attribution row is keyed
   // by whichever row id checkout stored as pending, so a group looks at all
@@ -689,20 +700,43 @@ export default function AdminOrders() {
       </div>
 
       <div className="space-y-3">
-        {groups.map((group, i) => {
+        {unhandledCount > 0 && (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm font-semibold text-destructive">
+            🆕 მისაღები შეკვეთა: {unhandledCount} — გადახდილია და ჯერ არავის მიუღია. დააჭირეთ „მივიღე“-ს, როცა წარმოებაში გაუშვებთ.
+          </div>
+        )}
+        {displayGroups.map((group) => {
           const order = group.head;
           const isExpanded = expandedKey === group.key;
           const attrRows = groupAttribution(group.rows);
           const attr = attributionSummary(attrRows);
           const manualChannel = attrRows.find((a) => a.manual_channel)?.manual_channel ?? null;
           return (
-            <div key={group.key} className="rounded-lg border border-border bg-card overflow-hidden">
+            <div key={group.key} className={`rounded-lg border bg-card overflow-hidden ${group.unhandled ? "border-destructive border-2" : "border-border"}`}>
+              {group.unhandled && (
+                <div className="flex items-center justify-between gap-3 bg-destructive/10 px-4 py-2">
+                  <span className="text-xs font-semibold text-destructive">
+                    🆕 ახალი შეკვეთა — გადახდილია {format(new Date(order.paid_at || order.created_at), "dd.MM HH:mm")}, ჯერ არ მიგიღიათ
+                  </span>
+                  <Button
+                    size="sm"
+                    disabled={acking === group.key}
+                    onClick={async () => {
+                      setAcking(group.key);
+                      await updateOrderGroup(group.rows, "status", ACK_STATUS);
+                      setAcking(null);
+                    }}
+                  >
+                    {acking === group.key ? "…" : "მივიღე"}
+                  </Button>
+                </div>
+              )}
               {/* Summary row */}
               <button
                 onClick={() => setExpandedKey(isExpanded ? null : group.key)}
                 className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/50 transition-colors"
               >
-                <span className="text-xs font-mono text-muted-foreground w-8">#{groups.length - i}</span>
+                <span className="text-xs font-mono text-muted-foreground w-8">#{group.number}</span>
                 {order.front_mockup_url ? (
                   <div className="w-10 h-10 rounded border border-border bg-muted overflow-hidden flex-shrink-0">
                     <img src={transformedDisplayUrl(order.front_mockup_url, { width: THUMB_W })} alt="" className="w-full h-full object-contain" loading="lazy" />
