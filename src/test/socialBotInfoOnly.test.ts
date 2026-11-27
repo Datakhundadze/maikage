@@ -145,3 +145,28 @@ describe("garment photo: washed look + big print (owner 2026-11-26)", () => {
     expect(JSON.parse(json)).toEqual({ photo: 1, extract: true, product: "Hoodie", subProduct: "Premium Washed Hoodie", color: "Black", side: "back", size: "large" });
   });
 });
+
+import { isEnglishReply, SKETCH_NOTICE_EN, SKETCH_CAVEAT_EN } from "../../supabase/functions/meta-webhook/botReply";
+
+describe("DM fixes (owner 2026-11-27)", () => {
+  const b = socialPromptBlock("messenger", "off_hours", { infoOnly: true, sketches: true });
+  it("carries the new sketch rules in sketch mode", () => {
+    expect(b).toContain("- ONE PHOTO, BOTH SIDES");
+    expect(b).toContain("only the print on the BACK view");
+    expect(b).toContain("- A PICTURE THEY DESCRIBE");
+    expect(b).toContain("- ALREADY SKETCHED");
+  });
+  it("carries the size and sleeve facts in every info-only mode", () => {
+    for (const x of [b, socialPromptBlock("instagram", "off_hours", { infoOnly: true })]) {
+      expect(x).toContain("adult GILDAN has no XS");
+      expect(x).toContain("XL (12/14 years)");
+      expect(x).toContain("we print on the sleeves and on the label area");
+    }
+  });
+  it("English replies get English sketch lines; Georgian / block-only stay Georgian", () => {
+    expect(isEnglishReply("I'll prepare a sketch for you. The price is 50₾.")).toBe(true);
+    expect(isEnglishReply("ესკიზს მოგიმზადებთ, GILDAN — 35₾")).toBe(false);
+    expect(isEnglishReply("")).toBe(false);
+    expect(stripSketchSystemText(`Sure!\n${SKETCH_NOTICE_EN}\n${SKETCH_CAVEAT_EN}`)).toBe("Sure!");
+  });
+});

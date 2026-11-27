@@ -59,3 +59,26 @@ describe("sketchFileName / isNewSketch", () => {
     expect(isNewSketch({ downloaded_at: "2026-11-26T10:00:00Z" })).toBe(false);
   });
 });
+
+import { BOT_LABEL_NAME, conversationLookupPath, labelIdFrom, nameFromConversations } from "../../supabase/functions/meta-webhook/contactName";
+
+describe("fallback name + bot label (owner 2026-11-27)", () => {
+  it("builds the conversations lookup per channel", () => {
+    expect(conversationLookupPath("159657880717306", { channel: "messenger", customerId: "123456", fields: "x" }))
+      .toBe("159657880717306/conversations?platform=messenger&user_id=123456&fields=participants");
+    expect(conversationLookupPath("1", { channel: "instagram", customerId: "987654", fields: "x" })).toContain("platform=instagram");
+  });
+  it("picks the customer among the participants, never the page", () => {
+    const data = { data: [{ participants: { data: [{ id: "159657880717306", name: "Maika.GE" }, { id: "123456", name: " Gega  B " }] } }] };
+    expect(nameFromConversations(data, "123456")).toEqual({ name: "Gega B", username: null });
+    expect(nameFromConversations({ data: [{ participants: { data: [{ id: "77777", username: "tayyiba" }] } }] }, "77777")).toEqual({ name: null, username: "tayyiba" });
+    expect(nameFromConversations(data, "999999")).toBeNull();
+    expect(nameFromConversations({ error: {} }, "123456")).toBeNull();
+  });
+  it("finds the bot label by its exact name", () => {
+    const list = { data: [{ id: "1", page_label_name: "Intake" }, { id: "42", page_label_name: BOT_LABEL_NAME }] };
+    expect(labelIdFrom(list, BOT_LABEL_NAME)).toBe("42");
+    expect(labelIdFrom({ data: [] }, BOT_LABEL_NAME)).toBeNull();
+    expect(labelIdFrom(null, BOT_LABEL_NAME)).toBeNull();
+  });
+});

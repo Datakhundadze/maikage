@@ -47,6 +47,9 @@ import {
   ASKS_FOR_MODELS_RE,
   DESIGN_LINK_LINE,
   SKETCH_CAVEAT,
+  SKETCH_CAVEAT_EN,
+  SKETCH_NOTICE_EN,
+  isEnglishReply,
   HANDOFF_REASON_SKETCH_CAP,
   buildHistoryWithPhotos,
   cleanBotReply,
@@ -488,7 +491,12 @@ export async function runAutoReply(row: TriggerRow, deps: AutoReplyDeps, extras:
         schedule,
         {
           ...(sketches.length > 0
-            ? { designNotice: deps.sketchCaveat === true ? `${SKETCH_NOTICE}\n${SKETCH_CAVEAT}` : SKETCH_NOTICE }
+            ? {
+              // ENGLISH SKETCH LINES (add-only, 2026-11-27): an English answer gets English lines.
+              designNotice: isEnglishReply(raw.replace(/```[\s\S]*?```/g, ""))
+                ? (deps.sketchCaveat === true ? `${SKETCH_NOTICE_EN}\n${SKETCH_CAVEAT_EN}` : SKETCH_NOTICE_EN)
+                : deps.sketchCaveat === true ? `${SKETCH_NOTICE}\n${SKETCH_CAVEAT}` : SKETCH_NOTICE,
+            }
             : capHit ? { designNotice: sketchCapMessage(schedule) } : {}),
           allowPriceList: pendingInbound(thread).some((r) => typeof r.text === "string" && ASKS_FOR_MODELS_RE.test(r.text)),
         },

@@ -48,3 +48,47 @@ export function contactFromGraph(channel: ContactLookup["channel"], data: unknow
   }
   return name || username ? { name, username } : null;
 }
+
+// ── fallback name + bot label (add-only, owner 2026-11-27) ─────────────────
+// The Messenger profile fields came back empty for every customer, so the
+// name falls back to the conversation participants (pages_messaging):
+//   GET /{PAGE}/conversations?platform=messenger|instagram&user_id={id}&fields=participants
+// and every conversation the bot answers gets the Page inbox label
+// BOT_LABEL_NAME, visible and filterable in Meta Business Suite:
+//   GET/POST /{PAGE}/custom_labels, POST /{label}/label {user}
+
+export const BOT_LABEL_NAME = "ბოტმა უპასუხა";
+
+/** Conversations-API path (no host, no token) for one customer. */
+export function conversationLookupPath(pageId: string, look: ContactLookup): string {
+  return `${pageId}/conversations?platform=${look.channel}&user_id=${look.customerId}&fields=participants`;
+}
+
+/** The customer's name / username from a conversations-API answer. */
+export function nameFromConversations(data: unknown, customerId: string): ContactName | null {
+  const convs = (data as { data?: unknown } | null)?.data;
+  if (!Array.isArray(convs)) return null;
+  for (const c of convs) {
+    const parts = (c as { participants?: { data?: unknown } } | null)?.participants?.data;
+    if (!Array.isArray(parts)) continue;
+    for (const p of parts) {
+      const r = (p ?? {}) as Record<string, unknown>;
+      if (String(r.id ?? "") !== customerId) continue;
+      const name = clean(r.name);
+      const username = clean(r.username, 40);
+      if (name || username) return { name, username };
+    }
+  }
+  return null;
+}
+
+/** id of the label called `name` in a GET custom_labels answer, else null. */
+export function labelIdFrom(data: unknown, name: string): string | null {
+  const rows = (data as { data?: unknown } | null)?.data;
+  if (!Array.isArray(rows)) return null;
+  for (const r of rows) {
+    const o = (r ?? {}) as Record<string, unknown>;
+    if (o.page_label_name === name && typeof o.id === "string" && o.id) return o.id;
+  }
+  return null;
+}
