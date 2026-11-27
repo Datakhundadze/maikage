@@ -1392,6 +1392,7 @@ export type Database = {
       }
       social_contacts: {
         Row: {
+          bot_labeled_at: string | null
           channel: string
           conversation_key: string
           name: string | null
@@ -1399,6 +1400,7 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          bot_labeled_at?: string | null
           channel: string
           conversation_key: string
           name?: string | null
@@ -1406,6 +1408,7 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          bot_labeled_at?: string | null
           channel?: string
           conversation_key?: string
           name?: string | null
