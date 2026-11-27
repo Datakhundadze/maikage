@@ -39,10 +39,16 @@ export const SKETCH_NOTICE = "ესკიზს ვამზადებ, ც�
  * the honest note that the AI may have misunderstood and the operator helps.
  */
 export const SKETCH_CAVEAT = "თუ რამე ზუსტად ვერ გავიგე ან დახატვა ვერ გამოვიდა, სამუშაო საათებში ოპერატორი დაგეხმარებათ 🙏";
+// ENGLISH SKETCH LINES (add-only, owner 2026-11-27): an English chat got the
+// two Georgian system lines around its sketch.
+export const SKETCH_NOTICE_EN = "I'm preparing the sketch — it will be here in a moment 🎨";
+export const SKETCH_CAVEAT_EN = "If I misunderstood something or the sketch didn't come out right, an operator will help you during working hours 🙏";
 export const SKETCH_SYSTEM_LINES = [
   SKETCH_NOTICE,
   "ესკიზი 👆 შესაცვლელად ან შესაკვეთად მოგვწერეთ.",
   SKETCH_CAVEAT,
+  SKETCH_NOTICE_EN,
+  SKETCH_CAVEAT_EN,
 ] as const;
 /** The history's numbered image tag, „[ფოტო 2]" (photo sketches, 2026-10-31). */
 export const photoTag = (n: number) => `[ფოტო ${n}]`;
@@ -123,6 +129,10 @@ export function introMessage(schedule: BotSchedule): string {
 const EN_HINT_RE =
   /\b(?:hello|hi|hey|hiya|greetings|good (?:morning|afternoon|evening|day)|thanks|thank you|please|do you|can you|could you|can i|i want|i need|i'?d like|i would like|how much|what|where|when|which|is it|are you|have|price|t-?shirts?|hoodies?|printing)\b/i;
 const GEORGIAN_LETTER_RE = /[\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F]/;
+/** ENGLISH SKETCH LINES (2026-11-27): the model answered in English (no Georgian letter, some Latin words). */
+export function isEnglishReply(text: string): boolean {
+  return !GEORGIAN_LETTER_RE.test(text) && /[A-Za-z]{3,}/.test(text);
+}
 export function introLanguage(customerTexts: string[]): "ka" | "en" {
   const all = customerTexts.join(" ");
   if (GEORGIAN_LETTER_RE.test(all)) return "ka";

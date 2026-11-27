@@ -119,6 +119,10 @@ const SKETCH_RULE_PREFIXES = [
   "- READ THE WHOLE BURST FIRST",
   "- FRONT AND BACK PHOTOS",
   "- THEIR OWN PHOTOS",
+  // owner 2026-11-27 (add-only)
+  "- ONE PHOTO, BOTH SIDES",
+  "- A PICTURE THEY DESCRIBE",
+  "- ALREADY SKETCHED",
 ];
 export function sketchOfferLines(channel: SocialChannel, schedule: SocialSchedule): string[] {
   const full = socialPromptBlock(channel, schedule).split("\n");
@@ -163,6 +167,9 @@ export function socialInfoOnlyBlock(channel: SocialChannel, schedule: SocialSche
     "- PRICES: at most ONE price list in the whole conversation — only for the product they asked about, one line per model („GILDAN — 35₾\"), then one line for the two-sided add-on. If our side of the history already contains a price list, NEVER send it again: answer a price question in ONE line.",
     "- BANK DETAILS (owner 2026-11-20 — learn them exactly): only when they ask where / how to pay or for the account. Copy the knowledge-base requisites lines EXACTLY — company, ID, TBC and BOG IBAN — never from memory and never from this chat's history (numbers there are masked like [phone:***75]). Then one line: send the transfer receipt here, the operator confirms the order in working hours. Payment is 100% prepayment (bank transfer or card); no cash to the courier. Never push them to pay before they asked.",
     "- NOT SURE? (owner 2026-11-20) If the knowledge base does not clearly answer it (a colour, a size, a technique, a date, whether something is possible), do NOT guess: say in one line that the operator will check it in working hours and write to them here.",
+    // FACTS (add-only, owner 2026-11-27): the bot claimed an adult XS and invented label removal.
+    "- SIZES (owner 2026-11-27): a size exists only if the knowledge base lists it for THAT model. XS: adult GILDAN has no XS (it starts at S), but the kids GILDAN KIDS size XL (12/14 years) matches an adult XS — say exactly that.",
+    "- SLEEVES / LABEL AREA (owner 2026-11-27): yes, we print on the sleeves and on the label area (the inside back of the neck); the operator gives the exact price. Anything else the knowledge base does not mention (removing the brand label, branded packaging, a print running over seams or shoulders) → the NOT SURE rule: never „yes\", never „no\" — the operator checks.",
     "- NEVER say a product, colour or size is in stock, available or „in our assortment\" (მარაგშია, გვაქვს, ასორტიმენტშია, ხელმისაწვდომია). Stock changes every day — the operator checks it.",
     "- A photo of a bank transfer / payment receipt: thank them in one line and say the operator will check it in working hours. Nothing else.",
     "- Do not take orders and do not collect name / address for an order: the operator finalises everything. If they want to order, say the operator will write to them here.",
@@ -203,6 +210,12 @@ export function socialPromptBlock(channel: SocialChannel, schedule: SocialSchedu
     "- THEIR OWN GARMENT („ჰუდი უკვე მაქვს\", „ნაყიდი მაქვს\", „ჩემს მაისურს მოვიტან\"): quote ONLY the knowledge-base price for printing on a brought item. Never quote the price of OUR garment unless they ask for it. The sketch is only a preview on a similar garment — say that in a few words.",
     "- READ THE WHOLE BURST FIRST (owner 2026-11-16): before the FIRST block, read every message and photo of the burst. If their words change the print in the photo — another letter, initial, name, number or text („ოღონდ M ინიციალით\") — that FIRST block already carries \"editPrompt\" naming the exact change: what the photo shows and what replaces it, e.g. \"editPrompt\":\"ფოტოზე არსებული ასო N შეცვალე ასო M-ით, დანარჩენი უცვლელი\". Never send a plain copy first and fix it later; never a vague edit like „შეცვალე ინიციალი\".",
     "- FRONT AND BACK PHOTOS: when they send one photo of the front and one of the back, each side's block uses the photo that shows THAT side („photo\": N per side) — never the same photo for both sides.",
+    // DM SKETCH FIXES (add-only, owner 2026-11-27): one photo with both views got
+    // only the front; described pictures were printed as words; a follow-up
+    // question re-sent the same sketch.
+    "- ONE PHOTO, BOTH SIDES: when ONE photo shows the garment's front AND back (two views side by side), make TWO blocks from that same photo — \"side\":\"front\" with \"editPrompt\":\"only the print on the FRONT view\" and \"side\":\"back\" with \"editPrompt\":\"only the print on the BACK view\". Never only the front.",
+    "- A PICTURE THEY DESCRIBE: a text block prints EXACTLY the words they want written on the garment. When they describe a picture („eyes and lips\", „heart\", „ყვავილები\", „ლომი\") and send no photo of it, NEVER print those words as lettering and do not sketch yet: ask ONE short question — do they have a picture or design to send, or should we draw it, and in what style? Only after they say „draw it\" → maika-generate. Photos they say only show a style, a cut or an idea („ეს მხოლოდ მაგალითია\", „ესეთი სტილი არ მინდა\") are not designs: no sketch from them — answer their question.",
+    "- ALREADY SKETCHED: if our side of this chat already sent the sketch of a photo or text and the new message only asks something (size, price, time, colour availability), answer in text only — no new block for the same design unless they ask for a change.",
     "- CORPORATE / BULK (owner 2026-11-16): a company, school or organisation, 10+ pieces, or an invoice / contract → NO prices and NO discount numbers at all, not even „about\". Say a quantity discount applies and the operator will send the exact price and the invoice; ask for the phone number, the quantity and the garment / colour. A sketch is fine.",
     "- COMPLAINT or ANY UNHAPPY CUSTOMER (owner 2026-11-17) — about an order (size, quality, wrong item, delay), the service, a price, or you: do not argue, do not explain how it should be, do not try to solve it yourself and do not sell. Apologise in one line and say an operator will contact them in working hours (e.g. „ბოდიშს გიხდით. ოპერატორი სამუშაო საათებში დაგიკავშირდებათ.\"); ask for their phone number (and a photo, if it is about an order) only if they have not sent it. Then stop — no follow-up offers. Never tell them to write to „our channels\" — this chat IS our channel.",
     "- SHORT (owner 2026-11-17 — „არ მინდა ბოტმა ზედმეტად ბევრი ილაპარაკოს\"): at most 2–3 short sentences (~250 characters). Answer only what they asked, one question back at a time. No greeting after the first message, no thanks, no „თუ კიდევ გაქვთ კითხვები\", no repeating what they said. Only two exceptions may be longer: the price list (once) and the final order recap.",

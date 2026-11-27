@@ -103,7 +103,7 @@ import type { ReceiptDeps } from "./receiptFlow.ts";
 import { coerceReceiptFields, type ReceiptFields } from "./receiptCheck.ts";
 import type { Channel } from "./handler.ts";
 import { conversationKeyOf } from "./autoReply.ts";
-import { contactFromGraph, contactLookup } from "./contactName.ts";
+import { BOT_LABEL_NAME, contactFromGraph, contactLookup, conversationLookupPath, labelIdFrom, nameFromConversations } from "./contactName.ts";
 import { proxyChannelFor, waBotOutRow, type WaStoreExtras } from "./whatsapp.ts";
 import {
   downloadWaMedia,
@@ -431,8 +431,10 @@ async function rememberContactNames(admin: Admin, currentKey: string): Promise<v
     .limit(200);
   const keys = [currentKey, ...((sketchKeys ?? []) as { conversation_key: string }[]).map((r) => r.conversation_key)]
     .filter((k, i, a) => a.indexOf(k) === i);
-  const { data: known } = await admin.from("social_contacts").select("conversation_key").in("conversation_key", keys);
-  const have = new Set(((known ?? []) as { conversation_key: string }[]).map((r) => r.conversation_key));
+  // A row may exist only for the bot label (2026-11-27) — "known" = has a name.
+  const { data: known } = await admin.from("social_contacts").select("conversation_key, name, username").in("conversation_key", keys);
+  const have = new Set(((known ?? []) as { conversation_key: string; name: string | null; username: string | null }[])
+    .filter((r) => r.name || r.username).map((r) => r.conversation_key));
   const todo = keys.filter((k) => !have.has(k) && contactLookup(k)).slice(0, 6);
   for (const key of todo) {
     const look = contactLookup(key)!;
@@ -443,9 +445,15 @@ async function rememberContactNames(admin: Admin, currentKey: string): Promise<v
       });
       if (!res.ok) {
         log("warn", `contact name lookup failed (${look.channel}, HTTP ${res.status})`);
+        // FALLBACK NAME (add-only, 2026-11-27)
+        const alt = await participantName(look).catch(() => null);
+        if (alt) await saveContactName(admin, key, look.channel, alt);
         continue;
       }
-      const name = contactFromGraph(look.channel, await res.json().catch(() => null));
+      // FALLBACK NAME (add-only, 2026-11-27): the profile fields came back empty
+      // for Messenger customers — ask the conversation participants instead.
+      const name = contactFromGraph(look.channel, await res.json().catch(() => null))
+        ?? await participantName(look).catch(() => null);
       if (!name) continue;
       const { error } = await admin.from("social_contacts").upsert({
         conversation_key: key,
@@ -458,6 +466,88 @@ async function rememberContactNames(admin: Admin, currentKey: string): Promise<v
     } catch {
       log("warn", `contact name lookup failed (${look.channel})`);
     }
+  }
+}
+
+// FALLBACK NAME + BOT LABEL (add-only, owner 2026-11-27) ──────────────────
+async function graphGet(path: string): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const res = await fetch(`https://graph.facebook.com/v21.0/${path}`, {
+    headers: { Authorization: `Bearer ${await pageToken()}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  return { ok: res.ok, status: res.status, data: await res.json().catch(() => null) };
+}
+
+async function participantName(look: NonNullable<ReturnType<typeof contactLookup>>) {
+  const r = await graphGet(conversationLookupPath(MAIKA_PAGE_ID, look));
+  if (!r.ok) {
+    log("warn", `contact participants lookup failed (${look.channel}, HTTP ${r.status})`);
+    return null;
+  }
+  return nameFromConversations(r.data, look.customerId);
+}
+
+async function saveContactName(admin: Admin, key: string, channel: string, name: { name: string | null; username: string | null }) {
+  const { error } = await admin.from("social_contacts").upsert({
+    conversation_key: key, channel, name: name.name, username: name.username, updated_at: new Date().toISOString(),
+  });
+  if (error) log("warn", `contact name save failed (${error.code ?? "?"})`);
+}
+
+// Every conversation the bot answers gets the Page inbox label BOT_LABEL_NAME
+// (Business Suite shows and filters it), once per conversation:
+// social_contacts.bot_labeled_at marks it done. Best-effort, never blocks a reply.
+let botLabelId: string | null = null;
+// One lookup / create at a time: the chunks of one reply label concurrently,
+// and two parallel creates would make two labels of the same name.
+let botLabelPending: Promise<string | null> | null = null;
+function botLabel(): Promise<string | null> {
+  if (botLabelId) return Promise.resolve(botLabelId);
+  botLabelPending ??= findOrCreateBotLabel().finally(() => { botLabelPending = null; });
+  return botLabelPending;
+}
+async function findOrCreateBotLabel(): Promise<string | null> {
+  const list = await graphGet(`${MAIKA_PAGE_ID}/custom_labels?fields=id,page_label_name&limit=200`);
+  botLabelId = list.ok ? labelIdFrom(list.data, BOT_LABEL_NAME) : null;
+  if (botLabelId) return botLabelId;
+  const res = await fetch(`https://graph.facebook.com/v21.0/${MAIKA_PAGE_ID}/custom_labels`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await pageToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ page_label_name: BOT_LABEL_NAME }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  const made = await res.json().catch(() => null) as { id?: unknown } | null;
+  if (!res.ok || typeof made?.id !== "string") {
+    log("warn", `bot label create failed (HTTP ${res.status})`);
+    return null;
+  }
+  botLabelId = made.id;
+  return botLabelId;
+}
+
+async function labelBotConversation(admin: Admin, key: string): Promise<void> {
+  const look = contactLookup(key);
+  if (!look) return;
+  const { data: done } = await admin.from("social_contacts").select("bot_labeled_at").eq("conversation_key", key).maybeSingle();
+  if ((done as { bot_labeled_at?: string | null } | null)?.bot_labeled_at) return;
+  const labelId = await botLabel();
+  if (!labelId) return;
+  const res = await fetch(`https://graph.facebook.com/v21.0/${labelId}/label`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await pageToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ user: look.customerId }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    log("warn", `bot label assign failed (${look.channel}, HTTP ${res.status})`);
+    return;
+  }
+  const { error } = await admin.from("social_contacts").upsert({
+    conversation_key: key, channel: look.channel, bot_labeled_at: new Date().toISOString(),
+  });
+  if (error) log("warn", `bot label mark failed (${error.code ?? "?"})`);
+  if (!(await admin.from("social_contacts").select("name").eq("conversation_key", key).maybeSingle()).data?.name) {
+    await rememberContactNames(admin, key).catch(() => {});
   }
 }
 
@@ -538,6 +628,8 @@ function autoReplyDeps(admin: Admin): AutoReplyDeps {
         .select("id")
         .maybeSingle();
       warn("send record", error);
+      // BOT LABEL (add-only, 2026-11-27): mark the chat in Business Suite.
+      labelBotConversation(admin, key).catch(() => {});
       return (data as { id?: string } | null)?.id ?? null;
     },
     markSent: async (id, messageId) => {
